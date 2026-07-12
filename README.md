@@ -12,11 +12,15 @@ This game uses royalty-free music from:
 
 ## 🎮 Features
 
-- 🌍 Open World Exploration (Kaliwasch City + 6 regions)
+- 🌍 Open World Exploration (109 locations across the original realm + 12 expanded regions)
+- 👹 122 monster types and bosses
+- 🛒 24 location shops using rupees
 - 👥 Multiplayer Pass & Play (2-4 players)
-- ⚔️ Turn-Based Combat with Spells
+- ⚔️ Turn-Based Combat with spells and up to 3 fighting companions
+- 💬 Local NPC/companion chat and friend-request send/accept/reject flows
+- ❤️ Heal friends and companions during joint battles
 - 🎵 Real Ambient Music & Sound Effects
-- 🏰 Guilds & Party System
+- 🏰 Guilds, invitations, and combat-group management
 - 📜 Quest System with Main Story
 - 🎒 Full Inventory Management
 - 💰 Trading & Economy
@@ -37,6 +41,14 @@ This game uses royalty-free music from:
 | `stats` | View character |
 | `map` | View world map |
 | `quests` | View active quests |
+| `social`, `friends`, `companions` | Open social and companion panel |
+| `request/accept/reject [name]` | Manage friend requests |
+| `message [name] [text]` | Send a local simulated chat message |
+| `invite [name]`, `heal [name]` | Recruit or heal a companion/friend |
+| `guild`, `group` | Open guild and joint combat group |
+| `shop` | Browse a shop at the current location |
+| `travel [location]` | Use dimensional travel (10 rupees) |
+| `world` | Print world, monster, and shop totals |
 | `help` | Show all commands |
 
 ## 🚀 Quick Deploy

@@ -202,6 +202,9 @@
                     <button class="action-btn" data-cmd="stats">📊 Stats</button>
                     <button class="action-btn" data-cmd="map">🗺️ Map</button>
                     <button class="action-btn" data-cmd="quests">📜 Quests</button>
+                    <button class="action-btn" data-cmd="social">🤝 Social</button>
+                    <button class="action-btn" data-cmd="guild">🏰 Guild</button>
+                    <button class="action-btn" data-cmd="shop">🛒 Shop</button>
                 </div>
             </div>
 
@@ -251,6 +254,33 @@
                 <div id="quest-list"></div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
+
+            <!-- Social / companion chat -->
+            <div id="social-panel" class="panel hidden" aria-label="Friends and companions">
+                <h3>🤝 Friends & Companions</h3>
+                <div id="social-content"></div>
+                <div class="social-compose">
+                    <input id="social-name" maxlength="20" placeholder="Player or companion name">
+                    <input id="social-message" maxlength="120" placeholder="Chat message">
+                    <button id="btn-social-send" class="menu-btn">Send / Request</button>
+                </div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Guild -->
+            <div id="guild-panel" class="panel hidden" aria-label="Guild and combat group">
+                <h3>🏰 Guild & Combat Group</h3>
+                <div id="guild-content"></div>
+                <button id="btn-create-guild" class="menu-btn">Create / Join Dawn Guard</button>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Shop -->
+            <div id="shop-panel" class="panel hidden" aria-label="Location shop">
+                <h3>🛒 Shop</h3>
+                <div id="shop-content"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
         </div>
 
         <!-- Game Over -->
@@ -287,6 +317,7 @@
 
     <script src="music.js"></script>
     <script src="world.js"></script>
+    <script src="expansion.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

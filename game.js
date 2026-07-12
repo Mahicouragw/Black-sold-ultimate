@@ -25,6 +25,15 @@ const Game = {
         musicEnabled: true,
         sfxEnabled: true,
         defending: false,
+        friends: [],
+        friendRequests: [
+            { name: 'Arin Stormborn', status: 'pending' },
+            { name: 'Mira Vale', status: 'pending' }
+        ],
+        companions: [],
+        messages: [],
+        guild: null,
+        combatGroup: [],
         saveKey: 'black_sword_ultimate_save'
     },
     
@@ -153,6 +162,21 @@ const Game = {
             });
         });
         
+        // Social and guild controls
+        document.getElementById('btn-social-send').addEventListener('click', () => {
+            const name = document.getElementById('social-name').value.trim();
+            const message = document.getElementById('social-message').value.trim();
+            if (message && name) this.sendChat(name, message);
+            else if (name) this.sendFriendRequest(name);
+            else this.addNarrative('Enter a name first.', 'system');
+            document.getElementById('social-message').value = '';
+            this.showSocial();
+        });
+        document.getElementById('btn-create-guild').addEventListener('click', () => {
+            this.createGuild('Dawn Guard');
+            this.showGuild();
+        });
+
         // Close buttons
         document.querySelectorAll('.close-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -290,6 +314,15 @@ const Game = {
         this.state.location = 'kaliwasch';
         this.state.visited = ['kaliwasch'];
         this.state.kills = 0;
+        this.state.friends = [];
+        this.state.friendRequests = [
+            { name: 'Arin Stormborn', status: 'pending' },
+            { name: 'Mira Vale', status: 'pending' }
+        ];
+        this.state.companions = [];
+        this.state.messages = [];
+        this.state.guild = null;
+        this.state.combatGroup = [];
         
         this.showScreen('game-screen');
         this.enterLocation('kaliwasch');
@@ -329,9 +362,12 @@ const Game = {
         // Show description
         this.addNarrative(loc.description, 'location');
         
-        // Show exits
+        // Show exits and local services
         const exits = Object.keys(loc.exits).join(', ');
         this.addNarrative(`Exits: ${exits}`, 'system');
+        if (loc.shop) this.addNarrative(`🛒 A ${loc.shop} shop is open here. Type "shop" to browse.`, 'item');
+        const localNpcs = WorldData.npcs[locId] || [];
+        if (localNpcs.length) this.addNarrative(`Nearby: ${localNpcs.map(n => n.name).join(', ')}. Type "talk" or "invite [name]".`, 'npc');
         
         // Check for random encounter
         if (!loc.safe && loc.enemies && loc.enemies.length > 0 && Math.random() > 0.5) {
@@ -403,8 +439,8 @@ const Game = {
         const c = cmd.toLowerCase().trim();
         
         // Movement
-        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w'].includes(c)) {
-            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west' };
+        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
+            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
             this.move(dirMap[c] || c);
             return;
         }
@@ -478,6 +514,26 @@ const Game = {
             return;
         }
         
+        // Social, companions, guilds, group combat and shops
+        if (c === 'social' || c === 'friends' || c === 'companions') { this.showSocial(); return; }
+        if (c === 'guild' || c === 'group') { this.showGuild(); return; }
+        if (c === 'shop' || c === 'buy') { this.showShop(); return; }
+        if (c.startsWith('request ')) { this.sendFriendRequest(c.slice(8)); return; }
+        if (c.startsWith('accept ')) { this.acceptFriendRequest(c.slice(7)); return; }
+        if (c.startsWith('reject ')) { this.rejectFriendRequest(c.slice(7)); return; }
+        if (c.startsWith('message ')) {
+            const parts = c.slice(8).split(' ');
+            this.sendChat(parts.shift(), parts.join(' '));
+            return;
+        }
+        if (c.startsWith('invite ')) { this.inviteCompanion(c.slice(7)); return; }
+        if (c.startsWith('heal ')) { this.healAlly(c.slice(5)); return; }
+        if (c.startsWith('travel ')) { this.travelTo(c.slice(7)); return; }
+        if (c === 'world') {
+            this.addNarrative(`${ExpansionData.counts.locations} locations, ${ExpansionData.counts.monsters} monsters and ${ExpansionData.counts.shops} shops await. Go UP from Kaliwasch to enter the expanded realms.`, 'location');
+            return;
+        }
+
         // Where am I
         if (c === 'where am i' || c === 'location') {
             const loc = WorldData.locations[this.state.location];
@@ -742,8 +798,28 @@ const Game = {
         if (e.hp <= 0) {
             this.enemyDefeated();
         } else {
-            this.enemyAttack();
+            this.companionTurn();
+            if (this.state.inCombat && this.state.enemy && this.state.enemy.hp > 0) this.enemyAttack();
         }
+    },
+
+    companionTurn() {
+        const active = this.state.companions.filter(c => c.hp > 0).slice(0, 3);
+        active.forEach(companion => {
+            if (!this.state.enemy || this.state.enemy.hp <= 0) return;
+            if (companion.heal && this.state.player.hp < this.state.player.maxHp * 0.45) {
+                const amount = Math.min(companion.heal, this.state.player.maxHp - this.state.player.hp);
+                this.state.player.hp += amount;
+                this.addNarrative(`${companion.name} heals you for ${amount} HP.`, 'magic');
+            } else {
+                const damage = companion.attack + Math.floor(Math.random() * 5);
+                this.state.enemy.hp -= damage;
+                this.addNarrative(`${companion.name} strikes for ${damage} damage!`, 'combat');
+            }
+        });
+        this.updateHUD();
+        if (this.state.enemy && this.state.enemy.hp <= 0) this.enemyDefeated();
+        else if (this.state.enemy) this.updateEnemyHUD();
     },
     
     defend() {
@@ -866,7 +942,7 @@ const Game = {
             btn.onclick = () => {
                 this.useItem(item.name);
                 panel.classList.add('hidden');
-                if (!this.state.inCombat) {
+                if (this.state.inCombat) {
                     this.enemyAttack();
                 }
             };
@@ -936,6 +1012,150 @@ const Game = {
         this.updateHUD();
     },
     
+    // ============================================
+    // SOCIAL, COMPANIONS, GUILD & SHOPS
+    // ============================================
+
+    sendFriendRequest(name) {
+        name = name.trim();
+        if (!name) return;
+        if (this.state.friends.some(f => f.toLowerCase() === name.toLowerCase())) {
+            this.addNarrative(`${name} is already your friend.`, 'system'); return;
+        }
+        if (!this.state.friendRequests.some(r => r.name.toLowerCase() === name.toLowerCase())) {
+            this.state.friendRequests.push({ name, status: 'sent' });
+        }
+        this.addNarrative(`Friend request sent to ${name}.`, 'npc');
+        this.save();
+    },
+
+    acceptFriendRequest(name) {
+        const request = this.state.friendRequests.find(r => r.name.toLowerCase().includes(name.trim().toLowerCase()) && r.status === 'pending');
+        if (!request) { this.addNarrative('No matching incoming request.', 'system'); return; }
+        request.status = 'accepted';
+        if (!this.state.friends.includes(request.name)) this.state.friends.push(request.name);
+        this.addNarrative(`You accepted ${request.name}'s friend request.`, 'npc');
+        this.save();
+    },
+
+    rejectFriendRequest(name) {
+        const request = this.state.friendRequests.find(r => r.name.toLowerCase().includes(name.trim().toLowerCase()) && r.status === 'pending');
+        if (!request) { this.addNarrative('No matching incoming request.', 'system'); return; }
+        request.status = 'rejected';
+        this.addNarrative(`You rejected ${request.name}'s friend request.`, 'system');
+        this.save();
+    },
+
+    sendChat(name, text) {
+        if (!name || !text) { this.addNarrative('Use: message [name] [text]', 'system'); return; }
+        const message = { from: this.state.player.name, to: name, text: text.slice(0, 120), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+        this.state.messages.push(message);
+        this.state.messages = this.state.messages.slice(-30);
+        this.addNarrative(`To ${name}: ${message.text}`, 'npc');
+        this.save();
+    },
+
+    inviteCompanion(name) {
+        const npcs = WorldData.npcs[this.state.location] || [];
+        const npc = npcs.find(n => n.role === 'companion' && n.name.toLowerCase().includes(name.trim().toLowerCase()));
+        if (!npc) { this.addNarrative('No matching recruitable companion is here.', 'system'); return; }
+        if (this.state.companions.length >= 3) { this.addNarrative('Your combat group is full (maximum 3 companions).', 'system'); return; }
+        if (this.state.companions.some(c => c.name === npc.name)) { this.addNarrative(`${npc.name} is already in your group.`, 'system'); return; }
+        const companion = { name: npc.name, role: npc.role, maxHp: npc.maxHp || 90, hp: npc.maxHp || 90, attack: npc.attack || 12, heal: npc.heal || 0 };
+        this.state.companions.push(companion);
+        this.state.combatGroup.push(companion.name);
+        this.addNarrative(`${companion.name} joined your combat group!`, 'treasure');
+        this.save();
+    },
+
+    healAlly(name) {
+        const targetName = name.trim().toLowerCase();
+        const companion = this.state.companions.find(c => c.name.toLowerCase().includes(targetName));
+        const isFriend = this.state.friends.find(f => f.toLowerCase().includes(targetName));
+        if (!companion && !isFriend) { this.addNarrative('That friend or companion is not available.', 'system'); return; }
+        if (this.state.player.mp < 15) { this.addNarrative('You need 15 MP to heal an ally.', 'system'); return; }
+        this.state.player.mp -= 15;
+        if (companion) companion.hp = Math.min(companion.maxHp, companion.hp + 35);
+        this.addNarrative(`You heal ${companion ? companion.name : isFriend} for 35 HP.`, 'magic');
+        this.updateHUD();
+        this.save();
+    },
+
+    createGuild(name) {
+        if (!this.state.guild) {
+            this.state.guild = { name, rank: 'Founder', members: [this.state.player.name, ...this.state.friends], rupees: 0 };
+            this.addNarrative(`Guild created: ${name}. Friends were invited.`, 'treasure');
+        } else {
+            this.addNarrative(`You already belong to ${this.state.guild.name}.`, 'system');
+        }
+        this.save();
+    },
+
+    travelTo(query) {
+        const q = query.trim().toLowerCase();
+        const match = Object.entries(WorldData.locations).find(([id, loc]) => id.toLowerCase() === q || loc.name.toLowerCase().includes(q));
+        if (!match) { this.addNarrative('Unknown destination. Use map or world to discover locations.', 'system'); return; }
+        if (this.state.player.gold < 10) { this.addNarrative('Dimensional waystone travel costs 10 rupees.', 'system'); return; }
+        this.state.player.gold -= 10;
+        this.addNarrative('The dimensional waystone opens. Travel costs 10 rupees.', 'magic');
+        this.enterLocation(match[0]);
+        this.save();
+    },
+
+    showSocial() {
+        const panel = document.getElementById('social-panel');
+        const content = document.getElementById('social-content');
+        const incoming = this.state.friendRequests.filter(r => r.status === 'pending');
+        content.innerHTML = `
+            <h4>Incoming requests</h4>
+            <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.name)}</span><span><button onclick="Game.acceptFriendRequest('${this.escapeHTML(this.escapeJS(r.name))}'); Game.showSocial()">Accept</button> <button onclick="Game.rejectFriendRequest('${this.escapeHTML(this.escapeJS(r.name))}'); Game.showSocial()">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
+            <h4>Friends</h4><p>${this.state.friends.length ? this.state.friends.map(this.escapeHTML).join(', ') : 'No friends accepted yet.'}</p>
+            <h4>Combat companions (${this.state.companions.length}/3)</h4>
+            <div class="social-list">${this.state.companions.length ? this.state.companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
+            <h4>Recent chat</h4><div class="chat-log">${this.state.messages.length ? this.state.messages.slice(-8).map(m => `<p>[${this.escapeHTML(m.time)}] ${this.escapeHTML(m.from)} → ${this.escapeHTML(m.to)}: ${this.escapeHTML(m.text)}</p>`).join('') : '<p>No messages.</p>'}</div>`;
+        panel.classList.remove('hidden');
+    },
+
+    showGuild() {
+        const panel = document.getElementById('guild-panel');
+        const content = document.getElementById('guild-content');
+        if (!this.state.guild) content.innerHTML = '<p>You are not in a guild. Create Dawn Guard to invite accepted friends.</p>';
+        else content.innerHTML = `<div class="stat-row"><span>Guild</span><span>${this.escapeHTML(this.state.guild.name)}</span></div><div class="stat-row"><span>Rank</span><span>${this.escapeHTML(this.state.guild.rank)}</span></div><div class="stat-row"><span>Members</span><span>${this.state.guild.members.map(this.escapeHTML).join(', ')}</span></div><div class="stat-row"><span>Guild Rupees</span><span>${this.state.guild.rupees}</span></div><h4>Joint combat group</h4><p>${this.state.combatGroup.length ? this.state.combatGroup.map(this.escapeHTML).join(', ') : 'No companions invited.'}</p>`;
+        panel.classList.remove('hidden');
+    },
+
+    showShop() {
+        const panel = document.getElementById('shop-panel');
+        const content = document.getElementById('shop-content');
+        const loc = WorldData.locations[this.state.location];
+        if (!loc.shop) content.innerHTML = '<p>There is no shop at this location.</p>';
+        else {
+            const stock = ExpansionData.shopStock[loc.shop] || ExpansionData.shopStock.provisions;
+            content.innerHTML = `<p>${this.escapeHTML(loc.name)} ${this.escapeHTML(loc.shop)} shop — You have ${this.state.player.gold} rupees.</p>` + stock.map(s => `<div class="shop-row"><span>${this.escapeHTML(WorldData.items[s.id]?.name || s.id)} — ${s.price} rupees</span><button onclick="Game.buyItem('${this.escapeJS(s.id)}', ${s.price})">Buy</button></div>`).join('');
+        }
+        panel.classList.remove('hidden');
+    },
+
+    buyItem(id, price) {
+        if (this.state.player.gold < price) { this.addNarrative('Not enough rupees.', 'system'); return; }
+        const item = WorldData.items[id];
+        if (!item) return;
+        this.state.player.gold -= price;
+        this.addItemToInventory(id, item);
+        this.addNarrative(`Bought ${item.name} for ${price} rupees.`, 'item');
+        this.updateHUD();
+        this.showShop();
+        this.save();
+    },
+
+    escapeHTML(value) {
+        return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    },
+
+    escapeJS(value) {
+        return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n]/g, ' ');
+    },
+
     // ============================================
     // UI
     // ============================================
@@ -1082,6 +1302,16 @@ const Game = {
         this.addNarrative("map/m - View world map", 'system');
         this.addNarrative("quests/q - View quests", 'system');
         this.addNarrative("talk - Talk to NPCs", 'system');
+        this.addNarrative("up/u - Enter the expanded realms from Kaliwasch", 'system');
+        this.addNarrative("social/friends - Friend requests, chat and companions", 'system');
+        this.addNarrative("request/accept/reject [name] - Manage friend requests", 'system');
+        this.addNarrative("message [name] [text] - Send a local chat message", 'system');
+        this.addNarrative("invite [companion] - Add a local NPC to your combat group", 'system');
+        this.addNarrative("heal [friend/companion] - Heal an ally for 15 MP", 'system');
+        this.addNarrative("guild/group - Open guild and joint combat group", 'system');
+        this.addNarrative("shop - Browse the current location's shop", 'system');
+        this.addNarrative("travel [location] - Dimensional travel for 10 rupees", 'system');
+        this.addNarrative("world - Print expanded-world totals", 'system');
     },
     
     closePanels() {
@@ -1129,7 +1359,13 @@ const Game = {
             visited: this.state.visited,
             quests: this.state.quests,
             completedQuests: this.state.completedQuests,
-            kills: this.state.kills
+            kills: this.state.kills,
+            friends: this.state.friends,
+            friendRequests: this.state.friendRequests,
+            companions: this.state.companions,
+            messages: this.state.messages,
+            guild: this.state.guild,
+            combatGroup: this.state.combatGroup
         };
         localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
     },
@@ -1143,8 +1379,14 @@ const Game = {
             this.state.location = data.location;
             this.state.visited = data.visited;
             this.state.quests = data.quests;
-            this.state.completedQuests = data.completedQuests;
+            this.state.completedQuests = data.completedQuests || [];
             this.state.kills = data.kills || 0;
+            this.state.friends = data.friends || [];
+            this.state.friendRequests = data.friendRequests || [];
+            this.state.companions = data.companions || [];
+            this.state.messages = data.messages || [];
+            this.state.guild = data.guild || null;
+            this.state.combatGroup = data.combatGroup || [];
             
             this.showScreen('game-screen');
             this.enterLocation(this.state.location);
