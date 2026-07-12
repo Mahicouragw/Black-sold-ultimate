@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ The Black Sword Chronicles - Ultimate Edition</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container" role="application" aria-label="The Black Sword Chronicles RPG">
+        
+        <!-- Title Screen -->
+        <div id="title-screen" class="screen active">
+            <div class="title-banner">
+<pre>
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║      ⚔️  THE BLACK SWORD CHRONICLES  ⚔️                  ║
+║                                                           ║
+║              ~ Ultimate Edition ~                         ║
+║                                                           ║
+║     An Open-World Multiplayer RPG Adventure               ║
+║     Inspired by "The Black Sword" on Amazon Alexa          ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+</pre>
+            </div>
+            <p class="tagline">"The legendary Black Sword awaits in the depths..."</p>
+            
+            <div class="menu-buttons">
+                <button id="btn-new" class="menu-btn primary">🎮 New Adventure</button>
+                <button id="btn-continue" class="menu-btn" disabled>📜 Continue</button>
+                <button id="btn-multi" class="menu-btn">👥 Multiplayer</button>
+                <button id="btn-help" class="menu-btn">📖 How to Play</button>
+            </div>
+            
+            <div class="audio-controls">
+                <button id="btn-music" class="icon-btn">🎵 Music</button>
+                <button id="btn-sfx" class="icon-btn">🔊 SFX</button>
+            </div>
+            
+            <p class="credits">
+                Music: Royalty-Free from Battle Explorer, Incompetech, Pixabay<br>
+                Inspired by Narkuma's "The Black Sword" on Alexa
+            </p>
+        </div>
+
+        <!-- Character Creation -->
+        <div id="char-screen" class="screen">
+            <h2>🛡️ Create Your Hero</h2>
+            
+            <div class="char-form">
+                <div class="form-group">
+                    <label for="char-name">Hero Name:</label>
+                    <input type="text" id="char-name" maxlength="20" placeholder="Enter your name..." autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label>Race:</label>
+                    <div class="race-grid">
+                        <button class="race-btn" data-race="human">👤<br><small>Human</small><br><small>+10% Gold</small></button>
+                        <button class="race-btn" data-race="elf">🧝<br><small>Elf</small><br><small>+15% Magic</small></button>
+                        <button class="race-btn" data-race="dwarf">🧔<br><small>Dwarf</small><br><small>+20% HP</small></button>
+                        <button class="race-btn" data-race="halfling">🧑<br><small>Halfling</small><br><small>+20% Speed</small></button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Class:</label>
+                    <div class="class-grid">
+                        <button class="class-btn" data-class="warrior">⚔️<br><small>Warrior</small><br><small>High HP, Melee</small></button>
+                        <button class="class-btn" data-class="mage">🧙<br><small>Mage</small><br><small>High MP, Spells</small></button>
+                        <button class="class-btn" data-class="rogue">🗡️<br><small>Rogue</small><br><small>High Crit</small></button>
+                        <button class="class-btn" data-class="cleric">🙏<br><small>Cleric</small><br><small>Healer</small></button>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Background:</label>
+                    <select id="char-background">
+                        <option value="soldier">Soldier - Start with better weapon</option>
+                        <option value="scholar">Scholar - Start with more spells</option>
+                        <option value="merchant">Merchant - Start with more gold</option>
+                        <option value="wanderer">Wanderer - Start with map revealed</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button id="btn-begin" class="menu-btn big-btn primary" disabled>⚔️ Begin Adventure</button>
+            <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
+        </div>
+
+        <!-- Multiplayer Setup -->
+        <div id="multi-screen" class="screen">
+            <h2>👥 Multiplayer Setup</h2>
+            
+            <div class="mp-info">
+                <p>Play with friends! Take turns exploring the world together. Each player controls their own hero.</p>
+            </div>
+            
+            <div class="form-group">
+                <label>Number of Players:</label>
+                <select id="mp-count">
+                    <option value="2">2 Players</option>
+                    <option value="3">3 Players</option>
+                    <option value="4">4 Players</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Game Mode:</label>
+                <select id="mp-mode">
+                    <option value="coop">Cooperative - Work together!</option>
+                    <option value="pvp">PvP - Battle each other!</option>
+                </select>
+            </div>
+            
+            <button id="btn-start-mp" class="menu-btn big-btn">👥 Start Multiplayer</button>
+            <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
+        </div>
+
+        <!-- Help Screen -->
+        <div id="help-screen" class="screen">
+            <h2>📖 How to Play</h2>
+            
+            <div class="help-content">
+                <h3>🎮 Controls</h3>
+                <div class="controls-grid">
+                    <div class="control-item"><kbd>N/S/E/W</kbd> or <kbd>Arrows</kbd> - Move</div>
+                    <div class="control-item"><kbd>Look</kbd> - Examine area</div>
+                    <div class="control-item"><kbd>Take [item]</kbd> - Pick up</div>
+                    <div class="control-item"><kbd>Attack</kbd> - Fight</div>
+                    <div class="control-item"><kbd>Cast [spell]</kbd> - Magic</div>
+                    <div class="control-item"><kbd>Use [item]</kbd> - Use item</div>
+                    <div class="control-item"><kbd>I</kbd> - Inventory</div>
+                    <div class="control-item"><kbd>M</kbd> - Map</div>
+                    <div class="control-item"><kbd>Escape</kbd> - Close panels</div>
+                </div>
+                
+                <h3>🗣️ Voice Commands (Alexa)</h3>
+                <ul class="command-list">
+                    <li>"North/South/East/West" - Move</li>
+                    <li>"Look around" - Examine</li>
+                    <li>"Take the [item]" - Pick up</li>
+                    <li>"Attack" - Fight</li>
+                    <li>"Cast fireball" - Use spell</li>
+                    <li>"Use healing potion" - Heal</li>
+                    <li>"Inventory" - View items</li>
+                    <li>"Where am I" - Check location</li>
+                </ul>
+                
+                <h3>🎵 Music</h3>
+                <p>Click the music buttons to toggle ambient music and sound effects.</p>
+                <p class="music-credit">Music sources: Battle Explorer, Incompetech, Pixabay (Royalty-Free)</p>
+            </div>
+            
+            <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
+        </div>
+
+        <!-- Main Game Screen -->
+        <div id="game-screen" class="screen">
+            <!-- HUD -->
+            <div id="hud">
+                <div class="hud-left">
+                    <span class="stat">❤️ <span id="hp">100/100</span></span>
+                    <span class="stat">✨ <span id="mp">50/50</span></span>
+                    <span class="stat">⭐ <span id="xp">0/100</span></span>
+                </div>
+                <div class="hud-center">
+                    <span id="location-name">Kaliwasch City</span>
+                </div>
+                <div class="hud-right">
+                    <span class="stat">💰 <span id="gold">0</span></span>
+                    <span id="turn-info">Solo</span>
+                    <button id="btn-hud-music" class="icon-btn" title="Toggle Music">🎵</button>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div id="game-area">
+                <div id="location-art" class="ascii-art" aria-live="polite"></div>
+                <div id="narrative" class="narrative" role="log" aria-live="polite"></div>
+            </div>
+
+            <!-- Command Input -->
+            <div class="command-section">
+                <input type="text" id="cmd-input" placeholder="Type command..." autocomplete="off" aria-label="Command input">
+                <button id="btn-cmd" class="submit-btn">→</button>
+            </div>
+
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <div class="dpad">
+                    <button class="dir-btn" data-cmd="north" title="North">⬆️</button>
+                    <button class="dir-btn" data-cmd="west" title="West">⬅️</button>
+                    <button class="dir-btn" data-cmd="east" title="East">➡️</button>
+                    <button class="dir-btn" data-cmd="south" title="South">⬇️</button>
+                </div>
+                <div class="action-btns">
+                    <button class="action-btn" data-cmd="look">👁️ Look</button>
+                    <button class="action-btn" data-cmd="inventory">🎒 Items</button>
+                    <button class="action-btn" data-cmd="stats">📊 Stats</button>
+                    <button class="action-btn" data-cmd="map">🗺️ Map</button>
+                    <button class="action-btn" data-cmd="quests">📜 Quests</button>
+                </div>
+            </div>
+
+            <!-- Combat Panel -->
+            <div id="combat-panel" class="panel hidden">
+                <h3 id="enemy-name">Enemy</h3>
+                <p id="enemy-desc" class="enemy-desc"></p>
+                <div class="enemy-health">
+                    <span>❤️ <span id="enemy-hp">50/50</span></span>
+                </div>
+                <div class="combat-actions">
+                    <button class="combat-btn" data-action="attack">⚔️ Attack</button>
+                    <button class="combat-btn" data-action="spell">✨ Spell</button>
+                    <button class="combat-btn" data-action="item">🎒 Item</button>
+                    <button class="combat-btn" data-action="defend">🛡️ Defend</button>
+                    <button class="combat-btn" data-action="flee">🏃 Flee</button>
+                </div>
+                <div id="spell-panel" class="sub-panel hidden"></div>
+                <div id="item-panel" class="sub-panel hidden"></div>
+            </div>
+
+            <!-- Inventory Panel -->
+            <div id="inventory-panel" class="panel hidden">
+                <h3>🎒 Inventory</h3>
+                <div id="inv-list"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Stats Panel -->
+            <div id="stats-panel" class="panel hidden">
+                <h3>📊 Character Stats</h3>
+                <div id="char-stats"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Map Panel -->
+            <div id="map-panel" class="panel hidden">
+                <h3>🗺️ World Map</h3>
+                <pre id="world-map" class="map-display"></pre>
+                <p class="map-legend">🟢 Visited | 🔵 Current | ⚪ Unvisited</p>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Quests Panel -->
+            <div id="quests-panel" class="panel hidden">
+                <h3>📜 Quests</h3>
+                <div id="quest-list"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+        </div>
+
+        <!-- Game Over -->
+        <div id="gameover-screen" class="screen">
+            <h2>💀 Game Over</h2>
+            <div id="final-stats"></div>
+            <div class="menu-buttons">
+                <button class="menu-btn" onclick="location.reload()">🔄 Try Again</button>
+                <button class="menu-btn" data-screen="title-screen">🏠 Main Menu</button>
+            </div>
+        </div>
+
+        <!-- Victory -->
+        <div id="victory-screen" class="screen">
+            <h2>🏆 VICTORY!</h2>
+            <pre class="victory-art">
+    ⚔️═══════════════════════════════════════⚔️
+    
+        YOU HAVE CLAIMED THE BLACK SWORD!
+        
+        The realm of Kandor is saved!
+        
+        Heroes will sing of this day
+        for generations to come...
+    
+    ⚔️═══════════════════════════════════════⚔️
+            </pre>
+            <div class="menu-buttons">
+                <button class="menu-btn" onclick="location.reload()">🔄 New Adventure</button>
+                <button class="menu-btn" data-screen="title-screen">🏠 Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="music.js"></script>
+    <script src="world.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
