@@ -2,13 +2,11 @@
 
 An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Features real royalty-free ambient music, enhanced combat, guilds, quests, and more!
 
-## 🎵 Music Credits
+## 🎵 Music and Sound Credits
 
-This game uses royalty-free music from:
-- **Battle Explorer** - https://battleexplorer.com/
-- **Incompetech** (Kevin MacLeod) - incompetech.com
-- **Pixabay Music** - pixabay.com/music/
-- **Free Music Archive** - freemusicarchive.org
+The game now bundles real cinematic music and recorded RPG sound effects from **OpenGameArt**, all released under **CC0 / public domain**. It no longer generates procedural oscillator music.
+
+See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page, and license.
 
 ## 🎮 Features
 
