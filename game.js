@@ -45,6 +45,7 @@ const Game = {
         this.loadState();
         this.bindEvents();
         this.updateUI();
+        window.OnlineSystem?.init();
         console.log('⚔️ The Black Sword Chronicles - Ultimate Edition loaded!');
     },
     
@@ -172,10 +173,17 @@ const Game = {
             document.getElementById('social-message').value = '';
             this.showSocial();
         });
-        document.getElementById('btn-create-guild').addEventListener('click', () => {
-            this.createGuild('Dawn Guard');
+        document.getElementById('btn-create-guild').addEventListener('click', async () => {
+            await this.createGuild('Dawn Guard');
             this.showGuild();
         });
+        document.getElementById('btn-copy-player-id').addEventListener('click', () => OnlineSystem.copyPlayerCode());
+        document.getElementById('btn-link-google').addEventListener('click', () => OnlineSystem.linkGoogle());
+        document.getElementById('btn-cloud-save').addEventListener('click', async () => {
+            await OnlineSystem.saveGame(this.getSaveData());
+            this.addNarrative('Cloud save requested.', 'system');
+        });
+        document.getElementById('btn-account-signout').addEventListener('click', () => OnlineSystem.signOut());
 
         // Close buttons
         document.querySelectorAll('.close-btn').forEach(btn => {
@@ -518,6 +526,7 @@ const Game = {
         if (c === 'social' || c === 'friends' || c === 'companions') { this.showSocial(); return; }
         if (c === 'guild' || c === 'group') { this.showGuild(); return; }
         if (c === 'shop' || c === 'buy') { this.showShop(); return; }
+        if (c === 'settings' || c === 'account' || c === 'player id') { OnlineSystem.showSettings(); return; }
         if (c.startsWith('request ')) { this.sendFriendRequest(c.slice(8)); return; }
         if (c.startsWith('accept ')) { this.acceptFriendRequest(c.slice(7)); return; }
         if (c.startsWith('reject ')) { this.rejectFriendRequest(c.slice(7)); return; }
@@ -1016,17 +1025,15 @@ const Game = {
     // SOCIAL, COMPANIONS, GUILD & SHOPS
     // ============================================
 
-    sendFriendRequest(name) {
+    async sendFriendRequest(name) {
         name = name.trim();
         if (!name) return;
-        if (this.state.friends.some(f => f.toLowerCase() === name.toLowerCase())) {
-            this.addNarrative(`${name} is already your friend.`, 'system'); return;
+        if (window.OnlineSystem?.ready) {
+            await OnlineSystem.sendFriendRequest(name);
+            this.showSocial();
+            return;
         }
-        if (!this.state.friendRequests.some(r => r.name.toLowerCase() === name.toLowerCase())) {
-            this.state.friendRequests.push({ name, status: 'sent' });
-        }
-        this.addNarrative(`Friend request sent to ${name}.`, 'npc');
-        this.save();
+        this.addNarrative('Online friends are unavailable. Open Settings to check the connection.', 'system');
     },
 
     acceptFriendRequest(name) {
@@ -1046,13 +1053,15 @@ const Game = {
         this.save();
     },
 
-    sendChat(name, text) {
-        if (!name || !text) { this.addNarrative('Use: message [name] [text]', 'system'); return; }
-        const message = { from: this.state.player.name, to: name, text: text.slice(0, 120), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
-        this.state.messages.push(message);
-        this.state.messages = this.state.messages.slice(-30);
-        this.addNarrative(`To ${name}: ${message.text}`, 'npc');
-        this.save();
+    async sendChat(name, text) {
+        if (!text) { this.addNarrative('Enter a message. Use Public as the recipient for world chat.', 'system'); return; }
+        if (window.OnlineSystem?.ready) {
+            const sent = await OnlineSystem.sendMessage(name || 'public', text);
+            if (sent) this.addNarrative(`Message sent to ${name || 'Public'}.`, 'npc');
+            this.showSocial();
+            return;
+        }
+        this.addNarrative('Online chat is unavailable. Open Settings to check the connection.', 'system');
     },
 
     inviteCompanion(name) {
@@ -1081,14 +1090,9 @@ const Game = {
         this.save();
     },
 
-    createGuild(name) {
-        if (!this.state.guild) {
-            this.state.guild = { name, rank: 'Founder', members: [this.state.player.name, ...this.state.friends], rupees: 0 };
-            this.addNarrative(`Guild created: ${name}. Friends were invited.`, 'treasure');
-        } else {
-            this.addNarrative(`You already belong to ${this.state.guild.name}.`, 'system');
-        }
-        this.save();
+    async createGuild(name) {
+        if (!OnlineSystem.ready) { this.addNarrative('Online guild service is unavailable.', 'system'); return; }
+        await OnlineSystem.createGuild(name);
     },
 
     travelTo(query) {
@@ -1102,26 +1106,42 @@ const Game = {
         this.save();
     },
 
-    showSocial() {
+    async showSocial() {
         const panel = document.getElementById('social-panel');
         const content = document.getElementById('social-content');
-        const incoming = this.state.friendRequests.filter(r => r.status === 'pending');
-        content.innerHTML = `
-            <h4>Incoming requests</h4>
-            <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.name)}</span><span><button onclick="Game.acceptFriendRequest('${this.escapeHTML(this.escapeJS(r.name))}'); Game.showSocial()">Accept</button> <button onclick="Game.rejectFriendRequest('${this.escapeHTML(this.escapeJS(r.name))}'); Game.showSocial()">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
-            <h4>Friends</h4><p>${this.state.friends.length ? this.state.friends.map(this.escapeHTML).join(', ') : 'No friends accepted yet.'}</p>
-            <h4>Combat companions (${this.state.companions.length}/3)</h4>
-            <div class="social-list">${this.state.companions.length ? this.state.companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
-            <h4>Recent chat</h4><div class="chat-log">${this.state.messages.length ? this.state.messages.slice(-8).map(m => `<p>[${this.escapeHTML(m.time)}] ${this.escapeHTML(m.from)} → ${this.escapeHTML(m.to)}: ${this.escapeHTML(m.text)}</p>`).join('') : '<p>No messages.</p>'}</div>`;
         panel.classList.remove('hidden');
+        if (!OnlineSystem.ready) {
+            content.innerHTML = `<p>${this.escapeHTML(OnlineSystem.status)}</p><p>Online setup must finish before real requests and chat are available.</p>`;
+            return;
+        }
+        content.innerHTML = '<p>Loading secure online social data…</p>';
+        const [requests, messages] = await Promise.all([OnlineSystem.listFriendRequests(), OnlineSystem.listMessages()]);
+        const incoming = requests.filter(r => r.receiver_id === OnlineSystem.user.id && r.status === 'pending');
+        const accepted = requests.filter(r => r.status === 'accepted').map(r => r.sender_id === OnlineSystem.user.id ? r.receiver : r.sender).filter(Boolean);
+        const companions = this.state.companions;
+        content.innerHTML = `
+            <p><strong>Your Player ID:</strong> ${this.escapeHTML(OnlineSystem.getPlayerCode())}</p>
+            <p>${OnlineSystem.linked ? '✅ Google linked — social actions unlocked.' : '🔒 Guest mode — public chat is readable. Link Google in Settings to send requests or messages.'}</p>
+            <h4>Incoming requests</h4>
+            <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')} (${this.escapeHTML(r.sender?.player_code || '')})</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
+            <h4>Friends</h4><p>${accepted.length ? accepted.map(f => `${this.escapeHTML(f.display_name)} (${this.escapeHTML(f.player_code)})`).join(', ') : 'No accepted friends yet.'}</p>
+            <h4>Combat companions (${companions.length}/3)</h4>
+            <div class="social-list">${companions.length ? companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
+            <h4>Recent online chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] ${this.escapeHTML(m.sender?.display_name || 'Hero')}${m.receiver_id ? ' privately' : ' publicly'}: ${this.escapeHTML(m.body)}</p>`).join('') : '<p>No messages yet.</p>'}</div>`;
     },
 
-    showGuild() {
+    async showGuild() {
         const panel = document.getElementById('guild-panel');
         const content = document.getElementById('guild-content');
-        if (!this.state.guild) content.innerHTML = '<p>You are not in a guild. Create Dawn Guard to invite accepted friends.</p>';
-        else content.innerHTML = `<div class="stat-row"><span>Guild</span><span>${this.escapeHTML(this.state.guild.name)}</span></div><div class="stat-row"><span>Rank</span><span>${this.escapeHTML(this.state.guild.rank)}</span></div><div class="stat-row"><span>Members</span><span>${this.state.guild.members.map(this.escapeHTML).join(', ')}</span></div><div class="stat-row"><span>Guild Rupees</span><span>${this.state.guild.rupees}</span></div><h4>Joint combat group</h4><p>${this.state.combatGroup.length ? this.state.combatGroup.map(this.escapeHTML).join(', ') : 'No companions invited.'}</p>`;
         panel.classList.remove('hidden');
+        if (!OnlineSystem.ready) { content.innerHTML = `<p>${this.escapeHTML(OnlineSystem.status)}</p>`; return; }
+        content.innerHTML = '<p>Loading online guild…</p>';
+        const memberships = await OnlineSystem.listMyGuilds();
+        if (!memberships.length) {
+            content.innerHTML = `<p>You are not in a guild. ${OnlineSystem.linked ? 'Create Dawn Guard or accept a future guild invitation.' : 'Link Google in Settings before creating or joining one.'}</p>`;
+            return;
+        }
+        content.innerHTML = memberships.map(m => `<div class="stat-row"><span>Guild</span><span>${this.escapeHTML(m.guild.name)}</span></div><div class="stat-row"><span>Rank</span><span>${this.escapeHTML(m.role)}</span></div><div class="stat-row"><span>Guild Rupees</span><span>${m.guild.rupees}</span></div>`).join('') + `<h4>Companion combat group</h4><p>${this.state.combatGroup.length ? this.state.combatGroup.map(this.escapeHTML).join(', ') : 'No companions invited.'}</p>`;
     },
 
     showShop() {
@@ -1312,6 +1332,7 @@ const Game = {
         this.addNarrative("shop - Browse the current location's shop", 'system');
         this.addNarrative("travel [location] - Dimensional travel for 10 rupees", 'system');
         this.addNarrative("world - Print expanded-world totals", 'system');
+        this.addNarrative("settings/account - Copy Player ID, link Google, or cloud save", 'system');
     },
     
     closePanels() {
@@ -1351,8 +1372,8 @@ const Game = {
     // SAVE/LOAD
     // ============================================
     
-    save() {
-        const saveData = {
+    getSaveData() {
+        return {
             player: this.state.player,
             inventory: this.state.inventory,
             location: this.state.location,
@@ -1360,14 +1381,16 @@ const Game = {
             quests: this.state.quests,
             completedQuests: this.state.completedQuests,
             kills: this.state.kills,
-            friends: this.state.friends,
-            friendRequests: this.state.friendRequests,
             companions: this.state.companions,
-            messages: this.state.messages,
             guild: this.state.guild,
             combatGroup: this.state.combatGroup
         };
+    },
+
+    save() {
+        const saveData = this.getSaveData();
         localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
+        window.OnlineSystem?.saveGame(saveData);
     },
     
     continueGame() {

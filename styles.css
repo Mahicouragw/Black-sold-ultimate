@@ -332,6 +332,13 @@ kbd {
     font-size: 0.85rem;
 }
 
+.online-status {
+    max-width: 180px;
+    color: var(--success);
+    font-size: 0.72rem;
+    line-height: 1.2;
+}
+
 /* Game Area */
 #game-area {
     background: var(--bg-medium);
@@ -654,6 +661,15 @@ kbd {
     font-size: .82rem;
 }
 #shop-content { display: flex; flex-direction: column; gap: 8px; }
+.settings-card { display: flex; flex-direction: column; gap: 10px; }
+.settings-note {
+    padding: 10px;
+    color: var(--text-dim);
+    background: var(--bg-dark);
+    border-left: 3px solid var(--primary);
+    font-size: .86rem;
+}
+#settings-player-code { color: var(--accent); user-select: all; }
 
 /* Map Display */
 .map-display {

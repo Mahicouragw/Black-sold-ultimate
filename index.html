@@ -172,6 +172,7 @@
                 <div class="hud-right">
                     <span class="stat">💰 <span id="gold">0</span></span>
                     <span id="turn-info">Solo</span>
+                    <span id="online-status" class="online-status" aria-live="polite">Connecting…</span>
                     <button id="btn-hud-music" class="icon-btn" title="Toggle Music">🎵</button>
                 </div>
             </div>
@@ -205,6 +206,7 @@
                     <button class="action-btn" data-cmd="social">🤝 Social</button>
                     <button class="action-btn" data-cmd="guild">🏰 Guild</button>
                     <button class="action-btn" data-cmd="shop">🛒 Shop</button>
+                    <button class="action-btn" data-cmd="settings">⚙️ Settings</button>
                 </div>
             </div>
 
@@ -260,9 +262,9 @@
                 <h3>🤝 Friends & Companions</h3>
                 <div id="social-content"></div>
                 <div class="social-compose">
-                    <input id="social-name" maxlength="20" placeholder="Player or companion name">
-                    <input id="social-message" maxlength="120" placeholder="Chat message">
-                    <button id="btn-social-send" class="menu-btn">Send / Request</button>
+                    <input id="social-name" maxlength="40" placeholder="Player ID, exact hero name, or Public">
+                    <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)">
+                    <button id="btn-social-send" class="menu-btn">Send Message / Request</button>
                 </div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
@@ -279,6 +281,21 @@
             <div id="shop-panel" class="panel hidden" aria-label="Location shop">
                 <h3>🛒 Shop</h3>
                 <div id="shop-content"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Account and online settings -->
+            <div id="settings-panel" class="panel hidden" aria-label="Account and online settings">
+                <h3>⚙️ Account Settings</h3>
+                <div class="settings-card">
+                    <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
+                    <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
+                    <p class="settings-note">Your Player ID identifies your hero. Copy it before changing devices. Link Google to recover progress elsewhere and unlock outgoing chat, friend requests, guilds and online combat groups.</p>
+                    <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
+                    <button id="btn-link-google" class="menu-btn primary">🔗 Link with Google</button>
+                    <button id="btn-cloud-save" class="menu-btn">☁️ Save to Cloud</button>
+                    <button id="btn-account-signout" class="menu-btn">Sign Out</button>
+                </div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
         </div>
@@ -315,9 +332,12 @@
         </div>
     </div>
 
+    <script src="assets/vendor/supabase-2.57.4.js"></script>
+    <script src="supabase-config.js"></script>
     <script src="music.js"></script>
     <script src="world.js"></script>
     <script src="expansion.js"></script>
+    <script src="online.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
