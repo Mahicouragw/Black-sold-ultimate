@@ -15,8 +15,11 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛒 24 location shops using rupees
 - 👥 Multiplayer Pass & Play (2-4 players)
 - ⚔️ Turn-Based Combat with spells and up to 3 fighting companions
-- 💬 Local NPC/companion chat and friend-request send/accept/reject flows
-- ❤️ Heal friends and companions during joint battles
+- 💬 Real online chat and friend-request send/accept/reject flows through Supabase
+- 🧙 Account hero roster with up to 6 independently saved heroes
+- 🧬 6 races and 8 classes with HP, MP, STR, DEX, INT, and WIS builds
+- ❤️ Minor Heal for every archetype, Mass Heal for battle groups, and Multi Strike attacks
+- 🔨 Equipable swords, blunt weapons, armor, accessories, food, and potions
 - 🎵 Real Ambient Music & Sound Effects
 - 🏰 Guilds, invitations, and combat-group management
 - 📜 Quest System with Main Story

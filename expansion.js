@@ -47,10 +47,12 @@
 
     const shopStock = {
         provisions: [
-            { id: 'bread', price: 8 }, { id: 'healing potion', price: 45 }, { id: 'mana potion', price: 40 }
+            { id: 'bread', price: 8 }, { id: 'cheese wheel', price: 18 }, { id: 'roast boar', price: 35 },
+            { id: 'honey cake', price: 42 }, { id: 'healing potion', price: 45 }, { id: 'mana potion', price: 40 }
         ],
         weapons: [
-            { id: 'goblin axe', price: 140 }, { id: 'wooden staff', price: 75 }, { id: 'iron ore', price: 20 }
+            { id: 'oak club', price: 55 }, { id: 'iron mace', price: 160 }, { id: 'war hammer', price: 310 },
+            { id: 'goblin axe', price: 140 }, { id: 'wooden staff', price: 75 }, { id: 'chainmail', price: 220 }
         ],
         alchemy: [
             { id: 'healing potion', price: 40 }, { id: 'mana potion', price: 35 }, { id: 'fairy dust', price: 65 }

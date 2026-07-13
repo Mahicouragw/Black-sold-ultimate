@@ -47,7 +47,7 @@ const OnlineSystem = {
                 this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
                 await this.cacheCloudSave();
                 this.updateIndicators();
-                if (window.Game?.state?.player) this.saveGame(window.Game.getSaveData());
+                if (window.Game?.state?.player) this.saveGame(window.Game.getCloudData());
             });
         } catch (error) {
             console.error('Online initialization failed:', error);
@@ -180,17 +180,20 @@ const OnlineSystem = {
         if (!this.ready || !window.Game) return;
         try {
             const cloud = await this.loadCloudSave();
-            if (!cloud?.save_data?.player) return;
-            const key = window.Game.state.saveKey;
-            const localRaw = localStorage.getItem(key);
-            const local = localRaw ? JSON.parse(localRaw) : null;
-            // A signed-in account's cloud save is restored on a new device. During
-            // active local play, do not replace newer in-memory progress abruptly.
-            if (!local?.player || !window.Game.state.player) {
-                localStorage.setItem(key, JSON.stringify(cloud.save_data));
+            if (!cloud?.save_data) return;
+            const payload = cloud.save_data;
+            const roster = payload.heroes ? payload : (payload.player ? { version: 2, activeHeroId: 'hero_cloud_legacy', heroes: { hero_cloud_legacy: payload } } : null);
+            if (!roster || !Object.keys(roster.heroes || {}).length) return;
+            // Restore an account roster on a new device without interrupting an
+            // adventure already running in memory.
+            if (!window.Game.state.player) {
+                localStorage.setItem(window.Game.state.rosterKey, JSON.stringify(roster));
+                const active = roster.heroes[roster.activeHeroId] || Object.values(roster.heroes)[0];
+                if (active) localStorage.setItem(window.Game.state.saveKey, JSON.stringify(active));
+                window.Game.state.activeHeroId = roster.activeHeroId;
                 const button = document.getElementById('btn-continue');
                 if (button) button.disabled = false;
-                this.status = 'Online — Google linked; cloud adventure found';
+                this.status = `Online — Google linked; ${Object.keys(roster.heroes).length} cloud hero${Object.keys(roster.heroes).length === 1 ? '' : 'es'} found`;
             }
         } catch (error) {
             console.warn('Cloud restore check failed:', error.message);

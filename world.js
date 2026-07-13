@@ -16,7 +16,7 @@ const WorldData = {
             safe: true,
             music: "city"
         },
-        
+
         mountains: {
             name: "Northern Mountains",
             description: "Jagged peaks rise sharply into the clouds. The air is thin and cold. Ancient ruins are carved into the cliffsides, remnants of a forgotten civilization. Eagles soar overhead.",
@@ -26,7 +26,7 @@ const WorldData = {
             enemies: ["mountain lion", "ice troll", "giant eagle"],
             music: "wilderness"
         },
-        
+
         shrine: {
             name: "Ancient Shrine",
             description: "An ancient shrine dedicated to the old gods stands here. Mystical symbols glow faintly on the stone altar. This is a place of power.",
@@ -36,7 +36,7 @@ const WorldData = {
             enemies: ["stone guardian"],
             music: "dungeon"
         },
-        
+
         eagle_peak: {
             name: "Eagle Peak",
             description: "The highest point in the mountains. From here, you can see the entire realm spread out below. A massive eagle's nest sits atop the peak.",
@@ -47,7 +47,7 @@ const WorldData = {
             boss: true,
             music: "wilderness"
         },
-        
+
         forest: {
             name: "West Forest",
             description: "Dense woodland surrounds you. Ancient oaks tower overhead, their branches blocking the sunlight. Sunbeams filter through the leaves. You hear birds singing and small creatures rustling in the underbrush.",
@@ -57,7 +57,7 @@ const WorldData = {
             enemies: ["wolf", "goblin scout", "forest spider"],
             music: "forest"
         },
-        
+
         ruins: {
             name: "Eastern Ruins",
             description: "Crumbling stone structures hint at a civilization that flourished here centuries ago. Mysterious symbols cover the weathered walls. The air feels heavy with ancient magic.",
@@ -67,7 +67,7 @@ const WorldData = {
             enemies: ["skeleton warrior", "undead mage", "ghost knight"],
             music: "dungeon"
         },
-        
+
         swamp: {
             name: "Southern Swamp",
             description: "Murky waters and gnarled trees create an eerie atmosphere. Will-o'-wisps dance above the dark water. Fireflies illuminate the fog. Strange sounds echo from the depths.",
@@ -77,7 +77,7 @@ const WorldData = {
             enemies: ["giant frog", "swamp witch", "crocodile"],
             music: "dungeon"
         },
-        
+
         witch_hut: {
             name: "Witch's Hut",
             description: "A crooked hut sits on stilts over the swamp. Bottles of strange potions line the shelves. The witch cackles as she stirs her cauldron.",
@@ -87,7 +87,7 @@ const WorldData = {
             enemies: ["swamp witch"],
             music: "dungeon"
         },
-        
+
         goblin_camp: {
             name: "Goblin Camp",
             description: "A crude camp of goblins. Stolen goods are scattered about. The goblins are cooking something unsavory over a fire.",
@@ -98,7 +98,7 @@ const WorldData = {
             boss: true,
             music: "battle"
         },
-        
+
         dungeon_entrance: {
             name: "Dungeon Entrance",
             description: "A massive cave mouth yawns before you, exhaling cold air that carries strange sounds from below. Ancient runes are carved into the stone archway, warning of the dangers within.",
@@ -108,7 +108,7 @@ const WorldData = {
             enemies: ["goblin guard", "skeleton guard"],
             music: "dungeon"
         },
-        
+
         depths: {
             name: "The Depths",
             description: "Deep underground. The walls glisten with moisture. Strange fungi provide an eerie bioluminescence. This is where the Black Sword awaits...",
@@ -118,7 +118,7 @@ const WorldData = {
             enemies: ["dark knight", "shadow demon"],
             music: "boss"
         },
-        
+
         dark_hall: {
             name: "Dark Hall",
             description: "A vast underground hall stretches before you. Columns of dark stone support the ceiling. Shadows seem to move on their own.",
@@ -128,7 +128,7 @@ const WorldData = {
             enemies: ["dark mage", "shadow archer"],
             music: "boss"
         },
-        
+
         shadow_chamber: {
             name: "Shadow Chamber",
             description: "A circular chamber filled with living shadows. In the center, a pedestal holds a blade that seems to absorb all light around it.",
@@ -141,7 +141,7 @@ const WorldData = {
             music: "boss"
         }
     },
-    
+
     // Enemy definitions
     enemies: {
         // Common enemies
@@ -153,13 +153,13 @@ const WorldData = {
         "goblin shaman": { hp: 40, attack: 18, xp: 55, gold: 40, desc: "A goblin magic user" },
         "giant frog": { hp: 30, attack: 9, xp: 25, gold: 18, desc: "A massive swamp frog" },
         "forest spider": { hp: 35, attack: 11, xp: 30, gold: 20, desc: "A spider with venomous fangs" },
-        
+
         // Undead
         "skeleton warrior": { hp: 45, attack: 14, xp: 45, gold: 35, desc: "Rattling bones animated by dark magic" },
         "skeleton guard": { hp: 60, attack: 16, xp: 60, gold: 45, desc: "An armored skeleton guardian" },
         "undead mage": { hp: 35, attack: 20, xp: 50, gold: 40, desc: "A floating robe with burning eyes" },
         "ghost knight": { hp: 70, attack: 22, xp: 80, gold: 60, desc: "A spectral warrior in ethereal armor" },
-        
+
         // Elite
         "ice troll": { hp: 80, attack: 18, xp: 70, gold: 55, desc: "A massive troll made of living ice" },
         "crocodile": { hp: 90, attack: 20, xp: 75, gold: 50, desc: "An ancient swamp crocodile" },
@@ -167,21 +167,21 @@ const WorldData = {
         "stone guardian": { hp: 100, attack: 25, xp: 100, gold: 80, desc: "A golem of living stone" },
         "giant eagle": { hp: 80, attack: 20, xp: 85, gold: 60, desc: "A massive eagle with razor talons" },
         "dark knight": { hp: 120, attack: 25, xp: 150, gold: 120, desc: "A knight corrupted by dark magic" },
-        
+
         // BOSSES
         "mega eagle": { hp: 200, attack: 30, xp: 300, gold: 200, boss: true, desc: "The legendary sky king" },
         "goblin chief": { hp: 250, attack: 28, xp: 350, gold: 300, boss: true, desc: "The leader of all goblins" },
         "shadow demon": { hp: 300, attack: 35, xp: 400, gold: 350, boss: true, desc: "A demon from the shadow realm" },
         "shadow lord": { hp: 500, attack: 40, xp: 1000, gold: 1000, boss: true, finalBoss: true, desc: "The master of darkness" }
     },
-    
+
     // Item definitions
     items: {
         // Currency & valuables
         "gold coin": { name: "Gold Coin", type: "treasure", value: 10, desc: "A shiny gold coin" },
         "ruby gem": { name: "Ruby Gem", type: "treasure", value: 100, desc: "A brilliant red gemstone" },
         "stolen gold": { name: "Stolen Gold", type: "treasure", value: 50, desc: "Gold coins stolen by goblins" },
-        
+
         // Consumables
         "bread": { name: "Bread", type: "food", effect: "heal", value: 10, desc: "Fresh bakery bread" },
         "mountain flower": { name: "Mountain Flower", type: "herb", effect: "heal", value: 25, desc: "A rare flower from high peaks" },
@@ -189,20 +189,34 @@ const WorldData = {
         "swamp herb": { name: "Swamp Herb", type: "herb", effect: "heal", value: 15, desc: "A medicinal herb from the swamp" },
         "healing potion": { name: "Healing Potion", type: "potion", effect: "heal", value: 50, desc: "Restores 50 HP" },
         "mana potion": { name: "Mana Potion", type: "potion", effect: "mana", value: 40, desc: "Restores 40 MP" },
-        
+        "cheese wheel": { name: "Cheese Wheel", type: "food", effect: "heal", value: 22, desc: "Restores 22 HP" },
+        "roast boar": { name: "Roast Boar", type: "food", effect: "heal", value: 45, desc: "A hearty meal restoring 45 HP" },
+        "honey cake": { name: "Honey Cake", type: "food", effect: "both", value: 25, desc: "Restores 25 HP and MP" },
+        "mystic stew": { name: "Mystic Stew", type: "food", effect: "both", value: 50, desc: "Restores 50 HP and MP" },
+
         // Weapons
+        "rusty sword": { name: "Rusty Sword", type: "weapon", damage: 10, desc: "A worn but dependable sword" },
+        "iron sword": { name: "Iron Sword", type: "weapon", damage: 14, desc: "A balanced iron blade" },
         "wooden staff": { name: "Wooden Staff", type: "weapon", damage: 5, magic: 5, desc: "A simple wooden magical staff" },
         "goblin axe": { name: "Goblin Axe", type: "weapon", damage: 12, desc: "A crude but effective goblin weapon" },
+        "oak club": { name: "Oak Club", type: "weapon", weaponType: "blunt", damage: 9, desc: "A sturdy blunt weapon" },
+        "iron mace": { name: "Iron Mace", type: "weapon", weaponType: "blunt", damage: 16, desc: "An iron-headed mace effective against armor" },
+        "war hammer": { name: "War Hammer", type: "weapon", weaponType: "blunt", damage: 23, desc: "A heavy two-handed crushing weapon" },
+        "saint's maul": { name: "Saint's Maul", type: "weapon", weaponType: "blunt", damage: 32, magic: 12, desc: "A holy maul favored by paladins" },
         "THE BLACK SWORD": { name: "THE BLACK SWORD", type: "weapon", damage: 100, legendary: true, desc: "The legendary sword of ultimate power!" },
-        
+
         // Armor & Accessories
+        "leather armor": { name: "Leather Armor", type: "armor", defense: 4, dex: 2, desc: "Light armor that preserves agility" },
+        "chainmail": { name: "Chainmail", type: "armor", defense: 8, desc: "Interlocking metal rings" },
+        "plate armor": { name: "Plate Armor", type: "armor", defense: 14, dex: -2, desc: "Heavy protective plate" },
+        "mage robe": { name: "Mage Robe", type: "armor", defense: 3, int: 4, mp: 20, desc: "Robes woven with arcane thread" },
         "iron ore": { name: "Iron Ore", type: "material", value: 15, desc: "Raw iron ore for crafting" },
         "golden amulet": { name: "Golden Amulet", type: "accessory", hp: 20, desc: "A beautiful golden necklace" },
         "blessed amulet": { name: "Blessed Amulet", type: "accessory", hp: 30, magic: 10, desc: "An amulet blessed by the gods" },
         "eagle feather": { name: "Eagle Feather", type: "material", value: 20, desc: "A feather from a mountain eagle" },
         "sky feather": { name: "Sky Feather", type: "material", value: 50, desc: "A magical feather from the heavens" },
         "fairy dust": { name: "Fairy Dust", type: "material", value: 30, magic: 15, desc: "Sparkling dust from fairies" },
-        
+
         // Quest Items
         "ancient scroll": { name: "Ancient Scroll", type: "quest", value: 50, desc: "A scroll with mysterious writing" },
         "old map": { name: "Old Map", type: "quest", value: 30, desc: "A weathered treasure map" },
@@ -210,7 +224,7 @@ const WorldData = {
         "rusty key": { name: "Rusty Key", type: "quest", value: 10, desc: "An old key, rusted but functional" },
         "skeleton key": { name: "Skeleton Key", type: "quest", value: 100, desc: "Opens any lock" },
         "mystic orb": { name: "Mystic Orb", type: "quest", value: 150, desc: "A glowing orb of unknown power" },
-        
+
         // Special Items
         "torch": { name: "Torch", type: "tool", value: 5, desc: "Lights dark areas" },
         "rope": { name: "Rope", type: "tool", value: 8, desc: "50 feet of sturdy rope" },
@@ -223,7 +237,7 @@ const WorldData = {
         "dark crown": { name: "Dark Crown", type: "accessory", magic: 30, desc: "A crown of pure darkness" },
         "golden egg": { name: "Golden Egg", type: "misc", value: 500, desc: "An egg made of pure gold" }
     },
-    
+
     // NPC definitions
     npcs: {
         kaliwasch: [
@@ -249,7 +263,7 @@ const WorldData = {
             ]}
         ]
     },
-    
+
     // Quest definitions
     quests: [
         {

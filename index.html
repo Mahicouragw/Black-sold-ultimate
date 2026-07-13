@@ -8,7 +8,7 @@
 </head>
 <body>
     <div id="game-container" role="application" aria-label="The Black Sword Chronicles RPG">
-        
+
         <!-- Title Screen -->
         <div id="title-screen" class="screen active">
             <div class="title-banner">
@@ -26,21 +26,22 @@
 </pre>
             </div>
             <p class="tagline">"The legendary Black Sword awaits in the depths..."</p>
-            
+
             <div class="menu-buttons">
                 <button id="btn-new" class="menu-btn primary">🎮 New Adventure</button>
-                <button id="btn-continue" class="menu-btn" disabled>📜 Continue</button>
+                <button id="btn-continue" class="menu-btn" disabled>📜 Continue Active Hero</button>
+                <button id="btn-heroes" class="menu-btn">🧙 My Heroes</button>
                 <button id="btn-multi" class="menu-btn">👥 Multiplayer</button>
                 <button id="btn-google-signin" class="menu-btn google-btn"><span class="google-mark" aria-hidden="true">G</span> Continue with Google</button>
                 <button id="btn-help" class="menu-btn">📖 How to Play</button>
                 <p id="title-account-status" class="account-hint" aria-live="polite">Guest account is being prepared…</p>
             </div>
-            
+
             <div class="audio-controls">
                 <button id="btn-music" class="icon-btn">🎵 Music</button>
                 <button id="btn-sfx" class="icon-btn">🔊 SFX</button>
             </div>
-            
+
             <p class="credits">
                 Music &amp; SFX: Real CC0 audio from OpenGameArt creators<br>
                 Inspired by Narkuma's "The Black Sword" on Alexa
@@ -50,33 +51,40 @@
         <!-- Character Creation -->
         <div id="char-screen" class="screen">
             <h2>🛡️ Create Your Hero</h2>
-            
+
             <div class="char-form">
                 <div class="form-group">
                     <label for="char-name">Hero Name:</label>
                     <input type="text" id="char-name" maxlength="20" placeholder="Enter your name..." autocomplete="off">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Race:</label>
                     <div class="race-grid">
                         <button class="race-btn" data-race="human">👤<br><small>Human</small><br><small>+10% Gold</small></button>
                         <button class="race-btn" data-race="elf">🧝<br><small>Elf</small><br><small>+15% Magic</small></button>
                         <button class="race-btn" data-race="dwarf">🧔<br><small>Dwarf</small><br><small>+20% HP</small></button>
-                        <button class="race-btn" data-race="halfling">🧑<br><small>Halfling</small><br><small>+20% Speed</small></button>
+                        <button class="race-btn" data-race="halfling">🧑<br><small>Halfling</small><br><small>+20% Dexterity</small></button>
+                        <button class="race-btn" data-race="orc">👹<br><small>Orc</small><br><small>+25% Strength</small></button>
+                        <button class="race-btn" data-race="gnome">🧙‍♂️<br><small>Gnome</small><br><small>+25% Intelligence</small></button>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Class:</label>
                     <div class="class-grid">
                         <button class="class-btn" data-class="warrior">⚔️<br><small>Warrior</small><br><small>High HP, Melee</small></button>
                         <button class="class-btn" data-class="mage">🧙<br><small>Mage</small><br><small>High MP, Spells</small></button>
                         <button class="class-btn" data-class="rogue">🗡️<br><small>Rogue</small><br><small>High Crit</small></button>
-                        <button class="class-btn" data-class="cleric">🙏<br><small>Cleric</small><br><small>Healer</small></button>
+                        <button class="class-btn" data-class="cleric">🙏<br><small>Cleric</small><br><small>Group Healer</small></button>
+                        <button class="class-btn" data-class="paladin">🔨<br><small>Paladin</small><br><small>Blunt + Holy</small></button>
+                        <button class="class-btn" data-class="ranger">🏹<br><small>Ranger</small><br><small>Multi Strike</small></button>
+                        <button class="class-btn" data-class="monk">🥋<br><small>Monk</small><br><small>Wisdom + Combo</small></button>
+                        <button class="class-btn" data-class="druid">🌿<br><small>Druid</small><br><small>Nature + Group Heal</small></button>
                     </div>
+                    <div id="class-summary" class="class-summary" aria-live="polite">Choose a race and class to preview HP, MP, Strength, Dexterity, Intelligence and Wisdom.</div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Background:</label>
                     <select id="char-background">
@@ -87,19 +95,28 @@
                     </select>
                 </div>
             </div>
-            
+
             <button id="btn-begin" class="menu-btn big-btn primary" disabled>⚔️ Begin Adventure</button>
+            <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
+        </div>
+
+        <!-- Account Hero Roster -->
+        <div id="heroes-screen" class="screen">
+            <h2>🧙 My Heroes</h2>
+            <p class="tagline">Create up to six heroes. Every hero keeps separate race, class, attributes, equipment, inventory, quests and location.</p>
+            <div id="hero-roster" class="hero-roster"></div>
+            <button id="btn-create-another-hero" class="menu-btn big-btn primary">➕ Create Another Hero</button>
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
         </div>
 
         <!-- Multiplayer Setup -->
         <div id="multi-screen" class="screen">
             <h2>👥 Multiplayer Setup</h2>
-            
+
             <div class="mp-info">
                 <p>Play with friends! Take turns exploring the world together. Each player controls their own hero.</p>
             </div>
-            
+
             <div class="form-group">
                 <label>Number of Players:</label>
                 <select id="mp-count">
@@ -108,7 +125,7 @@
                     <option value="4">4 Players</option>
                 </select>
             </div>
-            
+
             <div class="form-group">
                 <label>Game Mode:</label>
                 <select id="mp-mode">
@@ -116,7 +133,7 @@
                     <option value="pvp">PvP - Battle each other!</option>
                 </select>
             </div>
-            
+
             <button id="btn-start-mp" class="menu-btn big-btn">👥 Start Multiplayer</button>
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
         </div>
@@ -124,7 +141,7 @@
         <!-- Help Screen -->
         <div id="help-screen" class="screen">
             <h2>📖 How to Play</h2>
-            
+
             <div class="help-content">
                 <h3>🎮 Controls</h3>
                 <div class="controls-grid">
@@ -138,7 +155,7 @@
                     <div class="control-item"><kbd>M</kbd> - Map</div>
                     <div class="control-item"><kbd>Escape</kbd> - Close panels</div>
                 </div>
-                
+
                 <h3>🗣️ Voice Commands (Alexa)</h3>
                 <ul class="command-list">
                     <li>"North/South/East/West" - Move</li>
@@ -150,12 +167,12 @@
                     <li>"Inventory" - View items</li>
                     <li>"Where am I" - Check location</li>
                 </ul>
-                
+
                 <h3>🎵 Music</h3>
                 <p>Click the music buttons to toggle real cinematic music and recorded sound effects. Only one location or battle track plays at a time.</p>
                 <p class="music-credit">CC0 audio from OpenGameArt. Full creator and license details are in AUDIO_CREDITS.md.</p>
             </div>
-            
+
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
         </div>
 
@@ -317,14 +334,14 @@
             <h2>🏆 VICTORY!</h2>
             <pre class="victory-art">
     ⚔️═══════════════════════════════════════⚔️
-    
+
         YOU HAVE CLAIMED THE BLACK SWORD!
-        
+
         The realm of Kandor is saved!
-        
+
         Heroes will sing of this day
         for generations to come...
-    
+
     ⚔️═══════════════════════════════════════⚔️
             </pre>
             <div class="menu-buttons">

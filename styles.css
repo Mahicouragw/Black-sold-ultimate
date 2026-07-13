@@ -231,9 +231,35 @@ h2 {
 
 .race-grid, .class-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     gap: 10px;
 }
+
+.class-summary {
+    margin-top: 12px;
+    padding: 12px;
+    color: var(--text-dim);
+    background: var(--bg-dark);
+    border-left: 3px solid var(--magic);
+    border-radius: 5px;
+}
+
+.hero-roster {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 12px;
+    margin: 15px 0 22px;
+}
+.hero-card {
+    padding: 16px;
+    background: var(--bg-medium);
+    border: 1px solid var(--secondary);
+    border-radius: 10px;
+}
+.hero-card.active { border-color: var(--accent); box-shadow: 0 0 14px rgba(201,162,39,.25); }
+.hero-card h3 { color: var(--accent); margin-bottom: 8px; }
+.hero-card p { color: var(--text-dim); font-size: .85rem; margin: 4px 0; }
+.hero-card .menu-btn { width: 100%; margin-top: 10px; padding: 9px; }
 
 .race-btn, .class-btn {
     padding: 12px 8px;
@@ -747,24 +773,24 @@ kbd {
     .title-banner pre {
         font-size: 0.4rem;
     }
-    
+
     .race-grid, .class-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .controls-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .hud-left, .hud-right {
         gap: 8px;
         font-size: 0.85rem;
     }
-    
+
     .action-btns {
         max-width: 100%;
     }
-    
+
     .action-btn {
         padding: 10px 12px;
         font-size: 0.8rem;
