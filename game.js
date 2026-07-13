@@ -331,7 +331,7 @@ const Game = {
         }
         const bases = {
             warrior:[130,30,15,12,8,10], mage:[60,160,6,10,17,12], rogue:[85,55,10,17,12,8], cleric:[95,110,11,10,12,17],
-            paladin:[125,80,15,9,10,15], ranger:[92,70,11,18,11,12], monk:[105,75,13,16,10,16], druid:[88,130,8,11,15,18]
+            paladin:[125,80,15,9,10,15], ranger:[92,70,11,18,11,12], monk:[105,75,13,16,10,16], druid:[88,130,8,11,15,18], summoner:[78,150,7,10,18,17], hunter:[98,65,13,18,10,12]
         };
         const b = bases[cls];
         box.innerHTML = `<strong>${race.toUpperCase()} ${cls.toUpperCase()}</strong><br>❤️ HP ${b[0]} • ✨ MP ${b[1]} • 💪 STR ${b[2]} • 🏃 DEX ${b[3]} • 🧠 INT ${b[4]} • 📖 WIS ${b[5]}`;
@@ -352,7 +352,9 @@ const Game = {
             paladin: { hp: 125, mp: 80, str: 15, dex: 9, int: 10, wis: 15 },
             ranger: { hp: 92, mp: 70, str: 11, dex: 18, int: 11, wis: 12 },
             monk: { hp: 105, mp: 75, str: 13, dex: 16, int: 10, wis: 16 },
-            druid: { hp: 88, mp: 130, str: 8, dex: 11, int: 15, wis: 18 }
+            druid: { hp: 88, mp: 130, str: 8, dex: 11, int: 15, wis: 18 },
+            summoner: { hp: 78, mp: 150, str: 7, dex: 10, int: 18, wis: 17 },
+            hunter: { hp: 98, mp: 65, str: 13, dex: 18, int: 10, wis: 12 }
         };
 
         // Race bonuses
@@ -458,7 +460,9 @@ const Game = {
             paladin: ['Hammer Smite', 'Heal', 'Mass Heal', 'Holy Light'],
             ranger: ['Multi Strike', 'Minor Heal', 'Piercing Volley', 'Nature Mend'],
             monk: ['Multi Strike', 'Minor Heal', 'Chi Burst', 'Mass Heal'],
-            druid: ['Nature Mend', 'Mass Heal', 'Thorn Storm', 'Lightning Bolt']
+            druid: ['Nature Mend', 'Mass Heal', 'Thorn Storm', 'Lightning Bolt'],
+            summoner: ['Minor Heal', 'Multi Strike'],
+            hunter: ['Minor Heal', 'Multi Strike']
         };
         return (spells[cls] || ['Minor Heal']).slice(0, Math.min((spells[cls] || []).length, 2 + extra));
     },
@@ -1410,6 +1414,7 @@ const Game = {
             <div class="stat-row"><span>DEX:</span><span>${p.dex}</span></div>
             <div class="stat-row"><span>INT:</span><span>${p.int}</span></div>
             <div class="stat-row"><span>WIS:</span><span>${p.wis}</span></div>
+            <div class="stat-row"><span>VIT:</span><span>${p.vit || Math.max(10, Math.floor(p.maxHp / 10))}</span></div>
             <div class="stat-row"><span>XP:</span><span>${p.xp}/${p.xpToNext}</span></div>
             <div class="stat-row"><span>Gold:</span><span>${p.gold}</span></div>
             <div class="stat-row"><span>Weapon:</span><span>${p.weapon} (${p.weaponDamage || 0} damage)</span></div>
@@ -1499,7 +1504,12 @@ const Game = {
         this.addNarrative("shop - Browse the current location's shop", 'system');
         this.addNarrative("travel [location] - Dimensional travel for 10 rupees", 'system');
         this.addNarrative("world - Print expanded-world totals", 'system');
-        this.addNarrative("settings/account - Copy Player ID, link Google, or cloud save", 'system');
+        this.addNarrative("settings/account - Copy Player ID, link Google, cloud save, or set recovery PIN", 'system');
+        this.addNarrative("temple / pray [attribute] - Visit Auralis and receive blessings", 'system');
+        this.addNarrative("palace / palace quest - Royal quests and companion training", 'system');
+        this.addNarrative("guild spells - Summoner/Hunter tutorial spell rewards", 'system');
+        this.addNarrative("encounters on/off - Full or reduced forest encounters", 'system');
+        this.addNarrative("storage / throw [item] / take loot [item] - Manual item management", 'system');
     },
 
     closePanels() {

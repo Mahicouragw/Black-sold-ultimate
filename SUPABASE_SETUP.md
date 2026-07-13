@@ -18,6 +18,13 @@ This creates profiles, permanent Player IDs, cloud saves, friend requests, messa
 
 Anonymous authentication gives every new player a secure Supabase user and permanent `KND-XXXX-XXXX` Player ID without asking them to register. Guests can play, cloud-save, read public chat and receive friend requests. Sending messages/requests and joining guilds requires a linked Google identity.
 
+## 3. Install Sacred Realms recovery functions
+
+1. Open https://supabase.com/dashboard/project/zncepqzgsidqjvkayxdr/sql/new
+2. Open [`supabase/features_v3.sql`](supabase/features_v3.sql), copy all of it, paste it into the SQL Editor, and press **Run** once.
+
+This adds secure Player ID + six-digit PIN progress recovery. PINs are hashed with bcrypt-compatible PostgreSQL `crypt`, never returned to the browser, and failed recovery attempts are limited.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

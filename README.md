@@ -19,7 +19,13 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🧙 Account hero roster with up to 6 independently saved heroes
 - 🧬 6 races and 8 classes with HP, MP, STR, DEX, INT, and WIS builds
 - ❤️ Minor Heal for every archetype, Mass Heal for battle groups, and Multi Strike attacks
-- 🔨 Equipable swords, blunt weapons, armor, accessories, food, and potions
+- 🔨 Equipable sharp/blunt weapons with broad attributes, armor, accessories, food, and potions
+- 🙏 Grand Temple of Auralis with favor, hourly prayer, and daily attribute blessings
+- 🏰 Royal Palace quests, five-attribute level growth, bonus choices, and companion training
+- 🔮 Summoner and Hunter guild spell training after the tutorial
+- 🌲 20-monster forest pool, full/reduced encounter settings, and 1–3 enemy groups
+- 📦 Manual loot, ground drops, throw/take actions, and persistent item storage (no auto-loot)
+- 🔐 Secure Player ID + six-digit PIN progress recovery with hashed PINs and attempt limits
 - 🎵 Real Ambient Music & Sound Effects
 - 🏰 Guilds, invitations, and combat-group management
 - 📜 Quest System with Main Story
