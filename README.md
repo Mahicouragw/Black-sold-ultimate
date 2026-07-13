@@ -56,6 +56,12 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `shop` | Browse a shop at the current location |
 | `travel [location]` | Use dimensional travel (10 rupees) |
 | `world` | Print world, monster, and shop totals |
+| `temple`, `pray magic` | Visit Auralis and request a daily Magic Point blessing |
+| `enchantment shop` | Visit Selvara's Five-Runes Enchantery |
+| `enchant [item] [attribute]` | Permanently enchant carried equipment |
+| `give/take [item] to/from [companion]` | Transfer companion equipment |
+| `watch/view/examine [target]` | Inspect monsters, companions, or items |
+| `mission`, `hero management`, `revive hero` | Quests, hero roster, and revival |
 | `help` | Show all commands |
 
 ## 🚀 Quick Deploy

@@ -22,7 +22,12 @@
         exits: { out: 'kaliwasch' }, features: ['royal quest board','companion academy','hall of attributes'],
         description: 'The Royal Palace issues quests to every hero. The Companion Academy trains loyal allies whenever their hero earns a new level.'
     };
-    WorldData.locations.kaliwasch.features.push('Grand Temple of Auralis','Royal Palace');
+    WorldData.locations.arcane_enchantery = {
+        name: 'The Five-Runes Enchantery', safe: true, music: 'dungeon', enemies: [], items: [],
+        exits: { out: 'kaliwasch' }, features: ['rune forge','magic-point font','weapon appraisal desk'],
+        description: 'Runes of strength, dexterity, intelligence, wisdom, health, and magic circle a smokeless forge. Enchanter Selvara can bind permanent bonuses to equipment.'
+    };
+    WorldData.locations.kaliwasch.features.push('Grand Temple of Auralis','Royal Palace','Five-Runes Enchantery');
 
     FOREST_MONSTERS.forEach(([name,hp,attack], i) => {
         WorldData.enemies[name] = {
@@ -91,7 +96,7 @@
     document.getElementById('game-screen').insertAdjacentHTML('beforeend', `
       <div id="storage-panel" class="panel hidden" aria-label="Item storage and ground loot"><h3>📦 Item Storage & Ground Loot</h3><div id="storage-content"></div><button class="menu-btn close-btn" onclick="this.parentElement.classList.add('hidden')">Close</button></div>`);
     document.querySelector('.action-btns').insertAdjacentHTML('beforeend', `
-      <button class="action-btn" data-sacred="pray">🙏 Pray</button><button class="action-btn" data-sacred="palace">🏰 Palace</button><button class="action-btn" data-sacred="storage">📦 Storage</button>`);
+      <button class="action-btn" data-sacred="pray">🙏 Pray</button><button class="action-btn" data-sacred="palace">🏰 Palace</button><button class="action-btn" data-sacred="enchant">✨ Enchant</button><button class="action-btn" data-sacred="storage">📦 Storage</button>`);
 
     const oldCreate = Game.createCharacter.bind(Game);
     Game.createCharacter = function(isMulti) {
@@ -147,9 +152,31 @@
 
     Game.goTemple = function(){ this.enterLocation('grand_temple'); this.showSacredActions(); };
     Game.goPalace = function(){ this.enterLocation('royal_palace'); this.showSacredActions(); };
+    Game.goEnchantery = function(){ this.enterLocation('arcane_enchantery'); this.showSacredActions(); };
     Game.showSacredActions = function() {
-        if (this.state.location==='grand_temple') this.addNarrative(`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health".`, 'magic');
+        if (this.state.location==='grand_temple') this.addNarrative(`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health/magic".`, 'magic');
         if (this.state.location==='royal_palace') this.addNarrative('🏰 Type "palace quest", "train companion [name]", or "increase [attribute]".', 'system');
+        if (this.state.location==='arcane_enchantery') this.addNarrative('✨ Type "enchantments" to browse or "enchant [item] [strength/dexterity/intelligence/wisdom/health/magic]".', 'magic');
+    };
+    Game.showEnchantments = function() {
+        if (this.state.location!=='arcane_enchantery') { this.addNarrative('Visit the Five-Runes Enchantery first. Type "enchantment shop".', 'system'); return; }
+        const content=document.getElementById('shop-content');
+        const gear=this.state.inventory.filter(i=>['weapon','armor','accessory'].includes(i.type));
+        content.innerHTML=`<p>Enchanter Selvara permanently strengthens equipment. Each rune starts at 100 rupees and rises with prior enchantments.</p>${gear.length?gear.map(i=>`<div class="enchant-card"><strong>${this.escapeHTML(i.name)}</strong><small>${this.escapeHTML(i.desc||'')}</small><div>${['strength','dexterity','intelligence','wisdom','health','magic'].map(a=>`<button onclick="Game.enchantItem('${this.escapeHTML(this.escapeJS(i.id))}','${a}')">+ ${a}</button>`).join('')}</div></div>`).join(''):'<p>Carry a weapon, armor, or accessory to enchant it.</p>'}`;
+        document.getElementById('shop-panel').classList.remove('hidden');
+    };
+    Game.enchantItem = function(query, attribute) {
+        if (this.state.location!=='arcane_enchantery') { this.addNarrative('Enchantments are available only at the Five-Runes Enchantery.', 'system'); return; }
+        const item=this.state.inventory.find(i=>i.id===query||i.name.toLowerCase().includes(query.toLowerCase()));
+        if(!item||!['weapon','armor','accessory'].includes(item.type)){this.addNarrative('Matching equipment was not found.','system');return;}
+        const map={strength:'str',dexterity:'dex',intelligence:'int',wisdom:'wis',health:'hp',magic:'mp'},key=map[attribute];
+        if(!key){this.addNarrative('Choose strength, dexterity, intelligence, wisdom, health, or magic.','system');return;}
+        item.enchantments ||= {}; const total=Object.values(item.enchantments).reduce((a,b)=>a+b,0); const cost=100+total*75;
+        if(this.state.player.gold<cost){this.addNarrative(`This rune costs ${cost} rupees. You do not have enough.`, 'system');return;}
+        this.state.player.gold-=cost; item.enchantments[key]=(item.enchantments[key]||0)+1; const amount=['hp','mp'].includes(key)?15:10; item[key]=(item[key]||0)+amount;
+        const p=this.state.player, equipped=[p.weapon,p.armor,p.accessory].includes(item.name);
+        if(equipped){if(key==='hp'){p.maxHp+=amount;p.hp+=amount;}else if(key==='mp'){p.maxMp+=amount;p.mp+=amount;}else p[key]+=amount;}
+        this.addNarrative(`✨ Selvara binds ${attribute} +${amount} to ${item.name} for ${cost} rupees.`, 'green-light');MusicSystem.playSFX('magic');this.updateHUD();this.save();this.showEnchantments();
     };
     Game.pray = function(choice='') {
         if (this.state.location!=='grand_temple') { this.addNarrative('Travel to the Grand Temple first. Type "temple".', 'system'); return; }
@@ -162,9 +189,10 @@
             this.addNarrative(`The first Five-Flame blessing becomes available after one day${remaining ? ` (about ${remaining} hours remaining)` : ''}.`, 'system'); this.save(); return;
         }
         const key=choice.toLowerCase();
-        const aliases={strength:'str',dexterity:'dex',intelligence:'int',wisdom:'wis',health:'health'};
-        if (!aliases[key]) { this.addNarrative('Auralis offers one daily attribute: strength, dexterity, intelligence, wisdom, or health. Type "pray [attribute]".', 'green-light'); return; }
+        const aliases={strength:'str',dexterity:'dex',intelligence:'int',wisdom:'wis',health:'health',magic:'magic','magic points':'magic',mp:'magic'};
+        if (!aliases[key]) { this.addNarrative('Auralis offers one daily attribute: strength, dexterity, intelligence, wisdom, health, or magic points. Type "pray [attribute]".', 'green-light'); return; }
         if (aliases[key]==='health') { this.state.player.maxHp+=5; this.state.player.hp+=5; }
+        else if (aliases[key]==='magic') { this.state.player.maxMp+=5; this.state.player.mp+=5; }
         else this.state.player[aliases[key]]+=1;
         s.lastDailyBlessing=now; this.addNarrative(`${GOD} grants your daily ${key} blessing!`, 'green-light'); this.updateHUD(); this.save();
     };
@@ -255,15 +283,54 @@
     Game.throwItem=function(query){const s=ensure(this),item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase())||i.id===query);if(item&&moveOne(this.state.inventory,s.groundLoot,item.id)){this.addNarrative(`${item.name} thrown onto the ground.`,'item');this.save();}};
     Game.takeLoot=function(query){const s=ensure(this),item=s.groundLoot.find(i=>i.name.toLowerCase().includes(query.toLowerCase())||i.id===query);if(item&&moveOne(s.groundLoot,this.state.inventory,item.id)){this.addNarrative(`You take ${item.name}.`,'item');this.save();this.showStorage();}else this.addNarrative('No matching item is on the ground.','system');};
 
+    Game.examineEntity=function(query){
+        const q=query.toLowerCase(), enemy=this.state.enemy&&this.state.enemy.name.toLowerCase().includes(q)?this.state.enemy:null, companion=this.state.companions.find(c=>c.name.toLowerCase().includes(q)), item=this.state.inventory.find(i=>i.name.toLowerCase().includes(q))||ensure(this).groundLoot.find(i=>i.name.toLowerCase().includes(q));
+        if(enemy)this.addNarrative(`${enemy.name}: HP ${enemy.hp}/${enemy.maxHp}, attack ${enemy.attack}. ${enemy.desc||''}`,'combat');
+        else if(companion)this.addNarrative(`${companion.name}: level ${companion.level||1}, HP ${companion.hp}/${companion.maxHp}, attack ${companion.attack}, healing ${companion.heal||0}.`,'npc');
+        else if(item)this.addNarrative(`${item.name}: ${item.desc||'No description.'} Type ${item.type||'item'}.`,'item');
+        else this.addNarrative('Nothing matching that description is visible.','system');
+    };
+    Game.giveItemToCompanion=function(itemQuery,compQuery){const item=this.state.inventory.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase())),c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase()));if(!item||!c){this.addNarrative('Item or companion not found.','system');return;}c.inventory||=[];if(moveOne(this.state.inventory,c.inventory,item.id)){this.addNarrative(`You give ${item.name} to ${c.name}.`,'item');this.save();}};
+    Game.takeItemFromCompanion=function(itemQuery,compQuery){const c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase()));const item=c?.inventory?.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase()));if(!item){this.addNarrative('That companion does not carry the item.','system');return;}moveOne(c.inventory,this.state.inventory,item.id);this.addNarrative(`You take ${item.name} from ${c.name}.`,'item');this.save();};
+    Game.equipCompanion=function(compQuery,itemQuery){const c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase())),item=c?.inventory?.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase()));if(!c||!item||!['weapon','armor'].includes(item.type)){this.addNarrative('Companion or suitable carried equipment not found.','system');return;}if(item.type==='weapon'){c.weapon=item.name;c.attack+=(item.damage||0);}else{c.armor=item.name;c.maxHp+=(item.hp||item.defense||0);c.hp=c.maxHp;}this.addNarrative(`${c.name} equips ${item.name}.`,'treasure');this.save();};
+    Game.sellItem=function(query){const loc=WorldData.locations[this.state.location],item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase()));if(!loc?.shop&&this.state.location!=='arcane_enchantery'){this.addNarrative('Sell items at a shop or enchantery.','system');return;}if(!item){this.addNarrative('You do not carry that item.','system');return;}const price=Math.max(1,Math.floor((item.value||item.damage||10)*.35));item.quantity--;if(item.quantity<=0)this.state.inventory.splice(this.state.inventory.indexOf(item),1);this.state.player.gold+=price;this.addNarrative(`Sold ${item.name} for ${price} rupees.`,'treasure');this.save();};
+    Game.dismissCompanion=function(query){const i=this.state.companions.findIndex(c=>c.name.toLowerCase().includes(query.toLowerCase()));if(i<0){this.addNarrative('Companion not found.','system');return;}const [c]=this.state.companions.splice(i,1);this.state.combatGroup=this.state.combatGroup.filter(n=>n!==c.name);this.addNarrative(`${c.name} leaves your group.`,'npc');this.save();};
+    Game.reviveHero=function(){const p=this.state.player;if(p.hp>0){this.addNarrative(`${p.name} does not need revival.`,'system');return;}if(p.gold<100){this.addNarrative('Revival requires 100 rupees.','system');return;}p.gold-=100;p.hp=Math.ceil(p.maxHp/2);p.mp=Math.ceil(p.maxMp/2);this.addNarrative(`${p.name} is revived with half HP and MP.`,'green-light');this.updateHUD();this.save();};
+
     const oldCommand=Game.processCommand.bind(Game);
     Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();
+        // Typed combat actions now execute instead of being blocked by the old guard.
+        if(this.state.inCombat){
+            if(c==='attack'||c==='fight'||c.startsWith('attack ')){this.playerAttack();return;}
+            if(c==='flee'){this.tryFlee();return;}if(c==='defend'){this.defend();return;}
+            if(c.startsWith('cast ')||c.startsWith('spell ')){this.castSpell(c.replace(/^(cast|spell) /,''));return;}
+            if(c.startsWith('use ')||c.startsWith('eat ')){this.useItem(c.replace(/^(use|eat) /,''));if(this.state.inCombat&&this.state.enemy)this.enemyAttack();return;}
+        }
         if(['temple','go temple','enter temple'].includes(c)){this.goTemple();return;}if(['palace','go palace','enter palace'].includes(c)){this.goPalace();return;}
-        if(c==='out'&&(this.state.location==='grand_temple'||this.state.location==='royal_palace')){this.enterLocation('kaliwasch');return;}
+        if(['enchantment shop','enchantery','go enchantery','go enchantment shop'].includes(c)){this.goEnchantery();this.showEnchantments();return;}
+        if(c==='enchantments'||c==='list enchantments'){this.showEnchantments();return;}
+        if(c.startsWith('enchant ')){const parts=c.slice(8).split(' '),attr=parts.pop();this.enchantItem(parts.join(' '),attr);return;}
+        if(c==='out'&&['grand_temple','royal_palace','arcane_enchantery'].includes(this.state.location)){this.enterLocation('kaliwasch');return;}
         if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
         if(c.startsWith('train companion ')){this.trainCompanionAtPalace(c.slice(16));return;}if(c.startsWith('increase ')){this.increaseAttribute(c.slice(9));return;}
         if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Full forest encounters enabled: 1–3 enemies from a pool of 20.','system');this.save();return;}
         if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced: rare single-monster battles.','system');this.save();return;}
-        if(c==='storage'){this.showStorage();return;}if(c.startsWith('throw ')){this.throwItem(c.slice(6));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
+        if(c==='storage'){this.showStorage();return;}if(c.startsWith('throw ')||c.startsWith('drop ')){this.throwItem(c.replace(/^(throw|drop) /,''));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
+        if(c==='mission'||c==='missions'){this.showQuests();return;}if(c==='hero management'||c==='manage heroes'){this.showHeroRoster();return;}
+        if(c.startsWith('watch ')||c.startsWith('view ')||c.startsWith('examine ')){this.examineEntity(c.replace(/^(watch|view|examine) /,''));return;}
+        if(c==='watch'||c==='view'||c==='examine'){this.look();return;}
+        if(c.startsWith('my name is ')){const name=cmd.trim().slice(11).trim();if(name.length>=2){this.state.player.name=name.slice(0,20);this.addNarrative(`Your hero is now known as ${this.state.player.name}.`,'npc');this.save();}return;}
+        if(c.startsWith('info')){const topic=c.slice(4).trim();this.addNarrative(topic==='developer'?'Developed for the Black Sword Ultimate community.':topic==='online'?OnlineSystem.status:'Black Sword Ultimate — Sacred Realms v3, online multiplayer RPG.','system');return;}
+        if(c.startsWith('read ')){this.addNarrative(`You read the ${c.slice(5)}. Its words hint at Auralis, the Palace, and dangers beyond Kaliwasch.`,'location');return;}
+        if(c.startsWith('open ')){this.addNarrative(`You open or inspect the ${c.slice(5)}.`, 'system');return;}
+        if(c.startsWith('say ')){this.talkToNPC();return;}if(c==='goodbye'){this.save();this.showScreen('title-screen');return;}
+        if(c==='what am i wearing'||c==='equipment'){const p=this.state.player;this.addNarrative(`Weapon: ${p.weapon||'none'}; armor: ${p.armor||'none'}; accessory: ${p.accessory||'none'}.`,'item');return;}
+        if(c.startsWith('sell ')){this.sellItem(c.slice(5));return;}if(c==='feedback'){this.addNarrative('Feedback: open the project repository or contact the game administrator.','system');return;}
+        if(c==='revive hero'||c.startsWith('revive ')){this.reviveHero();return;}if(c.startsWith('recruit ')){this.inviteCompanion(c.slice(8));return;}if(c.startsWith('dismiss ')){this.dismissCompanion(c.slice(8));return;}
+        const give=c.match(/^give (.+) to (.+)$/);if(give){this.giveItemToCompanion(give[1],give[2]);return;}
+        const take=c.match(/^take (.+) from (.+)$/);if(take){this.takeItemFromCompanion(take[1],take[2]);return;}
+        const ce=c.match(/^(.+):\s*(?:equip|wear) (.+)!?$/);if(ce){this.equipCompanion(ce[1],ce[2].replace(/!$/,''));return;}
+        if(c==='restart'){this.addNarrative('To protect your heroes, create another hero from Hero Management instead of deleting progress.','system');return;}
         oldCommand(cmd);
     };
 
@@ -285,7 +352,7 @@
     document.getElementById('btn-id-recovery').addEventListener('click',()=>Game.showScreen('recovery-screen'));
     document.getElementById('btn-set-recovery-pin').addEventListener('click',setRecoveryPin);
     document.getElementById('btn-recover-progress').addEventListener('click',recoverProgress);
-    document.querySelectorAll('[data-sacred]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.sacred;if(a==='pray'){if(Game.state.location!=='grand_temple')Game.goTemple();else Game.pray();}if(a==='palace')Game.goPalace();if(a==='storage')Game.showStorage();}));
+    document.querySelectorAll('[data-sacred]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.sacred;if(a==='pray'){if(Game.state.location!=='grand_temple')Game.goTemple();else Game.pray();}if(a==='palace')Game.goPalace();if(a==='enchant'){Game.goEnchantery();Game.showEnchantments();}if(a==='storage')Game.showStorage();}));
 
     window.SacredRealms={GOD,FOREST_MONSTERS};
 })();

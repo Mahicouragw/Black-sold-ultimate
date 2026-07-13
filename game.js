@@ -1510,6 +1510,9 @@ const Game = {
         this.addNarrative("guild spells - Summoner/Hunter tutorial spell rewards", 'system');
         this.addNarrative("encounters on/off - Full or reduced forest encounters", 'system');
         this.addNarrative("storage / throw [item] / take loot [item] - Manual item management", 'system');
+        this.addNarrative("enchantment shop / enchant [item] [attribute] - Permanent equipment runes", 'system');
+        this.addNarrative("watch/view/examine [target] - Inspect monsters, companions, and items", 'system');
+        this.addNarrative("give/take items to/from companions; sell [item]; revive hero", 'system');
     },
 
     closePanels() {
