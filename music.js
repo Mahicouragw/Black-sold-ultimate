@@ -28,13 +28,13 @@ const MusicSystem = {
     },
 
     sfx: {
-        attack: ['assets/audio/sfx/attack.wav'],
-        hit: ['assets/audio/sfx/hit.wav'],
+        attack: ['assets/audio/sfx/attack.wav', 'assets/audio/sfx/attack-heavy.wav', 'assets/audio/sfx/attack-fast.wav'],
+        hit: ['assets/audio/sfx/hit.wav', 'assets/audio/sfx/hit-metal-1.wav', 'assets/audio/sfx/hit-metal-2.wav', 'assets/audio/sfx/monster-hit.wav'],
         treasure: ['assets/audio/sfx/coin.wav'],
         coin: ['assets/audio/sfx/coin.wav'],
         levelup: ['assets/audio/sfx/levelup.wav'],
-        magic: ['assets/audio/sfx/magic.wav'],
-        death: ['assets/audio/sfx/death.wav'],
+        magic: ['assets/audio/sfx/magic.wav', 'assets/audio/sfx/spell-cast.wav', 'assets/audio/sfx/spell-arcane.wav'],
+        death: ['assets/audio/sfx/death.wav', 'assets/audio/sfx/monster-roar.wav'],
         victory: ['assets/audio/music/victory.mp3'],
         door: ['assets/audio/sfx/door.wav'],
         pickup: ['assets/audio/sfx/pickup.wav'],

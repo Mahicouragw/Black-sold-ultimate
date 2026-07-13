@@ -14,17 +14,17 @@
 
     WorldData.locations.grand_temple = {
         name: 'Grand Temple of Auralis', safe: true, music: 'city', enemies: [], items: [],
-        exits: { out: 'kaliwasch' }, features: ['altar of five flames','prayer circle','blessing font'],
+        exits: { up: 'kaliwasch' }, features: ['altar of five flames','prayer circle','blessing font'],
         description: `Five colored flames illuminate the Grand Temple. ${GOD} listens to sincere prayers and rewards faithful heroes with divine attributes.`
     };
     WorldData.locations.royal_palace = {
         name: 'Royal Palace of Kandor', safe: true, music: 'city', enemies: [], items: [],
-        exits: { out: 'kaliwasch' }, features: ['royal quest board','companion academy','hall of attributes'],
+        exits: { up: 'kaliwasch' }, features: ['royal quest board','companion academy','hall of attributes'],
         description: 'The Royal Palace issues quests to every hero. The Companion Academy trains loyal allies whenever their hero earns a new level.'
     };
     WorldData.locations.arcane_enchantery = {
         name: 'The Five-Runes Enchantery', safe: true, music: 'dungeon', enemies: [], items: [],
-        exits: { out: 'kaliwasch' }, features: ['rune forge','magic-point font','weapon appraisal desk'],
+        exits: { up: 'kaliwasch' }, features: ['rune forge','magic-point font','weapon appraisal desk'],
         description: 'Runes of strength, dexterity, intelligence, wisdom, health, and magic circle a smokeless forge. Enchanter Selvara can bind permanent bonuses to equipment.'
     };
     WorldData.locations.kaliwasch.features.push('Grand Temple of Auralis','Royal Palace','Five-Runes Enchantery');
@@ -65,7 +65,7 @@
 
     const defaults = () => ({
         god:GOD, favor:0, lastPrayer:0, lastDailyBlessing:0, createdAt:Date.now(),
-        guildTraining:false, encounterMode:'full', companionTrainingPoints:0,
+        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', companionTrainingPoints:0,
         unspentAttributePoints:0, storage:[], groundLoot:[], vitality:10, enemyQueue:[]
     });
     const ensure = game => {
@@ -74,7 +74,7 @@
         if (p) {
             p.vit = p.vit || Math.max(10, Math.floor(p.maxHp / 10));
             p.spells ||= [];
-            ['Minor Heal','Multi Strike','Emerald Lifestrike'].forEach(s => { if (!p.spells.includes(s)) p.spells.push(s); });
+            ['Minor Heal','Multi Strike','Alohomora','Emerald Lifestrike'].forEach(s => { if (!p.spells.includes(s)) p.spells.push(s); });
         }
         return game.state.sacred;
     };
@@ -219,29 +219,54 @@
         if(k==='health'){this.state.player.maxHp+=5;this.state.player.hp+=5;}else this.state.player[k]=(this.state.player[k]||0)+1;
         s.unspentAttributePoints--; this.addNarrative(`Palace bonus applied to ${choice}.`, 'treasure'); this.save();
     };
+    const CLASS_GUILD_SPELLS={
+        warrior:['Double Strike','Trial Spell'], mage:['Abra Catabra','Survey Guardia'], summoner:['Supplica','Hocus Pocus'], hunter:['Twin Shot','Hunter’s Remedy'],
+        rogue:['Shadow Dance','Venom Arc'], cleric:['Radiant Choir','Sanctuary'], paladin:['Judgment Hammer','Sacred Guard'], ranger:['Piercing Volley','Nature Mend'],
+        monk:['Chi Burst','Inner Sanctuary'], druid:['Thorn Storm','Moonwell']
+    };
+    Game.startCardTest=function(){const s=ensure(this);if(this.state.location!=='kaliwasch'){this.addNarrative('Take the Card Test in the Kaliwasch Guild Hall.','system');return;}if(!this.state.completedQuests.includes('tutorial')){this.addNarrative('Finish the tutorial before taking the Card Test.','system');return;}if(s.cardTestPassed){this.addNarrative('You already passed the Guild Card Test. Type "guild spells".','system');return;}s.cardTestQuestion='map';this.addNarrative('Guild Card Test: I contain cities but no houses, forests but no trees, and rivers but no water. What am I? Type "answer [word]".','npc');this.save();};
+    Game.answerCardTest=function(answer){const s=ensure(this);if(!s.cardTestQuestion){this.addNarrative('Start the test with "card test".','system');return;}if(answer.trim().toLowerCase()!=='map'){this.addNarrative('That answer is not accepted. Study the riddle and try again.','system');return;}s.cardTestPassed=true;s.cardTestQuestion=null;this.addNarrative('Card Test passed! Your class spell cards are ready.','treasure');this.learnGuildSpells();};
     Game.learnGuildSpells = function() {
         const s=ensure(this), p=this.state.player;
         if (this.state.location!=='kaliwasch') { this.addNarrative('Return to the Kaliwasch Guild Hall.', 'system'); return; }
         if (!this.state.completedQuests.includes('tutorial')) { this.addNarrative('Finish the tutorial before guild spell training.', 'system'); return; }
-        if (s.guildTraining) { this.addNarrative('Your guild spells are already learned.', 'system'); return; }
-        const grants={summoner:['Spirit Wolf','Soul Mend'],hunter:['Twin Shot','Hunter’s Remedy']};
-        if(!grants[p.class]){this.addNarrative('This special training is for Summoners and Hunters.', 'system');return;}
-        grants[p.class].forEach(sp=>{if(!p.spells.includes(sp))p.spells.push(sp)});s.guildTraining=true;
-        this.addNarrative(`Guild training complete: learned ${grants[p.class].join(' and ')}!`, 'treasure');this.save();
+        if (!s.cardTestPassed) { this.addNarrative('Pass the Guild Card Test first. Type "card test".', 'system'); return; }
+        if (s.guildTraining) { this.addNarrative('Your class spell cards are already learned.', 'system'); return; }
+        const grants=CLASS_GUILD_SPELLS[p.class]||['Adventurer’s Focus','Second Wind'];
+        grants.forEach(sp=>{if(!p.spells.includes(sp))p.spells.push(sp)});s.guildTraining=true;
+        this.addNarrative(`Guild training complete: learned ${grants.join(' and ')}!`, 'treasure');this.save();
     };
 
     const oldCast=Game.castSpell.bind(Game);
     Game.castSpell=function(name){
         const spell=this.state.player?.spells?.find(s=>s.toLowerCase().includes(name.toLowerCase())); const key=spell?.toLowerCase();
-        if(!['emerald lifestrike','spirit wolf','soul mend','twin shot','hunter’s remedy',"hunter's remedy"].includes(key)) return oldCast(name);
-        if(!this.state.inCombat){this.addNarrative('Cast this spell during combat.','system');return;}
+        if(key==='alohomora'){
+            const p=this.state.player;if(p.mp<8){this.addNarrative('Alohomora requires 8 MP.','system');return;}p.mp-=8;MusicSystem.playSFX('door');
+            const loc=WorldData.locations[this.state.location], exits=['north','west','east','south','up','down'].filter(d=>loc.exits[d]);
+            this.addNarrative(`Alohomora releases the lock with a metallic click. Available directions: ${exits.join(', ')||'none'}.`,'green-light');this.updateHUD();this.save();return;
+        }
+        const special=Object.values(CLASS_GUILD_SPELLS).flat().map(s=>s.toLowerCase()).concat(['emerald lifestrike','spirit wolf','soul mend']);
+        if(!special.includes(key)) return oldCast(name);
+        if(!this.state.inCombat){this.addNarrative('Cast this class spell during combat.','system');return;}
         const p=this.state.player,e=this.state.enemy,cost=key==='emerald lifestrike'?30:22;if(p.mp<cost){this.addNarrative('Not enough mana!','system');return;}p.mp-=cost;
+        const healing=['soul mend','supplica','hunter’s remedy',"hunter's remedy",'radiant choir','sanctuary','nature mend','inner sanctuary','moonwell','second wind'];
+        const guards=['survey guardia','sacred guard'];
+        const doubles=['double strike','twin shot','shadow dance'];
         if(key==='emerald lifestrike'){
             const dmg=e.name.includes('orc')?25:e.name.includes('goblin')?16:Math.min(45,20+p.level);e.hp-=dmg;p.hp=Math.min(p.maxHp,p.hp+dmg);
             this.addNarrative(`🔴 Emerald Lifestrike cuts ${e.name} for ${dmg} damage!`,'red-light');this.addNarrative(`🟢 Green life returns ${dmg} HP.`,'green-light');
-        } else if(key==='soul mend'||key.includes('hunter')){const heal=25+Math.floor(p.wis/2);p.hp=Math.min(p.maxHp,p.hp+heal);this.state.companions.forEach(c=>c.hp=Math.min(c.maxHp,c.hp+heal));this.addNarrative(`🟢 ${spell} restores ${heal} HP to the battle group.`,'green-light');}
-        else {const dmg=key==='twin shot'?Math.floor(p.dex*1.5)+24:p.int*2+20;e.hp-=dmg;this.addNarrative(`🔴 ${spell} deals ${dmg} damage!`,'red-light');}
-        MusicSystem.playSFX('magic');this.updateHUD();if(e.hp<=0)this.enemyDefeated();else this.enemyAttack();
+        } else if(healing.includes(key)){
+            const heal=25+Math.floor(p.wis/2);p.hp=Math.min(p.maxHp,p.hp+heal);this.state.companions.forEach(c=>c.hp=Math.min(c.maxHp,c.hp+heal));this.addNarrative(`🟢 ${spell} restores ${heal} HP to the battle group.`,'green-light');
+        } else if(guards.includes(key)){
+            this.state.defending=true;p.hp=Math.min(p.maxHp,p.hp+10);this.addNarrative(`🟢 ${spell} creates a protective ward and restores 10 HP.`,'green-light');
+        } else if(doubles.includes(key)){
+            const hit=Math.max(8,Math.floor((p.weaponDamage+p.dex)/4)),total=hit*2;e.hp-=total;this.addNarrative(`🔴 ${spell} lands two strikes of ${hit} for ${total} damage.`,'red-light');
+        } else if(key==='hocus pocus'){
+            const dmg=20+Math.floor(Math.random()*31)+p.int;e.hp-=dmg;this.addNarrative(`🔴 Hocus Pocus releases unpredictable magic for ${dmg} damage!`,'red-light');
+        } else {
+            const dmg=Math.max(20,Math.floor((p.int+p.wis+p.str)/2)+p.level*3);e.hp-=dmg;this.addNarrative(`🔴 ${spell} deals ${dmg} damage!`,'red-light');
+        }
+        MusicSystem.playSFX(key.includes('strike')?'attack':'magic');this.updateHUD();if(e.hp<=0)this.enemyDefeated();else this.enemyAttack();
     };
 
     const oldStart=Game.startCombat.bind(Game);
@@ -257,7 +282,8 @@
     const oldDefeated=Game.enemyDefeated.bind(Game);
     Game.enemyDefeated=function(){
         const defeated=this.state.enemy?.name||'monster', s=ensure(this);
-        if(Math.random()<0.65){const pool=['bread','cheese wheel','healing potion','oak club','iron mace','black stick'];const id=pool[Math.floor(Math.random()*pool.length)];s.groundLoot.push({...WorldData.items[id],id,quantity:1});this.addNarrative(`${defeated} dropped ${WorldData.items[id].name}. It was NOT auto-looted; open Storage or type "take loot ${id}".`,'item');}
+        if(Math.random()<0.65){const pool=['bread','cheese wheel','healing potion','oak club','iron mace','black stick'];const id=pool[Math.floor(Math.random()*pool.length)];s.groundLoot.push({...WorldData.items[id],id,quantity:1});this.addNarrative(`${defeated} dropped ${WorldData.items[id].name}. Loot is waiting on the ground. Type "loot" to inspect it or "take loot ${id}".`,'item');}
+        else this.addNarrative(`${defeated} dropped no item loot. Gold and XP were still awarded.`, 'system');
         const queue=[...(s.enemyQueue||[])];s.enemyQueue=[];oldDefeated();
         if(queue.length && !this.state.inCombat){const next=queue.shift();s.enemyQueue=queue;setTimeout(()=>this.startCombat(next,true),500);}
     };
@@ -268,13 +294,13 @@
             const safe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=safe;
             if(Math.random()<0.15)setTimeout(()=>this.startCombat(loc.enemies[Math.floor(Math.random()*loc.enemies.length)]),1500);
         } else oldEnter(id);
-        if(id==='grand_temple'||id==='royal_palace')this.showSacredActions();
+        if(['grand_temple','royal_palace','arcane_enchantery'].includes(id))this.showSacredActions();
     };
 
     Game.showStorage=function(){
         const s=ensure(this),content=document.getElementById('storage-content');
         const row=(item,action,label)=>`<div class="storage-row"><span>${this.escapeHTML(item.name)} x${item.quantity}</span><button onclick="Game.${action}('${this.escapeHTML(this.escapeJS(item.id))}')">${label}</button></div>`;
-        content.innerHTML=`<h4>Inventory</h4>${this.state.inventory.length?this.state.inventory.map(i=>row(i,'storeItem','Store')).join(''):'<p>Empty</p>'}<h4>Stored Items</h4>${s.storage.length?s.storage.map(i=>row(i,'retrieveItem','Take')).join(''):'<p>Empty</p>'}<h4>Ground Loot</h4>${s.groundLoot.length?s.groundLoot.map(i=>row(i,'takeLoot','Take')).join(''):'<p>Nothing on the ground</p>'}<p>No item is collected automatically.</p>`;
+        content.innerHTML=`<h4>Inventory</h4>${this.state.inventory.length?this.state.inventory.map(i=>row(i,'storeItem','Store')).join(''):'<p>Empty</p>'}<h4>Stored Items</h4>${s.storage.length?s.storage.map(i=>row(i,'retrieveItem','Take')).join(''):'<p>Empty</p>'}<h4>Ground Loot</h4>${s.groundLoot.length?s.groundLoot.map(i=>row(i,'takeLoot','Take')).join('')+'<button class="menu-btn" onclick="Game.takeAllLoot()">Take All Ground Loot</button>':'<p>Nothing on the ground</p>'}<p>No item is collected automatically. Gold and XP are battle rewards, not item loot.</p>`;
         document.getElementById('storage-panel').classList.remove('hidden');
     };
     const moveOne=(from,to,id)=>{const item=from.find(i=>i.id===id);if(!item)return false;const dest=to.find(i=>i.id===id);if(dest)dest.quantity++;else to.push({...item,quantity:1});item.quantity--;if(item.quantity<=0)from.splice(from.indexOf(item),1);return true;};
@@ -282,6 +308,7 @@
     Game.retrieveItem=function(id){const s=ensure(this);if(moveOne(s.storage,this.state.inventory,id)){this.addNarrative('Item returned to inventory.','item');this.save();this.showStorage();}};
     Game.throwItem=function(query){const s=ensure(this),item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase())||i.id===query);if(item&&moveOne(this.state.inventory,s.groundLoot,item.id)){this.addNarrative(`${item.name} thrown onto the ground.`,'item');this.save();}};
     Game.takeLoot=function(query){const s=ensure(this),item=s.groundLoot.find(i=>i.name.toLowerCase().includes(query.toLowerCase())||i.id===query);if(item&&moveOne(s.groundLoot,this.state.inventory,item.id)){this.addNarrative(`You take ${item.name}.`,'item');this.save();this.showStorage();}else this.addNarrative('No matching item is on the ground.','system');};
+    Game.takeAllLoot=function(){const s=ensure(this);if(!s.groundLoot.length){this.addNarrative('There is no item loot to take.','system');return;}let count=0;while(s.groundLoot.length){const item=s.groundLoot[0];if(moveOne(s.groundLoot,this.state.inventory,item.id))count++;else break;}this.addNarrative(`You manually take ${count} loot item${count===1?'':'s'}.`,'item');this.save();this.showStorage();};
 
     Game.examineEntity=function(query){
         const q=query.toLowerCase(), enemy=this.state.enemy&&this.state.enemy.name.toLowerCase().includes(q)?this.state.enemy:null, companion=this.state.companions.find(c=>c.name.toLowerCase().includes(q)), item=this.state.inventory.find(i=>i.name.toLowerCase().includes(q))||ensure(this).groundLoot.find(i=>i.name.toLowerCase().includes(q));
@@ -313,9 +340,10 @@
         if(c==='out'&&['grand_temple','royal_palace','arcane_enchantery'].includes(this.state.location)){this.enterLocation('kaliwasch');return;}
         if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
         if(c.startsWith('train companion ')){this.trainCompanionAtPalace(c.slice(16));return;}if(c.startsWith('increase ')){this.increaseAttribute(c.slice(9));return;}
+        if(c==='card test'||c==='guild card test'){this.startCardTest();return;}if(c.startsWith('answer ')){this.answerCardTest(c.slice(7));return;}
         if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Full forest encounters enabled: 1–3 enemies from a pool of 20.','system');this.save();return;}
         if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced: rare single-monster battles.','system');this.save();return;}
-        if(c==='storage'){this.showStorage();return;}if(c.startsWith('throw ')||c.startsWith('drop ')){this.throwItem(c.replace(/^(throw|drop) /,''));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
+        if(c==='storage'||c==='loot'||c==='check loot'){this.showStorage();return;}if(c==='take all loot'){this.takeAllLoot();return;}if(c.startsWith('throw ')||c.startsWith('drop ')){this.throwItem(c.replace(/^(throw|drop) /,''));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
         if(c==='mission'||c==='missions'){this.showQuests();return;}if(c==='hero management'||c==='manage heroes'){this.showHeroRoster();return;}
         if(c.startsWith('watch ')||c.startsWith('view ')||c.startsWith('examine ')){this.examineEntity(c.replace(/^(watch|view|examine) /,''));return;}
         if(c==='watch'||c==='view'||c==='examine'){this.look();return;}

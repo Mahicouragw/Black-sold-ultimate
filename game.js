@@ -490,9 +490,11 @@ const Game = {
         // Show description
         this.addNarrative(loc.description, 'location');
 
-        // Show exits and local services
-        const exits = Object.keys(loc.exits).join(', ');
-        this.addNarrative(`Exits: ${exits}`, 'system');
+        // Show only standard compass/vertical directions in a consistent order.
+        const directionOrder = ['north','west','east','south','up','down'];
+        const exits = directionOrder.filter(direction => loc.exits[direction]);
+        this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
+        this.updateDirectionButtons(loc.exits);
         if (loc.shop) this.addNarrative(`🛒 A ${loc.shop} shop is open here. Type "shop" to browse.`, 'item');
         const localNpcs = WorldData.npcs[locId] || [];
         if (localNpcs.length) this.addNarrative(`Nearby: ${localNpcs.map(n => n.name).join(', ')}. Type "talk" or "invite [name]".`, 'npc');
@@ -699,8 +701,10 @@ const Game = {
         this.showLocationArt(this.state.location);
         const loc = WorldData.locations[this.state.location];
         this.addNarrative(loc.description, 'location');
-        const exits = Object.keys(loc.exits).join(', ');
-        this.addNarrative(`Exits: ${exits}`, 'system');
+        const directionOrder = ['north','west','east','south','up','down'];
+        const exits = directionOrder.filter(direction => loc.exits[direction]);
+        this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
+        this.updateDirectionButtons(loc.exits);
 
         if (loc.items && loc.items.length > 0) {
             this.addNarrative(`You see: ${loc.items.map(i => WorldData.items[i]?.name || i).join(', ')}`, 'item');
@@ -1357,6 +1361,15 @@ const Game = {
         while (narrative.children.length > 40) {
             narrative.removeChild(narrative.firstChild);
         }
+    },
+
+    updateDirectionButtons(exits = {}) {
+        document.querySelectorAll('.dir-btn').forEach(button => {
+            const available = Boolean(exits[button.dataset.cmd]);
+            button.disabled = !available;
+            button.classList.toggle('available', available);
+            button.setAttribute('aria-label', `${button.dataset.cmd}${available ? ', available' : ', unavailable'}`);
+        });
     },
 
     updateHUD() {

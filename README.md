@@ -26,7 +26,10 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🌲 20-monster forest pool, full/reduced encounter settings, and 1–3 enemy groups
 - 📦 Manual loot, ground drops, throw/take actions, and persistent item storage (no auto-loot)
 - 🔐 Secure Player ID + six-digit PIN progress recovery with hashed PINs and attempt limits
-- 🎵 Real Ambient Music & Sound Effects
+- 🃏 Guild Card Test with two named class spells for every class
+- ✨ Universal Minor Heal, Multi Strike, Alohomora, and Emerald Lifestrike
+- 🧭 Accessible text navigation showing North, West, East, South, Up, and Down availability
+- 🎵 Real ambient music plus varied recorded sword, impact, monster, door, and spell effects
 - 🏰 Guilds, invitations, and combat-group management
 - 📜 Quest System with Main Story
 - 🎒 Full Inventory Management
@@ -59,6 +62,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `temple`, `pray magic` | Visit Auralis and request a daily Magic Point blessing |
 | `enchantment shop` | Visit Selvara's Five-Runes Enchantery |
 | `enchant [item] [attribute]` | Permanently enchant carried equipment |
+| `loot`, `take loot [item]`, `take all loot` | Inspect and manually collect ground loot |
+| `card test`, `answer [word]`, `guild spells` | Earn two class-specific Guild spells |
+| `cast alohomora` | Open or release locks outside combat |
 | `give/take [item] to/from [companion]` | Transfer companion equipment |
 | `watch/view/examine [target]` | Inspect monsters, companions, or items |
 | `mission`, `hero management`, `revive hero` | Quests, hero roster, and revival |
