@@ -177,9 +177,10 @@ const Game = {
         });
 
         // Character creation
-        document.getElementById('char-name').addEventListener('input', (e) => {
+        document.getElementById('char-name').addEventListener('input', () => {
             this.updateCharButton();
         });
+        document.getElementById('btn-generate-name').addEventListener('click', () => this.generateHeroName());
 
         document.querySelectorAll('.race-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -312,6 +313,30 @@ const Game = {
     // ============================================
     // CHARACTER CREATION
     // ============================================
+
+    generateHeroName() {
+        const race = document.querySelector('.race-btn.selected')?.dataset.race || 'human';
+        const cls = document.querySelector('.class-btn.selected')?.dataset.class || 'adventurer';
+        const raceStarts = {
+            human:['Alden','Mira','Rowan','Elara'], elf:['Ael','Lyth','Syl','Eira'], dwarf:['Brom','Dagna','Thorin','Kelda'],
+            halfling:['Pip','Milo','Tilly','Nessa'], orc:['Grom','Urza','Thrak','Mogra'], gnome:['Nim','Fizz','Tink','Wren']
+        };
+        const classEnds = {
+            warrior:['Ironheart','Stormblade'], mage:['Starweaver','Brightmind'], rogue:['Nightstep','Quickhand'], cleric:['Lightkeeper','Dawnvoice'],
+            paladin:['Oathhammer','Sunshield'], ranger:['Wildpath','Greenarrow'], monk:['Stillwater','Swiftpalm'], druid:['Moonroot','Oakwhisper'],
+            summoner:['Spiritcaller','Runebinder'], hunter:['Wolfeye','Hawktrack'], adventurer:['Wayfarer','Braveheart']
+        };
+        const used = new Set(Object.values(this.getRoster().heroes).map(h => h.player?.name?.toLowerCase()));
+        let generated;
+        for (let attempt=0; attempt<20; attempt++) {
+            const first = raceStarts[race][Math.floor(Math.random()*raceStarts[race].length)];
+            const last = classEnds[cls][Math.floor(Math.random()*classEnds[cls].length)];
+            generated = `${first} ${last}`.slice(0,20);
+            if (!used.has(generated.toLowerCase())) break;
+        }
+        document.getElementById('char-name').value = generated;
+        this.updateCharButton();
+    },
 
     updateCharButton() {
         const name = document.getElementById('char-name').value.trim();
@@ -449,6 +474,7 @@ const Game = {
         this.showScreen('game-screen');
         this.enterLocation('kaliwasch');
         this.save();
+        window.OnlineSystem?.syncActiveHero();
     },
 
     getClassSpells(cls, extra = 0) {
@@ -1630,6 +1656,7 @@ const Game = {
 
             this.showScreen('game-screen');
             this.enterLocation(this.state.location);
+            window.OnlineSystem?.syncActiveHero();
         }
     },
 

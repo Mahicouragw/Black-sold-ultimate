@@ -93,13 +93,21 @@ const OnlineSystem = {
     async updatePresence() {
         if (!this.ready || !this.user) return;
         const player = window.Game?.state?.player;
-        await this.client.from('profiles').update({
-            display_name: player?.name || this.profile.display_name,
-            level: player?.level || 1,
-            current_location: window.WorldData?.locations?.[window.Game?.state?.location]?.name || 'Kaliwasch City',
+        const heroName = player?.name?.trim() || this.profile?.display_name || 'Wandering Hero';
+        const { error } = await this.client.from('profiles').update({
+            display_name: heroName,
+            level: player?.level || this.profile?.level || 1,
+            current_location: window.WorldData?.locations?.[window.Game?.state?.location]?.name || this.profile?.current_location || 'Kaliwasch City',
             last_seen: new Date().toISOString()
         }).eq('id', this.user.id);
+        if (error) { console.warn('Hero-name sync failed:', error.message); return; }
         await this.loadProfile(false).catch(() => {});
+        this.updateIndicators();
+    },
+
+    syncActiveHero(retry = 0) {
+        if (this.ready && this.user) return this.updatePresence();
+        if (retry < 10) setTimeout(() => this.syncActiveHero(retry + 1), 500);
     },
 
     getPlayerCode() {
@@ -189,7 +197,13 @@ const OnlineSystem = {
             if (!window.Game.state.player) {
                 localStorage.setItem(window.Game.state.rosterKey, JSON.stringify(roster));
                 const active = roster.heroes[roster.activeHeroId] || Object.values(roster.heroes)[0];
-                if (active) localStorage.setItem(window.Game.state.saveKey, JSON.stringify(active));
+                if (active) {
+                    localStorage.setItem(window.Game.state.saveKey, JSON.stringify(active));
+                    if (active.player?.name) {
+                        this.profile.display_name = active.player.name;
+                        this.client.from('profiles').update({ display_name: active.player.name, level: active.player.level || 1, last_seen: new Date().toISOString() }).eq('id', this.user.id).then(() => {});
+                    }
+                }
                 window.Game.state.activeHeroId = roster.activeHeroId;
                 const button = document.getElementById('btn-continue');
                 if (button) button.disabled = false;
@@ -300,10 +314,11 @@ const OnlineSystem = {
     },
 
     updateIndicators() {
+        const activeName = window.Game?.state?.player?.name || this.profile?.display_name || 'No hero selected';
         const el = document.getElementById('online-status');
-        if (el) el.textContent = this.status;
+        if (el) el.textContent = `${activeName} • ${this.status}`;
         const titleStatus = document.getElementById('title-account-status');
-        if (titleStatus) titleStatus.textContent = `${this.status}${this.profile?.player_code ? ` • ${this.profile.player_code}` : ''}`;
+        if (titleStatus) titleStatus.textContent = `${activeName} • ${this.status}${this.profile?.player_code ? ` • ${this.profile.player_code}` : ''}`;
         const signIn = document.getElementById('btn-google-signin');
         if (signIn) {
             signIn.disabled = this.linked;
@@ -313,6 +328,8 @@ const OnlineSystem = {
         }
         const code = document.getElementById('settings-player-code');
         if (code) code.textContent = this.getPlayerCode();
+        const heroName = document.getElementById('settings-hero-name');
+        if (heroName) heroName.textContent = activeName;
         const account = document.getElementById('settings-account-status');
         if (account) account.textContent = this.linked ? 'Google linked' : (this.ready ? 'Guest account' : 'Local/offline guest');
         const google = document.getElementById('btn-link-google');
