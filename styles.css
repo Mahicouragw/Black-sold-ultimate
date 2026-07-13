@@ -115,6 +115,34 @@ body {
     color: var(--bg-dark);
 }
 
+.google-btn {
+    background: #fff;
+    color: #202124;
+    border-color: #dadce0;
+    font-family: Arial, sans-serif;
+    font-weight: 600;
+}
+.google-btn:hover:not(:disabled) { background: #f8faff; color: #202124; border-color: #8ab4f8; }
+.google-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    margin-right: 8px;
+    border-radius: 50%;
+    color: #4285f4;
+    background: #fff;
+    border: 1px solid #dadce0;
+    font-family: Arial, sans-serif;
+    font-weight: 700;
+}
+.account-hint {
+    margin-top: 4px;
+    color: var(--text-dim);
+    text-align: center;
+    font-size: .78rem;
+}
+
 .menu-btn.big-btn {
     font-size: 1.15rem;
     padding: 18px 36px;

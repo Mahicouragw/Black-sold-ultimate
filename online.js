@@ -36,6 +36,7 @@ const OnlineSystem = {
             this.ready = true;
             this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
             await this.updatePresence();
+            await this.cacheCloudSave();
             this.subscribe();
             this.updateIndicators();
             this.client.auth.onAuthStateChange(async (_event, newSession) => {
@@ -43,6 +44,8 @@ const OnlineSystem = {
                 this.user = newSession.user;
                 await this.loadProfile();
                 await this.refreshIdentityStatus();
+                this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
+                await this.cacheCloudSave();
                 this.updateIndicators();
                 if (window.Game?.state?.player) this.saveGame(window.Game.getSaveData());
             });
@@ -111,8 +114,28 @@ const OnlineSystem = {
         window.Game?.addNarrative?.(`Player ID copied: ${code}`, 'system');
     },
 
-    async linkGoogle() {
+    async signInGoogle() {
+        if (!this.client) await this.init();
         if (!this.client) { this.status = 'Online service is not connected.'; this.updateIndicators(); return; }
+        if (this.linked) {
+            this.status = `Already signed in as ${this.profile?.display_name || 'a Google player'}.`;
+            this.updateIndicators();
+            return;
+        }
+        const { error } = await this.client.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: `${location.origin}${location.pathname}` }
+        });
+        if (error) {
+            this.status = `Google sign-in failed: ${error.message}`;
+            this.updateIndicators();
+        }
+    },
+
+    async linkGoogle() {
+        if (!this.client) await this.init();
+        if (!this.client) { this.status = 'Online service is not connected.'; this.updateIndicators(); return; }
+        if (this.linked) { this.status = 'Google is already linked.'; this.updateIndicators(); return; }
         const { error } = await this.client.auth.linkIdentity({
             provider: 'google',
             options: { redirectTo: `${location.origin}${location.pathname}` }
@@ -151,6 +174,27 @@ const OnlineSystem = {
         const { data, error } = await this.client.from('game_saves').select('save_data,updated_at').eq('user_id', this.user.id).maybeSingle();
         if (error) throw error;
         return data;
+    },
+
+    async cacheCloudSave() {
+        if (!this.ready || !window.Game) return;
+        try {
+            const cloud = await this.loadCloudSave();
+            if (!cloud?.save_data?.player) return;
+            const key = window.Game.state.saveKey;
+            const localRaw = localStorage.getItem(key);
+            const local = localRaw ? JSON.parse(localRaw) : null;
+            // A signed-in account's cloud save is restored on a new device. During
+            // active local play, do not replace newer in-memory progress abruptly.
+            if (!local?.player || !window.Game.state.player) {
+                localStorage.setItem(key, JSON.stringify(cloud.save_data));
+                const button = document.getElementById('btn-continue');
+                if (button) button.disabled = false;
+                this.status = 'Online — Google linked; cloud adventure found';
+            }
+        } catch (error) {
+            console.warn('Cloud restore check failed:', error.message);
+        }
     },
 
     async findProfile(query) {
@@ -255,6 +299,15 @@ const OnlineSystem = {
     updateIndicators() {
         const el = document.getElementById('online-status');
         if (el) el.textContent = this.status;
+        const titleStatus = document.getElementById('title-account-status');
+        if (titleStatus) titleStatus.textContent = `${this.status}${this.profile?.player_code ? ` • ${this.profile.player_code}` : ''}`;
+        const signIn = document.getElementById('btn-google-signin');
+        if (signIn) {
+            signIn.disabled = this.linked;
+            signIn.innerHTML = this.linked
+                ? '<span class="google-mark" aria-hidden="true">G</span> Google account connected'
+                : '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
+        }
         const code = document.getElementById('settings-player-code');
         if (code) code.textContent = this.getPlayerCode();
         const account = document.getElementById('settings-account-status');

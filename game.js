@@ -81,6 +81,10 @@ const Game = {
         document.getElementById('btn-help').addEventListener('click', () => {
             this.showScreen('help-screen');
         });
+
+        document.getElementById('btn-google-signin').addEventListener('click', () => {
+            OnlineSystem.signInGoogle();
+        });
         
         // Music controls
         document.getElementById('btn-music').addEventListener('click', () => {
