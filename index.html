@@ -227,7 +227,7 @@
                     <button class="action-btn" data-cmd="stats">📊 Stats</button>
                     <button class="action-btn" data-cmd="map">🗺️ Map</button>
                     <button class="action-btn" data-cmd="quests">📜 Quests</button>
-                    <button class="action-btn" data-cmd="social">🤝 Social</button>
+                    <button class="action-btn chat-action" data-cmd="chat">💬 Chat & Friends</button>
                     <button class="action-btn" data-cmd="guild">🏰 Guild</button>
                     <button class="action-btn" data-cmd="shop">🛒 Shop</button>
                     <button class="action-btn" data-cmd="settings">⚙️ Settings</button>
@@ -283,7 +283,13 @@
 
             <!-- Social / companion chat -->
             <div id="social-panel" class="panel hidden" aria-label="Friends and companions">
-                <h3>🤝 Friends & Companions</h3>
+                <h3>💬 Chat, Friends & Companions</h3>
+                <div class="chat-voice-controls">
+                    <label for="chat-voice">Your message voice</label>
+                    <select id="chat-voice" aria-label="Choose chat voice"></select>
+                    <label><input type="checkbox" id="chat-auto-speak" checked> Speak incoming messages</label>
+                    <button id="btn-test-chat-voice" class="small-action-btn">Test Selected Voice</button>
+                </div>
                 <div id="social-content"></div>
                 <div class="social-compose">
                     <input id="social-name" maxlength="40" placeholder="Player ID, exact hero name, or Public">
@@ -318,6 +324,9 @@
                     <p class="settings-note">Your Player ID identifies your hero. Copy it before changing devices. Link Google to recover progress elsewhere and unlock outgoing chat, friend requests, guilds and online combat groups.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
+                    <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in & merge heroes</button>
+                    <label for="settings-chat-voice">Default spoken-chat voice</label>
+                    <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
                     <button id="btn-cloud-save" class="menu-btn">☁️ Save to Cloud</button>
                     <button id="btn-account-signout" class="menu-btn">Sign Out</button>
                 </div>

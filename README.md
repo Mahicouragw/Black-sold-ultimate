@@ -15,7 +15,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛒 24 location shops using rupees
 - 👥 Multiplayer Pass & Play (2-4 players)
 - ⚔️ Turn-Based Combat with spells and up to 3 fighting companions
-- 💬 Real online chat and friend-request send/accept/reject flows through Supabase
+- 💬 Visible in-game Supabase chat with public/private messages and friend requests
+- 🔊 20 selectable spoken-chat profiles (10 boy/masculine, 10 girl/feminine), carried with messages
+- 🔄 Guest-to-existing-Google hero merge flow plus first-time identity linking
 - 🧙 Account hero roster with up to 6 independently saved heroes
 - 🧬 6 races and 8 classes with HP, MP, STR, DEX, INT, and WIS builds
 - ❤️ Minor Heal for every archetype, Mass Heal for battle groups, and Multi Strike attacks

@@ -246,9 +246,9 @@ const Game = {
         document.getElementById('btn-social-send').addEventListener('click', () => {
             const name = document.getElementById('social-name').value.trim();
             const message = document.getElementById('social-message').value.trim();
-            if (message && name) this.sendChat(name, message);
+            if (message) this.sendChat(name || 'Public', message);
             else if (name) this.sendFriendRequest(name);
-            else this.addNarrative('Enter a name first.', 'system');
+            else this.addNarrative('Enter a message for public chat or a Player ID for a friend request.', 'system');
             document.getElementById('social-message').value = '';
             this.showSocial();
         });
@@ -258,6 +258,11 @@ const Game = {
         });
         document.getElementById('btn-copy-player-id').addEventListener('click', () => OnlineSystem.copyPlayerCode());
         document.getElementById('btn-link-google').addEventListener('click', () => OnlineSystem.linkGoogle());
+        document.getElementById('btn-google-merge').addEventListener('click', () => OnlineSystem.mergeWithGoogle());
+        document.getElementById('btn-test-chat-voice').addEventListener('click', () => OnlineSystem.testSelectedVoice());
+        document.getElementById('chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));
+        document.getElementById('settings-chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));
+        document.getElementById('chat-auto-speak').addEventListener('change', e => localStorage.setItem('black_sword_auto_speak', e.target.checked ? 'true' : 'false'));
         document.getElementById('btn-cloud-save').addEventListener('click', async () => {
             await OnlineSystem.saveGame(this.getCloudData());
             this.addNarrative('Cloud save requested.', 'system');
@@ -675,7 +680,7 @@ const Game = {
         }
 
         // Social, companions, guilds, group combat and shops
-        if (c === 'social' || c === 'friends' || c === 'companions') { this.showSocial(); return; }
+        if (c === 'chat' || c === 'social' || c === 'friends' || c === 'companions') { this.showSocial(); return; }
         if (c === 'guild' || c === 'group') { this.showGuild(); return; }
         if (c === 'shop' || c === 'buy') { this.showShop(); return; }
         if (c === 'settings' || c === 'account' || c === 'player id') { OnlineSystem.showSettings(); return; }
@@ -1317,13 +1322,13 @@ const Game = {
         const companions = this.state.companions;
         content.innerHTML = `
             <p><strong>Your Player ID:</strong> ${this.escapeHTML(OnlineSystem.getPlayerCode())}</p>
-            <p>${OnlineSystem.linked ? '✅ Google linked — social actions unlocked.' : '🔒 Guest mode — public chat is readable. Link Google in Settings to send requests or messages.'}</p>
+            <p>${OnlineSystem.linked ? '✅ Google linked — chat, friends, guilds and cloud identity unlocked.' : '💬 Guest mode — chat is available. Link Google for friend requests, guilds and cross-device identity.'}</p>
             <h4>Incoming requests</h4>
             <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')} (${this.escapeHTML(r.sender?.player_code || '')})</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
             <h4>Friends</h4><p>${accepted.length ? accepted.map(f => `${this.escapeHTML(f.display_name)} (${this.escapeHTML(f.player_code)})`).join(', ') : 'No accepted friends yet.'}</p>
             <h4>Combat companions (${companions.length}/3)</h4>
             <div class="social-list">${companions.length ? companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
-            <h4>Recent online chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] ${this.escapeHTML(m.sender?.display_name || 'Hero')}${m.receiver_id ? ' privately' : ' publicly'}: ${this.escapeHTML(m.body)}</p>`).join('') : '<p>No messages yet.</p>'}</div>`;
+            <h4>Recent online chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <strong>${this.escapeHTML(m.sender?.display_name || 'Hero')}</strong>${m.receiver_id ? ' privately' : ' publicly'}: ${this.escapeHTML(m.body)} <small>${this.escapeHTML(m.voice_id || 'boy-1')}</small> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
     },
 
     async showGuild() {

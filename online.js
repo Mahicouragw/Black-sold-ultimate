@@ -7,9 +7,20 @@ const OnlineSystem = {
     ready: false,
     status: 'Connecting…',
     subscription: null,
+    messageCache: [],
+    lastMessageAt: 0,
+    voiceProfiles: Array.from({ length: 20 }, (_, i) => ({
+        id: `${i < 10 ? 'boy' : 'girl'}-${(i % 10) + 1}`,
+        label: `${i < 10 ? 'Boy' : 'Girl'} Voice ${(i % 10) + 1}`,
+        pitch: i < 10 ? 0.78 + (i % 10) * 0.045 : 1.08 + (i % 10) * 0.045,
+        rate: 0.82 + (i % 5) * 0.07,
+        voiceIndex: i % 10
+    })),
+    selectedVoice: localStorage.getItem('black_sword_chat_voice') || 'boy-1',
 
     async init() {
         if (this.ready) return;
+        this.populateVoiceSelectors();
         const config = window.SUPABASE_CONFIG;
         if (!config || !window.supabase?.createClient) {
             this.status = 'Offline mode — online library unavailable';
@@ -35,6 +46,9 @@ const OnlineSystem = {
             await this.refreshIdentityStatus();
             this.ready = true;
             this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
+            const oauthParams = new URLSearchParams(`${location.search || ''}&${(location.hash || '').replace(/^#/, '')}`);
+            const oauthError = oauthParams.get('error_description') || oauthParams.get('error_code');
+            if (oauthError) this.status = `Google linking needs attention: ${decodeURIComponent(oauthError.replace(/\+/g, ' '))}. If this Google account already exists, use “sign in & merge heroes” in Settings.`;
             await this.updatePresence();
             await this.cacheCloudSave();
             this.subscribe();
@@ -73,6 +87,43 @@ const OnlineSystem = {
         }
         this.profile ||= { player_code: code, display_name: this.defaultDisplayName() };
     },
+
+    populateVoiceSelectors() {
+        const options = this.voiceProfiles.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
+        ['chat-voice','settings-chat-voice'].forEach(id => {
+            const select = document.getElementById(id);
+            if (select) { select.innerHTML = options; select.value = this.selectedVoice; }
+        });
+        const auto = document.getElementById('chat-auto-speak');
+        if (auto) auto.checked = localStorage.getItem('black_sword_auto_speak') !== 'false';
+    },
+
+    setVoiceProfile(id) {
+        if (!this.voiceProfiles.some(v => v.id === id)) return;
+        this.selectedVoice = id;
+        localStorage.setItem('black_sword_chat_voice', id);
+        ['chat-voice','settings-chat-voice'].forEach(selectId => { const el=document.getElementById(selectId); if(el) el.value=id; });
+    },
+
+    speakText(text, voiceId = this.selectedVoice) {
+        if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) {
+            window.Game?.addNarrative?.('Spoken chat is not supported by this browser.', 'system'); return;
+        }
+        const profile = this.voiceProfiles.find(v => v.id === voiceId) || this.voiceProfiles[0];
+        const utterance = new SpeechSynthesisUtterance(String(text).slice(0, 300));
+        utterance.pitch = profile.pitch; utterance.rate = profile.rate; utterance.volume = 0.9;
+        const voices = speechSynthesis.getVoices();
+        const boyHints=['male','david','daniel','george','james','ravi','microsoft mark'];
+        const girlHints=['female','zira','samantha','victoria','karen','veena','google uk english female'];
+        const hints = profile.id.startsWith('girl') ? girlHints : boyHints;
+        const preferred = voices.filter(v => hints.some(h => v.name.toLowerCase().includes(h)));
+        const pool = preferred.length ? preferred : voices;
+        if (pool.length) utterance.voice = pool[profile.voiceIndex % pool.length];
+        speechSynthesis.cancel(); speechSynthesis.speak(utterance);
+    },
+
+    testSelectedVoice() { this.speakText(`This is ${this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label || 'your selected voice'} in Black Sword chat.`); },
+    speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m)this.speakText(`${m.sender?.display_name || 'Hero'} says: ${m.body}`,m.voice_id||'boy-1'); },
 
     async loadProfile(retry = true) {
         const { data, error } = await this.client.from('profiles').select('id,player_code,display_name,level,current_location,last_seen').eq('id', this.user.id).maybeSingle();
@@ -140,6 +191,15 @@ const OnlineSystem = {
         }
     },
 
+    async mergeWithGoogle() {
+        if (!this.client) await this.init();
+        if (!this.client) return;
+        if (window.Game?.state?.player) localStorage.setItem('black_sword_pending_google_merge', JSON.stringify(window.Game.getCloudData()));
+        localStorage.setItem('black_sword_merge_requested', 'true');
+        const { error } = await this.client.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${location.origin}${location.pathname}` } });
+        if (error) { this.status=`Google merge sign-in failed: ${error.message}`; this.updateIndicators(); }
+    },
+
     async linkGoogle() {
         if (!this.client) await this.init();
         if (!this.client) { this.status = 'Online service is not connected.'; this.updateIndicators(); return; }
@@ -188,30 +248,36 @@ const OnlineSystem = {
         if (!this.ready || !window.Game) return;
         try {
             const cloud = await this.loadCloudSave();
-            if (!cloud?.save_data) return;
-            const payload = cloud.save_data;
-            const roster = payload.heroes ? payload : (payload.player ? { version: 2, activeHeroId: 'hero_cloud_legacy', heroes: { hero_cloud_legacy: payload } } : null);
-            if (!roster || !Object.keys(roster.heroes || {}).length) return;
-            // Restore an account roster on a new device without interrupting an
-            // adventure already running in memory.
-            if (!window.Game.state.player) {
+            const payload = cloud?.save_data;
+            let roster = payload?.heroes ? payload : (payload?.player ? { version:2, activeHeroId:'hero_cloud_legacy', heroes:{ hero_cloud_legacy:payload } } : { version:2, activeHeroId:null, heroes:{} });
+            const mergeRequested = localStorage.getItem('black_sword_merge_requested') === 'true';
+            let pending = null;
+            try { pending = JSON.parse(localStorage.getItem('black_sword_pending_google_merge')); } catch {}
+            if (mergeRequested && pending?.heroes) {
+                const merged = { version:2, activeHeroId:pending.activeHeroId, heroes:{...roster.heroes} };
+                Object.entries(pending.heroes).forEach(([id,hero]) => {
+                    let target=id; while(merged.heroes[target]) target=`guest_${Date.now().toString(36)}_${target}`;
+                    merged.heroes[target]=hero; if(id===pending.activeHeroId) merged.activeHeroId=target;
+                });
+                roster=merged; localStorage.removeItem('black_sword_merge_requested'); localStorage.removeItem('black_sword_pending_google_merge');
+                await this.saveGame(roster); this.status=`Online — Google linked; guest heroes merged successfully`;
+            }
+            if (!Object.keys(roster.heroes || {}).length) return;
+            if (!window.Game.state.player || mergeRequested) {
                 localStorage.setItem(window.Game.state.rosterKey, JSON.stringify(roster));
                 const active = roster.heroes[roster.activeHeroId] || Object.values(roster.heroes)[0];
                 if (active) {
                     localStorage.setItem(window.Game.state.saveKey, JSON.stringify(active));
                     if (active.player?.name) {
                         this.profile.display_name = active.player.name;
-                        this.client.from('profiles').update({ display_name: active.player.name, level: active.player.level || 1, last_seen: new Date().toISOString() }).eq('id', this.user.id).then(() => {});
+                        this.client.from('profiles').update({ display_name:active.player.name, level:active.player.level||1, last_seen:new Date().toISOString() }).eq('id',this.user.id).then(()=>{});
                     }
                 }
-                window.Game.state.activeHeroId = roster.activeHeroId;
-                const button = document.getElementById('btn-continue');
-                if (button) button.disabled = false;
-                this.status = `Online — Google linked; ${Object.keys(roster.heroes).length} cloud hero${Object.keys(roster.heroes).length === 1 ? '' : 'es'} found`;
+                window.Game.state.activeHeroId=roster.activeHeroId;
+                const button=document.getElementById('btn-continue'); if(button)button.disabled=false;
+                if(!mergeRequested)this.status=`Online — Google linked; ${Object.keys(roster.heroes).length} cloud hero${Object.keys(roster.heroes).length===1?'':'es'} found`;
             }
-        } catch (error) {
-            console.warn('Cloud restore check failed:', error.message);
-        }
+        } catch (error) { console.warn('Cloud restore check failed:', error.message); }
     },
 
     async findProfile(query) {
@@ -255,9 +321,10 @@ const OnlineSystem = {
     },
 
     async sendMessage(targetQuery, body) {
-        if (!this.requireLinked('send messages')) return false;
         const text = body.trim().slice(0, 300);
         if (!text) return false;
+        if (!this.ready || !this.user) { window.Game.addNarrative('Chat is still connecting.', 'system'); return false; }
+        if (Date.now() - this.lastMessageAt < 2000) { window.Game.addNarrative('Please wait two seconds between messages.', 'system'); return false; }
         try {
             let receiverId = null;
             if (targetQuery && !['public','all','world'].includes(targetQuery.toLowerCase())) {
@@ -265,9 +332,11 @@ const OnlineSystem = {
                 if (!target) throw new Error('Message recipient not found.');
                 receiverId = target.id;
             }
-            const { error } = await this.client.from('messages').insert({ sender_id: this.user.id, receiver_id: receiverId, body: text });
+            let { error } = await this.client.from('messages').insert({ sender_id:this.user.id, receiver_id:receiverId, body:text, voice_id:this.selectedVoice });
+            // Backward-compatible until features_v5_voice_chat.sql is installed.
+            if (error && /voice_id|schema cache/i.test(error.message || '')) ({ error } = await this.client.from('messages').insert({ sender_id:this.user.id, receiver_id:receiverId, body:text }));
             if (error) throw error;
-            return true;
+            this.lastMessageAt=Date.now(); return true;
         } catch (error) { window.Game.addNarrative(error.message, 'system'); return false; }
     },
 
@@ -295,16 +364,20 @@ const OnlineSystem = {
     async listMessages() {
         if (!this.ready) return [];
         const { data, error } = await this.client.from('messages')
-            .select('id,body,created_at,sender_id,receiver_id,sender:profiles!messages_sender_id_fkey(display_name,player_code)')
+            .select('*,sender:profiles!messages_sender_id_fkey(display_name,player_code)')
             .order('created_at', { ascending: false }).limit(30);
         if (error) { console.warn(error.message); return []; }
-        return (data || []).reverse();
+        this.messageCache=(data || []).reverse(); return this.messageCache;
     },
 
     subscribe() {
         if (!this.client || this.subscription) return;
         this.subscription = this.client.channel('black-sword-social')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => this.refreshOpenSocial())
+            .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
+                this.refreshOpenSocial();
+                const message=payload.new;
+                if(message.sender_id!==this.user?.id && localStorage.getItem('black_sword_auto_speak')!=='false') this.speakText(message.body,message.voice_id||'boy-1');
+            })
             .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, () => this.refreshOpenSocial())
             .subscribe();
     },
@@ -334,6 +407,9 @@ const OnlineSystem = {
         if (account) account.textContent = this.linked ? 'Google linked' : (this.ready ? 'Guest account' : 'Local/offline guest');
         const google = document.getElementById('btn-link-google');
         if (google) google.disabled = this.linked;
+        const merge = document.getElementById('btn-google-merge');
+        if (merge) merge.disabled = this.linked;
+        this.populateVoiceSelectors();
     },
 
     showSettings() {

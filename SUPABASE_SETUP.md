@@ -25,6 +25,13 @@ Anonymous authentication gives every new player a secure Supabase user and perma
 
 This adds secure Player ID + six-digit PIN progress recovery. PINs are hashed with bcrypt-compatible PostgreSQL `crypt`, never returned to the browser, and failed recovery attempts are limited.
 
+## 4. Enable 20-profile spoken chat and guest messaging
+
+1. Open https://supabase.com/dashboard/project/zncepqzgsidqjvkayxdr/sql/new
+2. Open [`supabase/features_v5_voice_chat.sql`](supabase/features_v5_voice_chat.sql), copy all of it, paste it into the SQL Editor, and press **Run** once.
+
+This stores the sender's selected `boy-1`…`boy-10` or `girl-1`…`girl-10` voice profile with each message and permits authenticated guests to chat. Text remains the source of truth; recipients' browsers synthesize it with the selected profile.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google
