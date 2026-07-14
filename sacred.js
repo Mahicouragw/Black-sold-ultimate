@@ -65,7 +65,7 @@
 
     const defaults = () => ({
         god:GOD, favor:0, lastPrayer:0, lastDailyBlessing:0, createdAt:Date.now(),
-        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', companionTrainingPoints:0,
+        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', movesSinceEncounter:3, pendingPalaceAdvancements:0, companionTrainingPoints:0,
         unspentAttributePoints:0, storage:[], groundLoot:[], vitality:10, enemyQueue:[]
     });
     const ensure = game => {
@@ -126,8 +126,8 @@
         const s=ensure(this), p=this.state.player;
         p.str+=2; p.dex+=2; p.int+=2; // original already added one: total +3
         p.wis+=3; p.vit=(p.vit||10)+3;
-        s.unspentAttributePoints++; s.companionTrainingPoints++;
-        this.addNarrative('All five core attributes increased by 3. The Palace grants one additional attribute choice and one companion training point.', 'treasure');
+        s.pendingPalaceAdvancements++;
+        this.addNarrative('All five core attributes increased by 3. You must now visit the Royal Palace for an advancement ceremony, bonus attribute, and companion training point.', 'treasure');
         this.save();
     };
 
@@ -155,7 +155,7 @@
     Game.goEnchantery = function(){ this.enterLocation('arcane_enchantery'); this.showSacredActions(); };
     Game.showSacredActions = function() {
         if (this.state.location==='grand_temple') this.addNarrative(`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health/magic".`, 'magic');
-        if (this.state.location==='royal_palace') this.addNarrative('🏰 Type "palace quest", "train companion [name]", or "increase [attribute]".', 'system');
+        if (this.state.location==='royal_palace') this.addNarrative('🏰 Type "palace ceremony", "palace quest", "train companion [name]", or "increase [attribute]".', 'system');
         if (this.state.location==='arcane_enchantery') this.addNarrative('✨ Type "enchantments" to browse or "enchant [item] [strength/dexterity/intelligence/wisdom/health/magic]".', 'magic');
     };
     Game.showEnchantments = function() {
@@ -195,6 +195,15 @@
         else if (aliases[key]==='magic') { this.state.player.maxMp+=5; this.state.player.mp+=5; }
         else this.state.player[aliases[key]]+=1;
         s.lastDailyBlessing=now; this.addNarrative(`${GOD} grants your daily ${key} blessing!`, 'green-light'); this.updateHUD(); this.save();
+    };
+    Game.palaceCeremony = function() {
+        if (this.state.location!=='royal_palace') { this.addNarrative('Advancement ceremonies take place only at the Royal Palace. Type "palace".', 'system'); return; }
+        const s=ensure(this), p=this.state.player;
+        if(s.pendingPalaceAdvancements<1){this.addNarrative('No advancement ceremony is pending. Earn another hero level first.','system');return;}
+        s.pendingPalaceAdvancements--;s.unspentAttributePoints++;s.companionTrainingPoints++;
+        p.hp=p.maxHp;p.mp=p.maxMp;this.state.companions.forEach(c=>{c.hp=c.maxHp;});
+        this.addNarrative(`The Royal Court recognizes ${p.name} at level ${p.level}. Hero and companions are restored; one Palace attribute choice and one companion training point are unlocked.`,'treasure');
+        MusicSystem.playSFX('levelup');this.updateHUD();this.save();
     };
     Game.palaceQuest = function() {
         if (this.state.location!=='royal_palace') { this.addNarrative('Go to the Royal Palace first. Type "palace".', 'system'); return; }
@@ -272,10 +281,12 @@
     const oldStart=Game.startCombat.bind(Game);
     Game.startCombat=function(enemyName,queued=false){
         const s=ensure(this), loc=WorldData.locations[this.state.location];
-        if(!queued && this.state.location==='forest'){
-            const count=s.encounterMode==='full' ? 1+Math.floor(Math.random()*3) : 1;
+        if(!queued && loc?.enemies?.length){
+            const maximum=s.encounterMode==='full'?6:3;
+            const count=1+Math.floor(Math.random()*maximum);
             s.enemyQueue=Array.from({length:count-1},()=>loc.enemies[Math.floor(Math.random()*loc.enemies.length)]);
-            if(count>1)this.addNarrative(`A forest group of ${count} monsters surrounds you!`,'combat');
+            s.movesSinceEncounter=0;
+            if(count>1)this.addNarrative(`A group of ${count} monsters surrounds you!`,'combat');
         }
         oldStart(enemyName);
     };
@@ -290,9 +301,14 @@
     const oldEnter=Game.enterLocation.bind(Game);
     Game.enterLocation=function(id){
         const s=ensure(this),loc=WorldData.locations[id];
-        if(id==='forest'&&s.encounterMode==='reduced'){
-            const safe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=safe;
-            if(Math.random()<0.15)setTimeout(()=>this.startCombat(loc.enemies[Math.floor(Math.random()*loc.enemies.length)]),1500);
+        s.movesSinceEncounter=(s.movesSinceEncounter||0)+1;
+        if(loc&&!loc.safe&&loc.enemies?.length){
+            // Suppress the old 50% roll; use a cooldown plus a much lower custom chance.
+            const previousSafe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=previousSafe;
+            const threshold=s.encounterMode==='full'?3:5, chance=s.encounterMode==='full'?0.20:0.06;
+            if(s.movesSinceEncounter>=threshold&&Math.random()<chance){
+                const enemy=loc.enemies[Math.floor(Math.random()*loc.enemies.length)];setTimeout(()=>this.startCombat(enemy),900);
+            }
         } else oldEnter(id);
         if(['grand_temple','royal_palace','arcane_enchantery'].includes(id))this.showSacredActions();
     };
@@ -338,11 +354,11 @@
         if(c==='enchantments'||c==='list enchantments'){this.showEnchantments();return;}
         if(c.startsWith('enchant ')){const parts=c.slice(8).split(' '),attr=parts.pop();this.enchantItem(parts.join(' '),attr);return;}
         if(c==='out'&&['grand_temple','royal_palace','arcane_enchantery'].includes(this.state.location)){this.enterLocation('kaliwasch');return;}
-        if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
+        if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace ceremony'||c==='advance hero'){this.palaceCeremony();return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
         if(c.startsWith('train companion ')){this.trainCompanionAtPalace(c.slice(16));return;}if(c.startsWith('increase ')){this.increaseAttribute(c.slice(9));return;}
         if(c==='card test'||c==='guild card test'){this.startCardTest();return;}if(c.startsWith('answer ')){this.answerCardTest(c.slice(7));return;}
-        if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Full forest encounters enabled: 1–3 enemies from a pool of 20.','system');this.save();return;}
-        if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced: rare single-monster battles.','system');this.save();return;}
+        if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Normal encounters enabled: occasional groups of 1–6 monsters after a movement cooldown.','system');this.save();return;}
+        if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced: rare groups of only 1–3 monsters after a longer cooldown.','system');this.save();return;}
         if(c==='storage'||c==='loot'||c==='check loot'){this.showStorage();return;}if(c==='take all loot'){this.takeAllLoot();return;}if(c.startsWith('throw ')||c.startsWith('drop ')){this.throwItem(c.replace(/^(throw|drop) /,''));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
         if(c==='mission'||c==='missions'){this.showQuests();return;}if(c==='hero management'||c==='manage heroes'){this.showHeroRoster();return;}
         if(c.startsWith('watch ')||c.startsWith('view ')||c.startsWith('examine ')){this.examineEntity(c.replace(/^(watch|view|examine) /,''));return;}

@@ -1470,19 +1470,19 @@ const Game = {
         const map = document.getElementById('world-map');
 
         const mapArt = `
-            [Northern Mountains]---[Shrine]---[Eagle Peak]
-                   |                               |
-        [West Forest]---[Kaliwasch City]---[Eastern Ruins]
+ [40 Endless Caves]--[Northern Mountains]--[Shrine / Eagle Peak]
                            |
-              [Goblin Camp]---[Southern Swamp]---[Witch's Hut]
-                               |
-                    [Dungeon Entrance]
-                           |
-                       [The Depths]
-                    /              \\
-            [Dark Hall]        [Shadow Chamber]
-                                  |
-                           [THE BLACK SWORD]
+ [25 Great Forest Paths]--[West Forest]--[Kaliwasch]--[Eastern Ruins]
+          |                                  |  \\
+ [10 Villages / 60 sites]         [30 Capital Districts] [96 Realms]
+          |
+ [Aurora City: 30]--[Ironspire: 30]--[Seabreeze: 30]
+                                             |
+                    [Southern Swamp]--[Dungeon Entrance]
+                                             |       \\
+                                        [Depths] [15 Royal Dungeon Sectors]
+
+ Total: ${Object.keys(WorldData.locations).length} connected locations
         `;
 
         map.textContent = mapArt;
@@ -1545,7 +1545,8 @@ const Game = {
         this.addNarrative("world - Print expanded-world totals", 'system');
         this.addNarrative("settings/account - Copy Player ID, link Google, cloud save, or set recovery PIN", 'system');
         this.addNarrative("temple / pray [attribute] - Visit Auralis and receive blessings", 'system');
-        this.addNarrative("palace / palace quest - Royal quests and companion training", 'system');
+        this.addNarrative("palace / palace ceremony - Required advancement after leveling", 'system');
+        this.addNarrative("palace quest / train companion [name] / increase [attribute]", 'system');
         this.addNarrative("guild spells - Summoner/Hunter tutorial spell rewards", 'system');
         this.addNarrative("encounters on/off - Full or reduced forest encounters", 'system');
         this.addNarrative("storage / throw [item] / take loot [item] - Manual item management", 'system');

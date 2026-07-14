@@ -29,6 +29,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🃏 Guild Card Test with two named class spells for every class
 - ✨ Universal Minor Heal, Multi Strike, Alohomora, and Emerald Lifestrike
 - 🧭 Accessible text navigation showing North, West, East, South, Up, and Down availability
+- 🌍 369 connected locations: 25 forest paths, 120 city districts, 40 caves, 15 dungeon sectors, and 10 six-part villages
+- 🎲 Occasional cooldown-based encounters: normal groups of 1–6 or reduced groups of 1–3
+- 👑 Required Palace advancement ceremony after each hero level, with companion training and a bonus attribute
 - 🎵 Real ambient music plus varied recorded sword, impact, monster, door, and spell effects
 - 🏰 Guilds, invitations, and combat-group management
 - 📜 Quest System with Main Story
