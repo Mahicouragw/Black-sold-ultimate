@@ -43,6 +43,10 @@ This stores the sender's selected `boy-1`…`boy-10` or `girl-1`…`girl-10` voi
 
 This adds invitation-only brotherhood membership, online combat groups, shared battle-damage events, and secure player feedback/bug reports with Row Level Security.
 
+## 6. Make Player IDs private
+
+Run [`supabase/features_v7_private_ids.sql`](supabase/features_v7_private_ids.sql) to revoke public `player_code` reads. The owner retrieves their own code through a protected RPC; public social queries receive only hero names and safe gameplay fields. This section is already included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

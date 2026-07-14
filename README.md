@@ -22,6 +22,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 💬 Visible in-game Supabase chat with public/private messages and friend requests
 - 🔊 20 selectable spoken-chat profiles (10 boy/masculine, 10 girl/feminine), carried with messages
 - 🔄 Guest-to-existing-Google hero merge flow plus first-time identity linking
+- 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names
+- 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, and Hardcore/Permadeath modes
 - 🤝 Invitation-only brotherhoods and online combat groups with shared realtime damage
 - 🧩 Hidden buttons, levers, locked doors, readable documents, and context-sensitive lists
 - 🗺️ Persistent player-created map notes and online-player presence

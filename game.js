@@ -109,10 +109,12 @@ const Game = {
             return `<article class="hero-card ${id === roster.activeHeroId ? 'active' : ''}">
                 <h3>${this.escapeHTML(p.name || 'Unnamed Hero')}</h3>
                 <p>${this.escapeHTML(p.race || 'Unknown')} ${this.escapeHTML(p.class || 'Adventurer')} • Level ${p.level || 1}</p>
+                <p>Mode: ${p.mode === 'hardcore' ? 'Hardcore / Permadeath' : 'Standard / Non-permanent'}${p.permadead ? ' • PERMANENTLY FALLEN' : ''}</p>
                 <p>❤️ ${p.hp || 0}/${p.maxHp || 0} • ✨ ${p.mp || 0}/${p.maxMp || 0}</p>
                 <p>STR ${p.str || 0} • DEX ${p.dex || 0} • INT ${p.int || 0} • WIS ${p.wis || 0}</p>
                 <p>📍 ${this.escapeHTML(loc)}</p>
-                <button class="menu-btn" onclick="Game.playHero('${id}')">${id === roster.activeHeroId ? 'Continue' : 'Play This Hero'}</button>
+                <button class="menu-btn" onclick="Game.playHero('${id}')" ${p.permadead ? 'disabled' : ''}>${p.permadead ? 'Permanently Fallen' : id === roster.activeHeroId ? 'Continue' : 'Play This Hero'}</button>
+                <button class="menu-btn danger-btn" onclick="Game.deleteHero('${id}')">Delete Hero</button>
             </article>`;
         }).join('') : '<p class="system">No heroes yet. Create your first hero.</p>';
         document.getElementById('btn-create-another-hero').disabled = entries.length >= 6;
@@ -121,12 +123,25 @@ const Game = {
 
     playHero(id) {
         const roster = this.getRoster();
-        if (!roster.heroes[id]) return;
+        if (!roster.heroes[id] || roster.heroes[id].player?.permadead) return;
         roster.activeHeroId = id;
         this.storeRoster(roster);
         this.state.activeHeroId = id;
         localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[id]));
         this.continueGame();
+    },
+
+    deleteHero(id) {
+        const roster=this.getRoster(),hero=roster.heroes[id];
+        if(!hero)return;
+        const name=hero.player?.name||'this hero';
+        if(!confirm(`Permanently delete ${name}? This cannot be undone.`))return;
+        delete roster.heroes[id];
+        if(roster.activeHeroId===id)roster.activeHeroId=Object.keys(roster.heroes)[0]||null;
+        this.storeRoster(roster);this.state.activeHeroId=roster.activeHeroId;
+        if(roster.activeHeroId)localStorage.setItem(this.state.saveKey,JSON.stringify(roster.heroes[roster.activeHeroId]));else localStorage.removeItem(this.state.saveKey);
+        document.getElementById('btn-continue').disabled=!roster.activeHeroId;
+        window.OnlineSystem?.saveGame(roster);this.showHeroRoster();
     },
 
     bindEvents() {
@@ -248,7 +263,7 @@ const Game = {
             const message = document.getElementById('social-message').value.trim();
             if (message) this.sendChat(name || 'Public', message);
             else if (name) this.sendFriendRequest(name);
-            else this.addNarrative('Enter a message for public chat or a Player ID for a friend request.', 'system');
+            else this.addNarrative('Enter a message for public chat or an exact hero name for a friend request.', 'system');
             document.getElementById('social-message').value = '';
             this.showSocial();
         });
@@ -372,6 +387,7 @@ const Game = {
         const race = document.querySelector('.race-btn.selected').dataset.race;
         const cls = document.querySelector('.class-btn.selected').dataset.class;
         const background = document.getElementById('char-background').value;
+        const mode = document.getElementById('hero-mode').value;
 
         // Base stats by class
         const baseStats = {
@@ -414,6 +430,8 @@ const Game = {
             name,
             race,
             class: cls,
+            mode,
+            permadead: false,
             level: 1,
             xp: 0,
             xpToNext: 100,
@@ -1322,11 +1340,11 @@ const Game = {
         const accepted = requests.filter(r => r.status === 'accepted').map(r => r.sender_id === OnlineSystem.user.id ? r.receiver : r.sender).filter(Boolean);
         const companions = this.state.companions;
         content.innerHTML = `
-            <p><strong>Your Player ID:</strong> ${this.escapeHTML(OnlineSystem.getPlayerCode())}</p>
+            <p><strong>Public Hero Name:</strong> ${this.escapeHTML(this.state.player?.name || OnlineSystem.profile?.display_name || 'Hero')}</p>
             <p>${OnlineSystem.linked ? '✅ Google linked — chat, friends, guilds and cloud identity unlocked.' : '💬 Guest mode — chat is available. Link Google for friend requests, guilds and cross-device identity.'}</p>
             <h4>Incoming requests</h4>
-            <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')} (${this.escapeHTML(r.sender?.player_code || '')})</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
-            <h4>Friends</h4><p>${accepted.length ? accepted.map(f => `${this.escapeHTML(f.display_name)} (${this.escapeHTML(f.player_code)})`).join(', ') : 'No accepted friends yet.'}</p>
+            <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')}</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
+            <h4>Friends</h4><p>${accepted.length ? accepted.map(f => this.escapeHTML(f.display_name)).join(', ') : 'No accepted friends yet.'}</p>
             <h4>Brotherhood Invitations</h4>${brotherhoodInvites.length?brotherhoodInvites.map((x,i)=>`<div class="social-row"><span>${this.escapeHTML(x.guild?.name||'Brotherhood')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondBrotherhoodInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat companions (${companions.length}/3)</h4>
@@ -1577,17 +1595,18 @@ const Game = {
 
     gameOver() {
         MusicSystem.playSFX('death');
-        this.addNarrative("💀 You have been defeated...", 'combat');
-
+        const p=this.state.player,hardcore=p.mode==='hardcore';
+        if(hardcore){p.permadead=true;p.hp=0;this.addNarrative(`${p.name} has permanently fallen in Hardcore mode.`,'combat');}
+        else{p.hp=Math.ceil(p.maxHp/2);p.mp=Math.ceil(p.maxMp/2);p.gold=Math.max(0,p.gold-50);this.addNarrative(`${p.name} will revive with half HP/MP. The temple charges up to 50 rupees.`,'magic');}
+        this.save();
         setTimeout(() => {
             document.getElementById('final-stats').innerHTML = `
-                <p>Level: ${this.state.player.level}</p>
-                <p>Enemies Slain: ${this.state.kills}</p>
-                <p>Gold Collected: ${this.state.player.gold}</p>
-                <p>Quests Completed: ${this.state.completedQuests.length}</p>
-            `;
+                <p>Mode: ${hardcore?'Hardcore / Permanent':'Standard / Non-permanent'}</p>
+                <p>${hardcore?'This hero cannot be revived. Delete or keep the fallen hero in Hero Management.':'Your hero has been revived and can continue.'}</p>
+                <p>Level: ${p.level}</p><p>Enemies Slain: ${this.state.kills}</p><p>Gold: ${p.gold}</p><p>Quests Completed: ${this.state.completedQuests.length}</p>`;
+            const retry=document.querySelector('#gameover-screen .menu-btn');if(retry){retry.disabled=hardcore;retry.textContent=hardcore?'Permanently Fallen':'Continue Revived Hero';}
             this.showScreen('gameover-screen');
-        }, 2000);
+        }, 1500);
     },
 
     victory() {
@@ -1666,6 +1685,7 @@ const Game = {
             this.state.player.armor ||= 'Traveler Clothes';
             this.state.player.defense ||= 1;
             this.state.player.spells ||= ['Minor Heal'];
+            if(this.state.player.permadead){this.showHeroRoster();return;}
 
             this.showScreen('game-screen');
             this.enterLocation(this.state.location);

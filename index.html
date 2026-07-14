@@ -89,6 +89,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="hero-mode">Hero Mode:</label>
+                    <select id="hero-mode">
+                        <option value="standard">Standard — death is non-permanent; revival is allowed</option>
+                        <option value="hardcore">Hardcore — permanent death; fallen hero cannot be revived</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
                     <label>Background:</label>
                     <select id="char-background">
                         <option value="soldier">Soldier - Start with better weapon</option>
@@ -293,7 +301,7 @@
                 </div>
                 <div id="social-content"></div>
                 <div class="social-compose">
-                    <input id="social-name" maxlength="40" placeholder="Player ID, exact hero name, or Public">
+                    <input id="social-name" maxlength="40" placeholder="Exact hero name, or Public">
                     <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)">
                     <button id="btn-social-send" class="menu-btn">Send Message / Request</button>
                 </div>
@@ -322,7 +330,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <p class="settings-note">Your Player ID identifies your hero. Copy it before changing devices. Link Google to recover progress elsewhere and unlock outgoing chat, friend requests, guilds and online combat groups.</p>
+                    <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
                     <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in & merge heroes</button>

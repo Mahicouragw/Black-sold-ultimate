@@ -127,14 +127,14 @@ const OnlineSystem = {
     speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m)this.speakText(`${m.sender?.display_name || 'Hero'} says: ${m.body}`,m.voice_id||'boy-1'); },
 
     async loadProfile(retry = true) {
-        const { data, error } = await this.client.from('profiles').select('id,player_code,display_name,level,current_location,last_seen').eq('id', this.user.id).maybeSingle();
+        let { data, error } = await this.client.rpc('get_my_profile');
+        if (!error && Array.isArray(data)) data=data[0]||null;
+        // Backward compatibility until the v7 privacy migration is installed.
+        if (error && /get_my_profile|schema cache|function/i.test(error.message||'')) ({data,error}=await this.client.from('profiles').select('id,player_code,display_name,level,current_location,last_seen').eq('id',this.user.id).maybeSingle());
         if (error) throw error;
-        if (!data && retry) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            return this.loadProfile(false);
-        }
+        if (!data && retry) { await new Promise(resolve=>setTimeout(resolve,500)); return this.loadProfile(false); }
         if (!data) throw new Error('Database schema is not installed yet');
-        this.profile = data;
+        this.profile=data;
     },
 
     async refreshIdentityStatus() {
@@ -283,23 +283,24 @@ const OnlineSystem = {
 
     async findProfile(query) {
         if (!this.ready) return null;
-        const clean = query.trim();
-        let request = this.client.from('profiles').select('id,player_code,display_name,level,current_location').limit(1);
-        request = clean.toUpperCase().startsWith('KND-') ? request.eq('player_code', clean.toUpperCase()) : request.ilike('display_name', clean);
-        const { data, error } = await request.maybeSingle();
-        if (error) throw error;
-        return data;
+        const clean=query.trim();
+        if(/^KND-/i.test(clean)) throw new Error('Player IDs are private login/recovery credentials. Search using the exact hero name.');
+        let {data,error}=await this.client.rpc('find_heroes_by_name',{hero_name:clean});
+        if(error&&/find_heroes_by_name|schema cache|function/i.test(error.message||'')) ({data,error}=await this.client.from('profiles').select('id,display_name,level,current_location,last_seen').ilike('display_name',clean).limit(5));
+        if(error)throw error;const matches=data||[];
+        if(matches.length>1)throw new Error(`More than one hero is named “${clean}”. Ask the player to choose a more distinctive hero name.`);
+        return matches[0]||null;
     },
 
     async sendFriendRequest(query) {
         if (!this.requireLinked('send friend requests')) return false;
         try {
             const target = await this.findProfile(query);
-            if (!target) throw new Error('Player not found. Use their exact Player ID or hero name.');
+            if (!target) throw new Error('Hero not found. Use the exact public hero name.');
             if (target.id === this.user.id) throw new Error('You cannot send a request to yourself.');
             const { error } = await this.client.from('friend_requests').insert({ sender_id: this.user.id, receiver_id: target.id });
             if (error) throw error;
-            window.Game.addNarrative(`Friend request sent to ${target.display_name} (${target.player_code}).`, 'npc');
+            window.Game.addNarrative(`Friend request sent to ${target.display_name}.`, 'npc');
             return true;
         } catch (error) { window.Game.addNarrative(error.message, 'system'); return false; }
     },
@@ -307,7 +308,7 @@ const OnlineSystem = {
     async listFriendRequests() {
         if (!this.ready) return [];
         const { data, error } = await this.client.from('friend_requests')
-            .select('id,status,sender_id,receiver_id,created_at,sender:profiles!friend_requests_sender_id_fkey(display_name,player_code),receiver:profiles!friend_requests_receiver_id_fkey(display_name,player_code)')
+            .select('id,status,sender_id,receiver_id,created_at,sender:profiles!friend_requests_sender_id_fkey(display_name),receiver:profiles!friend_requests_receiver_id_fkey(display_name)')
             .order('created_at', { ascending: false }).limit(50);
         if (error) { console.warn(error.message); return []; }
         return data || [];
@@ -344,7 +345,7 @@ const OnlineSystem = {
     async listOnlineHeroes() {
         if (!this.ready) return [];
         const since=new Date(Date.now()-10*60*1000).toISOString();
-        const {data,error}=await this.client.from('profiles').select('player_code,display_name,level,current_location,last_seen').gte('last_seen',since).order('last_seen',{ascending:false}).limit(30);
+        const {data,error}=await this.client.from('profiles').select('display_name,level,current_location,last_seen').gte('last_seen',since).order('last_seen',{ascending:false}).limit(30);
         if(error){window.Game?.addNarrative?.(error.message,'system');return [];}return data||[];
     },
 
@@ -367,7 +368,7 @@ const OnlineSystem = {
         window.Game.addNarrative(error?error.message:`Brotherhood invitation sent to ${target.display_name}.`,error?'system':'npc');
     },
     async listBrotherhoodInvites() {
-        const {data,error}=await this.client.from('guild_invites').select('id,status,guild:guilds(id,name),sender:profiles!guild_invites_sender_id_fkey(display_name,player_code)').eq('receiver_id',this.user.id).eq('status','pending');
+        const {data,error}=await this.client.from('guild_invites').select('id,status,guild:guilds(id,name),sender:profiles!guild_invites_sender_id_fkey(display_name)').eq('receiver_id',this.user.id).eq('status','pending');
         return error?[]:(data||[]);
     },
     async respondBrotherhoodInvite(id,accept=true) {
@@ -384,10 +385,10 @@ const OnlineSystem = {
     },
     async inviteCombatGroup(query) {
         if(!this.activeCombatGroup){const {data}=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).eq('role','leader').limit(1).maybeSingle();this.activeCombatGroup=data?.group_id;}
-        const target=await this.findProfile(query);if(!this.activeCombatGroup||!target){window.Game.addNarrative('Create a combat group and provide a valid Player ID.','system');return;}
+        const target=await this.findProfile(query);if(!this.activeCombatGroup||!target){window.Game.addNarrative('Create a combat group and provide an exact hero name.','system');return;}
         const {error}=await this.client.from('combat_group_invites').insert({group_id:this.activeCombatGroup,sender_id:this.user.id,receiver_id:target.id});window.Game.addNarrative(error?error.message:`Combat-group invitation sent to ${target.display_name}.`,error?'system':'npc');
     },
-    async listCombatGroupInvites(){const {data,error}=await this.client.from('combat_group_invites').select('id,status,group:combat_groups(id,name),sender:profiles!combat_group_invites_sender_id_fkey(display_name,player_code)').eq('receiver_id',this.user.id).eq('status','pending');return error?[]:(data||[]);},
+    async listCombatGroupInvites(){const {data,error}=await this.client.from('combat_group_invites').select('id,status,group:combat_groups(id,name),sender:profiles!combat_group_invites_sender_id_fkey(display_name)').eq('receiver_id',this.user.id).eq('status','pending');return error?[]:(data||[]);},
     async respondCombatGroupInvite(id,accept=true){const {data:i,error}=await this.client.from('combat_group_invites').select('id,group_id').eq('id',id).eq('receiver_id',this.user.id).single();if(error)return;await this.client.from('combat_group_invites').update({status:accept?'accepted':'rejected',updated_at:new Date().toISOString()}).eq('id',id);if(accept){await this.client.from('combat_group_members').insert({group_id:i.group_id,user_id:this.user.id,role:'member'});this.activeCombatGroup=i.group_id;}window.Game.addNarrative(`Combat-group invitation ${accept?'accepted':'rejected'}.`,'npc');},
     async recordGroupAttack(monster,damage){if(!this.ready||!this.activeCombatGroup||damage<=0)return;await this.client.from('group_battle_actions').insert({group_id:this.activeCombatGroup,user_id:this.user.id,monster_name:monster,damage});},
 
@@ -415,7 +416,7 @@ const OnlineSystem = {
     async listMessages() {
         if (!this.ready) return [];
         const { data, error } = await this.client.from('messages')
-            .select('*,sender:profiles!messages_sender_id_fkey(display_name,player_code)')
+            .select('*,sender:profiles!messages_sender_id_fkey(display_name)')
             .order('created_at', { ascending: false }).limit(30);
         if (error) { console.warn(error.message); return []; }
         this.messageCache=(data || []).reverse(); return this.messageCache;
@@ -444,7 +445,7 @@ const OnlineSystem = {
         const el = document.getElementById('online-status');
         if (el) el.textContent = `${activeName} • ${this.status}`;
         const titleStatus = document.getElementById('title-account-status');
-        if (titleStatus) titleStatus.textContent = `${activeName} • ${this.status}${this.profile?.player_code ? ` • ${this.profile.player_code}` : ''}`;
+        if (titleStatus) titleStatus.textContent = `${activeName} • ${this.status}`;
         const signIn = document.getElementById('btn-google-signin');
         if (signIn) {
             signIn.disabled = this.linked;
