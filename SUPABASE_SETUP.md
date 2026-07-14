@@ -1,4 +1,8 @@
-# Supabase Multiplayer Setup (Two One-Time Actions)
+# Supabase Multiplayer Setup
+
+## Fast path for all post-schema updates
+
+If `supabase/schema.sql` was already run, open [`supabase/apply_all_updates.sql`](supabase/apply_all_updates.sql), paste it into the Supabase SQL Editor, and press **Run** once. It safely applies Player ID/PIN recovery, spoken guest chat, brotherhood invitations, online combat groups, cooperative battle actions, and feedback tables together.
 
 The public project URL and publishable key are already configured in `supabase-config.js`. Never put a service-role key, database password, or JWT secret in that file.
 
@@ -31,6 +35,13 @@ This adds secure Player ID + six-digit PIN progress recovery. PINs are hashed wi
 2. Open [`supabase/features_v5_voice_chat.sql`](supabase/features_v5_voice_chat.sql), copy all of it, paste it into the SQL Editor, and press **Run** once.
 
 This stores the sender's selected `boy-1`…`boy-10` or `girl-1`…`girl-10` voice profile with each message and permits authenticated guests to chat. Text remains the source of truth; recipients' browsers synthesize it with the selected profile.
+
+## 5. Enable brotherhoods, online combat groups, cooperative attacks, and feedback
+
+1. Open https://supabase.com/dashboard/project/zncepqzgsidqjvkayxdr/sql/new
+2. Open [`supabase/features_v6_multiplayer.sql`](supabase/features_v6_multiplayer.sql), copy all of it, paste it into the SQL Editor, and press **Run** once.
+
+This adds invitation-only brotherhood membership, online combat groups, shared battle-damage events, and secure player feedback/bug reports with Row Level Security.
 
 ## Optional: enable Google linking later
 

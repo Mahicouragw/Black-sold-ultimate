@@ -2,6 +2,10 @@
 
 An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Features real royalty-free ambient music, enhanced combat, guilds, quests, and more!
 
+## 🔎 Public Feature Audit
+
+See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) for the evidence-based comparison against the documented Amazon Alexa mechanics and commands.
+
 ## 🎵 Music and Sound Credits
 
 The game now bundles real cinematic music and recorded RPG sound effects from **OpenGameArt**, all released under **CC0 / public domain**. It no longer generates procedural oscillator music.
@@ -18,6 +22,10 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 💬 Visible in-game Supabase chat with public/private messages and friend requests
 - 🔊 20 selectable spoken-chat profiles (10 boy/masculine, 10 girl/feminine), carried with messages
 - 🔄 Guest-to-existing-Google hero merge flow plus first-time identity linking
+- 🤝 Invitation-only brotherhoods and online combat groups with shared realtime damage
+- 🧩 Hidden buttons, levers, locked doors, readable documents, and context-sensitive lists
+- 🗺️ Persistent player-created map notes and online-player presence
+- 🧾 Filtered inventory/status commands, quantity trading, safe hero restart, and secure feedback
 - 🧙 Account hero roster with up to 6 independently saved heroes
 - 🧬 6 races and 8 classes with HP, MP, STR, DEX, INT, and WIS builds
 - ❤️ Minor Heal for every archetype, Mass Heal for battle groups, and Multi Strike attacks

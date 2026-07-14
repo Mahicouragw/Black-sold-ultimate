@@ -1316,7 +1316,8 @@ const Game = {
             return;
         }
         content.innerHTML = '<p>Loading secure online social data…</p>';
-        const [requests, messages] = await Promise.all([OnlineSystem.listFriendRequests(), OnlineSystem.listMessages()]);
+        const [requests, messages, brotherhoodInvites, combatInvites] = await Promise.all([OnlineSystem.listFriendRequests(), OnlineSystem.listMessages(), OnlineSystem.listBrotherhoodInvites(), OnlineSystem.listCombatGroupInvites()]);
+        this._brotherhoodInvites=brotherhoodInvites; this._combatInvites=combatInvites;
         const incoming = requests.filter(r => r.receiver_id === OnlineSystem.user.id && r.status === 'pending');
         const accepted = requests.filter(r => r.status === 'accepted').map(r => r.sender_id === OnlineSystem.user.id ? r.receiver : r.sender).filter(Boolean);
         const companions = this.state.companions;
@@ -1326,6 +1327,8 @@ const Game = {
             <h4>Incoming requests</h4>
             <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')} (${this.escapeHTML(r.sender?.player_code || '')})</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
             <h4>Friends</h4><p>${accepted.length ? accepted.map(f => `${this.escapeHTML(f.display_name)} (${this.escapeHTML(f.player_code)})`).join(', ') : 'No accepted friends yet.'}</p>
+            <h4>Brotherhood Invitations</h4>${brotherhoodInvites.length?brotherhoodInvites.map((x,i)=>`<div class="social-row"><span>${this.escapeHTML(x.guild?.name||'Brotherhood')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondBrotherhoodInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
+            <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat companions (${companions.length}/3)</h4>
             <div class="social-list">${companions.length ? companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
             <h4>Recent online chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <strong>${this.escapeHTML(m.sender?.display_name || 'Hero')}</strong>${m.receiver_id ? ' privately' : ' publicly'}: ${this.escapeHTML(m.body)} <small>${this.escapeHTML(m.voice_id || 'boy-1')}</small> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
@@ -1558,6 +1561,10 @@ const Game = {
         this.addNarrative("enchantment shop / enchant [item] [attribute] - Permanent equipment runes", 'system');
         this.addNarrative("watch/view/examine [target] - Inspect monsters, companions, and items", 'system');
         this.addNarrative("give/take items to/from companions; sell [item]; revive hero", 'system');
+        this.addNarrative("inventory weapon/armor/potion/item/gold; buy/sell [quantity] [item]", 'system');
+        this.addNarrative("list; status health/skills/magic/attributes/armor; read/press/use lever", 'system');
+        this.addNarrative("online heroes; create/invite brotherhood; create/invite combat group", 'system');
+        this.addNarrative("mark map [note]; map notes; feedback [text]; report bug [text]", 'system');
     },
 
     closePanels() {

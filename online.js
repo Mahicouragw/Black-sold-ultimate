@@ -9,6 +9,7 @@ const OnlineSystem = {
     subscription: null,
     messageCache: [],
     lastMessageAt: 0,
+    activeCombatGroup: null,
     voiceProfiles: Array.from({ length: 20 }, (_, i) => ({
         id: `${i < 10 ? 'boy' : 'girl'}-${(i % 10) + 1}`,
         label: `${i < 10 ? 'Boy' : 'Girl'} Voice ${(i % 10) + 1}`,
@@ -340,6 +341,56 @@ const OnlineSystem = {
         } catch (error) { window.Game.addNarrative(error.message, 'system'); return false; }
     },
 
+    async listOnlineHeroes() {
+        if (!this.ready) return [];
+        const since=new Date(Date.now()-10*60*1000).toISOString();
+        const {data,error}=await this.client.from('profiles').select('player_code,display_name,level,current_location,last_seen').gte('last_seen',since).order('last_seen',{ascending:false}).limit(30);
+        if(error){window.Game?.addNarrative?.(error.message,'system');return [];}return data||[];
+    },
+
+    async sendFeedback(kind,message) {
+        if(!this.ready||!message?.trim())return false;
+        const {error}=await this.client.from('game_feedback').insert({user_id:this.user.id,kind:kind==='bug'?'bug':'feedback',message:message.trim().slice(0,1000)});
+        if(error){window.Game.addNarrative(`Feedback could not be stored: ${error.message}`,'system');return false;}
+        window.Game.addNarrative('Thank you. Your report was securely stored.','treasure');return true;
+    },
+
+    async myBrotherhood() {
+        const {data,error}=await this.client.from('guild_members').select('role,guild:guilds(id,name,owner_id,rupees)').eq('user_id',this.user.id).limit(1).maybeSingle();
+        if(error) return null; return data;
+    },
+    async inviteBrotherhood(query) {
+        if(!this.requireLinked('invite heroes to a brotherhood'))return;
+        const [membership,target]=await Promise.all([this.myBrotherhood(),this.findProfile(query)]);
+        if(!membership?.guild||!target){window.Game.addNarrative('Brotherhood membership or target hero not found.','system');return;}
+        const {error}=await this.client.from('guild_invites').insert({guild_id:membership.guild.id,sender_id:this.user.id,receiver_id:target.id});
+        window.Game.addNarrative(error?error.message:`Brotherhood invitation sent to ${target.display_name}.`,error?'system':'npc');
+    },
+    async listBrotherhoodInvites() {
+        const {data,error}=await this.client.from('guild_invites').select('id,status,guild:guilds(id,name),sender:profiles!guild_invites_sender_id_fkey(display_name,player_code)').eq('receiver_id',this.user.id).eq('status','pending');
+        return error?[]:(data||[]);
+    },
+    async respondBrotherhoodInvite(id,accept=true) {
+        const {data:invite,error}=await this.client.from('guild_invites').select('id,guild_id').eq('id',id).eq('receiver_id',this.user.id).single();if(error)return;
+        await this.client.from('guild_invites').update({status:accept?'accepted':'rejected',updated_at:new Date().toISOString()}).eq('id',id);
+        if(accept)await this.client.from('guild_members').insert({guild_id:invite.guild_id,user_id:this.user.id,role:'member'});
+        window.Game.addNarrative(`Brotherhood invitation ${accept?'accepted':'rejected'}.`,'npc');
+    },
+
+    async createCombatGroup(name='Hero Combat Group') {
+        if(!this.requireLinked('create an online combat group'))return null;
+        const {data:g,error}=await this.client.from('combat_groups').insert({name:name.slice(0,40),owner_id:this.user.id}).select('*').single();if(error){window.Game.addNarrative(error.message,'system');return null;}
+        await this.client.from('combat_group_members').insert({group_id:g.id,user_id:this.user.id,role:'leader'});this.activeCombatGroup=g.id;window.Game.addNarrative(`Online combat group created: ${g.name}.`,'treasure');return g;
+    },
+    async inviteCombatGroup(query) {
+        if(!this.activeCombatGroup){const {data}=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).eq('role','leader').limit(1).maybeSingle();this.activeCombatGroup=data?.group_id;}
+        const target=await this.findProfile(query);if(!this.activeCombatGroup||!target){window.Game.addNarrative('Create a combat group and provide a valid Player ID.','system');return;}
+        const {error}=await this.client.from('combat_group_invites').insert({group_id:this.activeCombatGroup,sender_id:this.user.id,receiver_id:target.id});window.Game.addNarrative(error?error.message:`Combat-group invitation sent to ${target.display_name}.`,error?'system':'npc');
+    },
+    async listCombatGroupInvites(){const {data,error}=await this.client.from('combat_group_invites').select('id,status,group:combat_groups(id,name),sender:profiles!combat_group_invites_sender_id_fkey(display_name,player_code)').eq('receiver_id',this.user.id).eq('status','pending');return error?[]:(data||[]);},
+    async respondCombatGroupInvite(id,accept=true){const {data:i,error}=await this.client.from('combat_group_invites').select('id,group_id').eq('id',id).eq('receiver_id',this.user.id).single();if(error)return;await this.client.from('combat_group_invites').update({status:accept?'accepted':'rejected',updated_at:new Date().toISOString()}).eq('id',id);if(accept){await this.client.from('combat_group_members').insert({group_id:i.group_id,user_id:this.user.id,role:'member'});this.activeCombatGroup=i.group_id;}window.Game.addNarrative(`Combat-group invitation ${accept?'accepted':'rejected'}.`,'npc');},
+    async recordGroupAttack(monster,damage){if(!this.ready||!this.activeCombatGroup||damage<=0)return;await this.client.from('group_battle_actions').insert({group_id:this.activeCombatGroup,user_id:this.user.id,monster_name:monster,damage});},
+
     async createGuild(name) {
         if (!this.requireLinked('create a guild')) return null;
         const clean = name.trim().slice(0, 32);
@@ -370,16 +421,18 @@ const OnlineSystem = {
         this.messageCache=(data || []).reverse(); return this.messageCache;
     },
 
-    subscribe() {
+    async subscribe() {
         if (!this.client || this.subscription) return;
-        this.subscription = this.client.channel('black-sword-social')
-            .on('postgres_changes', { event:'INSERT', schema:'public', table:'messages' }, payload => {
-                this.refreshOpenSocial();
-                const message=payload.new;
-                if(message.sender_id!==this.user?.id && localStorage.getItem('black_sword_auto_speak')!=='false') this.speakText(message.body,message.voice_id||'boy-1');
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, () => this.refreshOpenSocial())
-            .subscribe();
+        const membershipResult=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).limit(1).maybeSingle();
+        const hasV6=!membershipResult.error;this.activeCombatGroup=membershipResult.data?.group_id||null;
+        let channel=this.client.channel('black-sword-social')
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=payload.new;if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')!=='false')this.speakText(m.body,m.voice_id||'boy-1');})
+            .on('postgres_changes',{event:'*',schema:'public',table:'friend_requests'},()=>this.refreshOpenSocial());
+        if(hasV6) channel=channel
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_battle_actions'},payload=>{const a=payload.new,g=window.Game;if(a.group_id!==this.activeCombatGroup||a.user_id===this.user?.id||!g?.state?.inCombat||!g.state.enemy)return;if(g.state.enemy.name.toLowerCase()!==String(a.monster_name).toLowerCase())return;g.state.enemy.hp-=a.damage;g.addNarrative(`⚔ Cooperative ally deals ${a.damage} damage to ${a.monster_name}!`,'combat');g.updateEnemyHUD();if(g.state.enemy.hp<=0)g.enemyDefeated();})
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'guild_invites'},()=>this.refreshOpenSocial())
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'combat_group_invites'},()=>this.refreshOpenSocial());
+        this.subscription=channel.subscribe();
     },
 
     refreshOpenSocial() {
