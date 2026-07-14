@@ -21,7 +21,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - ⚔️ Turn-Based Combat with spells and up to 3 fighting companions
 - 💬 Visible in-game Supabase chat with public/private messages and friend requests
 - 🔊 20 selectable spoken-chat profiles (10 boy/masculine, 10 girl/feminine), carried with messages
-- 🔄 Guest-to-existing-Google hero merge flow plus first-time identity linking
+- 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
+- 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
 - 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes
 - 🙏 Death sends every hero spirit to Auralis’s temple; prayer revives them with a 25% eligible carried-item penalty

@@ -47,6 +47,10 @@ This adds invitation-only brotherhood membership, online combat groups, shared b
 
 Run [`supabase/features_v7_private_ids.sql`](supabase/features_v7_private_ids.sql) to revoke public `player_code` reads. The owner retrieves their own code through a protected RPC; public social queries receive only hero names and safe gameplay fields. This section is already included in `apply_all_updates.sql`.
 
+## 7. Fix six-digit PIN recovery cryptography
+
+Run [`supabase/features_v8_recovery_fix.sql`](supabase/features_v8_recovery_fix.sql) if PIN recovery reports `crypt(text, text) does not exist`. It resolves Supabase's `extensions` schema explicitly. This fix is already included in the latest `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

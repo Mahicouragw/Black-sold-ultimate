@@ -1,7 +1,8 @@
 -- Sacred Realms v3: secure Player ID + PIN progress recovery.
 -- Run once in Supabase SQL Editor after schema.sql.
 
-create extension if not exists pgcrypto;
+create schema if not exists extensions;
+create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.player_recovery (
   owner_id uuid primary key references auth.users(id) on delete cascade,
@@ -26,7 +27,7 @@ revoke all on public.recovery_attempts from anon, authenticated;
 
 create or replace function public.set_player_recovery_pin(new_pin text, current_save jsonb default '{}'::jsonb)
 returns boolean
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public,extensions
 as $$
 declare code text;
 begin
@@ -35,7 +36,7 @@ begin
   select player_code into code from public.profiles where id = auth.uid();
   if code is null then raise exception 'Player profile not found'; end if;
   insert into public.player_recovery(owner_id, player_code, pin_hash, save_data, updated_at)
-  values(auth.uid(), code, crypt(new_pin, gen_salt('bf', 10)), coalesce(current_save, '{}'::jsonb), now())
+  values(auth.uid(), code, extensions.crypt(new_pin, extensions.gen_salt('bf', 10)), coalesce(current_save, '{}'::jsonb), now())
   on conflict(owner_id) do update set
     player_code=excluded.player_code, pin_hash=excluded.pin_hash,
     save_data=excluded.save_data, updated_at=now();
@@ -45,7 +46,7 @@ $$;
 
 create or replace function public.update_recovery_save(current_save jsonb)
 returns boolean
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public,extensions
 as $$
 begin
   if auth.uid() is null then return false; end if;
@@ -58,7 +59,7 @@ $$;
 -- Limits each authenticated guest session to five failures per 15-minute window.
 create or replace function public.recover_progress_with_pin(code text, supplied_pin text)
 returns jsonb
-language plpgsql security definer set search_path = public
+language plpgsql security definer set search_path = public,extensions
 as $$
 declare rec public.player_recovery%rowtype; tracker public.recovery_attempts%rowtype;
 begin
@@ -73,7 +74,7 @@ begin
     on conflict(caller_id) do update set attempts=0,window_started=now();
   end if;
   select * into rec from public.player_recovery where player_code=upper(trim(code));
-  if rec.owner_id is null or rec.pin_hash <> crypt(supplied_pin, rec.pin_hash) then
+  if rec.owner_id is null or rec.pin_hash <> extensions.crypt(supplied_pin, rec.pin_hash) then
     update public.recovery_attempts set attempts=attempts+1 where caller_id=auth.uid();
     raise exception 'Invalid Player ID or PIN';
   end if;

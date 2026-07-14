@@ -176,20 +176,16 @@ const OnlineSystem = {
 
     async signInGoogle() {
         if (!this.client) await this.init();
-        if (!this.client) { this.status = 'Online service is not connected.'; this.updateIndicators(); return; }
+        if (!this.client) { this.status='Online service is not connected.'; this.updateIndicators(); return; }
+        localStorage.setItem('black_sword_google_login_requested','true');
         if (this.linked) {
-            this.status = `Already signed in as ${this.profile?.display_name || 'a Google player'}.`;
+            this.status=`Restoring ${this.profile?.display_name || 'your Google account'} heroes…`;
             this.updateIndicators();
+            await this.cacheCloudSave(true);
             return;
         }
-        const { error } = await this.client.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: `${location.origin}${location.pathname}` }
-        });
-        if (error) {
-            this.status = `Google sign-in failed: ${error.message}`;
-            this.updateIndicators();
-        }
+        const {error}=await this.client.auth.signInWithOAuth({provider:'google',options:{redirectTo:`${location.origin}${location.pathname}`}});
+        if(error){localStorage.removeItem('black_sword_google_login_requested');this.status=`Google sign-in failed: ${error.message}`;this.updateIndicators();}
     },
 
     async mergeWithGoogle() {
@@ -245,9 +241,10 @@ const OnlineSystem = {
         return data;
     },
 
-    async cacheCloudSave() {
+    async cacheCloudSave(forceRestore = false) {
         if (!this.ready || !window.Game) return;
         try {
+            const loginRequested=forceRestore||localStorage.getItem('black_sword_google_login_requested')==='true';
             const cloud = await this.loadCloudSave();
             const payload = cloud?.save_data;
             let roster = payload?.heroes ? payload : (payload?.player ? { version:2, activeHeroId:'hero_cloud_legacy', heroes:{ hero_cloud_legacy:payload } } : { version:2, activeHeroId:null, heroes:{} });
@@ -263,8 +260,12 @@ const OnlineSystem = {
                 roster=merged; localStorage.removeItem('black_sword_merge_requested'); localStorage.removeItem('black_sword_pending_google_merge');
                 await this.saveGame(roster); this.status=`Online — Google linked; guest heroes merged successfully`;
             }
-            if (!Object.keys(roster.heroes || {}).length) return;
-            if (!window.Game.state.player || mergeRequested) {
+            if (!Object.keys(roster.heroes || {}).length) {
+                localStorage.removeItem('black_sword_google_login_requested');
+                this.status=this.linked?'Google account connected; no cloud heroes were found. Create the first hero.':'No cloud heroes were found.';
+                this.updateHeroEntryPoints(false);this.updateIndicators();return;
+            }
+            if (!window.Game.state.player || mergeRequested || loginRequested) {
                 localStorage.setItem(window.Game.state.rosterKey, JSON.stringify(roster));
                 const active = roster.heroes[roster.activeHeroId] || Object.values(roster.heroes)[0];
                 if (active) {
@@ -275,10 +276,23 @@ const OnlineSystem = {
                     }
                 }
                 window.Game.state.activeHeroId=roster.activeHeroId;
-                const button=document.getElementById('btn-continue'); if(button)button.disabled=false;
-                if(!mergeRequested)this.status=`Online — Google linked; ${Object.keys(roster.heroes).length} cloud hero${Object.keys(roster.heroes).length===1?'':'es'} found`;
+                if(loginRequested){window.Game.state.player=null;window.Game.state.inCombat=false;window.Game.state.enemy=null;}
+                this.updateHeroEntryPoints(true);
+                if(!mergeRequested)this.status=`Online — Google linked; restored ${Object.keys(roster.heroes).length} cloud hero${Object.keys(roster.heroes).length===1?'':'es'}`;
+                localStorage.removeItem('black_sword_google_login_requested');
+                this.updateIndicators();
+                if(loginRequested||forceRestore)window.Game.showHeroRoster();
             }
-        } catch (error) { console.warn('Cloud restore check failed:', error.message); }
+        } catch (error) { localStorage.removeItem('black_sword_google_login_requested');this.status=`Cloud restore failed: ${error.message}`;this.updateIndicators();console.warn('Cloud restore check failed:', error.message); }
+    },
+
+    updateHeroEntryPoints(hasRoster = null) {
+        let rosterCount=0;try{rosterCount=Object.keys(window.Game?.getRoster?.().heroes||{}).length;}catch{}
+        const available=hasRoster===null?rosterCount>0:Boolean(hasRoster);
+        const protectedRoster=available&&(this.linked||localStorage.getItem('black_sword_recovered_by_id')==='true');
+        const newButton=document.getElementById('btn-new');if(newButton)newButton.hidden=protectedRoster;
+        const continueButton=document.getElementById('btn-continue');if(continueButton)continueButton.disabled=!available;
+        const heroesButton=document.getElementById('btn-heroes');if(heroesButton)heroesButton.hidden=false;
     },
 
     async findProfile(query) {
@@ -448,9 +462,9 @@ const OnlineSystem = {
         if (titleStatus) titleStatus.textContent = `${activeName} • ${this.status}`;
         const signIn = document.getElementById('btn-google-signin');
         if (signIn) {
-            signIn.disabled = this.linked;
-            signIn.innerHTML = this.linked
-                ? '<span class="google-mark" aria-hidden="true">G</span> Google account connected'
+            signIn.disabled=false;
+            signIn.innerHTML=this.linked
+                ? '<span class="google-mark" aria-hidden="true">G</span> Restore Google Heroes'
                 : '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
         }
         const code = document.getElementById('settings-player-code');
@@ -464,6 +478,7 @@ const OnlineSystem = {
         const merge = document.getElementById('btn-google-merge');
         if (merge) merge.disabled = this.linked;
         this.populateVoiceSelectors();
+        this.updateHeroEntryPoints();
     },
 
     showSettings() {
