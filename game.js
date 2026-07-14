@@ -109,11 +109,11 @@ const Game = {
             return `<article class="hero-card ${id === roster.activeHeroId ? 'active' : ''}">
                 <h3>${this.escapeHTML(p.name || 'Unnamed Hero')}</h3>
                 <p>${this.escapeHTML(p.race || 'Unknown')} ${this.escapeHTML(p.class || 'Adventurer')} • Level ${p.level || 1}</p>
-                <p>Mode: ${p.mode === 'hardcore' ? 'Hardcore / Permadeath' : 'Standard / Non-permanent'}${p.permadead ? ' • PERMANENTLY FALLEN' : ''}</p>
+                <p>Mode: ${p.mode === 'archo' ? 'Archo / Permanent Hero' : p.mode === 'hardcore' ? 'Hardcore / Temple Revival' : 'Standard / Temple Revival'}${p.pendingTempleRevival ? ' • Spirit awaiting Auralis' : ''}</p>
                 <p>❤️ ${p.hp || 0}/${p.maxHp || 0} • ✨ ${p.mp || 0}/${p.maxMp || 0}</p>
                 <p>STR ${p.str || 0} • DEX ${p.dex || 0} • INT ${p.int || 0} • WIS ${p.wis || 0}</p>
                 <p>📍 ${this.escapeHTML(loc)}</p>
-                <button class="menu-btn" onclick="Game.playHero('${id}')" ${p.permadead ? 'disabled' : ''}>${p.permadead ? 'Permanently Fallen' : id === roster.activeHeroId ? 'Continue' : 'Play This Hero'}</button>
+                <button class="menu-btn" onclick="Game.playHero('${id}')">${p.pendingTempleRevival || p.permadead ? 'Walk Spirit to Temple' : id === roster.activeHeroId ? 'Continue' : 'Play This Hero'}</button>
                 <button class="menu-btn danger-btn" onclick="Game.deleteHero('${id}')">Delete Hero</button>
             </article>`;
         }).join('') : '<p class="system">No heroes yet. Create your first hero.</p>';
@@ -122,12 +122,14 @@ const Game = {
     },
 
     playHero(id) {
-        const roster = this.getRoster();
-        if (!roster.heroes[id] || roster.heroes[id].player?.permadead) return;
+        const roster = this.getRoster(),data=roster.heroes[id];
+        if (!data) return;
+        // Migrate previously fallen Hardcore heroes into the new temple-revival system.
+        if(data.player?.permadead){data.player.permadead=false;data.player.pendingTempleRevival=true;data.player.hp=0;data.location='grand_temple';}
         roster.activeHeroId = id;
         this.storeRoster(roster);
         this.state.activeHeroId = id;
-        localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[id]));
+        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
         this.continueGame();
     },
 
@@ -1570,7 +1572,7 @@ const Game = {
         this.addNarrative("travel [location] - Dimensional travel for 10 rupees", 'system');
         this.addNarrative("world - Print expanded-world totals", 'system');
         this.addNarrative("settings/account - Copy Player ID, link Google, cloud save, or set recovery PIN", 'system');
-        this.addNarrative("temple / pray [attribute] - Visit Auralis and receive blessings", 'system');
+        this.addNarrative("temple / pray [attribute] / pray revive - Blessings and divine death recovery", 'system');
         this.addNarrative("palace / palace ceremony - Required advancement after leveling", 'system');
         this.addNarrative("palace quest / train companion [name] / increase [attribute]", 'system');
         this.addNarrative("guild spells - Summoner/Hunter tutorial spell rewards", 'system');
@@ -1595,16 +1597,17 @@ const Game = {
 
     gameOver() {
         MusicSystem.playSFX('death');
-        const p=this.state.player,hardcore=p.mode==='hardcore';
-        if(hardcore){p.permadead=true;p.hp=0;this.addNarrative(`${p.name} has permanently fallen in Hardcore mode.`,'combat');}
-        else{p.hp=Math.ceil(p.maxHp/2);p.mp=Math.ceil(p.maxMp/2);p.gold=Math.max(0,p.gold-50);this.addNarrative(`${p.name} will revive with half HP/MP. The temple charges up to 50 rupees.`,'magic');}
+        const p=this.state.player;
+        p.permadead=false;p.pendingTempleRevival=true;p.hp=0;p.mp=0;
+        this.state.inCombat=false;this.state.enemy=null;this.state.location='grand_temple';
+        this.addNarrative(`${p.name}'s spirit is called to the Grand Temple. Walk there and pray to Auralis for revival.`,'magic');
         this.save();
         setTimeout(() => {
             document.getElementById('final-stats').innerHTML = `
-                <p>Mode: ${hardcore?'Hardcore / Permanent':'Standard / Non-permanent'}</p>
-                <p>${hardcore?'This hero cannot be revived. Delete or keep the fallen hero in Hero Management.':'Your hero has been revived and can continue.'}</p>
-                <p>Level: ${p.level}</p><p>Enemies Slain: ${this.state.kills}</p><p>Gold: ${p.gold}</p><p>Quests Completed: ${this.state.completedQuests.length}</p>`;
-            const retry=document.querySelector('#gameover-screen .menu-btn');if(retry){retry.disabled=hardcore;retry.textContent=hardcore?'Permanently Fallen':'Continue Revived Hero';}
+                <p>Mode: ${p.mode==='archo'?'Archo / Permanent Hero':p.mode==='hardcore'?'Hardcore':'Standard'}</p>
+                <p>Auralis is waiting at the Grand Temple. Revival will remove 25% of eligible carried item units and report only what was lost.</p>
+                <p>Level: ${p.level}</p><p>Enemies Slain: ${this.state.kills}</p><p>Quests Completed: ${this.state.completedQuests.length}</p>`;
+            const retry=document.querySelector('#gameover-screen .menu-btn');if(retry){retry.disabled=false;retry.textContent='Walk Spirit to Auralis Temple';retry.onclick=()=>{this.showScreen('game-screen');this.enterLocation('grand_temple');};}
             this.showScreen('gameover-screen');
         }, 1500);
     },
@@ -1685,7 +1688,7 @@ const Game = {
             this.state.player.armor ||= 'Traveler Clothes';
             this.state.player.defense ||= 1;
             this.state.player.spells ||= ['Minor Heal'];
-            if(this.state.player.permadead){this.showHeroRoster();return;}
+            if(this.state.player.permadead){this.state.player.permadead=false;this.state.player.pendingTempleRevival=true;this.state.player.hp=0;this.state.location='grand_temple';}
 
             this.showScreen('game-screen');
             this.enterLocation(this.state.location);

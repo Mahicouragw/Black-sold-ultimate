@@ -154,7 +154,7 @@
     Game.goPalace = function(){ this.enterLocation('royal_palace'); this.showSacredActions(); };
     Game.goEnchantery = function(){ this.enterLocation('arcane_enchantery'); this.showSacredActions(); };
     Game.showSacredActions = function() {
-        if (this.state.location==='grand_temple') this.addNarrative(`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health/magic".`, 'magic');
+        if (this.state.location==='grand_temple') this.addNarrative(this.state.player?.pendingTempleRevival?`🙏 ${GOD} is ready to revive your spirit. Type "pray" or "pray revive".`:`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health/magic".`, 'magic');
         if (this.state.location==='royal_palace') this.addNarrative('🏰 Type "palace ceremony", "palace quest", "train companion [name]", or "increase [attribute]".', 'system');
         if (this.state.location==='arcane_enchantery') this.addNarrative('✨ Type "enchantments" to browse or "enchant [item] [strength/dexterity/intelligence/wisdom/health/magic]".', 'magic');
     };
@@ -178,8 +178,22 @@
         if(equipped){if(key==='hp'){p.maxHp+=amount;p.hp+=amount;}else if(key==='mp'){p.maxMp+=amount;p.mp+=amount;}else p[key]+=amount;}
         this.addNarrative(`✨ Selvara binds ${attribute} +${amount} to ${item.name} for ${cost} rupees.`, 'green-light');MusicSystem.playSFX('magic');this.updateHUD();this.save();this.showEnchantments();
     };
+    Game.divineRevive=function(){
+        const p=this.state.player;if(this.state.location!=='grand_temple'){this.addNarrative('Your spirit must reach the Grand Temple first.','system');return;}if(!p.pendingTempleRevival){this.addNarrative(`${p.name} does not need divine revival.`,'system');return;}
+        const equipped=new Set([p.weapon,p.armor,p.accessory].filter(Boolean));
+        const eligible=this.state.inventory.filter(i=>i.quantity>0&&i.type!=='quest'&&!i.legendary&&!equipped.has(i.name));
+        const units=eligible.reduce((n,i)=>n+i.quantity,0),removeCount=units?Math.max(1,Math.ceil(units*.25)):0,lost={};
+        for(let n=0;n<removeCount;n++){const available=eligible.filter(i=>i.quantity>0);if(!available.length)break;const item=available[Math.floor(Math.random()*available.length)];item.quantity--;lost[item.name]=(lost[item.name]||0)+1;}
+        this.state.inventory=this.state.inventory.filter(i=>i.quantity>0);
+        const fraction=p.mode==='archo'?1:(p.mode==='hardcore'?0.25:0.5);p.hp=Math.max(1,Math.ceil(p.maxHp*fraction));p.mp=Math.ceil(p.maxMp*fraction);p.pendingTempleRevival=false;p.permadead=false;
+        const lostText=Object.entries(lost).map(([name,count])=>`${name} x${count}`).join(', ');
+        this.addNarrative(`Auralis revives ${p.name}.`,'green-light');
+        this.addNarrative(lostText?`Missing from inventory: ${lostText}.`:'Missing from inventory: nothing. No eligible carried items were available.','item');
+        MusicSystem.playSFX('heal');this.updateHUD();this.save();
+    };
     Game.pray = function(choice='') {
         if (this.state.location!=='grand_temple') { this.addNarrative('Travel to the Grand Temple first. Type "temple".', 'system'); return; }
+        if(this.state.player?.pendingTempleRevival){this.divineRevive();return;}
         const s=ensure(this), now=Date.now();
         if (now-s.lastPrayer >= 60*60*1000) { s.favor++; s.lastPrayer=now; this.addNarrative(`${GOD} receives your prayer. Divine favor is now ${s.favor}.`, 'green-light'); }
         else this.addNarrative(`${GOD} hears you, but favor can increase only once per hour.`, 'magic');
@@ -338,7 +352,7 @@
     Game.equipCompanion=function(compQuery,itemQuery){const c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase())),item=c?.inventory?.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase()));if(!c||!item||!['weapon','armor'].includes(item.type)){this.addNarrative('Companion or suitable carried equipment not found.','system');return;}if(item.type==='weapon'){c.weapon=item.name;c.attack+=(item.damage||0);}else{c.armor=item.name;c.maxHp+=(item.hp||item.defense||0);c.hp=c.maxHp;}this.addNarrative(`${c.name} equips ${item.name}.`,'treasure');this.save();};
     Game.sellItem=function(query){const loc=WorldData.locations[this.state.location],item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase()));if(!loc?.shop&&this.state.location!=='arcane_enchantery'){this.addNarrative('Sell items at a shop or enchantery.','system');return;}if(!item){this.addNarrative('You do not carry that item.','system');return;}const price=Math.max(1,Math.floor((item.value||item.damage||10)*.35));item.quantity--;if(item.quantity<=0)this.state.inventory.splice(this.state.inventory.indexOf(item),1);this.state.player.gold+=price;this.addNarrative(`Sold ${item.name} for ${price} rupees.`,'treasure');this.save();};
     Game.dismissCompanion=function(query){const i=this.state.companions.findIndex(c=>c.name.toLowerCase().includes(query.toLowerCase()));if(i<0){this.addNarrative('Companion not found.','system');return;}const [c]=this.state.companions.splice(i,1);this.state.combatGroup=this.state.combatGroup.filter(n=>n!==c.name);this.addNarrative(`${c.name} leaves your group.`,'npc');this.save();};
-    Game.reviveHero=function(){const p=this.state.player;if(p.mode==='hardcore'||p.permadead){this.addNarrative('Hardcore heroes cannot be revived after permanent death.','system');return;}if(p.hp>0){this.addNarrative(`${p.name} does not need revival.`,'system');return;}if(p.gold<100){this.addNarrative('Revival requires 100 rupees.','system');return;}p.gold-=100;p.hp=Math.ceil(p.maxHp/2);p.mp=Math.ceil(p.maxMp/2);this.addNarrative(`${p.name} is revived with half HP and MP.`,'green-light');this.updateHUD();this.save();};
+    Game.reviveHero=function(){const p=this.state.player;if(p.hp>0&&!p.pendingTempleRevival){this.addNarrative(`${p.name} does not need revival.`,'system');return;}p.pendingTempleRevival=true;if(this.state.location!=='grand_temple'){this.addNarrative('Walk the spirit to the Grand Temple, then type “pray revive”.','system');return;}this.divineRevive();};
 
     const oldCommand=Game.processCommand.bind(Game);
     Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();

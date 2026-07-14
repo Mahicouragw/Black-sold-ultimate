@@ -23,7 +23,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🔊 20 selectable spoken-chat profiles (10 boy/masculine, 10 girl/feminine), carried with messages
 - 🔄 Guest-to-existing-Google hero merge flow plus first-time identity linking
 - 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names
-- 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, and Hardcore/Permadeath modes
+- 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes
+- 🙏 Death sends every hero spirit to Auralis’s temple; prayer revives them with a 25% eligible carried-item penalty
 - 🤝 Invitation-only brotherhoods and online combat groups with shared realtime damage
 - 🧩 Hidden buttons, levers, locked doors, readable documents, and context-sensitive lists
 - 🗺️ Persistent player-created map notes and online-player presence
