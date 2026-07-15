@@ -188,7 +188,7 @@
     Game.divineRevive=function(){
         const p=this.state.player;if(this.state.location!=='grand_temple'){this.addNarrative('Your spirit must reach the Grand Temple first.','system');return;}if(!p.pendingTempleRevival){this.addNarrative(`${p.name} does not need divine revival.`,'system');return;}
         const equipped=new Set([p.weapon,p.armor,p.helmet,p.gloves,p.boots,p.accessory].filter(Boolean));
-        const eligible=this.state.inventory.filter(i=>i.quantity>0&&i.type!=='quest'&&!i.legendary&&!equipped.has(i.name));
+        const eligible=this.state.inventory.filter(i=>i.quantity>0&&!['quest','artifact'].includes(i.type)&&!i.legendary&&!equipped.has(i.name));
         const units=eligible.reduce((n,i)=>n+i.quantity,0),removeCount=units?Math.max(1,Math.ceil(units*.25)):0,lost={};
         for(let n=0;n<removeCount;n++){const available=eligible.filter(i=>i.quantity>0);if(!available.length)break;const item=available[Math.floor(Math.random()*available.length)];item.quantity--;lost[item.name]=(lost[item.name]||0)+1;}
         this.state.inventory=this.state.inventory.filter(i=>i.quantity>0);

@@ -225,8 +225,9 @@
 
             <!-- Command Input -->
             <div class="command-section">
-                <input type="text" id="cmd-input" placeholder="Type command..." autocomplete="off" aria-label="Command input">
-                <button id="btn-cmd" class="submit-btn">→</button>
+                <input type="text" id="cmd-input" placeholder="Type or speak a command..." autocomplete="off" aria-label="Command input">
+                <button id="btn-voice-command" class="submit-btn voice-command-btn" aria-label="Start voice command">🎙 Voice</button>
+                <button id="btn-cmd" class="submit-btn" aria-label="Send command">Send</button>
             </div>
 
             <!-- Action Bar -->
@@ -370,6 +371,13 @@
                     <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in & merge heroes</button>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
+                    <label for="voice-command-language">Voice-command language</label>
+                    <select id="voice-command-language">
+                        <option value="en-IN">English (India)</option><option value="en-US">English (US)</option>
+                        <option value="hi-IN">हिन्दी</option><option value="fr-FR">Français</option>
+                        <option value="de-DE">Deutsch</option><option value="es-ES">Español</option>
+                    </select>
+                    <div id="voice-command-status" class="settings-note">Voice commands are idle.</div>
                     <button id="btn-cloud-save" class="menu-btn">☁️ Save to Cloud</button>
                     <button id="btn-account-signout" class="menu-btn">Sign Out</button>
                 </div>
@@ -423,5 +431,6 @@
     <script src="equipment-sets.js"></script>
     <script src="housing-world-v5.js"></script>
     <script src="chat-rooms.js"></script>
+    <script src="voice-artifacts-maps.js"></script>
 </body>
 </html>

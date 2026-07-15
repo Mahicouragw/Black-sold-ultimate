@@ -59,6 +59,10 @@ Run [`supabase/features_v9_housing_drops.sql`](supabase/features_v9_housing_drop
 
 Run [`supabase/features_v10_chat_rooms.sql`](supabase/features_v10_chat_rooms.sql) to add four permanent public rooms, owner-only personal rooms, custom public/private rooms, room invitations, member limits, five/ten-minute activation, occupancy, creator deletion, room blacklists, messages, and Realtime subscriptions. This migration is included in `apply_all_updates.sql`.
 
+## 10. Enable community-created maps
+
+Run [`supabase/features_v11_community_maps.sql`](supabase/features_v11_community_maps.sql) to let linked heroes publish public or brotherhood-visible map markers with creator-only editing/deletion and Row Level Security. This migration is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

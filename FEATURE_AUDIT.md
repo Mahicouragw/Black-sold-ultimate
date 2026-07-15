@@ -26,8 +26,10 @@ This project implements general RPG mechanics documented publicly for the Alexa 
 | Puzzles and riddles | Guild Card Test, hidden buttons, levers, locked doors, documents |
 | Prayer | Temple of Auralis, favor, daily attribute/HP/MP choices |
 | Hero management | Six cloud-saved heroes, restart confirmation, revival |
-| Maps including player-created maps | Expanded world map plus persistent personal map notes |
-| Accessibility | Keyboard/text commands, ARIA live regions, text directions, no required images |
+| Maps including player-created maps | Expanded world map, personal notes, and secure community/brotherhood markers |
+| Voice-controlled play | Browser speech recognition with multilingual command aliases and typed fallback |
+| Powerful artifacts and secrets | Twelve original discoverable artifacts, identification, lore journal, and attunement |
+| Accessibility | Keyboard/text/voice commands, ARIA live regions, text directions, no required images |
 | Mission | Quest panel, Palace quests, tutorial and command aliases |
 | Use/eat/flee/goodbye/look/info | Implemented |
 | Filtered inventory and gold | `inventory weapon/armor/potion/item/gold` |

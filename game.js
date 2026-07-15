@@ -1600,6 +1600,9 @@ const Game = {
         this.addNarrative("buy house; house status; pay house tax; storage (inside owned Storage Room)", 'system');
         this.addNarrative("shop; list shop; buy [quantity] [item]; examine/compare [item]", 'system');
         this.addNarrative("chat rooms; join room [name] - Public, French, personal, and custom rooms", 'system');
+        this.addNarrative("identify/attune/unattune [artifact]; artifact journal", 'system');
+        this.addNarrative("publish map Title | note; community map; delete map marker [number]", 'system');
+        this.addNarrative("Voice button - Speak one command in the selected language", 'system');
     },
 
     closePanels() {

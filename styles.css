@@ -492,6 +492,9 @@ kbd {
     background: var(--accent);
     color: var(--bg-dark);
 }
+.voice-command-btn { min-width:88px; font-size:.85rem; background:var(--magic); color:#fff; }
+.voice-command-btn:focus { box-shadow:0 0 14px rgba(106,90,205,.55); }
+#voice-command-language { padding:10px; color:var(--text); background:var(--bg-dark); border:1px solid var(--secondary); border-radius:6px; font-family:inherit; }
 
 /* Action Bar */
 .action-bar {

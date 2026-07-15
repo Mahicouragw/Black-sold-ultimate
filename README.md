@@ -35,7 +35,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🙏 Death sends every hero spirit to Auralis’s temple; prayer revives them with a 25% eligible carried-item penalty
 - 🤝 Invitation-only brotherhoods and online combat groups with shared realtime damage
 - 🧩 Hidden buttons, levers, locked doors, readable documents, and context-sensitive lists
-- 🗺️ Persistent player-created map notes and online-player presence
+- 🎙 Browser voice commands with English (India/US), Hindi, French, German, and Spanish aliases
+- 🏺 Twelve original artifacts with identification, lore journal, two-slot attunement, and passive bonuses
+- 🗺️ Personal notes plus secure public/brotherhood community map markers and online-player presence
 - 🧾 Filtered inventory/status commands, quantity trading, safe hero restart, and secure feedback
 - 🧙 Account hero roster with up to 6 independently saved heroes
 - 🧬 6 races and 8 classes with HP, MP, STR, DEX, INT, and WIS builds
@@ -95,6 +97,11 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `chat rooms`, `join room [name]` | Open or switch secure chat rooms |
 | Room panel | Create public/private rooms, set 2–200 users and 5/10-minute activation |
 | Room owner controls | Invite by hero name, blacklist, or delete a custom channel |
+| `identify/attune/unattune [artifact]` | Manage discovered artifacts |
+| `artifact journal` | Read identified artifact lore and active attunements |
+| `publish map Title \| note` | Publish a community map marker at the current location |
+| `community map` | Read shared markers at the current location |
+| Voice button | Speak one command using the selected language |
 | `help` | Show all commands |
 
 ## 🚀 Quick Deploy
