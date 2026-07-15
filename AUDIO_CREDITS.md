@@ -12,6 +12,11 @@ All audio bundled in `assets/audio/` comes from OpenGameArt and is released unde
 | `music/battle.ogg` | Battle RPG Theme Variation | Cleyton Kauffman | https://opengameart.org/content/boss-battle-theme | CC0 1.0 |
 | `music/boss.mp3` | Battle RPG Theme | Cleyton Kauffman | https://opengameart.org/content/boss-battle-theme | CC0 1.0 |
 | `music/victory.mp3` | Victory | celestialghost8 | https://opengameart.org/content/victory | CC0 1.0 |
+| `music/dark-forest.mp3` | Dark Forest Theme | cynicmusic | https://opengameart.org/content/dark-forest-theme | CC0 1.0 |
+| `music/battle-fast.wav` | Fast Fight / Battle Music (Looped) | Ville Nousiainen / XCVG | https://opengameart.org/content/fast-fight-battle-music-looped | CC0 1.0 |
+| `music/inn.mp3` | Medieval: The Old Tower Inn | RandomMind | https://opengameart.org/content/medieval-the-old-tower-inn | CC0 1.0 |
+| `music/Fantasy-Choir-1.mp3` | Fantasy Choir 1 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
+| `music/Fantasy-Choir-2.mp3` | Fantasy Choir 2 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
 
 ## Sound effects
 

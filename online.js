@@ -427,6 +427,18 @@ const OnlineSystem = {
         return data || [];
     },
 
+    async dropWorldItem(locationId,item) {
+        if(!this.ready)return false;const snapshot={...item};delete snapshot.quantity;
+        const {error}=await this.client.from('world_drops').insert({location_id:locationId,dropped_by:this.user.id,item_id:item.id,item_snapshot:snapshot,quantity:1});
+        if(error){window.Game?.addNarrative?.(`Public drop unavailable: ${error.message}`,'system');return false;}return true;
+    },
+    async listWorldDrops(locationId) {
+        if(!this.ready)return[];const {data,error}=await this.client.from('world_drops').select('id,item_id,item_snapshot,quantity,created_at').eq('location_id',locationId).gt('expires_at',new Date().toISOString()).order('created_at',{ascending:false}).limit(100);return error?[]:(data||[]);
+    },
+    async takeWorldDrop(id) {
+        if(!this.ready)return null;const {data,error}=await this.client.rpc('take_world_drop',{drop_uuid:id});if(error){window.Game?.addNarrative?.(error.message,'system');return null;}return data;
+    },
+
     async listMessages() {
         if (!this.ready) return [];
         const { data, error } = await this.client.from('messages')

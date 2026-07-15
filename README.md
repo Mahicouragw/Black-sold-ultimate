@@ -25,9 +25,12 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
 - 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes
-- 🙏 Temple, Palace, and Enchantery are physical city locations with no dashboard teleport shortcuts
+- 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no dashboard teleport shortcuts
+- 🏠 Purchasable private eight-room houses, seven-day property tax, owner-only storage, and public outdoor drops
+- 🌾 Distinct plains, rivers, farms, graveyards, mountain roads and hostile tundra routes
 - 🛒 Quantity-based shop lists with item counts and Buy, Examine, and Compare actions
 - 🧰 Six equipment slots and four original armor/weapon sets with 2/4/6-piece bonuses
+- 🎼 Location-specific CC0 town, inn, forest, temple, palace, exploration, dungeon and varied battle music
 - 🙏 Death sends every hero spirit to Auralis’s temple; prayer revives them with a 25% eligible carried-item penalty
 - 🤝 Invitation-only brotherhoods and online combat groups with shared realtime damage
 - 🧩 Hidden buttons, levers, locked doors, readable documents, and context-sensitive lists

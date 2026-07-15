@@ -20,9 +20,14 @@ const MusicSystem = {
 
     music: {
         town: { src: 'assets/audio/music/town.mp3', loop: true, title: 'Town' },
+        inn: { src: 'assets/audio/music/inn.mp3', loop: true, title: 'The Old Tower Inn' },
         exploration: { src: 'assets/audio/music/exploration.mp3', loop: true, title: 'Unexplored Expansion' },
+        darkForest: { src: 'assets/audio/music/dark-forest.mp3', loop: true, title: 'Dark Forest Theme' },
+        temple: { src: 'assets/audio/music/Fantasy-Choir-1.mp3', loop: true, title: 'Fantasy Choir I' },
+        palace: { src: 'assets/audio/music/Fantasy-Choir-2.mp3', loop: true, title: 'Fantasy Choir II' },
         dungeon: { src: 'assets/audio/music/dungeon.ogg', loop: true, title: 'Loopable Dungeon Ambience' },
         battle: { src: 'assets/audio/music/battle.ogg', loop: true, title: 'Battle RPG Theme Variation' },
+        battleFast: { src: 'assets/audio/music/battle-fast.wav', loop: true, title: 'Fast Fight Battle Loop' },
         boss: { src: 'assets/audio/music/boss.mp3', loop: true, title: 'Battle RPG Theme' },
         victory: { src: 'assets/audio/music/victory.mp3', loop: false, title: 'Victory' }
     },
@@ -67,11 +72,15 @@ const MusicSystem = {
     },
 
     resolveTrack(locationType) {
+        if (locationType === 'combat' || locationType === 'battle') return Math.random() < 0.5 ? 'battle' : 'battleFast';
         const trackMap = {
             city: 'town',
-            tavern: 'town',
+            tavern: 'inn',
+            inn: 'inn',
+            temple: 'temple',
+            palace: 'palace',
             kaliwasch: 'town',
-            forest: 'exploration',
+            forest: 'darkForest',
             wilderness: 'exploration',
             mountains: 'exploration',
             swamp: 'dungeon',

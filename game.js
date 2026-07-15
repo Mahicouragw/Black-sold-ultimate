@@ -1509,6 +1509,10 @@ const Game = {
  [10 Villages / 60 sites]         [30 Capital Districts] [96 Realms]
           |
  [Aurora City: 30]--[Ironspire: 30]--[Seabreeze: 30]
+       |                   |                 |
+ [Private Houses]   [Estate Agents]    [Private Houses]
+                                             |
+ [Plains]--[Rivers]--[Farms]--[Graveyards]--[Mountain Roads]--[Tundra]
                                              |
                     [Southern Swamp]--[Dungeon Entrance]
                                              |       \\
@@ -1589,6 +1593,8 @@ const Game = {
         this.addNarrative("list; status health/skills/magic/attributes/armor; read/press/use lever", 'system');
         this.addNarrative("online heroes; create/invite brotherhood; create/invite combat group", 'system');
         this.addNarrative("mark map [note]; map notes; feedback [text]; report bug [text]", 'system');
+        this.addNarrative("buy house; house status; pay house tax; storage (inside owned Storage Room)", 'system');
+        this.addNarrative("shop; list shop; buy [quantity] [item]; examine/compare [item]", 'system');
     },
 
     closePanels() {

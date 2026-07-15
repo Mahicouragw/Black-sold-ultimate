@@ -51,6 +51,10 @@ Run [`supabase/features_v7_private_ids.sql`](supabase/features_v7_private_ids.sq
 
 Run [`supabase/features_v8_recovery_fix.sql`](supabase/features_v8_recovery_fix.sql) if PIN recovery reports `crypt(text, text) does not exist`. It resolves Supabase's `extensions` schema explicitly. This fix is already included in the latest `apply_all_updates.sql`.
 
+## 8. Enable public dropped items
+
+Run [`supabase/features_v9_housing_drops.sql`](supabase/features_v9_housing_drops.sql) so items dropped outside private houses become location-based public loot that another online player may take. This migration is already included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

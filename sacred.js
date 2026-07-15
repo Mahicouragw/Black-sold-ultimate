@@ -13,12 +13,12 @@
     ];
 
     WorldData.locations.grand_temple = {
-        name: 'Grand Temple of Auralis', safe: true, music: 'city', enemies: [], items: [],
+        name: 'Grand Temple of Auralis', safe: true, music: 'temple', enemies: [], items: [],
         exits: { west: 'kaliwasch_district_9' }, features: ['altar of five flames','prayer circle','blessing font'],
         description: `Five colored flames illuminate the Grand Temple. ${GOD} listens to sincere prayers and rewards faithful heroes with divine attributes.`
     };
     WorldData.locations.royal_palace = {
-        name: 'Royal Palace of Kandor', safe: true, music: 'city', enemies: [], items: [],
+        name: 'Royal Palace of Kandor', safe: true, music: 'palace', enemies: [], items: [],
         exits: { west: 'kaliwasch_district_11' }, features: ['royal quest board','companion academy','hall of attributes'],
         description: 'The Royal Palace issues quests to every hero. The Companion Academy trains loyal allies whenever their hero earns a new level.'
     };
@@ -99,8 +99,6 @@
       <button id="btn-set-recovery-pin" class="menu-btn">🔐 Save Recovery PIN</button>`);
     document.getElementById('game-screen').insertAdjacentHTML('beforeend', `
       <div id="storage-panel" class="panel hidden" aria-label="Item storage and ground loot"><h3>📦 Item Storage & Ground Loot</h3><div id="storage-content"></div><button class="menu-btn close-btn" onclick="this.parentElement.classList.add('hidden')">Close</button></div>`);
-    document.querySelector('.action-btns').insertAdjacentHTML('beforeend', `
-      <button class="action-btn" data-sacred="storage">📦 Storage</button>`);
 
     const oldCreate = Game.createCharacter.bind(Game);
     Game.createCharacter = function(isMulti) {
@@ -154,14 +152,14 @@
         }
     };
 
-    Game.walkToLandmark=function(target,entry,label,northSteps){
+    Game.walkToLandmark=function(target,entry,label,route){
         if(this.state.location===target){this.showSacredActions();return;}
-        if(this.state.location===entry){this.move('east');return;}
-        this.addNarrative(`${label} is a physical location. From Kaliwasch go Down, then North ${northSteps} time${northSteps===1?'':'s'}, then East. No dashboard shortcut is available.`,'location');
+        if(this.state.location===entry){this.move('up');return;}
+        this.addNarrative(`${label} is a physical location. From Kaliwasch: ${route}, then Up through its door. No dashboard shortcut is available.`,'location');
     };
-    Game.goTemple = function(){ this.walkToLandmark('grand_temple','kaliwasch_district_9','Grand Temple of Auralis',8); };
-    Game.goPalace = function(){ this.walkToLandmark('royal_palace','kaliwasch_district_11','Royal Palace',10); };
-    Game.goEnchantery = function(){ this.walkToLandmark('arcane_enchantery','kaliwasch_district_17','Five-Runes Enchantery',16); };
+    Game.goTemple = function(){ this.walkToLandmark('grand_temple','kaliwasch_district_9','Grand Temple of Auralis','Down, East three times, South'); };
+    Game.goPalace = function(){ this.walkToLandmark('royal_palace','kaliwasch_district_11','Royal Palace','Down, South twice'); };
+    Game.goEnchantery = function(){ this.walkToLandmark('arcane_enchantery','kaliwasch_district_17','Five-Runes Enchantery','Down, South three times, East'); };
     Game.showSacredActions = function() {
         if (this.state.location==='grand_temple') this.addNarrative(this.state.player?.pendingTempleRevival?`🙏 ${GOD} is ready to revive your spirit. Type "pray" or "pray revive".`:`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health/magic".`, 'magic');
         if (this.state.location==='royal_palace') this.addNarrative('🏰 Type "palace ceremony", "palace quest", "train companion [name]", or "increase [attribute]".', 'system');
