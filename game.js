@@ -1339,6 +1339,7 @@ const Game = {
         const [requests, messages, brotherhoodInvites, combatInvites] = await Promise.all([OnlineSystem.listFriendRequests(), OnlineSystem.listMessages(), OnlineSystem.listBrotherhoodInvites(), OnlineSystem.listCombatGroupInvites()]);
         this._brotherhoodInvites=brotherhoodInvites; this._combatInvites=combatInvites;
         const incoming = requests.filter(r => r.receiver_id === OnlineSystem.user.id && r.status === 'pending');
+        const outgoing = requests.filter(r => r.sender_id === OnlineSystem.user.id && r.status === 'pending');
         const accepted = requests.filter(r => r.status === 'accepted').map(r => r.sender_id === OnlineSystem.user.id ? r.receiver : r.sender).filter(Boolean);
         const companions = this.state.companions;
         content.innerHTML = `
@@ -1346,7 +1347,8 @@ const Game = {
             <p>${OnlineSystem.linked ? '✅ Google linked — chat, friends, guilds and cloud identity unlocked.' : '💬 Guest mode — chat is available. Link Google for friend requests, guilds and cross-device identity.'}</p>
             <h4>Incoming requests</h4>
             <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')}</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
-            <h4>Friends</h4><p>${accepted.length ? accepted.map(f => this.escapeHTML(f.display_name)).join(', ') : 'No accepted friends yet.'}</p>
+            <h4>Sent Requests</h4><p>${outgoing.length ? outgoing.map(r => this.escapeHTML(r.receiver?.display_name||'Hero')).join(', ') : 'None pending.'}</p>
+            <h4>Friends (${accepted.length})</h4><p>${accepted.length ? accepted.map(f => this.escapeHTML(f.display_name)).join(', ') : 'No accepted friends yet.'}</p>
             <h4>Brotherhood Invitations</h4>${brotherhoodInvites.length?brotherhoodInvites.map((x,i)=>`<div class="social-row"><span>${this.escapeHTML(x.guild?.name||'Brotherhood')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondBrotherhoodInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat companions (${companions.length}/3)</h4>

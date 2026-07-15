@@ -10,6 +10,9 @@ const OnlineSystem = {
     messageCache: [],
     lastMessageAt: 0,
     activeCombatGroup: null,
+    suggestionResults: {},
+    selectedHeroTarget: null,
+    searchTimer: null,
     voiceProfiles: Array.from({ length: 20 }, (_, i) => ({
         id: `${i < 10 ? 'boy' : 'girl'}-${(i % 10) + 1}`,
         label: `${i < 10 ? 'Boy' : 'Girl'} Voice ${(i % 10) + 1}`,
@@ -22,6 +25,7 @@ const OnlineSystem = {
     async init() {
         if (this.ready) return;
         this.populateVoiceSelectors();
+        this.setupHeroAutocomplete();
         const config = window.SUPABASE_CONFIG;
         if (!config || !window.supabase?.createClient) {
             this.status = 'Offline mode — online library unavailable';
@@ -127,6 +131,33 @@ const OnlineSystem = {
 
     testSelectedVoice() { this.speakText(`This is ${this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label || 'your selected voice'} in Black Sword chat.`); },
     speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m)this.speakText(`${m.sender?.display_name || 'Hero'} says: ${m.body}`,m.voice_id||'boy-1'); },
+
+    setupHeroAutocomplete() {
+        ['social-name','room-player-name'].forEach(inputId=>{
+            const input=document.getElementById(inputId);if(!input||input.dataset.autocompleteReady)return;
+            input.dataset.autocompleteReady='true';input.setAttribute('autocomplete','off');input.setAttribute('role','combobox');input.setAttribute('aria-autocomplete','list');
+            const box=document.createElement('div');box.id=`${inputId}-suggestions`;box.className='hero-suggestions hidden';box.setAttribute('role','listbox');input.insertAdjacentElement('afterend',box);
+            input.addEventListener('input',()=>{this.selectedHeroTarget=null;clearTimeout(this.searchTimer);this.searchTimer=setTimeout(()=>this.searchHeroNames(inputId,input.value),250);});
+            input.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();box.querySelector('button')?.focus();}if(e.key==='Escape')box.classList.add('hidden');});
+        });
+    },
+
+    async searchHeroNames(inputId, query) {
+        const box=document.getElementById(`${inputId}-suggestions`),clean=query.trim().replace(/[%_]/g,'');if(!box)return;
+        if(clean.length<2||!this.ready){box.classList.add('hidden');box.innerHTML='';return;}
+        const {data,error}=await this.client.from('profiles').select('id,display_name,level,current_location,last_seen').ilike('display_name',`%${clean}%`).neq('id',this.user.id).order('last_seen',{ascending:false}).limit(8);
+        if(error){box.innerHTML='<p>Name suggestions are temporarily unavailable.</p>';box.classList.remove('hidden');return;}
+        this.suggestionResults[inputId]=data||[];
+        if(!data?.length){box.innerHTML=`<p>No hero name matches “${window.Game?.escapeHTML(clean)||clean}”.</p>`;box.classList.remove('hidden');return;}
+        box.innerHTML=data.map((hero,index)=>{const online=Date.now()-new Date(hero.last_seen).getTime()<10*60*1000;return `<div class="hero-suggestion" role="option"><button onclick="OnlineSystem.chooseHeroSuggestion('${inputId}',${index})"><strong>${Game.escapeHTML(hero.display_name)}</strong><small>Level ${hero.level} • ${Game.escapeHTML(hero.current_location||'Unknown')} • ${online?'Online':'Offline'}</small></button>${inputId==='social-name'?`<button class="suggestion-friend" onclick="OnlineSystem.sendFriendFromSuggestion('${inputId}',${index})">Add Friend</button>`:''}</div>`;}).join('');box.classList.remove('hidden');
+    },
+
+    chooseHeroSuggestion(inputId,index) {
+        const hero=this.suggestionResults[inputId]?.[index],input=document.getElementById(inputId),box=document.getElementById(`${inputId}-suggestions`);if(!hero||!input)return;
+        input.value=hero.display_name;this.selectedHeroTarget=hero;if(box)box.classList.add('hidden');input.focus();
+    },
+
+    async sendFriendFromSuggestion(inputId,index) { this.chooseHeroSuggestion(inputId,index);const hero=this.suggestionResults[inputId]?.[index];if(hero)await this.sendFriendRequest(hero.display_name); },
 
     async loadProfile(retry = true) {
         let { data, error } = await this.client.rpc('get_my_profile');
@@ -300,6 +331,7 @@ const OnlineSystem = {
     async findProfile(query) {
         if (!this.ready) return null;
         const clean=query.trim();
+        if(this.selectedHeroTarget&&this.selectedHeroTarget.display_name.toLowerCase()===clean.toLowerCase())return this.selectedHeroTarget;
         if(/^KND-/i.test(clean)) throw new Error('Player IDs are private login/recovery credentials. Search using the exact hero name.');
         let {data,error}=await this.client.rpc('find_heroes_by_name',{hero_name:clean});
         if(error&&/find_heroes_by_name|schema cache|function/i.test(error.message||'')) ({data,error}=await this.client.from('profiles').select('id,display_name,level,current_location,last_seen').ilike('display_name',clean).limit(5));
