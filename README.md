@@ -19,8 +19,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛒 24 location shops using rupees
 - 👥 Multiplayer Pass & Play (2-4 players)
 - ⚔️ Turn-Based Combat with spells and up to 3 fighting companions
-- 💬 Visible in-game Supabase chat with public/private messages and friend requests
-- 🔊 20 selectable spoken-chat profiles (10 boy/masculine, 10 girl/feminine), carried with messages
+- 💬 Four permanent public chat rooms, owner-only personal rooms, and custom public/private channels
+- 🛡️ Room invitations, member limits, owner deletion, blacklists, occupancy counts, and 5/10-minute permanent activation
+- 🔊 20 selectable spoken-chat profiles with sender-name announcements and French-room pronunciation
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
 - 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names
@@ -91,6 +92,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `give/take [item] to/from [companion]` | Transfer companion equipment |
 | `watch/view/examine [target]` | Inspect monsters, companions, or items |
 | `mission`, `hero management`, `revive hero` | Quests, hero roster, and revival |
+| `chat rooms`, `join room [name]` | Open or switch secure chat rooms |
+| Room panel | Create public/private rooms, set 2–200 users and 5/10-minute activation |
+| Room owner controls | Invite by hero name, blacklist, or delete a custom channel |
 | `help` | Show all commands |
 
 ## 🚀 Quick Deploy

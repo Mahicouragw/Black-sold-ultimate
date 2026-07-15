@@ -106,19 +106,21 @@ const OnlineSystem = {
         ['chat-voice','settings-chat-voice'].forEach(selectId => { const el=document.getElementById(selectId); if(el) el.value=id; });
     },
 
-    speakText(text, voiceId = this.selectedVoice) {
+    speakText(text, voiceId = this.selectedVoice, language = 'en-US') {
         if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) {
             window.Game?.addNarrative?.('Spoken chat is not supported by this browser.', 'system'); return;
         }
         const profile = this.voiceProfiles.find(v => v.id === voiceId) || this.voiceProfiles[0];
         const utterance = new SpeechSynthesisUtterance(String(text).slice(0, 300));
-        utterance.pitch = profile.pitch; utterance.rate = profile.rate; utterance.volume = 0.9;
+        utterance.pitch = profile.pitch; utterance.rate = profile.rate; utterance.volume = 0.9; utterance.lang = language;
         const voices = speechSynthesis.getVoices();
         const boyHints=['male','david','daniel','george','james','ravi','microsoft mark'];
         const girlHints=['female','zira','samantha','victoria','karen','veena','google uk english female'];
         const hints = profile.id.startsWith('girl') ? girlHints : boyHints;
-        const preferred = voices.filter(v => hints.some(h => v.name.toLowerCase().includes(h)));
-        const pool = preferred.length ? preferred : voices;
+        const languageVoices=voices.filter(v=>v.lang?.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+        const basePool=languageVoices.length?languageVoices:voices;
+        const preferred = basePool.filter(v => hints.some(h => v.name.toLowerCase().includes(h)));
+        const pool = preferred.length ? preferred : basePool;
         if (pool.length) utterance.voice = pool[profile.voiceIndex % pool.length];
         speechSynthesis.cancel(); speechSynthesis.speak(utterance);
     },

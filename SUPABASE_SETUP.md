@@ -55,6 +55,10 @@ Run [`supabase/features_v8_recovery_fix.sql`](supabase/features_v8_recovery_fix.
 
 Run [`supabase/features_v9_housing_drops.sql`](supabase/features_v9_housing_drops.sql) so items dropped outside private houses become location-based public loot that another online player may take. This migration is already included in `apply_all_updates.sql`.
 
+## 9. Enable secure chat rooms
+
+Run [`supabase/features_v10_chat_rooms.sql`](supabase/features_v10_chat_rooms.sql) to add four permanent public rooms, owner-only personal rooms, custom public/private rooms, room invitations, member limits, five/ten-minute activation, occupancy, creator deletion, room blacklists, messages, and Realtime subscriptions. This migration is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

@@ -236,7 +236,8 @@
                     <button class="action-btn" data-cmd="stats">📊 Stats</button>
                     <button class="action-btn" data-cmd="map">🗺️ Map</button>
                     <button class="action-btn" data-cmd="quests">📜 Quests</button>
-                    <button class="action-btn chat-action" data-cmd="chat">💬 Chat & Friends</button>
+                    <button class="action-btn chat-action" data-cmd="chat rooms">💬 Chat Rooms</button>
+                    <button class="action-btn" data-cmd="chat">🤝 Friends & Direct Chat</button>
                     <button class="action-btn" data-cmd="online heroes">👥 Online Heroes</button>
                     <button class="action-btn" data-cmd="guild">🏰 Guild</button>
                     <button class="action-btn" data-cmd="shop">🛒 Shop</button>
@@ -306,6 +307,28 @@
                     <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)">
                     <button id="btn-social-send" class="menu-btn">Send Message / Request</button>
                 </div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Secure Chat Rooms -->
+            <div id="chat-rooms-panel" class="panel hidden wide-panel" aria-label="Public and private chat rooms">
+                <h3>💬 Chat Rooms</h3>
+                <div class="chat-room-layout">
+                    <aside><button id="btn-refresh-rooms" class="menu-btn">Refresh Rooms</button><div id="chat-room-list"></div></aside>
+                    <section>
+                        <div id="active-room-info" class="settings-note">Choose a room.</div>
+                        <div id="room-message-log" class="chat-log room-log" aria-live="polite"></div>
+                        <div class="social-compose"><input id="room-message-input" maxlength="300" placeholder="Message"><button id="btn-send-room-message" class="menu-btn">Send</button></div>
+                    </section>
+                </div>
+                <details class="room-create"><summary>Create a custom room</summary>
+                    <input id="new-room-name" maxlength="40" placeholder="Room name">
+                    <select id="new-room-visibility"><option value="public">Public</option><option value="private">Private / invited members</option></select>
+                    <label>Maximum users <input id="new-room-limit" type="number" min="2" max="200" value="20"></label>
+                    <label>Activation stay <select id="new-room-wait"><option value="5">5 minutes</option><option value="10">10 minutes</option></select></label>
+                    <button id="btn-create-room" class="menu-btn primary">Create Room</button>
+                </details>
+                <div class="room-owner-actions"><input id="room-player-name" maxlength="40" placeholder="Exact hero name"><button id="btn-room-invite">Invite</button><button id="btn-room-blacklist">Blacklist</button><button id="btn-delete-room">Delete My Room</button></div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
 
@@ -388,5 +411,6 @@
     <script src="alexa-parity.js"></script>
     <script src="equipment-sets.js"></script>
     <script src="housing-world-v5.js"></script>
+    <script src="chat-rooms.js"></script>
 </body>
 </html>

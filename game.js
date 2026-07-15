@@ -1595,6 +1595,7 @@ const Game = {
         this.addNarrative("mark map [note]; map notes; feedback [text]; report bug [text]", 'system');
         this.addNarrative("buy house; house status; pay house tax; storage (inside owned Storage Room)", 'system');
         this.addNarrative("shop; list shop; buy [quantity] [item]; examine/compare [item]", 'system');
+        this.addNarrative("chat rooms; join room [name] - Public, French, personal, and custom rooms", 'system');
     },
 
     closePanels() {
