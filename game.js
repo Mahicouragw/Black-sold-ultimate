@@ -1455,7 +1455,7 @@ const Game = {
             this.state.inventory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'inv-item';
-                const canEquip = ['weapon','armor','accessory'].includes(item.type);
+                const canEquip = ['weapon','armor','helmet','gloves','boots','accessory'].includes(item.type);
                 const canUse = ['heal','mana','both'].includes(item.effect);
                 div.innerHTML = `<span>${this.escapeHTML(item.name)} <small>${this.escapeHTML(item.type || '')}</small></span><span>x${item.quantity} ${canEquip ? `<button onclick="Game.equipItem('${this.escapeHTML(this.escapeJS(item.name))}')">Equip</button>` : canUse ? `<button onclick="Game.useItem('${this.escapeHTML(this.escapeJS(item.name))}')">Use</button>` : ''}</span>`;
                 list.appendChild(div);
@@ -1486,7 +1486,11 @@ const Game = {
             <div class="stat-row"><span>Gold:</span><span>${p.gold}</span></div>
             <div class="stat-row"><span>Weapon:</span><span>${p.weapon} (${p.weaponDamage || 0} damage)</span></div>
             <div class="stat-row"><span>Armor:</span><span>${p.armor || 'None'} (${p.defense || 0} defense)</span></div>
+            <div class="stat-row"><span>Helmet:</span><span>${p.helmet || 'None'}</span></div>
+            <div class="stat-row"><span>Gloves:</span><span>${p.gloves || 'None'}</span></div>
+            <div class="stat-row"><span>Boots:</span><span>${p.boots || 'None'}</span></div>
             <div class="stat-row"><span>Accessory:</span><span>${p.accessory || 'None'}</span></div>
+            <div class="stat-row"><span>Active Sets:</span><span>${p.activeSets?.join(', ') || 'None'}</span></div>
             <div class="stat-row"><span>Spells:</span><span>${p.spells.join(', ')}</span></div>
         `;
 

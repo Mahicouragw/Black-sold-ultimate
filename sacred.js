@@ -14,20 +14,24 @@
 
     WorldData.locations.grand_temple = {
         name: 'Grand Temple of Auralis', safe: true, music: 'city', enemies: [], items: [],
-        exits: { up: 'kaliwasch' }, features: ['altar of five flames','prayer circle','blessing font'],
+        exits: { west: 'kaliwasch_district_9' }, features: ['altar of five flames','prayer circle','blessing font'],
         description: `Five colored flames illuminate the Grand Temple. ${GOD} listens to sincere prayers and rewards faithful heroes with divine attributes.`
     };
     WorldData.locations.royal_palace = {
         name: 'Royal Palace of Kandor', safe: true, music: 'city', enemies: [], items: [],
-        exits: { up: 'kaliwasch' }, features: ['royal quest board','companion academy','hall of attributes'],
+        exits: { west: 'kaliwasch_district_11' }, features: ['royal quest board','companion academy','hall of attributes'],
         description: 'The Royal Palace issues quests to every hero. The Companion Academy trains loyal allies whenever their hero earns a new level.'
     };
     WorldData.locations.arcane_enchantery = {
         name: 'The Five-Runes Enchantery', safe: true, music: 'dungeon', enemies: [], items: [],
-        exits: { up: 'kaliwasch' }, features: ['rune forge','magic-point font','weapon appraisal desk'],
+        exits: { west: 'kaliwasch_district_17' }, features: ['rune forge','magic-point font','weapon appraisal desk'],
         description: 'Runes of strength, dexterity, intelligence, wisdom, health, and magic circle a smokeless forge. Enchanter Selvara can bind permanent bonuses to equipment.'
     };
     WorldData.locations.kaliwasch.features.push('Grand Temple of Auralis','Royal Palace','Five-Runes Enchantery');
+    // Landmarks are physical map locations, reached by walking through city districts.
+    WorldData.locations.kaliwasch_district_9.exits.east='grand_temple';
+    WorldData.locations.kaliwasch_district_11.exits.east='royal_palace';
+    WorldData.locations.kaliwasch_district_17.exits.east='arcane_enchantery';
 
     FOREST_MONSTERS.forEach(([name,hp,attack], i) => {
         WorldData.enemies[name] = {
@@ -96,7 +100,7 @@
     document.getElementById('game-screen').insertAdjacentHTML('beforeend', `
       <div id="storage-panel" class="panel hidden" aria-label="Item storage and ground loot"><h3>📦 Item Storage & Ground Loot</h3><div id="storage-content"></div><button class="menu-btn close-btn" onclick="this.parentElement.classList.add('hidden')">Close</button></div>`);
     document.querySelector('.action-btns').insertAdjacentHTML('beforeend', `
-      <button class="action-btn" data-sacred="pray">🙏 Pray</button><button class="action-btn" data-sacred="palace">🏰 Palace</button><button class="action-btn" data-sacred="enchant">✨ Enchant</button><button class="action-btn" data-sacred="storage">📦 Storage</button>`);
+      <button class="action-btn" data-sacred="storage">📦 Storage</button>`);
 
     const oldCreate = Game.createCharacter.bind(Game);
     Game.createCharacter = function(isMulti) {
@@ -150,9 +154,14 @@
         }
     };
 
-    Game.goTemple = function(){ this.enterLocation('grand_temple'); this.showSacredActions(); };
-    Game.goPalace = function(){ this.enterLocation('royal_palace'); this.showSacredActions(); };
-    Game.goEnchantery = function(){ this.enterLocation('arcane_enchantery'); this.showSacredActions(); };
+    Game.walkToLandmark=function(target,entry,label,northSteps){
+        if(this.state.location===target){this.showSacredActions();return;}
+        if(this.state.location===entry){this.move('east');return;}
+        this.addNarrative(`${label} is a physical location. From Kaliwasch go Down, then North ${northSteps} time${northSteps===1?'':'s'}, then East. No dashboard shortcut is available.`,'location');
+    };
+    Game.goTemple = function(){ this.walkToLandmark('grand_temple','kaliwasch_district_9','Grand Temple of Auralis',8); };
+    Game.goPalace = function(){ this.walkToLandmark('royal_palace','kaliwasch_district_11','Royal Palace',10); };
+    Game.goEnchantery = function(){ this.walkToLandmark('arcane_enchantery','kaliwasch_district_17','Five-Runes Enchantery',16); };
     Game.showSacredActions = function() {
         if (this.state.location==='grand_temple') this.addNarrative(this.state.player?.pendingTempleRevival?`🙏 ${GOD} is ready to revive your spirit. Type "pray" or "pray revive".`:`🙏 Pray to ${GOD}: type "pray" or "pray strength/dexterity/intelligence/wisdom/health/magic".`, 'magic');
         if (this.state.location==='royal_palace') this.addNarrative('🏰 Type "palace ceremony", "palace quest", "train companion [name]", or "increase [attribute]".', 'system');
@@ -180,7 +189,7 @@
     };
     Game.divineRevive=function(){
         const p=this.state.player;if(this.state.location!=='grand_temple'){this.addNarrative('Your spirit must reach the Grand Temple first.','system');return;}if(!p.pendingTempleRevival){this.addNarrative(`${p.name} does not need divine revival.`,'system');return;}
-        const equipped=new Set([p.weapon,p.armor,p.accessory].filter(Boolean));
+        const equipped=new Set([p.weapon,p.armor,p.helmet,p.gloves,p.boots,p.accessory].filter(Boolean));
         const eligible=this.state.inventory.filter(i=>i.quantity>0&&i.type!=='quest'&&!i.legendary&&!equipped.has(i.name));
         const units=eligible.reduce((n,i)=>n+i.quantity,0),removeCount=units?Math.max(1,Math.ceil(units*.25)):0,lost={};
         for(let n=0;n<removeCount;n++){const available=eligible.filter(i=>i.quantity>0);if(!available.length)break;const item=available[Math.floor(Math.random()*available.length)];item.quantity--;lost[item.name]=(lost[item.name]||0)+1;}
@@ -367,7 +376,9 @@
         if(['enchantment shop','enchantery','go enchantery','go enchantment shop'].includes(c)){this.goEnchantery();this.showEnchantments();return;}
         if(c==='enchantments'||c==='list enchantments'){this.showEnchantments();return;}
         if(c.startsWith('enchant ')){const parts=c.slice(8).split(' '),attr=parts.pop();this.enchantItem(parts.join(' '),attr);return;}
-        if(c==='out'&&['grand_temple','royal_palace','arcane_enchantery'].includes(this.state.location)){this.enterLocation('kaliwasch');return;}
+        if(c==='out'&&this.state.location==='grand_temple'){this.enterLocation('kaliwasch_district_9');return;}
+        if(c==='out'&&this.state.location==='royal_palace'){this.enterLocation('kaliwasch_district_11');return;}
+        if(c==='out'&&this.state.location==='arcane_enchantery'){this.enterLocation('kaliwasch_district_17');return;}
         if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace ceremony'||c==='advance hero'){this.palaceCeremony();return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
         if(c.startsWith('train companion ')){this.trainCompanionAtPalace(c.slice(16));return;}if(c.startsWith('increase ')){this.increaseAttribute(c.slice(9));return;}
         if(c==='card test'||c==='guild card test'){this.startCardTest();return;}if(c.startsWith('answer ')){this.answerCardTest(c.slice(7));return;}
@@ -382,7 +393,7 @@
         if(c.startsWith('read ')){this.addNarrative(`You read the ${c.slice(5)}. Its words hint at Auralis, the Palace, and dangers beyond Kaliwasch.`,'location');return;}
         if(c.startsWith('open ')){this.addNarrative(`You open or inspect the ${c.slice(5)}.`, 'system');return;}
         if(c.startsWith('say ')){this.talkToNPC();return;}if(c==='goodbye'){this.save();this.showScreen('title-screen');return;}
-        if(c==='what am i wearing'||c==='equipment'){const p=this.state.player;this.addNarrative(`Weapon: ${p.weapon||'none'}; armor: ${p.armor||'none'}; accessory: ${p.accessory||'none'}.`,'item');return;}
+        if(c==='what am i wearing'||c==='equipment'){const p=this.state.player;this.addNarrative(`Weapon: ${p.weapon||'none'}; armor: ${p.armor||'none'}; helmet: ${p.helmet||'none'}; gloves: ${p.gloves||'none'}; boots: ${p.boots||'none'}; accessory: ${p.accessory||'none'}; sets: ${p.activeSets?.join(', ')||'none'}.`,'item');return;}
         if(c.startsWith('sell ')){this.sellItem(c.slice(5));return;}if(c==='feedback'){this.addNarrative('Feedback: open the project repository or contact the game administrator.','system');return;}
         if(c==='revive hero'||c.startsWith('revive ')){this.reviveHero();return;}if(c.startsWith('recruit ')){this.inviteCompanion(c.slice(8));return;}if(c.startsWith('dismiss ')){this.dismissCompanion(c.slice(8));return;}
         const give=c.match(/^give (.+) to (.+)$/);if(give){this.giveItemToCompanion(give[1],give[2]);return;}

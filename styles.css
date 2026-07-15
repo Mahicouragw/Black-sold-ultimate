@@ -743,6 +743,13 @@ kbd {
     font-size: .82rem;
 }
 #shop-content { display: flex; flex-direction: column; gap: 8px; }
+.shop-summary { display:grid; gap:7px; padding:12px; background:var(--bg-dark); border:1px solid var(--primary); border-radius:8px; }
+.shop-summary button,.shop-actions button { padding:7px 10px; color:var(--text); background:var(--bg-light); border:1px solid var(--primary); border-radius:5px; cursor:pointer; }
+.shop-item-card { display:grid; gap:9px; padding:12px; background:var(--bg-dark); border-left:3px solid var(--secondary); border-radius:7px; }
+.shop-item-card strong,.shop-item-card small { display:block; }
+.shop-item-card small,.shop-item-card p { color:var(--text-dim); font-size:.82rem; }
+.shop-item-card select { padding:6px; color:var(--text); background:var(--bg-medium); border:1px solid var(--secondary); border-radius:5px; }
+.shop-actions { display:flex; flex-wrap:wrap; gap:7px; }
 .settings-card { display: flex; flex-direction: column; gap: 10px; }
 .settings-note {
     padding: 10px;

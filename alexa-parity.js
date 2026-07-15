@@ -14,7 +14,7 @@
     const oldContinue=Game.continueGame.bind(Game);Game.continueGame=function(){let data;try{const r=this.getRoster();data=r.heroes[r.activeHeroId]||JSON.parse(localStorage.getItem(this.state.saveKey));}catch{}oldContinue();this.state.parity=Object.assign(defaults(),data?.parity||{});};
 
     Game.showFilteredInventory=function(filter='all'){
-        const categories={weapon:i=>i.type==='weapon',weapons:i=>i.type==='weapon',armor:i=>i.type==='armor',armour:i=>i.type==='armor',potion:i=>i.type==='potion',potions:i=>i.type==='potion',food:i=>i.type==='food',items:i=>!['weapon','armor','potion','food'].includes(i.type),all:()=>true};
+        const armorTypes=['armor','helmet','gloves','boots'];const categories={weapon:i=>i.type==='weapon',weapons:i=>i.type==='weapon',armor:i=>armorTypes.includes(i.type),armour:i=>armorTypes.includes(i.type),potion:i=>i.type==='potion',potions:i=>i.type==='potion',food:i=>i.type==='food',items:i=>!['weapon','armor','helmet','gloves','boots','potion','food'].includes(i.type),all:()=>true};
         if(filter==='gold'){this.addNarrative(`You carry ${this.state.player.gold} rupees.`,'treasure');return;}
         const pred=categories[filter]||categories.all,items=this.state.inventory.filter(pred),list=document.getElementById('inv-list');list.innerHTML=items.length?items.map(i=>`<div class="inv-item"><span>${this.escapeHTML(i.name)} — ${this.escapeHTML(i.desc||'')}</span><span>x${i.quantity}</span></div>`).join(''):'<p>No matching items.</p>';document.getElementById('inventory-panel').classList.remove('hidden');
     };
