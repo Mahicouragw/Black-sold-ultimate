@@ -13,6 +13,8 @@ const OnlineSystem = {
     suggestionResults: {},
     selectedHeroTarget: null,
     searchTimer: null,
+    googleMergeRequested: false,
+    googleButtonInitialized: false,
     voiceProfiles: Array.from({ length: 20 }, (_, i) => ({
         id: `${i < 10 ? 'boy' : 'girl'}-${(i % 10) + 1}`,
         label: `${i < 10 ? 'Boy' : 'Girl'} Voice ${(i % 10) + 1}`,
@@ -210,38 +212,39 @@ const OnlineSystem = {
     async signInGoogle() {
         if (!this.client) await this.init();
         if (!this.client) { this.status='Online service is not connected.'; this.updateIndicators(); return; }
+        if(this.linked){localStorage.setItem('black_sword_google_login_requested','true');this.status=`Restoring ${this.profile?.display_name||'your Google account'} heroes…`;this.updateIndicators();await this.cacheCloudSave(true);return;}
+        this.openGoogleDialog(false);
+    },
+
+    openGoogleDialog(merge=false,retry=0) {
+        this.googleMergeRequested=merge;const panel=document.getElementById('google-login-panel'),status=document.getElementById('google-login-status');panel?.classList.remove('hidden');
+        if(!window.google?.accounts?.id){if(status)status.textContent='Loading Google sign-in…';if(retry<20)setTimeout(()=>this.openGoogleDialog(merge,retry+1),250);else if(status)status.textContent='Google sign-in could not load. Check browser tracking protection and internet access.';return;}
+        const config=window.SUPABASE_CONFIG;if(!this.googleButtonInitialized){google.accounts.id.initialize({client_id:config.googleClientId,callback:response=>this.handleGoogleCredential(response),auto_select:false,cancel_on_tap_outside:false,use_fedcm_for_prompt:true});this.googleButtonInitialized=true;}
+        const target=document.getElementById('google-signin-render');if(target){target.innerHTML='';google.accounts.id.renderButton(target,{theme:'outline',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:300});}
+        if(status)status.textContent=merge?'Sign in to the existing Google account; guest heroes will be merged.':'Sign in to restore the heroes linked to this Google account.';
+    },
+
+    async handleGoogleCredential(response) {
+        const status=document.getElementById('google-login-status');if(!response?.credential){if(status)status.textContent='Google did not return an identity token.';return;}
+        if(status)status.textContent='Google verified. Restoring cloud heroes…';
+        if(this.googleMergeRequested&&window.Game?.state?.player){localStorage.setItem('black_sword_pending_google_merge',JSON.stringify(window.Game.getCloudData()));localStorage.setItem('black_sword_merge_requested','true');}
         localStorage.setItem('black_sword_google_login_requested','true');
-        if (this.linked) {
-            this.status=`Restoring ${this.profile?.display_name || 'your Google account'} heroes…`;
-            this.updateIndicators();
-            await this.cacheCloudSave(true);
-            return;
-        }
-        const {error}=await this.client.auth.signInWithOAuth({provider:'google',options:{redirectTo:`${location.origin}${location.pathname}`}});
-        if(error){localStorage.removeItem('black_sword_google_login_requested');this.status=`Google sign-in failed: ${error.message}`;this.updateIndicators();}
+        const {data,error}=await this.client.auth.signInWithIdToken({provider:'google',token:response.credential});
+        if(error){localStorage.removeItem('black_sword_google_login_requested');if(status)status.textContent=`Google sign-in failed: ${error.message}`;return;}
+        this.user=data.user;this.linked=true;this.ready=true;await this.loadProfile();this.status='Google verified — restoring linked heroes';document.getElementById('google-login-panel')?.classList.add('hidden');await this.cacheCloudSave(true);this.updateIndicators();
     },
 
     async mergeWithGoogle() {
-        if (!this.client) await this.init();
-        if (!this.client) return;
-        if (window.Game?.state?.player) localStorage.setItem('black_sword_pending_google_merge', JSON.stringify(window.Game.getCloudData()));
-        localStorage.setItem('black_sword_merge_requested', 'true');
-        const { error } = await this.client.auth.signInWithOAuth({ provider:'google', options:{ redirectTo:`${location.origin}${location.pathname}` } });
-        if (error) { this.status=`Google merge sign-in failed: ${error.message}`; this.updateIndicators(); }
+        if (!this.client) await this.init();if(!this.client)return;this.openGoogleDialog(true);
     },
 
     async linkGoogle() {
         if (!this.client) await this.init();
-        if (!this.client) { this.status = 'Online service is not connected.'; this.updateIndicators(); return; }
-        if (this.linked) { this.status = 'Google is already linked.'; this.updateIndicators(); return; }
-        const { error } = await this.client.auth.linkIdentity({
-            provider: 'google',
-            options: { redirectTo: `${location.origin}${location.pathname}` }
-        });
-        if (error) {
-            this.status = `Google linking failed: ${error.message}`;
-            this.updateIndicators();
-        }
+        if (!this.client) { this.status='Online service is not connected.';this.updateIndicators();return; }
+        if(this.linked){this.status='Google is already connected. Restoring cloud heroes…';this.updateIndicators();await this.cacheCloudSave(true);return;}
+        // Direct Google token sign-in avoids exposing a Supabase redirect page.
+        // The current guest roster is merged into the selected Google account.
+        this.openGoogleDialog(true);
     },
 
     async signOut() {

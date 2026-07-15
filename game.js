@@ -176,6 +176,7 @@ const Game = {
         document.getElementById('btn-google-signin').addEventListener('click', () => {
             OnlineSystem.signInGoogle();
         });
+        document.getElementById('btn-close-google-login').addEventListener('click', () => document.getElementById('google-login-panel').classList.add('hidden'));
 
         // Music controls
         document.getElementById('btn-music').addEventListener('click', () => {
@@ -263,9 +264,10 @@ const Game = {
         document.getElementById('btn-social-send').addEventListener('click', () => {
             const name = document.getElementById('social-name').value.trim();
             const message = document.getElementById('social-message').value.trim();
-            if (message) this.sendChat(name || 'Public', message);
+            if (message && name) this.sendChat(name, message);
+            else if (message) this.addNarrative('Direct messages require a recipient hero name. Use Chat Rooms for public messages.', 'system');
             else if (name) this.sendFriendRequest(name);
-            else this.addNarrative('Enter a message for public chat or an exact hero name for a friend request.', 'system');
+            else this.addNarrative('Enter an exact hero name for a direct message or friend request.', 'system');
             document.getElementById('social-message').value = '';
             this.showSocial();
         });

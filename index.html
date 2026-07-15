@@ -48,6 +48,15 @@
             </p>
         </div>
 
+        <!-- Direct Google Identity sign-in (no Supabase redirect page) -->
+        <div id="google-login-panel" class="panel hidden" aria-label="Google account sign in">
+            <h3>Continue to Black Soul Multiplayer</h3>
+            <p class="settings-note">Choose the Google account linked to your cloud heroes. Google returns a secure identity token directly to this game; Supabase verifies it in the background.</p>
+            <div id="google-signin-render" class="google-render"></div>
+            <p id="google-login-status" aria-live="polite"></p>
+            <button id="btn-close-google-login" class="menu-btn">Cancel</button>
+        </div>
+
         <!-- Character Creation -->
         <div id="char-screen" class="screen">
             <h2>🛡️ Create Your Hero</h2>
@@ -294,7 +303,8 @@
 
             <!-- Social / companion chat -->
             <div id="social-panel" class="panel hidden" aria-label="Friends and companions">
-                <h3>💬 Chat, Friends & Companions</h3>
+                <h3>🤝 Direct Messages, Friends & Companions</h3>
+                <p class="settings-note">This panel is for direct messages and friend requests. For public channels, close it and choose Chat Rooms.</p>
                 <div class="chat-voice-controls">
                     <label for="chat-voice">Your message voice</label>
                     <select id="chat-voice" aria-label="Choose chat voice"></select>
@@ -303,7 +313,7 @@
                 </div>
                 <div id="social-content"></div>
                 <div class="social-compose">
-                    <input id="social-name" maxlength="40" placeholder="Exact hero name, or Public">
+                    <input id="social-name" maxlength="40" placeholder="Recipient hero name for direct message">
                     <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)">
                     <button id="btn-social-send" class="menu-btn">Send Message / Request</button>
                 </div>
@@ -399,6 +409,7 @@
         </div>
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="assets/vendor/supabase-2.57.4.js"></script>
     <script src="supabase-config.js"></script>
     <script src="music.js"></script>
