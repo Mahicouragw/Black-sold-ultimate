@@ -371,6 +371,14 @@
                     <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in & merge heroes</button>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
+                    <label for="game-language">Game and chat translation language</label>
+                    <select id="game-language">
+                        <option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option>
+                        <option value="es">Español</option><option value="hi">हिन्दी</option><option value="it">Italiano</option>
+                        <option value="pt">Português</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option>
+                    </select>
+                    <label><input type="checkbox" id="auto-translate-chat" checked> Automatically translate incoming chat</label>
+                    <div id="translation-status" class="settings-note">Translation uses an on-device browser model when available.</div>
                     <label for="voice-command-language">Voice-command language</label>
                     <select id="voice-command-language">
                         <option value="en-IN">English (India)</option><option value="en-US">English (US)</option>
@@ -430,6 +438,8 @@
     <script src="alexa-parity.js"></script>
     <script src="equipment-sets.js"></script>
     <script src="housing-world-v5.js"></script>
+    <script src="forest-expansion-v6.js"></script>
+    <script src="translation.js"></script>
     <script src="chat-rooms.js"></script>
     <script src="voice-artifacts-maps.js"></script>
 </body>

@@ -63,6 +63,10 @@ Run [`supabase/features_v10_chat_rooms.sql`](supabase/features_v10_chat_rooms.sq
 
 Run [`supabase/features_v11_community_maps.sql`](supabase/features_v11_community_maps.sql) to let linked heroes publish public or brotherhood-visible map markers with creator-only editing/deletion and Row Level Security. This migration is included in `apply_all_updates.sql`.
 
+## 11. Enable realtime chat translation metadata
+
+Run [`supabase/features_v12_translation.sql`](supabase/features_v12_translation.sql) to store each sender's source language with direct and room messages. Every recipient then translates locally into their selected game language. This migration is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

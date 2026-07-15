@@ -21,7 +21,10 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - ⚔️ Turn-Based Combat with spells and up to 3 fighting companions
 - 💬 Four permanent public chat rooms, owner-only personal rooms, and custom public/private channels
 - 🛡️ Room invitations, member limits, owner deletion, blacklists, occupancy counts, and 5/10-minute permanent activation
-- 🔊 20 selectable spoken-chat profiles with sender-name announcements and French-room pronunciation
+- 🌐 Recipient-side realtime chat translation into each player's selected language, with original-text disclosure and caching
+- 🔊 20 selectable spoken-chat profiles with translated sender-name announcements and French-room pronunciation
+- 🌲 Four physical forest gates, 12 additional deep-forest branches, and 24 scalable 6–30 base-HP monsters
+- 🎼 Three-way cinematic battle rotation, epic exploration/intro music, and terrain-specific recorded footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
 - 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names

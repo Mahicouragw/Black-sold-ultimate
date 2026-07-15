@@ -156,6 +156,7 @@ const Game = {
 
         // Title screen buttons
         document.getElementById('btn-new').addEventListener('click', () => {
+            MusicSystem.playTrack('intro');
             this.startNewHero();
         });
         document.getElementById('btn-heroes').addEventListener('click', () => this.showHeroRoster());
@@ -1355,7 +1356,8 @@ const Game = {
             <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat companions (${companions.length}/3)</h4>
             <div class="social-list">${companions.length ? companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
-            <h4>Recent online chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <strong>${this.escapeHTML(m.sender?.display_name || 'Hero')}</strong>${m.receiver_id ? ' privately' : ' publicly'}: ${this.escapeHTML(m.body)} <small>${this.escapeHTML(m.voice_id || 'boy-1')}</small> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
+            <h4>Recent direct chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <span id="direct-msg-${m.id}"><strong>${this.escapeHTML(m.sender?.display_name || 'Hero')} says:</strong> ${this.escapeHTML(m.body)}</span> <small>${this.escapeHTML(m.voice_id || 'boy-1')}</small> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
+        window.TranslationService?.translateDirectLog?.(messages);
     },
 
     async showGuild() {
@@ -1508,7 +1510,7 @@ const Game = {
         const mapArt = `
  [40 Endless Caves]--[Northern Mountains]--[Shrine / Eagle Peak]
                            |
- [25 Great Forest Paths]--[West Forest]--[Kaliwasch]--[Eastern Ruins]
+ [4 Forest Gates / 37 Paths]--[West Forest]--[Kaliwasch]--[Eastern Ruins]
           |                                  |  \\
  [10 Villages / 60 sites]         [30 Capital Districts] [96 Realms]
           |

@@ -494,7 +494,8 @@ kbd {
 }
 .voice-command-btn { min-width:88px; font-size:.85rem; background:var(--magic); color:#fff; }
 .voice-command-btn:focus { box-shadow:0 0 14px rgba(106,90,205,.55); }
-#voice-command-language { padding:10px; color:var(--text); background:var(--bg-dark); border:1px solid var(--secondary); border-radius:6px; font-family:inherit; }
+#voice-command-language,#game-language { padding:10px; color:var(--text); background:var(--bg-dark); border:1px solid var(--secondary); border-radius:6px; font-family:inherit; }
+.chat-log details,.room-log details{margin:4px 0 0 14px;color:var(--text-dim);font-size:.82rem}.chat-log summary,.room-log summary{cursor:pointer;color:var(--magic)}
 
 /* Action Bar */
 .action-bar {

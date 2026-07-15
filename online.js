@@ -132,7 +132,7 @@ const OnlineSystem = {
     },
 
     testSelectedVoice() { this.speakText(`This is ${this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label || 'your selected voice'} in Black Sword chat.`); },
-    speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m)this.speakText(`${m.sender?.display_name || 'Hero'} says: ${m.body}`,m.voice_id||'boy-1'); },
+    async speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m){const text=await (window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body));this.speakText(`${m.sender?.display_name||'Hero'} says: ${text}`,m.voice_id||'boy-1',window.TranslationService?.target||'en');} },
 
     setupHeroAutocomplete() {
         ['social-name','room-player-name'].forEach(inputId=>{
@@ -385,9 +385,9 @@ const OnlineSystem = {
                 if (!target) throw new Error('Message recipient not found.');
                 receiverId = target.id;
             }
-            let { error } = await this.client.from('messages').insert({ sender_id:this.user.id, receiver_id:receiverId, body:text, voice_id:this.selectedVoice });
+            let { error } = await this.client.from('messages').insert({ sender_id:this.user.id, receiver_id:receiverId, body:text, voice_id:this.selectedVoice, source_language:window.TranslationService?.sourceLanguage?.()||'en' });
             // Backward-compatible until features_v5_voice_chat.sql is installed.
-            if (error && /voice_id|schema cache/i.test(error.message || '')) ({ error } = await this.client.from('messages').insert({ sender_id:this.user.id, receiver_id:receiverId, body:text }));
+            if (error && /voice_id|source_language|schema cache/i.test(error.message || '')) ({ error } = await this.client.from('messages').insert({ sender_id:this.user.id, receiver_id:receiverId, body:text }));
             if (error) throw error;
             this.lastMessageAt=Date.now(); return true;
         } catch (error) { window.Game.addNarrative(error.message, 'system'); return false; }
@@ -490,7 +490,7 @@ const OnlineSystem = {
         const membershipResult=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).limit(1).maybeSingle();
         const hasV6=!membershipResult.error;this.activeCombatGroup=membershipResult.data?.group_id||null;
         let channel=this.client.channel('black-sword-social')
-            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=payload.new;if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')!=='false')this.speakText(m.body,m.voice_id||'boy-1');})
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=payload.new;if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')!=='false'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>this.speakText(text,m.voice_id||'boy-1',window.TranslationService?.target||'en'));}})
             .on('postgres_changes',{event:'*',schema:'public',table:'friend_requests'},()=>this.refreshOpenSocial());
         if(hasV6) channel=channel
             .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_battle_actions'},payload=>{const a=payload.new,g=window.Game;if(a.group_id!==this.activeCombatGroup||a.user_id===this.user?.id||!g?.state?.inCombat||!g.state.enemy)return;if(g.state.enemy.name.toLowerCase()!==String(a.monster_name).toLowerCase())return;g.state.enemy.hp-=a.damage;g.addNarrative(`⚔ Cooperative ally deals ${a.damage} damage to ${a.monster_name}!`,'combat');g.updateEnemyHUD();if(g.state.enemy.hp<=0)g.enemyDefeated();})

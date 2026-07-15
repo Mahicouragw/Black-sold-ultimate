@@ -17,6 +17,9 @@ All audio bundled in `assets/audio/` comes from OpenGameArt and is released unde
 | `music/inn.mp3` | Medieval: The Old Tower Inn | RandomMind | https://opengameart.org/content/medieval-the-old-tower-inn | CC0 1.0 |
 | `music/Fantasy-Choir-1.mp3` | Fantasy Choir 1 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
 | `music/Fantasy-Choir-2.mp3` | Fantasy Choir 2 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
+| `music/Fantasy-Choir-3.mp3` | Fantasy Choir 3 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
+| `music/determined-pursuit.wav` | Determined Pursuit | Emma MA | https://opengameart.org/content/determined-pursuit-epic-orchestra-loop | CC0 1.0 |
+| `music/adventure-intro.wav` | Adventure Intro Title | nene | https://opengameart.org/content/adventure-intro-title-cinematic-epic | CC0 1.0 |
 
 ## Sound effects
 
@@ -24,6 +27,11 @@ The real sword swings, sword impacts, magic, spell, door, coin, pickup, interfac
 
 - **RPG Sound Pack** by artisticdude
 - Source: https://opengameart.org/content/rpg-sound-pack
+- License: CC0 1.0 / public domain
+
+Additional leaf, stone, wood, gravel, and mud footsteps:
+- **Different steps on wood, stone, leaves, gravel and mud** by TinyWorlds
+- Source: https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud
 - License: CC0 1.0 / public domain
 
 License text: https://creativecommons.org/publicdomain/zero/1.0/

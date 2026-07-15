@@ -1,0 +1,46 @@
+/** Four forest gates, distinct branches/items, and 6–30 base-HP scalable monsters. */
+(() => {
+    const add=(id,data)=>WorldData.locations[id]=data;
+    const gates=[['north','North Gate'],['east','East Gate'],['south','South Gate'],['west','West Gate']];
+    gates.forEach(([dir,label])=>add(`great_forest_${dir}_gate`,{name:`Great Forest — ${label}`,region:'Great Forest',description:`The ${label.toLowerCase()} controls a physical entrance into the Great Forest. Rangers inspect tracks and warn travelers about scalable monster groups.`,exits:{},features:['forest gate','ranger watch','trail sign'],items:[],enemies:[],safe:true,music:'forest'}));
+    WorldData.locations.forest.exits.north='great_forest_north_gate';WorldData.locations.great_forest_north_gate.exits={south:'forest',north:'great_forest_path_1'};WorldData.locations.great_forest_path_1.exits.south='great_forest_north_gate';
+    WorldData.locations.forest.exits.east='great_forest_east_gate';WorldData.locations.great_forest_east_gate.exits={west:'forest',east:'kaliwasch'};WorldData.locations.kaliwasch.exits.west='great_forest_east_gate';
+    WorldData.locations.forest.exits.south='great_forest_south_gate';WorldData.locations.great_forest_south_gate.exits={north:'forest',south:WorldData.locations.sun_plain_1?'sun_plain_1':'great_forest_path_12'};if(WorldData.locations.sun_plain_1)WorldData.locations.sun_plain_1.exits.north='great_forest_south_gate';
+    WorldData.locations.forest.exits.west='great_forest_west_gate';WorldData.locations.great_forest_west_gate.exits={east:'forest',west:'deep_forest_branch_1'};
+
+    const monsterNames=['sapling imp','thorn rat','moss beetle','young wolf','briar snake','pollen wisp','root goblin','fern spider','wild fox','stoneback cub','green slime','needle bat','hollow scout','vine crawler','moon moth','redcap goblin','forest orc youth','bark guardian','razor boar','mist stalker','old wolf','grove shaman','thorn brute','ancient root beast'];
+    monsterNames.forEach((name,i)=>WorldData.enemies[name]={hp:6+i,attack:2+Math.floor(i/3),xp:8+i*3,gold:3+i*2,magic:4+i,str:5+i,dex:7+i,defense:3+Math.floor(i/2),weaponDamage:4+Math.floor(i/2),desc:`${name}: a level-scalable forest creature with base HP ${6+i}, strength ${5+i}, dexterity ${7+i}, magic ${4+i}, defense ${3+Math.floor(i/2)}, and weapon damage ${4+Math.floor(i/2)}.`});
+    const pool=monsterNames;
+    Object.entries(WorldData.locations).forEach(([id,loc])=>{if(/forest/i.test(`${id} ${loc.region||''}`)&&!loc.safe)loc.enemies=pool.slice((id.length%8),Math.min(pool.length,(id.length%8)+10));});
+
+    const branchNames=['Ranger Checkpoint','Fallen Log Crossing','Whispering Brook','Fern Hollow','Hunter Clearing','Old Rope Bridge','Waterfall Shelf','Ruined Watchtower','Wolf Den Approach','Boar Hollow','Druid Sanctuary','Western Forest Crown'];
+    branchNames.forEach((name,i)=>add(`deep_forest_branch_${i+1}`,{name:`Deep Forest — ${name}`,region:'Deep Forest',description:`Physical forest branch ${i+1} of 12: ${name}. The route has its own terrain, tracks, searchable details, and level-scaled creatures.`,exits:{east:i===0?'great_forest_west_gate':`deep_forest_branch_${i}`,west:i===11?'great_forest_west_gate':`deep_forest_branch_${i+2}`},features:[name.toLowerCase(),'deep forest trail'],items:[],enemies:pool.slice(i,i+8),safe:/Checkpoint|Sanctuary/.test(name),music:i>=10?'epic-exploration':'forest'}));
+
+    const items={
+      'ranger longsword':{name:'Ranger Longsword',type:'weapon',weaponType:'sharp',damage:120,str:110,dex:160,int:50,wis:70,hp:90,mp:60,value:320,desc:'A long, narrow forest blade balanced for moving battles.',ability:'Improves sharp attacks and ranger precision.'},
+      'thorn axe':{name:'Thorn Axe',type:'weapon',weaponType:'sharp',damage:145,str:170,dex:80,int:50,wis:60,hp:120,mp:50,value:360,desc:'A hooked axe forged to clear animated vines.',ability:'Powerful against rooted and plant creatures.'},
+      'root hammer':{name:'Root Hammer',type:'weapon',weaponType:'blunt',damage:155,str:180,dex:60,int:60,wis:80,hp:150,mp:60,value:380,desc:'A dense blunt hammer grown around a stone core.',ability:'Crushes armor and bark defenses.'},
+      'moon bow':{name:'Moon Bow',type:'weapon',weaponType:'sharp',damage:135,str:70,dex:200,int:90,wis:100,hp:80,mp:110,value:420,desc:'A pale bow that brightens under moonlight.',ability:'Improves ranged multiple strikes.'},
+      'druid sickle':{name:'Druid Sickle',type:'weapon',weaponType:'sharp',damage:110,str:70,dex:120,int:160,wis:190,hp:100,mp:180,value:430,desc:'A crescent tool for ritual harvesting and defense.',ability:'Strengthens nature and healing spells.'},
+      'ranger coat':{name:'Ranger Coat',type:'armor',defense:90,str:70,dex:160,int:60,wis:80,hp:130,mp:70,value:300,desc:'Layered green leather suited to wet forest travel.',ability:'Balances defense with dexterity.'},
+      'bark plate':{name:'Bark Plate',type:'armor',defense:150,str:130,dex:50,int:70,wis:120,hp:220,mp:80,value:390,desc:'Living bark plates joined by flexible vines.',ability:'Regrows minor damage between encounters.'},
+      'mist cloak':{name:'Mist Cloak',type:'armor',defense:80,str:50,dex:180,int:120,wis:100,hp:100,mp:130,value:410,desc:'A gray cloak that blurs its wearer near water.',ability:'Improves avoidance and spell concealment.'},
+      'forest ration':{name:'Forest Ration',type:'food',effect:'both',value:35,desc:'Dried fruit, nuts, herbs, and smoked grain.',ability:'Restores 35 HP and MP.'},
+      'moon berry':{name:'Moon Berry',type:'food',effect:'mana',value:45,desc:'A blue berry gathered only after sunset.',ability:'Restores 45 MP.'},
+      'boar stew':{name:'Boar Stew',type:'food',effect:'heal',value:60,desc:'A rich stew served at ranger camps.',ability:'Restores 60 HP.'},
+      'antidote leaf':{name:'Antidote Leaf',type:'potion',effect:'heal',value:30,desc:'A bitter leaf prepared against forest venom.',ability:'Restores 30 HP and represents poison treatment.'},
+      'ranger tonic':{name:'Ranger Tonic',type:'potion',effect:'both',value:55,desc:'A sharp herbal tonic in a green bottle.',ability:'Restores 55 HP and MP.'},
+      'ancient bark':{name:'Ancient Bark',type:'material',value:90,desc:'Bark shed by a centuries-old awakened tree.',ability:'Used for armor enchantment and crafting.'},
+      'moon silk':{name:'Moon Silk',type:'material',value:120,desc:'Silver thread gathered from moon spiders.',ability:'Used for magical clothing and bowstrings.'},
+      'thorn core':{name:'Thorn Core',type:'material',value:150,desc:'The hard magical center of a thorn brute.',ability:'Used to enchant sharp weapons.'},
+      'mist crystal':{name:'Mist Crystal',type:'material',value:180,desc:'A cool crystal formed behind the waterfall.',ability:'Used for concealment enchantments.'},
+      'wolf token':{name:'Wolf Token',type:'accessory',str:80,dex:130,int:50,wis:80,hp:100,mp:50,value:260,desc:'A ranger-carved token honoring the forest pack.',ability:'Improves companion and group coordination.'},
+      'grove pendant':{name:'Grove Pendant',type:'accessory',str:50,dex:80,int:130,wis:170,hp:120,mp:160,value:330,desc:'A green pendant blessed at the Druid Sanctuary.',ability:'Strengthens healing and nature magic.'},
+      'gate map':{name:'Four Gates Forest Map',type:'document',value:25,desc:'A durable map marking all four physical forest gates and major paths.',ability:'Provides route knowledge when examined.'}
+    };Object.assign(WorldData.items,items);
+    const place=[['great_forest_north_gate','gate map'],['deep_forest_branch_1','forest ration'],['deep_forest_branch_3','moon berry'],['deep_forest_branch_4','ranger coat'],['deep_forest_branch_5','ranger tonic'],['deep_forest_branch_6','moon silk'],['deep_forest_branch_7','mist crystal'],['deep_forest_branch_8','ranger longsword'],['deep_forest_branch_9','wolf token'],['deep_forest_branch_10','boar stew'],['deep_forest_branch_11','grove pendant'],['deep_forest_branch_12','druid sickle']];place.forEach(([loc,id])=>WorldData.locations[loc].items.push(id));
+
+    const oldStart=Game.startCombat.bind(Game);Game.startCombat=function(enemyName,queued=false){const data=WorldData.enemies[enemyName],boss=data?.boss||data?.finalBoss,originalHp=data?.hp;if(data&&!boss)data.hp=Math.max(6,Math.min(30,data.hp||10));oldStart(enemyName,queued);if(data) data.hp=originalHp;if(this.state.enemy&&data){const scale=1+(this.state.player.level-1)*.15;Object.assign(this.state.enemy,{level:Math.max(1,this.state.player.level),magic:Math.floor((data.magic||5)*scale),str:Math.floor((data.str||8)*scale),dex:Math.floor((data.dex||8)*scale),defense:Math.floor((data.defense||4)*scale),weaponDamage:Math.floor((data.weaponDamage||data.attack||5)*scale)});}};
+    const oldExamine=Game.examineEntity.bind(Game);Game.examineEntity=function(query){const e=this.state.enemy;if(e&&e.name.toLowerCase().includes(query.toLowerCase())){this.addNarrative(`${e.name}: level ${e.level||1}; HP ${e.hp}/${e.maxHp}; STR ${e.str||0}; DEX ${e.dex||0}; magic ${e.magic||0}; defense ${e.defense||0}; weapon damage ${e.weaponDamage||0}. ${e.desc||''}`,'combat');return;}oldExamine(query);};
+    if(window.ExpansionData){ExpansionData.counts.locations=Object.keys(WorldData.locations).length;ExpansionData.counts.monsters=Object.keys(WorldData.enemies).length;}
+})();

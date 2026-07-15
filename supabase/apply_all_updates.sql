@@ -436,3 +436,7 @@ create policy community_markers_create on public.community_map_markers for inser
 create policy community_markers_owner_update on public.community_map_markers for update to authenticated using(creator_id=auth.uid()) with check(creator_id=auth.uid());
 create policy community_markers_owner_delete on public.community_map_markers for delete to authenticated using(creator_id=auth.uid());
 grant select,insert,update,delete on public.community_map_markers to authenticated;
+
+-- v12 source-language metadata for recipient-side realtime translation.
+alter table public.messages add column if not exists source_language text not null default 'en' check(char_length(source_language) between 2 and 12);
+alter table public.chat_room_messages add column if not exists source_language text not null default 'en' check(char_length(source_language) between 2 and 12);

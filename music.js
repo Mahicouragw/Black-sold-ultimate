@@ -25,9 +25,12 @@ const MusicSystem = {
         darkForest: { src: 'assets/audio/music/dark-forest.mp3', loop: true, title: 'Dark Forest Theme' },
         temple: { src: 'assets/audio/music/Fantasy-Choir-1.mp3', loop: true, title: 'Fantasy Choir I' },
         palace: { src: 'assets/audio/music/Fantasy-Choir-2.mp3', loop: true, title: 'Fantasy Choir II' },
+        epicExplore: { src: 'assets/audio/music/Fantasy-Choir-3.mp3', loop: true, title: 'Fantasy Choir III' },
+        intro: { src: 'assets/audio/music/adventure-intro.wav', loop: false, title: 'Adventure Intro' },
         dungeon: { src: 'assets/audio/music/dungeon.ogg', loop: true, title: 'Loopable Dungeon Ambience' },
         battle: { src: 'assets/audio/music/battle.ogg', loop: true, title: 'Battle RPG Theme Variation' },
         battleFast: { src: 'assets/audio/music/battle-fast.wav', loop: true, title: 'Fast Fight Battle Loop' },
+        battleCinematic: { src: 'assets/audio/music/determined-pursuit.wav', loop: true, title: 'Determined Pursuit' },
         boss: { src: 'assets/audio/music/boss.mp3', loop: true, title: 'Battle RPG Theme' },
         victory: { src: 'assets/audio/music/victory.mp3', loop: false, title: 'Victory' }
     },
@@ -44,7 +47,7 @@ const MusicSystem = {
         door: ['assets/audio/sfx/door.wav'],
         pickup: ['assets/audio/sfx/pickup.wav'],
         heal: ['assets/audio/sfx/heal.wav'],
-        explore: ['assets/audio/sfx/explore.wav']
+        explore: ['assets/audio/sfx/explore.wav','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-mud.ogg']
     },
 
     init() {
@@ -72,7 +75,8 @@ const MusicSystem = {
     },
 
     resolveTrack(locationType) {
-        if (locationType === 'combat' || locationType === 'battle') return Math.random() < 0.5 ? 'battle' : 'battleFast';
+        if (locationType === 'combat' || locationType === 'battle') return ['battle','battleFast','battleCinematic'][Math.floor(Math.random()*3)];
+        if (locationType === 'epic-exploration') return 'epicExplore';
         const trackMap = {
             city: 'town',
             tavern: 'inn',
