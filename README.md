@@ -23,7 +23,10 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛡️ Room invitations, member limits, owner deletion, blacklists, occupancy counts, and 5/10-minute permanent activation
 - 🌐 Recipient-side realtime chat translation into each player's selected language, with original-text disclosure and caching
 - 🔊 20 selectable spoken-chat profiles with translated sender-name announcements and French-room pronunciation
-- 🌲 Four physical forest gates, 12 additional deep-forest branches, and 24 scalable 6–30 base-HP monsters
+- 🌲 A 5×5 multidirectional forest grid, four physical gates, 12 deep-forest branches, and 24 scalable monsters
+- 🧭 Multidirectional 5×8 caves, 5×3 dungeons, and 4×6 tunnels with a north–south-only chasm bridge
+- 🏘 Twenty numbered public houses across four cities, each with a front door, foyer, hallway, bedrooms, bathroom, kitchen and hall
+- ⚔ Transparent original combat with DEX accuracy/dodge/criticals, defense, sharp/blunt penetration, armor and spell resistance
 - 🕳️ Twenty-four tunnel locations with a physical north–south chasm bridge and underground island harbor
 - 🏝️ Stormcrown Island with shores, docks, 18 forest locations, fishing, spellcasters, and 600/800/900-HP bosses
 - 🎣 Fishing rods, bait, skill progression, river/cave/island catches, rare treasure, and provision-shop stock
@@ -113,12 +116,15 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `examine [monster]` | Hear HP, attributes, damage, defense, and spell list |
 | `examine spell [name]` | Show MP cost, power, growth, efficiency, damage, and healing history |
 | `spellbook`, `spell efficiency` | Review efficiency for every known spell |
-| `examine black sword locations` | List Shadow Chamber and 12 physical Black Sword legacy locations |
+| `examine black sword locations` | List only discovered Black Sword locations; undiscovered names remain secret |
+| `open door`, `close door` | Operate numbered public-house doors |
+| `where is temple` | Hear physical step-by-step Temple directions |
+| `examine combat` | Explain accuracy, defense, critical and penetration mechanics |
 | `help` | Show all commands |
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.0.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.1.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install

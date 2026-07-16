@@ -1539,7 +1539,7 @@ const Game = {
                                              |       \\
                                         [Depths] [15 Royal Dungeon Sectors]
                                              |
-                                [Shadow Chamber]--[12 Black Sword Legacy Sites]
+                                [Shadow Chamber]--[Unknown Shadow Route]
 
  Total: ${Object.keys(WorldData.locations).length} connected locations
         `;
@@ -1625,7 +1625,8 @@ const Game = {
         this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
-        this.addNarrative("examine black sword locations - Physical legendary sword trail", 'system');
+        this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
+        this.addNarrative("open/close door; where is temple; examine combat", 'system');
     },
 
     closePanels() {
