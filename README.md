@@ -110,7 +110,21 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | Voice button | Speak one command using the selected language |
 | `fish`, `fishing status` | Fish at marked rivers, shores, docks, and underground water |
 | `examine [monster]` | Hear HP, attributes, damage, defense, and spell list |
+| `examine spell [name]` | Show MP cost, power, growth, efficiency, damage, and healing history |
+| `spellbook`, `spell efficiency` | Review efficiency for every known spell |
+| `examine black sword locations` | List Shadow Chamber and 12 physical Black Sword legacy locations |
 | `help` | Show all commands |
+
+## 📱 PWA and Mobile Apps
+
+Version **7.0.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+
+```bash
+npm install
+npm run pwa:check
+npm run security
+npm run cap:sync
+```
 
 ## 🚀 Quick Deploy
 

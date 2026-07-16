@@ -1525,6 +1525,8 @@ const Game = {
                     [Southern Swamp]--[Dungeon Entrance]
                                              |       \\
                                         [Depths] [15 Royal Dungeon Sectors]
+                                             |
+                                [Shadow Chamber]--[12 Black Sword Legacy Sites]
 
  Total: ${Object.keys(WorldData.locations).length} connected locations
         `;
@@ -1609,6 +1611,8 @@ const Game = {
         this.addNarrative("Voice button - Speak one command in the selected language", 'system');
         this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
+        this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
+        this.addNarrative("examine black sword locations - Physical legendary sword trail", 'system');
     },
 
     closePanels() {

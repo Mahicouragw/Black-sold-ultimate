@@ -1,0 +1,8 @@
+{
+  "appId": "com.blacksword.ultimate",
+  "appName": "Black Sword Ultimate",
+  "webDir": "www",
+  "backgroundColor": "#050505",
+  "android": { "allowMixedContent": false },
+  "ios": { "contentInset": "automatic" }
+}
