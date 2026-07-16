@@ -36,7 +36,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🔒 Private Player IDs plus globally unique, case-insensitive hero-name reservations with live availability checks
 - 🗣 Actual installed Android/Windows/Google system voice names; internal voice codes are hidden from chat
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes
-- 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no dashboard teleport shortcuts
+- 🏙 A visible City Directory with shortest physical routes to four gates, four streets, houses, Temple, Palace, Guild, Tavern, Park, Marketplace, Shop and Enchantery
+- 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no teleport shortcuts
 - 🏠 Purchasable private eight-room houses, seven-day property tax, owner-only storage, and public outdoor drops
 - 🌾 Distinct plains, rivers, farms, graveyards, mountain roads and hostile tundra routes
 - 🛒 Quantity-based shop lists with item counts and Buy, Examine, and Compare actions
@@ -124,7 +125,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.2.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.2.1** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install

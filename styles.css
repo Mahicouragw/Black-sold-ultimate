@@ -772,6 +772,7 @@ kbd {
 .shop-item-card small,.shop-item-card p { color:var(--text-dim); font-size:.82rem; }
 .shop-item-card select { padding:6px; color:var(--text); background:var(--bg-medium); border:1px solid var(--secondary); border-radius:5px; }
 .shop-actions { display:flex; flex-wrap:wrap; gap:7px; }
+.directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}.directory-grid button{padding:11px;color:var(--text);background:var(--bg-dark);border:1px solid var(--primary);border-radius:6px;cursor:pointer;text-align:left}.directory-grid button:hover,.directory-grid button:focus{background:var(--bg-light);border-color:var(--accent)}
 .settings-card { display: flex; flex-direction: column; gap: 10px; }
 .settings-note {
     padding: 10px;

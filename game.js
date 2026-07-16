@@ -1626,7 +1626,9 @@ const Game = {
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
-        this.addNarrative("open/close door; where is temple; examine combat", 'system');
+        this.addNarrative("city directory / city map - Routes to every city landmark", 'system');
+        this.addNarrative("where is/go to palace, temple, guild, tavern, park, marketplace, shop, houses, streets or gates", 'system');
+        this.addNarrative("open/close door; rest in tavern; examine combat", 'system');
     },
 
     closePanels() {
