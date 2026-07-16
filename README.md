@@ -24,6 +24,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🌐 Recipient-side realtime chat translation into each player's selected language, with original-text disclosure and caching
 - 🔊 20 selectable spoken-chat profiles with translated sender-name announcements and French-room pronunciation
 - 🌲 Four physical forest gates, 12 additional deep-forest branches, and 24 scalable 6–30 base-HP monsters
+- 🕳️ Twenty-four tunnel locations with a physical north–south chasm bridge and underground island harbor
+- 🏝️ Stormcrown Island with shores, docks, 18 forest locations, fishing, spellcasters, and 600/800/900-HP bosses
+- 🎣 Fishing rods, bait, skill progression, river/cave/island catches, rare treasure, and provision-shop stock
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, and terrain-specific recorded footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
@@ -105,6 +108,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `publish map Title \| note` | Publish a community map marker at the current location |
 | `community map` | Read shared markers at the current location |
 | Voice button | Speak one command using the selected language |
+| `fish`, `fishing status` | Fish at marked rivers, shores, docks, and underground water |
+| `examine [monster]` | Hear HP, attributes, damage, defense, and spell list |
 | `help` | Show all commands |
 
 ## 🚀 Quick Deploy

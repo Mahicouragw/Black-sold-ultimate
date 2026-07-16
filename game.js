@@ -1519,6 +1519,8 @@ const Game = {
  [Private Houses]   [Estate Agents]    [Private Houses]
                                              |
  [Plains]--[Rivers]--[Farms]--[Graveyards]--[Mountain Roads]--[Tundra]
+       |                                                        |
+ [Fishing Waters]--[Understone Tunnel / N-S Bridge]--[Stormcrown Island Forest]
                                              |
                     [Southern Swamp]--[Dungeon Entrance]
                                              |       \\
@@ -1605,6 +1607,8 @@ const Game = {
         this.addNarrative("identify/attune/unattune [artifact]; artifact journal", 'system');
         this.addNarrative("publish map Title | note; community map; delete map marker [number]", 'system');
         this.addNarrative("Voice button - Speak one command in the selected language", 'system');
+        this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
+        this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
     },
 
     closePanels() {

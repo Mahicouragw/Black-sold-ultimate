@@ -1,15 +1,11 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "**/*",
-      "use": "@vercel/static"
-    }
+    { "src": "api/translate.js", "use": "@vercel/node" },
+    { "src": "**/*", "use": "@vercel/static" }
   ],
   "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+    { "src": "/api/translate", "dest": "/api/translate.js" },
+    { "src": "/(.*)", "dest": "/$1" }
   ]
 }
