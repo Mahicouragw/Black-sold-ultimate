@@ -15,6 +15,9 @@ const OnlineSystem = {
     searchTimer: null,
     googleMergeRequested: false,
     googleButtonInitialized: false,
+    nameCheckTimer: null,
+    heroNameAvailable: null,
+    systemVoices: [],
     voiceProfiles: Array.from({ length: 20 }, (_, i) => ({
         id: `${i < 10 ? 'boy' : 'girl'}-${(i % 10) + 1}`,
         label: `${i < 10 ? 'Boy' : 'Girl'} Voice ${(i % 10) + 1}`,
@@ -22,11 +25,12 @@ const OnlineSystem = {
         rate: 0.82 + (i % 5) * 0.07,
         voiceIndex: i % 10
     })),
-    selectedVoice: localStorage.getItem('black_sword_chat_voice') || 'boy-1',
+    selectedVoice: localStorage.getItem('black_sword_chat_voice') || 'system:default',
 
     async init() {
         if (this.ready) return;
         this.populateVoiceSelectors();
+        if('speechSynthesis'in window&&!this._voicesListener){speechSynthesis.addEventListener?.('voiceschanged',()=>this.populateVoiceSelectors());this._voicesListener=true;}
         this.setupHeroAutocomplete();
         const config = window.SUPABASE_CONFIG;
         if (!config || !window.supabase?.createClient) {
@@ -96,17 +100,13 @@ const OnlineSystem = {
     },
 
     populateVoiceSelectors() {
-        const options = this.voiceProfiles.map(v => `<option value="${v.id}">${v.label}</option>`).join('');
-        ['chat-voice','settings-chat-voice'].forEach(id => {
-            const select = document.getElementById(id);
-            if (select) { select.innerHTML = options; select.value = this.selectedVoice; }
-        });
-        const auto = document.getElementById('chat-auto-speak');
-        if (auto) auto.checked = localStorage.getItem('black_sword_auto_speak') !== 'false';
+        this.systemVoices=('speechSynthesis'in window?speechSynthesis.getVoices():[]).filter((v,i,a)=>a.findIndex(x=>x.name===v.name&&x.lang===v.lang)===i);
+        ['chat-voice','settings-chat-voice'].forEach(id=>{const select=document.getElementById(id);if(!select)return;select.innerHTML='';const base=document.createElement('option');base.value='system:default';base.textContent='Default device voice';select.appendChild(base);this.systemVoices.forEach(v=>{const option=document.createElement('option');option.value=`system:${v.name}`;option.textContent=`${v.name} — ${v.lang}${v.localService?' • installed':''}`;select.appendChild(option);});if([...select.options].some(o=>o.value===this.selectedVoice))select.value=this.selectedVoice;else{this.selectedVoice='system:default';select.value=this.selectedVoice;}});
+        const auto=document.getElementById('chat-auto-speak');if(auto)auto.checked=localStorage.getItem('black_sword_auto_speak')!=='false';
     },
 
     setVoiceProfile(id) {
-        if (!this.voiceProfiles.some(v => v.id === id)) return;
+        if (!id.startsWith('system:') && !this.voiceProfiles.some(v => v.id === id)) return;
         this.selectedVoice = id;
         localStorage.setItem('black_sword_chat_voice', id);
         ['chat-voice','settings-chat-voice'].forEach(selectId => { const el=document.getElementById(selectId); if(el) el.value=id; });
@@ -116,23 +116,17 @@ const OnlineSystem = {
         if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) {
             window.Game?.addNarrative?.('Spoken chat is not supported by this browser.', 'system'); return;
         }
-        const profile = this.voiceProfiles.find(v => v.id === voiceId) || this.voiceProfiles[0];
-        const utterance = new SpeechSynthesisUtterance(String(text).slice(0, 300));
-        utterance.pitch = profile.pitch; utterance.rate = profile.rate; utterance.volume = 0.9; utterance.lang = language;
-        const voices = speechSynthesis.getVoices();
-        const boyHints=['male','david','daniel','george','james','ravi','microsoft mark'];
-        const girlHints=['female','zira','samantha','victoria','karen','veena','google uk english female'];
-        const hints = profile.id.startsWith('girl') ? girlHints : boyHints;
-        const languageVoices=voices.filter(v=>v.lang?.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
-        const basePool=languageVoices.length?languageVoices:voices;
-        const preferred = basePool.filter(v => hints.some(h => v.name.toLowerCase().includes(h)));
-        const pool = preferred.length ? preferred : basePool;
-        if (pool.length) utterance.voice = pool[profile.voiceIndex % pool.length];
+        const legacyProfile=this.voiceProfiles.find(v=>v.id===voiceId),systemName=voiceId.startsWith('system:')?voiceId.slice(7):null;
+        const utterance=new SpeechSynthesisUtterance(String(text).slice(0,300));utterance.pitch=legacyProfile?.pitch||1;utterance.rate=legacyProfile?.rate||1;utterance.volume=.9;utterance.lang=language;
+        const voices=speechSynthesis.getVoices(),languageVoices=voices.filter(v=>v.lang?.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
+        if(systemName&&systemName!=='default')utterance.voice=voices.find(v=>v.name===systemName)||languageVoices[0]||voices[0];
+        else if(legacyProfile){const hints=legacyProfile.id.startsWith('girl')?['female','zira','samantha','victoria','karen','veena']:['male','david','daniel','george','james','ravi'];const pool=languageVoices.length?languageVoices:voices,preferred=pool.filter(v=>hints.some(h=>v.name.toLowerCase().includes(h)));if((preferred.length?preferred:pool).length)utterance.voice=(preferred.length?preferred:pool)[legacyProfile.voiceIndex%(preferred.length?preferred:pool).length];}
+        else utterance.voice=languageVoices[0]||voices[0];
         speechSynthesis.cancel(); speechSynthesis.speak(utterance);
     },
 
-    testSelectedVoice() { this.speakText(`This is ${this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label || 'your selected voice'} in Black Sword chat.`); },
-    async speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m){const text=await (window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body));this.speakText(`${m.sender?.display_name||'Hero'} says: ${text}`,m.voice_id||'boy-1',window.TranslationService?.target||'en');} },
+    testSelectedVoice() { const name=this.selectedVoice.startsWith('system:')?this.selectedVoice.slice(7):this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label;this.speakText(`This is ${name&&name!=='default'?name:'the default device voice'} in Black Sword chat.`); },
+    async speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m){const text=await (window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body));this.speakText(`${m.sender?.display_name||'Hero'} says: ${text}`,m.voice_id||'system:default',window.TranslationService?.target||'en');} },
 
     setupHeroAutocomplete() {
         ['social-name','room-player-name'].forEach(inputId=>{
@@ -192,10 +186,22 @@ const OnlineSystem = {
         this.updateIndicators();
     },
 
-    syncActiveHero(retry = 0) {
-        if (this.ready && this.user) return this.updatePresence();
+    async syncActiveHero(retry = 0) {
+        if (this.ready && this.user) {const p=window.Game?.state?.player,slot=window.Game?.state?.activeHeroId;if(p?.name&&slot){const reserved=await this.reserveHeroName(p.name,slot);if(!reserved.ok&&!reserved.migration){this.status=`Hero name conflict: ${reserved.error}`;this.updateIndicators();window.Game?.addNarrative?.('This existing hero name conflicts with another registered hero. Rename it with “my name is [new name]”.','system');}}return this.updatePresence();}
         if (retry < 10) setTimeout(() => this.syncActiveHero(retry + 1), 500);
     },
+
+    async checkHeroNameAvailability(name,slot=null) {
+        const status=document.getElementById('hero-name-status'),clean=name.trim();
+        if(clean.length<2){this.heroNameAvailable=null;if(status){status.textContent='Enter at least two characters.';status.className='name-status';}return false;}
+        if(!this.ready){this.heroNameAvailable=false;if(status){status.textContent='Connect online to reserve a multiplayer hero name.';status.className='name-status unavailable';}return false;}
+        const {data,error}=await this.client.rpc('hero_name_available',{desired_name:clean,current_slot:slot});
+        if(error){this.heroNameAvailable=false;if(status){status.textContent='Name check unavailable. Run the latest database migration.';status.className='name-status unavailable';}return false;}
+        this.heroNameAvailable=Boolean(data);if(status){status.textContent=data?'Name is available.':'The name already exists. Please choose another name.';status.className=`name-status ${data?'available':'unavailable'}`;}window.Game?.updateCharButton?.();return Boolean(data);
+    },
+    scheduleHeroNameCheck(name,slot=null){clearTimeout(this.nameCheckTimer);this.heroNameAvailable=null;this.nameCheckTimer=setTimeout(()=>this.checkHeroNameAvailability(name,slot),300);},
+    async reserveHeroName(name,slot){if(!this.ready)return{ok:false,error:'Online connection is required to reserve a multiplayer name.'};const {error}=await this.client.rpc('reserve_hero_name',{desired_name:name.trim(),target_slot:slot});return error?{ok:false,error:error.message,migration:/reserve_hero_name|schema cache|function/i.test(error.message||'')}:{ok:true};},
+    async releaseHeroName(slot){if(this.ready&&slot)await this.client.rpc('release_hero_name',{target_slot:slot});},
 
     getPlayerCode() {
         if (!this.profile) this.ensureLocalCode();
@@ -492,7 +498,7 @@ const OnlineSystem = {
         const membershipResult=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).limit(1).maybeSingle();
         const hasV6=!membershipResult.error;this.activeCombatGroup=membershipResult.data?.group_id||null;
         let channel=this.client.channel('black-sword-social')
-            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=this.normalizeLanguageMessage(payload.new);if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')!=='false'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>this.speakText(text,m.voice_id||'boy-1',window.TranslationService?.target||'en'));}})
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=this.normalizeLanguageMessage(payload.new);if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')!=='false'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>this.speakText(text,m.voice_id||'system:default',window.TranslationService?.target||'en'));}})
             .on('postgres_changes',{event:'*',schema:'public',table:'friend_requests'},()=>this.refreshOpenSocial());
         if(hasV6) channel=channel
             .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_battle_actions'},payload=>{const a=payload.new,g=window.Game;if(a.group_id!==this.activeCombatGroup||a.user_id===this.user?.id||!g?.state?.inCombat||!g.state.enemy)return;if(g.state.enemy.name.toLowerCase()!==String(a.monster_name).toLowerCase())return;g.state.enemy.hp-=a.damage;g.addNarrative(`⚔ Cooperative ally deals ${a.damage} damage to ${a.monster_name}!`,'combat');g.updateEnemyHUD();if(g.state.enemy.hp<=0)g.enemyDefeated();})

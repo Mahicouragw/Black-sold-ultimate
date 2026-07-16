@@ -93,6 +93,7 @@ const Game = {
         }
         this.state.pendingHeroId = `hero_${Date.now().toString(36)}`;
         document.getElementById('char-name').value = '';
+        OnlineSystem.heroNameAvailable=null;const nameStatus=document.getElementById('hero-name-status');if(nameStatus){nameStatus.textContent='Enter at least two characters.';nameStatus.className='name-status';}
         document.querySelectorAll('.race-btn,.class-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById('btn-begin').disabled = true;
         this.updateCharacterPreview();
@@ -133,12 +134,19 @@ const Game = {
         this.continueGame();
     },
 
+    async renameActiveHero(name) {
+        name=name.trim().slice(0,20);if(name.length<2)return;
+        const result=await OnlineSystem.reserveHeroName(name,this.state.activeHeroId);
+        if(!result.ok){this.addNarrative(result.error.includes('already exists')?'The name already exists. Please choose another name.':result.error,'system');return;}
+        this.state.player.name=name;this.addNarrative(`Your hero is now known as ${name}.`,'npc');this.save();OnlineSystem.syncActiveHero();
+    },
+
     deleteHero(id) {
         const roster=this.getRoster(),hero=roster.heroes[id];
         if(!hero)return;
         const name=hero.player?.name||'this hero';
         if(!confirm(`Permanently delete ${name}? This cannot be undone.`))return;
-        delete roster.heroes[id];
+        delete roster.heroes[id];window.OnlineSystem?.releaseHeroName(id);
         if(roster.activeHeroId===id)roster.activeHeroId=Object.keys(roster.heroes)[0]||null;
         this.storeRoster(roster);this.state.activeHeroId=roster.activeHeroId;
         if(roster.activeHeroId)localStorage.setItem(this.state.saveKey,JSON.stringify(roster.heroes[roster.activeHeroId]));else localStorage.removeItem(this.state.saveKey);
@@ -196,8 +204,9 @@ const Game = {
         });
 
         // Character creation
-        document.getElementById('char-name').addEventListener('input', () => {
+        document.getElementById('char-name').addEventListener('input', e => {
             this.updateCharButton();
+            OnlineSystem.scheduleHeroNameCheck(e.target.value,this.state.pendingHeroId);
         });
         document.getElementById('btn-generate-name').addEventListener('click', () => this.generateHeroName());
 
@@ -217,14 +226,10 @@ const Game = {
             });
         });
 
-        document.getElementById('btn-begin').addEventListener('click', () => {
-            this.createCharacter(false);
-        });
+        document.getElementById('btn-begin').addEventListener('click', () => this.beginCharacterCreation(false));
 
         // Multiplayer
-        document.getElementById('btn-start-mp').addEventListener('click', () => {
-            this.createCharacter(true);
-        });
+        document.getElementById('btn-start-mp').addEventListener('click', () => this.beginCharacterCreation(true));
 
         // Command input
         document.getElementById('cmd-input').addEventListener('keypress', (e) => {
@@ -360,6 +365,7 @@ const Game = {
             if (!used.has(generated.toLowerCase())) break;
         }
         document.getElementById('char-name').value = generated;
+        OnlineSystem.scheduleHeroNameCheck(generated,this.state.pendingHeroId);
         this.updateCharButton();
     },
 
@@ -367,7 +373,7 @@ const Game = {
         const name = document.getElementById('char-name').value.trim();
         const race = document.querySelector('.race-btn.selected');
         const cls = document.querySelector('.class-btn.selected');
-        document.getElementById('btn-begin').disabled = name.length < 2 || !race || !cls;
+        document.getElementById('btn-begin').disabled = name.length < 2 || !race || !cls || OnlineSystem.heroNameAvailable !== true;
         this.updateCharacterPreview();
     },
 
@@ -385,6 +391,13 @@ const Game = {
         };
         const b = bases[cls];
         box.innerHTML = `<strong>${race.toUpperCase()} ${cls.toUpperCase()}</strong><br>❤️ HP ${b[0]} • ✨ MP ${b[1]} • 💪 STR ${b[2]} • 🏃 DEX ${b[3]} • 🧠 INT ${b[4]} • 📖 WIS ${b[5]}`;
+    },
+
+    async beginCharacterCreation(isMulti) {
+        const name=document.getElementById('char-name').value.trim(),slot=this.state.pendingHeroId||`hero_${Date.now().toString(36)}`;
+        const reserved=await OnlineSystem.reserveHeroName(name,slot);
+        if(!reserved.ok){const status=document.getElementById('hero-name-status');status.textContent=reserved.error.includes('already exists')?'The name already exists. Please choose another name.':reserved.error;status.className='name-status unavailable';OnlineSystem.heroNameAvailable=false;this.updateCharButton();return;}
+        this.state.pendingHeroId=slot;this.createCharacter(isMulti);
     },
 
     createCharacter(isMulti) {
@@ -1356,7 +1369,7 @@ const Game = {
             <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
             <h4>Combat companions (${companions.length}/3)</h4>
             <div class="social-list">${companions.length ? companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
-            <h4>Recent direct chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <span id="direct-msg-${m.id}"><strong>${this.escapeHTML(m.sender?.display_name || 'Hero')} says:</strong> ${this.escapeHTML(m.body)}</span> <small>${this.escapeHTML(m.voice_id || 'boy-1')}</small> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
+            <h4>Recent direct chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <span id="direct-msg-${m.id}"><strong>${this.escapeHTML(m.sender?.display_name || 'Hero')} says:</strong> ${this.escapeHTML(m.body)}</span> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
         window.TranslationService?.translateDirectLog?.(messages);
     },
 
@@ -1525,6 +1538,8 @@ const Game = {
                     [Southern Swamp]--[Dungeon Entrance]
                                              |       \\
                                         [Depths] [15 Royal Dungeon Sectors]
+                                             |
+                                [Shadow Chamber]--[12 Black Sword Legacy Sites]
 
  Total: ${Object.keys(WorldData.locations).length} connected locations
         `;
@@ -1609,6 +1624,8 @@ const Game = {
         this.addNarrative("Voice button - Speak one command in the selected language", 'system');
         this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
+        this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
+        this.addNarrative("examine black sword locations - Physical legendary sword trail", 'system');
     },
 
     closePanels() {

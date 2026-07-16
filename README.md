@@ -30,7 +30,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, and terrain-specific recorded footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
-- 🔒 Private Player IDs visible only to their owner; all social search/invites use hero names
+- 🔒 Private Player IDs plus globally unique, case-insensitive hero-name reservations with live availability checks
+- 🗣 Actual installed Android/Windows/Google system voice names; internal voice codes are hidden from chat
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes
 - 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no dashboard teleport shortcuts
 - 🏠 Purchasable private eight-room houses, seven-day property tax, owner-only storage, and public outdoor drops
@@ -110,7 +111,21 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | Voice button | Speak one command using the selected language |
 | `fish`, `fishing status` | Fish at marked rivers, shores, docks, and underground water |
 | `examine [monster]` | Hear HP, attributes, damage, defense, and spell list |
+| `examine spell [name]` | Show MP cost, power, growth, efficiency, damage, and healing history |
+| `spellbook`, `spell efficiency` | Review efficiency for every known spell |
+| `examine black sword locations` | List Shadow Chamber and 12 physical Black Sword legacy locations |
 | `help` | Show all commands |
+
+## 📱 PWA and Mobile Apps
+
+Version **7.0.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+
+```bash
+npm install
+npm run pwa:check
+npm run security
+npm run cap:sync
+```
 
 ## 🚀 Quick Deploy
 

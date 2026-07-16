@@ -67,6 +67,10 @@ Run [`supabase/features_v11_community_maps.sql`](supabase/features_v11_community
 
 Run [`supabase/features_v12_translation.sql`](supabase/features_v12_translation.sql) to store each sender's source language with direct and room messages. Every recipient then translates locally into their selected game language. This migration is included in `apply_all_updates.sql`.
 
+## 12. Enforce unique hero names and real system voices
+
+Run [`supabase/features_v13_unique_names_real_voices.sql`](supabase/features_v13_unique_names_real_voices.sql) to reserve hero names case-insensitively across all accounts and allow actual device voice descriptors instead of Boy/Girl profile codes. This migration is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

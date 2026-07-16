@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⚔️ The Black Sword Chronicles - Ultimate Edition</title>
+    <meta name="theme-color" content="#c9a227">
+    <meta name="application-name" content="Black Sword Ultimate">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -34,6 +39,7 @@
                 <button id="btn-multi" class="menu-btn">👥 Multiplayer</button>
                 <button id="btn-google-signin" class="menu-btn google-btn"><span class="google-mark" aria-hidden="true">G</span> Continue with Google</button>
                 <button id="btn-help" class="menu-btn">📖 How to Play</button>
+                <button id="btn-install-app" class="menu-btn" hidden>Install App</button>
                 <p id="title-account-status" class="account-hint" aria-live="polite">Guest account is being prepared…</p>
             </div>
 
@@ -64,8 +70,9 @@
             <div class="char-form">
                 <div class="form-group">
                     <label for="char-name">Hero Name:</label>
-                    <input type="text" id="char-name" maxlength="20" placeholder="Enter your name..." autocomplete="off">
-                    <button type="button" id="btn-generate-name" class="small-action-btn">✨ Generate Hero Name</button>
+                    <input type="text" id="char-name" maxlength="20" placeholder="Enter a unique hero name..." autocomplete="off">
+                    <div id="hero-name-status" class="name-status" aria-live="polite">Enter at least two characters.</div>
+                    <button type="button" id="btn-generate-name" class="small-action-btn">✨ Generate Unique Hero Name</button>
                 </div>
 
                 <div class="form-group">
@@ -365,6 +372,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.0.0</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -425,6 +433,7 @@
         </div>
     </div>
 
+    <script src="version.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="assets/vendor/supabase-2.57.4.js"></script>
     <script src="supabase-config.js"></script>
@@ -443,5 +452,7 @@
     <script src="translation.js"></script>
     <script src="chat-rooms.js"></script>
     <script src="voice-artifacts-maps.js"></script>
+    <script src="spell-mastery-black-sword.js"></script>
+    <script src="pwa.js"></script>
 </body>
 </html>

@@ -228,6 +228,7 @@ h2 {
     cursor:pointer;
 }
 .small-action-btn:hover { border-color:var(--accent); }
+.name-status{margin-top:7px;padding:7px;border-left:3px solid var(--text-dim);color:var(--text-dim);font-size:.84rem}.name-status.available{border-color:var(--success);color:var(--success)}.name-status.unavailable{border-color:var(--danger);color:#ff8b8b}
 
 .form-group input,
 .form-group select {
