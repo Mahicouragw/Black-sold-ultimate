@@ -4,7 +4,7 @@ An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Fea
 
 ## 🔎 Public Feature Audit
 
-See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) for the evidence-based comparison against the documented Amazon Alexa mechanics and commands.
+See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.
 
 ## 🎵 Music and Sound Credits
 
@@ -124,7 +124,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.1.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.2.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
