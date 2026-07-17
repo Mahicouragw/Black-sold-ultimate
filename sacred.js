@@ -328,7 +328,7 @@
             const previousSafe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=previousSafe;
             const threshold=s.encounterMode==='full'?3:5, chance=s.encounterMode==='full'?0.20:0.06;
             if(s.movesSinceEncounter>=threshold&&Math.random()<chance){
-                const enemy=loc.enemies[Math.floor(Math.random()*loc.enemies.length)];setTimeout(()=>this.startCombat(enemy),900);
+                const enemy=loc.enemies[Math.floor(Math.random()*loc.enemies.length)];this.state.randomEncounterPending=true;setTimeout(()=>this.startCombat(enemy),900);
             }
         } else oldEnter(id);
         if(['grand_temple','royal_palace','arcane_enchantery'].includes(id))this.showSacredActions();

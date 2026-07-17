@@ -981,9 +981,9 @@ const Game = {
             desc: enemyData.desc
         };
 
-        this.addNarrative(`⚔️ A ${enemyName} appears!`, 'combat');
-        if (enemyData.desc) {
-            this.addNarrative(enemyData.desc, 'system');
+        if (!this.state.cleanEncounterMode) {
+            this.addNarrative(`You encounter ${enemyName}.`, 'combat');
+            if (enemyData.desc) this.addNarrative(enemyData.desc, 'system');
         }
 
         document.getElementById('combat-panel').classList.remove('hidden');
@@ -1085,8 +1085,8 @@ const Game = {
         }
 
         p.hp -= damage;
-        this.addNarrative(`${e.name} attacks for ${damage} damage!`, 'combat');
-        MusicSystem.playSFX('hit');
+        MusicSystem.playSFX('enemy-hit');
+        this.addNarrative(`${e.name} hits you for ${damage} damage!`, 'combat');
 
         this.updateHUD();
 
@@ -1624,6 +1624,8 @@ const Game = {
         this.addNarrative("Voice button - Speak one command in the selected language", 'system');
         this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
+        this.addNarrative("spell field / practice [spell] - Spend 3 MP to improve mastery", 'system');
+        this.addNarrative("cast shock - Blue-flash damage and possible stun", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
         this.addNarrative("city directory / city map - Routes to every city landmark", 'system');

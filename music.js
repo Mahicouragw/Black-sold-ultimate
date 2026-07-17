@@ -37,7 +37,8 @@ const MusicSystem = {
 
     sfx: {
         attack: ['assets/audio/sfx/attack.wav', 'assets/audio/sfx/attack-heavy.wav', 'assets/audio/sfx/attack-fast.wav'],
-        hit: ['assets/audio/sfx/hit.wav', 'assets/audio/sfx/hit-metal-1.wav', 'assets/audio/sfx/hit-metal-2.wav', 'assets/audio/sfx/monster-hit.wav'],
+        hit: ['assets/audio/sfx/hit.wav', 'assets/audio/sfx/hit-metal-1.wav', 'assets/audio/sfx/hit-metal-2.wav'],
+        'enemy-hit': ['assets/audio/sfx/monster-hit.wav', 'assets/audio/sfx/monster-roar.wav'],
         treasure: ['assets/audio/sfx/coin.wav'],
         coin: ['assets/audio/sfx/coin.wav'],
         levelup: ['assets/audio/sfx/levelup.wav'],
@@ -83,6 +84,7 @@ const MusicSystem = {
             inn: 'inn',
             temple: 'temple',
             palace: 'palace',
+            cemetery: 'darkForest',
             kaliwasch: 'town',
             forest: 'darkForest',
             wilderness: 'exploration',

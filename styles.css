@@ -452,6 +452,8 @@ kbd {
 .narrative .npc { color: var(--primary); }
 .narrative .red-light { color:#fff; background:rgba(220,20,60,.32); border-left:4px solid #ff3158; box-shadow:0 0 16px rgba(255,30,70,.25); }
 .narrative .green-light { color:#effff3; background:rgba(20,180,80,.28); border-left:4px solid #3cff80; box-shadow:0 0 16px rgba(50,255,120,.23); }
+.narrative .blue-flash { color:#eef8ff; background:rgba(20,100,220,.36); border-left:4px solid #39a7ff; box-shadow:0 0 22px rgba(40,150,255,.55); animation:blueFlash .45s ease; }
+@keyframes blueFlash{0%{filter:brightness(2.2)}100%{filter:brightness(1)}}
 .storage-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px; margin:6px 0; background:var(--bg-dark); border-radius:6px; }
 .storage-row button { padding:6px 10px; color:var(--text); background:var(--bg-light); border:1px solid var(--primary); border-radius:5px; cursor:pointer; }
 #storage-content h4 { color:var(--primary); margin:13px 0 6px; }

@@ -23,7 +23,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛡️ Room invitations, member limits, owner deletion, blacklists, occupancy counts, and 5/10-minute permanent activation
 - 🌐 Recipient-side realtime chat translation into each player's selected language, with original-text disclosure and caching
 - 🔊 20 selectable spoken-chat profiles with translated sender-name announcements and French-room pronunciation
-- 🌲 A 5×5 multidirectional forest grid, four physical gates, 12 deep-forest branches, and 24 scalable monsters
+- 🌲 Cardinal wraparound routes in mainland, Deep Forest and island forest grids so North/West/East/South always continue exploration
+- 🪦 Twenty-location haunted cemetery with spellcasters, a 1,900-HP Grave Titan and 2,000-HP Death Archbishop
+- 🧙 Thirty-two physical Guild Spell Practice Field locations with dice-style practice and mastery growth
 - 🧭 Multidirectional 5×8 caves, 5×3 dungeons, and 4×6 tunnels with a north–south-only chasm bridge
 - 🏘 Forty numbered public houses plus private owner houses, all with closed doors, foyers, hallways, bedrooms, double bedrooms, bathrooms, kitchens and halls
 - 🎯 Context-sensitive action buttons for doors, Temple prayer/healing, Palace, Tavern, shops, fishing and private storage
@@ -32,7 +34,10 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🕳️ Twenty-four tunnel locations with a physical north–south chasm bridge and underground island harbor
 - 🏝️ Stormcrown Island with shores, docks, 18 forest locations, fishing, spellcasters, and 600/800/900-HP bosses
 - 🎣 Fishing rods, bait, skill progression, river/cave/island catches, rare treasure, and provision-shop stock
-- 🎼 Three-way cinematic battle rotation, epic exploration/intro music, and terrain-specific recorded footsteps
+- ⚡ Universal Shock spell with blue-flash feedback, stun chance and mastery growth
+- 🎲 Three-MP healing rolls of 6/30/40, actual missing-HP clamping, full-health zero result and mastery-based failure reduction
+- 🛡 Monster blocking against Multi Strike, with practice adding strikes and lowering block chance
+- 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
 - 🔒 Private Player IDs plus globally unique, case-insensitive hero-name reservations with live availability checks
@@ -129,7 +134,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.3.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.4.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
