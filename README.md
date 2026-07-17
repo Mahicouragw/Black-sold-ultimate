@@ -25,8 +25,10 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🔊 20 selectable spoken-chat profiles with translated sender-name announcements and French-room pronunciation
 - 🌲 A 5×5 multidirectional forest grid, four physical gates, 12 deep-forest branches, and 24 scalable monsters
 - 🧭 Multidirectional 5×8 caves, 5×3 dungeons, and 4×6 tunnels with a north–south-only chasm bridge
-- 🏘 Twenty numbered public houses across four cities, each with a front door, foyer, hallway, bedrooms, bathroom, kitchen and hall
-- ⚔ Transparent original combat with DEX accuracy/dodge/criticals, defense, sharp/blunt penetration, armor and spell resistance
+- 🏘 Forty numbered public houses plus private owner houses, all with closed doors, foyers, hallways, bedrooms, double bedrooms, bathrooms, kitchens and halls
+- 🎯 Context-sensitive action buttons for doors, Temple prayer/healing, Palace, Tavern, shops, fishing and private storage
+- 🙏 One permanent Temple attribute choice per hero, plus a two-hour daily battle blessing and variable/failable healing
+- ⚔ Transparent original combat with DEX accuracy/dodge/criticals, defense, sharp/blunt penetration, armor, spell resistance and temporary blessings
 - 🕳️ Twenty-four tunnel locations with a physical north–south chasm bridge and underground island harbor
 - 🏝️ Stormcrown Island with shores, docks, 18 forest locations, fishing, spellcasters, and 600/800/900-HP bosses
 - 🎣 Fishing rods, bait, skill progression, river/cave/island catches, rare treasure, and provision-shop stock
@@ -118,14 +120,16 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `examine spell [name]` | Show MP cost, power, growth, efficiency, damage, and healing history |
 | `spellbook`, `spell efficiency` | Review efficiency for every known spell |
 | `examine black sword locations` | List only discovered Black Sword locations; undiscovered names remain secret |
-| `open door`, `close door` | Operate numbered public-house doors |
+| `open door`, `close door` | Operate public or owner-only private-house doors |
+| Temple location actions | Choose one permanent attribute, receive a daily temporary blessing, or attempt healing |
+| `daily blessing`, `temple heal` | Use later Temple services after the permanent blessing |
 | `where is temple` | Hear physical step-by-step Temple directions |
 | `examine combat` | Explain accuracy, defense, critical and penetration mechanics |
 | `help` | Show all commands |
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.2.1** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.3.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
