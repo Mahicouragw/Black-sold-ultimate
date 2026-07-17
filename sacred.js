@@ -304,7 +304,7 @@
         const s=ensure(this), loc=WorldData.locations[this.state.location];
         if(!queued && loc?.enemies?.length){
             const maximum=s.encounterMode==='full'?6:3;
-            const count=1+Math.floor(Math.random()*maximum);
+            const count=s.encounterMode==='full'?2+Math.floor(Math.random()*5):1+Math.floor(Math.random()*maximum);
             s.enemyQueue=Array.from({length:count-1},()=>loc.enemies[Math.floor(Math.random()*loc.enemies.length)]);
             s.movesSinceEncounter=0;
             if(count>1)this.addNarrative(`A group of ${count} monsters surrounds you!`,'combat');

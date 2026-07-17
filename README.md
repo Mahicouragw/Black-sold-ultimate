@@ -35,6 +35,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🏝️ Stormcrown Island with shores, docks, 18 forest locations, fishing, spellcasters, and 600/800/900-HP bosses
 - 🎣 Fishing rods, bait, skill progression, river/cave/island catches, rare treasure, and provision-shop stock
 - ⚡ Universal Shock spell with blue-flash feedback, stun chance and mastery growth
+- 🧾 Natural location/monster prose with internal numbering and scaling terminology removed
+- 🏆 Whole-battle summaries: individual defeat names first, then deferred XP, gold, level-ups and drops after the final monster
 - 🎲 Three-MP healing rolls of 6/30/40, actual missing-HP clamping, full-health zero result and mastery-based failure reduction
 - 🛡 Monster blocking against Multi Strike, with practice adding strikes and lowering block chance
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
@@ -134,7 +136,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.4.1** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.4.2** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
