@@ -48,6 +48,7 @@ const MusicSystem = {
         door: ['assets/audio/sfx/door.wav'],
         pickup: ['assets/audio/sfx/pickup.wav'],
         heal: ['assets/audio/sfx/heal.wav'],
+        'heal-chain': ['assets/audio/sfx/heal-chain.wav'],
         explore: ['assets/audio/sfx/explore.wav','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-mud.ogg']
     },
 

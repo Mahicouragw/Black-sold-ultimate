@@ -21,6 +21,7 @@
         add.call(this,`Experience gained: ${summary.xp}. Gold gained: ${summary.gold}.`,'treasure');
         if(summary.drops.length){const counts={};summary.drops.forEach(i=>counts[i.name]=(counts[i.name]||0)+1);add.call(this,`Dropped items: ${Object.entries(counts).map(([n,q])=>`${n} x${q}`).join(', ')}. Type “loot” to collect available ground items.`,'item');summary.drops.forEach(item=>OnlineSystem.dropWorldItem(summary.location,item).then(ok=>{if(!ok)this.state.sacred.groundLoot.push(item);}));}
         else add.call(this,'Dropped items: none.','system');
+        if(summary.drops.length)setTimeout(()=>this.showBattleLootActions?.(summary.drops.map(i=>i.name)),650);
         MusicSystem.playSFX('victory');this.save();if(finalBoss)this.victory();
     };
     window.CleanBattleText={cleanDescription};

@@ -609,6 +609,7 @@ kbd {
     margin: 10px 0;
 }
 .enemy-group-list{display:grid;gap:5px;margin:10px 0}.enemy-group-row{display:flex;justify-content:space-between;gap:8px;padding:7px;background:var(--bg-dark);border-left:3px solid var(--danger);border-radius:5px}.enemy-group-row.current{border-color:var(--accent);color:var(--accent)}
+#wayfinder-results{display:grid;gap:9px;margin:12px 0}.wayfinder-card{padding:12px;background:var(--bg-dark);border-left:4px solid var(--primary);border-radius:7px}.wayfinder-card strong{color:var(--accent)}.wayfinder-card p{margin:5px 0;color:var(--text-dim)}
 
 .combat-actions {
     display: flex;

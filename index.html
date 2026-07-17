@@ -272,8 +272,11 @@
                 <div id="enemy-group-list" class="enemy-group-list" aria-live="polite"></div>
                 <div class="combat-actions">
                     <button class="combat-btn" data-action="attack">⚔️ Attack</button>
-                    <button class="combat-btn" data-action="spell">✨ Spell</button>
-                    <button class="combat-btn" data-action="item">🎒 Item</button>
+                    <button class="combat-btn" data-action="spell">Spells</button>
+                    <button id="btn-quick-heal" class="combat-btn" type="button">Healing Spell</button>
+                    <button id="btn-multi-strike" class="combat-btn" type="button">Multi Strike</button>
+                    <button id="btn-battle-prayer" class="combat-btn" type="button" hidden>Battle Prayer</button>
+                    <button class="combat-btn" data-action="item">Items</button>
                     <button class="combat-btn" data-action="defend">🛡️ Defend</button>
                     <button class="combat-btn" data-action="flee">🏃 Flee</button>
                 </div>
@@ -373,7 +376,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.6.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.7.0</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -461,6 +464,7 @@
     <script src="battle-summary-cleantext-v12.js"></script>
     <script src="expansive-forest-multitarget-v13.js"></script>
     <script src="fair-group-combat-v14.js"></script>
+    <script src="wayfinder-battle-actions-v15.js"></script>
     <script src="pwa.js"></script>
 </body>
 </html>
