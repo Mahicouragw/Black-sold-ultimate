@@ -1625,7 +1625,9 @@ const Game = {
         this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
         this.addNarrative("spell field / practice [spell] - Spend 3 MP to improve mastery", 'system');
-        this.addNarrative("cast shock - Blue-flash damage and possible stun", 'system');
+        this.addNarrative("cast shock - Strong single-target blue-flash damage and possible stun", 'system');
+        this.addNarrative("cast light orbs - 3 MP per living monster; multi-target light damage", 'system');
+        this.addNarrative("attack [monster] / fairness status - Targeting and always-on Fair Mode", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
         this.addNarrative("city directory / city map - Routes to every city landmark", 'system');

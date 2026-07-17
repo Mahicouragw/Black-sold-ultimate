@@ -38,7 +38,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🧾 Natural location/monster prose with internal numbering and scaling terminology removed
 - 🏆 Whole-battle summaries: individual defeat names first, then deferred XP, gold, level-ups and drops after the final monster
 - 🎲 Three-MP healing rolls of 6/30/40, actual missing-HP clamping, full-health zero result and mastery-based failure reduction
-- 🛡 Multi-target Multi Strike across all 2–6 encounter monsters, with per-monster blocks, failure chance and practice growth
+- ⚖ Always-on Fair Mode: every 2–6 monster group shares a level-aware per-round damage budget; no Easy/Hard setting
+- 🛡 Multi-target Multi Strike and Light Orbs across all encounter monsters, with per-monster blocks, failure chance and practice growth
 - ⚡ Shock deals 80–90 base single-target damage plus mastery growth and blue-flash stun feedback
 - 🎒 Inventory Examine/Throw actions and one-hour public-drop expiry
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
@@ -127,6 +128,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `fish`, `fishing status` | Fish at marked rivers, shores, docks, and underground water |
 | `examine [monster]` | Hear HP, attributes, damage, defense, and spell list |
 | `cast multi strike` | Attack every current encounter target; each monster may block |
+| `cast light orbs` | Spend 3 MP per living monster for multi-target light damage |
+| `attack [monster name]` | Target a current or waiting monster by name |
+| `fairness status` | Explain current group damage scaling; no Easy/Hard modes |
 | `cast shock` | Stronger 80–90+ single-target blue-light damage |
 | `examine spell [name]` | Show MP cost, power, growth, efficiency, damage, and healing history |
 | `spellbook`, `spell efficiency` | Review efficiency for every known spell |
@@ -140,7 +144,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.5.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.6.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install

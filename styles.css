@@ -608,6 +608,7 @@ kbd {
     font-size: 1.3rem;
     margin: 10px 0;
 }
+.enemy-group-list{display:grid;gap:5px;margin:10px 0}.enemy-group-row{display:flex;justify-content:space-between;gap:8px;padding:7px;background:var(--bg-dark);border-left:3px solid var(--danger);border-radius:5px}.enemy-group-row.current{border-color:var(--accent);color:var(--accent)}
 
 .combat-actions {
     display: flex;

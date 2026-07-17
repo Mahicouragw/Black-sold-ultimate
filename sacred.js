@@ -303,8 +303,8 @@
     Game.startCombat=function(enemyName,queued=false){
         const s=ensure(this), loc=WorldData.locations[this.state.location];
         if(!queued && loc?.enemies?.length){
-            const maximum=s.encounterMode==='full'?6:3;
-            const count=s.encounterMode==='full'?2+Math.floor(Math.random()*5):2+Math.floor(Math.random()*2);
+            const maximum=6;
+            const count=2+Math.floor(Math.random()*5);
             s.enemyQueue=Array.from({length:count-1},()=>loc.enemies[Math.floor(Math.random()*loc.enemies.length)]);
             s.movesSinceEncounter=0;
             if(count>1)this.addNarrative(`A group of ${count} monsters surrounds you!`,'combat');
@@ -380,8 +380,8 @@
         if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace ceremony'||c==='advance hero'){this.palaceCeremony();return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
         if(c.startsWith('train companion ')){this.trainCompanionAtPalace(c.slice(16));return;}if(c.startsWith('increase ')){this.increaseAttribute(c.slice(9));return;}
         if(c==='card test'||c==='guild card test'){this.startCardTest();return;}if(c.startsWith('answer ')){this.answerCardTest(c.slice(7));return;}
-        if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Normal encounters enabled: occasional groups of 1–6 monsters after a movement cooldown.','system');this.save();return;}
-        if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced: rare groups of only 1–3 monsters after a longer cooldown.','system');this.save();return;}
+        if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Normal encounter frequency enabled. Fair mode remains active for every 2–6 monster group.','system');this.save();return;}
+        if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced. Battle fairness and 2–6 group rules do not change.','system');this.save();return;}
         if(c==='storage'||c==='loot'||c==='check loot'){this.showStorage();return;}if(c==='take all loot'){this.takeAllLoot();return;}if(c.startsWith('throw ')||c.startsWith('drop ')){this.throwItem(c.replace(/^(throw|drop) /,''));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
         if(c==='mission'||c==='missions'){this.showQuests();return;}if(c==='hero management'||c==='manage heroes'){this.showHeroRoster();return;}
         if(c.startsWith('watch ')||c.startsWith('view ')||c.startsWith('examine ')){this.examineEntity(c.replace(/^(watch|view|examine) /,''));return;}
