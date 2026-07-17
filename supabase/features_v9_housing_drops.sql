@@ -3,7 +3,7 @@ create table if not exists public.world_drops (
   id uuid primary key default gen_random_uuid(), location_id text not null,
   dropped_by uuid not null references public.profiles(id) on delete cascade,
   item_id text not null, item_snapshot jsonb not null, quantity integer not null default 1 check(quantity between 1 and 99),
-  created_at timestamptz not null default now(), expires_at timestamptz not null default(now()+interval '7 days')
+  created_at timestamptz not null default now(), expires_at timestamptz not null default(now()+interval '1 hour')
 );
 alter table public.world_drops enable row level security;
 drop policy if exists world_drops_read on public.world_drops;

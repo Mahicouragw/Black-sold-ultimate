@@ -285,7 +285,7 @@ create table if not exists public.world_drops (
   id uuid primary key default gen_random_uuid(), location_id text not null,
   dropped_by uuid not null references public.profiles(id) on delete cascade,
   item_id text not null, item_snapshot jsonb not null, quantity integer not null default 1 check(quantity between 1 and 99),
-  created_at timestamptz not null default now(), expires_at timestamptz not null default(now()+interval '7 days')
+  created_at timestamptz not null default now(), expires_at timestamptz not null default(now()+interval '1 hour')
 );
 alter table public.world_drops enable row level security;
 drop policy if exists world_drops_read on public.world_drops;
@@ -481,3 +481,7 @@ alter table public.messages drop constraint if exists messages_voice_id_length;
 alter table public.chat_room_messages drop constraint if exists chat_room_messages_voice_id_length;
 alter table public.messages add constraint messages_voice_id_length check(char_length(voice_id) between 2 and 180) not valid;
 alter table public.chat_room_messages add constraint chat_room_messages_voice_id_length check(char_length(voice_id) between 2 and 180) not valid;
+
+-- v14 public dropped items expire after one hour.
+alter table public.world_drops alter column expires_at set default(now()+interval '1 hour');
+update public.world_drops set expires_at=least(expires_at,created_at+interval '1 hour') where expires_at>created_at+interval '1 hour';

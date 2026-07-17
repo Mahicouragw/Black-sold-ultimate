@@ -23,7 +23,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛡️ Room invitations, member limits, owner deletion, blacklists, occupancy counts, and 5/10-minute permanent activation
 - 🌐 Recipient-side realtime chat translation into each player's selected language, with original-text disclosure and caching
 - 🔊 20 selectable spoken-chat profiles with translated sender-name announcements and French-room pronunciation
-- 🌲 Cardinal wraparound routes in mainland, Deep Forest and island forest grids so North/West/East/South always continue exploration
+- 🌲 A non-wrapping 10×10 Expansive Forest with 100 new named locations, plus connected mainland, Deep Forest and island grids
 - 🪦 Twenty-location haunted cemetery with spellcasters, a 1,900-HP Grave Titan and 2,000-HP Death Archbishop
 - 🧙 Thirty-two physical Guild Spell Practice Field locations with dice-style practice and mastery growth
 - 🧭 Multidirectional 5×8 caves, 5×3 dungeons, and 4×6 tunnels with a north–south-only chasm bridge
@@ -38,7 +38,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🧾 Natural location/monster prose with internal numbering and scaling terminology removed
 - 🏆 Whole-battle summaries: individual defeat names first, then deferred XP, gold, level-ups and drops after the final monster
 - 🎲 Three-MP healing rolls of 6/30/40, actual missing-HP clamping, full-health zero result and mastery-based failure reduction
-- 🛡 Monster blocking against Multi Strike, with practice adding strikes and lowering block chance
+- 🛡 Multi-target Multi Strike across all 2–6 encounter monsters, with per-monster blocks, failure chance and practice growth
+- ⚡ Shock deals 80–90 base single-target damage plus mastery growth and blue-flash stun feedback
+- 🎒 Inventory Examine/Throw actions and one-hour public-drop expiry
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
@@ -124,6 +126,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | Voice button | Speak one command using the selected language |
 | `fish`, `fishing status` | Fish at marked rivers, shores, docks, and underground water |
 | `examine [monster]` | Hear HP, attributes, damage, defense, and spell list |
+| `cast multi strike` | Attack every current encounter target; each monster may block |
+| `cast shock` | Stronger 80–90+ single-target blue-light damage |
 | `examine spell [name]` | Show MP cost, power, growth, efficiency, damage, and healing history |
 | `spellbook`, `spell efficiency` | Review efficiency for every known spell |
 | `examine black sword locations` | List only discovered Black Sword locations; undiscovered names remain secret |
@@ -136,7 +140,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.4.3** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.5.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
