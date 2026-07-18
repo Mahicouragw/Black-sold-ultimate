@@ -187,7 +187,9 @@ const OnlineSystem = {
     },
 
     async syncActiveHero(retry = 0) {
-        if (this.ready && this.user) {const p=window.Game?.state?.player,slot=window.Game?.state?.activeHeroId;if(p?.name&&slot){const reserved=await this.reserveHeroName(p.name,slot);if(!reserved.ok&&!reserved.migration){this.status=`Hero name conflict: ${reserved.error}`;this.updateIndicators();window.Game?.addNarrative?.('This existing hero name conflicts with another registered hero. Rename it with “my name is [new name]”.','system');}}return this.updatePresence();}
+        // Continuing or switching an existing hero must never run create-name validation.
+        // Atomic reservation is performed only by Create Hero and Rename Hero.
+        if (this.ready && this.user) return this.updatePresence();
         if (retry < 10) setTimeout(() => this.syncActiveHero(retry + 1), 500);
     },
 

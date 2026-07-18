@@ -75,6 +75,10 @@ Run [`supabase/features_v13_unique_names_real_voices.sql`](supabase/features_v13
 
 Run [`supabase/features_v14_one_hour_drops.sql`](supabase/features_v14_one_hour_drops.sql) so outdoor dropped items expire after one hour instead of seven days. This migration is included in `apply_all_updates.sql`.
 
+## 14. Fix legacy-name conflicts during Continue
+
+Run [`supabase/features_v15_legacy_name_fix.sql`](supabase/features_v15_legacy_name_fix.sql) so a same-owner `legacy-profile` reservation is moved to the real hero slot instead of producing a false duplicate-name error. Continue itself no longer runs create-name validation. This fix is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

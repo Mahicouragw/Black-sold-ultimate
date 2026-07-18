@@ -39,7 +39,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🏆 Whole-battle summaries: individual defeat names first, then deferred XP, gold, level-ups and drops after the final monster
 - 🎲 Three-MP healing rolls of 6/30/40, actual missing-HP clamping, full-health zero result and mastery-based failure reduction
 - 🧭 Wayfinder with nearest city/forest/cave routes, exact steps, approximate miles, first direction and compressed instructions
-- 🚪 Correct outward routes at every forest gate; East Gate now exits East to Kaliwasch without overwriting the Expansive Forest link
+- 🚪 Correct outward routes plus a 20-location Cityward Forest Trail and one-step Exit Forest action
+- ⏱ Persistent recovery of 1 HP and 1 MP per real minute, including elapsed closed-game time
+- ⛪ Any Temple prayer fully restores HP/MP; no separate Attempt Healing button
 - 🔐 Player-facing database/schema errors are redacted, and undiscovered artifacts/legendary rewards require physical searching
 - ⚖ Always-on Fair Mode: every 2–6 monster group shares a level-aware per-round damage budget; no Easy/Hard setting
 - 🙏 Direct Battle Prayer, Healing Spell and Multi Strike buttons with Temple unlocks and once-per-battle prayer
@@ -136,6 +138,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 | `attack [monster name]` | Target a current or waiting monster by name |
 | `fairness status` | Explain current group damage scaling; no Easy/Hard modes |
 | `wayfinder`, `distance`, `how far` | Show miles, steps, next direction and route to city/forest/cave entrances |
+| `exit forest`, `next exit step` | Walk one Wayfinder-calculated step toward the nearest city |
 | `battle prayer` | Use the once-per-battle Temple-unlocked prayer |
 | `take everything` | Collect all available public ground loot |
 | `cast shock` | Stronger 80–90+ single-target blue-light damage |
@@ -151,7 +154,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.7.1** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.7.2** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install

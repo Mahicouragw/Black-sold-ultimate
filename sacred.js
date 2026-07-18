@@ -192,7 +192,7 @@
         const units=eligible.reduce((n,i)=>n+i.quantity,0),removeCount=units?Math.max(1,Math.ceil(units*.25)):0,lost={};
         for(let n=0;n<removeCount;n++){const available=eligible.filter(i=>i.quantity>0);if(!available.length)break;const item=available[Math.floor(Math.random()*available.length)];item.quantity--;lost[item.name]=(lost[item.name]||0)+1;}
         this.state.inventory=this.state.inventory.filter(i=>i.quantity>0);
-        const fraction=p.mode==='archo'?1:(p.mode==='hardcore'?0.25:0.5);p.hp=Math.max(1,Math.ceil(p.maxHp*fraction));p.mp=Math.ceil(p.maxMp*fraction);p.pendingTempleRevival=false;p.permadead=false;
+        p.hp=p.maxHp;p.mp=p.maxMp;p.pendingTempleRevival=false;p.permadead=false;
         const lostText=Object.entries(lost).map(([name,count])=>`${name} x${count}`).join(', ');
         this.addNarrative(`Auralis revives ${p.name}.`,'green-light');
         this.addNarrative(lostText?`Missing from inventory: ${lostText}.`:'Missing from inventory: nothing. No eligible carried items were available.','item');
