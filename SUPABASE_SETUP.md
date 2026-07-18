@@ -83,6 +83,10 @@ Run [`supabase/features_v15_legacy_name_fix.sql`](supabase/features_v15_legacy_n
 
 Run [`supabase/features_v16_game_hall.sql`](supabase/features_v16_game_hall.sql) to create secure Ludo, Snakes & Ladders, Chess, Carrom and Blackjack sessions, members, invitations, optimistic versioning and Realtime updates. This migration is included in `apply_all_updates.sql`.
 
+## 16. Allow five-player online Game Hall sessions
+
+Run [`supabase/features_v17_five_player_game_hall.sql`](supabase/features_v17_five_player_game_hall.sql) to expand existing online Game Hall sessions from four to five players. This migration is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google
