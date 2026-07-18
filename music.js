@@ -84,6 +84,7 @@ const MusicSystem = {
             city: 'town',
             tavern: 'inn',
             inn: 'inn',
+            'game-hall': 'inn',
             temple: 'temple',
             palace: 'palace',
             cemetery: 'darkForest',
@@ -199,8 +200,8 @@ const MusicSystem = {
         if (!this.sfxEnabled) return Promise.resolve();
         this.init();
         const choices=this.sfx[type];if(!choices?.length)return Promise.resolve();
-        const src=choices[Math.floor(Math.random()*choices.length)],effect=new Audio(src);effect.preload='auto';effect.volume=this.sfxVolume;
-        return new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};const timer=setTimeout(finish,maximumMs);effect.addEventListener('ended',finish,{once:true});effect.addEventListener('error',finish,{once:true});effect.play().catch(finish);});
+        const src=choices[Math.floor(Math.random()*choices.length)],effect=new Audio(src);effect.preload='auto';effect.volume=this.sfxVolume;const music=this.currentTrack,originalVolume=music?.volume;if(music)music.volume=Math.max(.03,originalVolume*.25);
+        return new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;clearTimeout(timer);if(music&&this.currentTrack===music)music.volume=originalVolume;resolve();};const timer=setTimeout(finish,maximumMs);effect.addEventListener('ended',finish,{once:true});effect.addEventListener('error',finish,{once:true});effect.play().catch(finish);});
     }
 };
 
