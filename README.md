@@ -49,7 +49,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - ⚡ Shock deals 80–90 base single-target damage plus mastery growth and blue-flash stun feedback
 - 🎒 Inventory Examine/Throw actions and one-hour public-drop expiry
 - 🎲 Physical Accessible Game Halls with Ludo, Snakes & Ladders, standards-legal Chess, accessible Carrom and Blackjack
-- 🔉 Ordered CC0 dice, piece, card-draw, shuffle and turn sounds with AI/player announcements and paced movement; no external links in the Game Hall
+- 🔉 Ordered CC0 dice, numbered step movement, card-draw, shuffle and turn sounds with explicit player/AI announcements; no external links
+- 👥 Select 1–5 players before Ludo or Snakes & Ladders, with AI opponents or local pass-and-play
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
@@ -156,7 +157,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.8.1** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.8.2** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
