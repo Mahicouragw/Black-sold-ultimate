@@ -193,6 +193,14 @@ const MusicSystem = {
                 console.warn(`Could not play sound effect: ${type}`, error);
             }
         });
+    },
+
+    playSFXAndWait(type, maximumMs = 2200) {
+        if (!this.sfxEnabled) return Promise.resolve();
+        this.init();
+        const choices=this.sfx[type];if(!choices?.length)return Promise.resolve();
+        const src=choices[Math.floor(Math.random()*choices.length)],effect=new Audio(src);effect.preload='auto';effect.volume=this.sfxVolume;
+        return new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;clearTimeout(timer);resolve();};const timer=setTimeout(finish,maximumMs);effect.addEventListener('ended',finish,{once:true});effect.addEventListener('error',finish,{once:true});effect.play().catch(finish);});
     }
 };
 
