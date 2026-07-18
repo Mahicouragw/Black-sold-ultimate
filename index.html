@@ -376,13 +376,15 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.7.2</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.8.0</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
                     <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in & merge heroes</button>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
+                    <label for="rpg-difficulty">RPG battle difficulty</label>
+                    <select id="rpg-difficulty"><option value="story">Story — early auto-rescue, lose up to 1 item</option><option value="fair" selected>Fair — balanced auto-rescue, lose up to 1 item</option><option value="hard">Hard — rescue only on defeat, lose up to 2 items</option></select>
                     <label for="game-language">Game and chat translation language</label>
                     <select id="game-language">
                         <option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option>
@@ -467,6 +469,7 @@
     <script src="wayfinder-battle-actions-v15.js"></script>
     <script src="security-privacy-v16.js"></script>
     <script src="resource-recovery-forest-exit-v17.js"></script>
+    <script type="module" src="game-hall.js"></script>
     <script src="pwa.js"></script>
 </body>
 </html>

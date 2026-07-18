@@ -1633,6 +1633,7 @@ const Game = {
         this.addNarrative("attack [monster] / fairness status - Targeting and always-on Fair Mode", 'system');
         this.addNarrative("wayfinder / distance - Miles, steps and route to city, forest and cave entrances", 'system');
         this.addNarrative("exit forest / next exit step - Walk one calculated step toward the city", 'system');
+        this.addNarrative("game hall / board games - Route to accessible Ludo, Snakes, Chess, Carrom and Blackjack", 'system');
         this.addNarrative("battle prayer / take everything - Direct combat prayer and loot actions", 'system');
         this.addNarrative("search location - Discover hidden physical rewards without revealing them early", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');

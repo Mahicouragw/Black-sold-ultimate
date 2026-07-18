@@ -48,6 +48,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🛡 Multi-target Multi Strike and Light Orbs across all encounter monsters, with per-monster blocks, failure chance and practice growth
 - ⚡ Shock deals 80–90 base single-target damage plus mastery growth and blue-flash stun feedback
 - 🎒 Inventory Examine/Throw actions and one-hour public-drop expiry
+- 🎲 Physical Accessible Game Halls with Ludo, Snakes & Ladders, standards-legal Chess, accessible Carrom and Blackjack
+- 🔉 CC0 dice, piece, card-draw, shuffle and turn sounds; screen-reader turn narration and external public-rule links
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
@@ -154,7 +156,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.7.2** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.8.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install

@@ -79,6 +79,10 @@ Run [`supabase/features_v14_one_hour_drops.sql`](supabase/features_v14_one_hour_
 
 Run [`supabase/features_v15_legacy_name_fix.sql`](supabase/features_v15_legacy_name_fix.sql) so a same-owner `legacy-profile` reservation is moved to the real hero slot instead of producing a false duplicate-name error. Continue itself no longer runs create-name validation. This fix is included in `apply_all_updates.sql`.
 
+## 15. Enable online Game Hall invitations and state sync
+
+Run [`supabase/features_v16_game_hall.sql`](supabase/features_v16_game_hall.sql) to create secure Ludo, Snakes & Ladders, Chess, Carrom and Blackjack sessions, members, invitations, optimistic versioning and Realtime updates. This migration is included in `apply_all_updates.sql`.
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

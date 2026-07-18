@@ -29,6 +29,11 @@ The real sword swings, sword impacts, magic, spell, door, coin, pickup, interfac
 - Source: https://opengameart.org/content/rpg-sound-pack
 - License: CC0 1.0 / public domain
 
+Board/card sounds for dice rolls, piece movement, card draw, shuffle and turn cues:
+- **Card Game Sounds** by HaelDB
+- Source: https://opengameart.org/content/card-game-sounds
+- License: CC0 1.0 / public domain
+
 Additional leaf, stone, wood, gravel, and mud footsteps:
 - **Different steps on wood, stone, leaves, gravel and mud** by TinyWorlds
 - Source: https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud

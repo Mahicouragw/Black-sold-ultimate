@@ -49,7 +49,8 @@ const MusicSystem = {
         pickup: ['assets/audio/sfx/pickup.wav'],
         heal: ['assets/audio/sfx/heal.wav'],
         'heal-chain': ['assets/audio/sfx/heal-chain.wav'],
-        explore: ['assets/audio/sfx/explore.wav','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-mud.ogg']
+        explore: ['assets/audio/sfx/explore.wav','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-mud.ogg'],
+        'board-dice':['assets/audio/sfx/board-dice.wav'],'board-piece':['assets/audio/sfx/board-piece.wav'],'card-shuffle':['assets/audio/sfx/card-shuffle.wav'],'card-draw':['assets/audio/sfx/card-draw.wav'],'board-turn':['assets/audio/sfx/board-turn.wav'],'board-error':['assets/audio/sfx/board-error.wav']
     },
 
     init() {
