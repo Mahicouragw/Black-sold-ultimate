@@ -774,7 +774,8 @@ const Game = {
         this.updateDirectionButtons(loc.exits);
 
         if (loc.items && loc.items.length > 0) {
-            this.addNarrative(`You see: ${loc.items.map(i => WorldData.items[i]?.name || i).join(', ')}`, 'item');
+            const discovered=this.state.parity?.discoveredItems||[],visible=loc.items.filter(i=>!WorldData.items[i]?.hidden||discovered.includes(`${this.state.location}:${i}`));
+            if(visible.length)this.addNarrative(`You see: ${visible.map(i => WorldData.items[i]?.name || i).join(', ')}`, 'item');
         }
     },
 
@@ -787,9 +788,11 @@ const Game = {
         );
 
         if (!found) {
-            this.addNarrative("There's no such item here.", 'system');
+            this.addNarrative("There's no such visible item here.", 'system');
             return;
         }
+        const hidden=WorldData.items[found]?.hidden,discovered=this.state.parity?.discoveredItems||[];
+        if(hidden&&!discovered.includes(`${this.state.location}:${found}`)){this.addNarrative('That item has not been discovered. Search the location first.','system');return;}
 
         const itemData = WorldData.items[found];
         if (itemData) {
@@ -1630,6 +1633,7 @@ const Game = {
         this.addNarrative("attack [monster] / fairness status - Targeting and always-on Fair Mode", 'system');
         this.addNarrative("wayfinder / distance - Miles, steps and route to city, forest and cave entrances", 'system');
         this.addNarrative("battle prayer / take everything - Direct combat prayer and loot actions", 'system');
+        this.addNarrative("search location - Discover hidden physical rewards without revealing them early", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
         this.addNarrative("city directory / city map - Routes to every city landmark", 'system');

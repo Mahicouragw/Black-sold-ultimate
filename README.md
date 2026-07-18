@@ -39,6 +39,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 - 🏆 Whole-battle summaries: individual defeat names first, then deferred XP, gold, level-ups and drops after the final monster
 - 🎲 Three-MP healing rolls of 6/30/40, actual missing-HP clamping, full-health zero result and mastery-based failure reduction
 - 🧭 Wayfinder with nearest city/forest/cave routes, exact steps, approximate miles, first direction and compressed instructions
+- 🚪 Correct outward routes at every forest gate; East Gate now exits East to Kaliwasch without overwriting the Expansive Forest link
+- 🔐 Player-facing database/schema errors are redacted, and undiscovered artifacts/legendary rewards require physical searching
 - ⚖ Always-on Fair Mode: every 2–6 monster group shares a level-aware per-round damage budget; no Easy/Hard setting
 - 🙏 Direct Battle Prayer, Healing Spell and Multi Strike buttons with Temple unlocks and once-per-battle prayer
 - 🛡 Multi-target Multi Strike and Light Orbs across all encounter monsters, with per-monster blocks, failure chance and practice growth
@@ -149,7 +151,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.7.0** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.7.1** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install

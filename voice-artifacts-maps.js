@@ -14,7 +14,7 @@
         'guild standard':{name:'Guild Standard Fragment',type:'artifact',rarity:'legendary',str:140,dex:100,wis:160,hp:200,ability:'Encourages companions and cooperative battle groups.',desc:'A surviving fragment from the first Kandor adventurer standard.'},
         'black star':{name:'Black Star of Kandor',type:'artifact',rarity:'mythic',str:200,dex:200,int:200,wis:200,hp:250,mp:250,ability:'A balanced source of dangerous universal power.',desc:'A tiny black star suspended inside an unbreakable sphere.'}
     };
-    Object.entries(artifacts).forEach(([id,item])=>{item.id=id;item.value=500+(item.rarity==='mythic'?1500:item.rarity==='legendary'?900:400);WorldData.items[id]=item;});
+    Object.entries(artifacts).forEach(([id,item])=>{item.id=id;item.hidden=true;item.value=500+(item.rarity==='mythic'?1500:item.rarity==='legendary'?900:400);WorldData.items[id]=item;});
     const placements={shrine:'auralis ember',royal_palace:'crown of echoes',great_forest_path_25:'wanderer compass',endless_cave_20:'stoneheart idol',silver_river_10:'river pearl',arcane_enchantery:'rune lens',frost_tundra_12:'frostfire horn',royal_dungeon_15:'shadow key',eagle_peak:'eagle sigil',great_forest_path_20:'moonwell chalice',kaliwasch_district_20:'guild standard',shadow_chamber:'black star'};
     Object.entries(placements).forEach(([loc,id])=>{if(WorldData.locations[loc]&&!WorldData.locations[loc].items.includes(id))WorldData.locations[loc].items.push(id);});
     const defaults=()=>({identified:[],attuned:[],bonuses:{str:0,dex:0,int:0,wis:0,hp:0,mp:0}});
