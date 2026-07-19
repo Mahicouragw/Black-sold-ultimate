@@ -5,6 +5,25 @@
  * The engine deliberately owns exactly ONE music Audio element. Every category
  * change invalidates the previous playback session, pauses it, removes its
  * source and only then starts the next track, preventing location-music overlap.
+ *
+ * ─── SFX SYNC ENGINE (v7.8.5) ────────────────────────────────────────────────
+ * Sound effects NO LONGER use `new Audio(src)` per play. Each call used to
+ * fetch + decode the file from scratch, so the browser's network/decode time
+ * (200ms–1s+, worse on tablets) delayed the sound *after* the game animation —
+ * the audible "SFX not syncing" bug.
+ *
+ * SFX now run through the Web Audio API:
+ *   1. Every .wav/.ogg effect is fetched ONCE and decoded into an AudioBuffer
+ *      (preload starts at init; buffers are cached forever).
+ *   2. Playback = AudioBufferSourceNode.start(0) → sub-10ms latency, so the
+ *      sound fires exactly on the game event (dice throw, footstep, hit...).
+ *   3. playSFXAndWait() waits on the buffer's REAL duration instead of racing a
+ *      blind setTimeout against a still-loading file, so animation pacing
+ *      (board steps, card deals) stays locked to the audio.
+ *   4. First-use-before-decode falls back to the old HTMLAudio path, and the
+ *      AudioContext is created/resumed on the first user gesture to satisfy
+ *      browser autoplay policies.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 const MusicSystem = {
@@ -17,6 +36,14 @@ const MusicSystem = {
     sfxVolume: 0.55,
     initialized: false,
     pendingKey: null,
+
+    /** Web Audio state for the low-latency SFX path. */
+    audioCtx: null,
+    sfxGain: null,
+    /** src -> AudioBuffer | 'loading' | 'failed' */
+    sfxBuffers: {},
+    /** src -> in-flight decode Promise (de-dupes concurrent loads) */
+    sfxDecodePromises: {},
 
     music: {
         town: { src: 'assets/audio/music/town.mp3', loop: true, title: 'Town' },
@@ -64,8 +91,14 @@ const MusicSystem = {
             audio.src = track.src;
         });
 
-        // Retry a track once the player interacts if the browser blocked autoplay.
+        // Kick off SFX decode immediately — fetching/decoding needs no gesture,
+        // only playback does, so effects are ready the moment the player acts.
+        this.preloadSFX();
+
+        // Retry a track once the player interacts if the browser blocked autoplay,
+        // and (re)activate the SFX context on that same gesture.
         const unlock = () => {
+            this.unlockAudioContext();
             if (this.pendingKey && this.musicEnabled) {
                 const key = this.pendingKey;
                 this.pendingKey = null;
@@ -74,8 +107,112 @@ const MusicSystem = {
         };
         document.addEventListener('pointerdown', unlock, { passive: true });
         document.addEventListener('keydown', unlock);
-        console.log('🎵 Licensed CC0 audio system initialized.');
+        console.log('🎵 Licensed CC0 audio system initialized (Web Audio SFX engine).');
     },
+
+    /* ── Web Audio SFX engine ─────────────────────────────────────────────── */
+
+    /** Lazily create the AudioContext + master SFX gain node. */
+    ensureAudioContext() {
+        if (this.audioCtx) return this.audioCtx;
+        const CtxClass = window.AudioContext || window.webkitAudioContext;
+        if (!CtxClass) return null;
+        try {
+            this.audioCtx = new CtxClass();
+            this.sfxGain = this.audioCtx.createGain();
+            this.sfxGain.gain.value = this.sfxVolume;
+            this.sfxGain.connect(this.audioCtx.destination);
+        } catch (error) {
+            this.audioCtx = null;
+            this.sfxGain = null;
+        }
+        return this.audioCtx;
+    },
+
+    /** Call from any user gesture: creates + resumes the context. */
+    unlockAudioContext() {
+        const ctx = this.ensureAudioContext();
+        if (ctx && ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+        return ctx;
+    },
+
+    /**
+     * Fetch + decode one effect into the buffer cache. Decoding is idempotent
+     * and concurrent calls share a single in-flight request.
+     */
+    loadSFXBuffer(src) {
+        const cached = this.sfxBuffers[src];
+        if (cached && cached !== 'loading' && cached !== 'failed') {
+            return Promise.resolve(cached);
+        }
+        if (this.sfxDecodePromises[src]) return this.sfxDecodePromises[src];
+        if (!this.ensureAudioContext()) return Promise.resolve(null);
+
+        this.sfxBuffers[src] = 'loading';
+        const promise = fetch(src)
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.arrayBuffer();
+            })
+            .then(bytes => new Promise((resolve, reject) => {
+                // Support both promise and callback forms of decodeAudioData.
+                const decoded = this.audioCtx.decodeAudioData(bytes, resolve, reject);
+                if (decoded && typeof decoded.then === 'function') {
+                    decoded.then(resolve, reject);
+                }
+            }))
+            .then(buffer => {
+                this.sfxBuffers[src] = buffer;
+                return buffer;
+            })
+            .catch(() => {
+                this.sfxBuffers[src] = 'failed';
+                return null;
+            })
+            .finally(() => {
+                delete this.sfxDecodePromises[src];
+            });
+        this.sfxDecodePromises[src] = promise;
+        return promise;
+    },
+
+    /** Decode every registered effect up-front. */
+    preloadSFX() {
+        const sources = [...new Set(Object.values(this.sfx).flat())];
+        sources.forEach(src => this.loadSFXBuffer(src));
+    },
+
+    /**
+     * Zero-latency play of a decoded buffer. Falls back to HTMLAudio on first
+     * use (before its decode finishes) so a sound is never dropped.
+     * Subtle pitch jitter keeps repeated hits from sounding robotic.
+     */
+    playSFXSource(src) {
+        const buffer = this.sfxBuffers[src];
+        if (buffer && buffer !== 'loading' && buffer !== 'failed' && this.audioCtx) {
+            if (this.audioCtx.state === 'suspended') this.audioCtx.resume().catch(() => {});
+            const node = this.audioCtx.createBufferSource();
+            node.buffer = buffer;
+            node.playbackRate.value = 0.97 + Math.random() * 0.06;
+            node.connect(this.sfxGain);
+            node.start(0);
+            return true;
+        }
+        // Not decoded yet: begin decoding now and use the legacy element so the
+        // very first occurrence still produces sound (subsequent ones are instant).
+        if (this.audioCtx && buffer !== 'failed') this.loadSFXBuffer(src);
+        try {
+            const effect = new Audio(src);
+            effect.preload = 'auto';
+            effect.volume = this.sfxVolume;
+            effect.play().catch(() => {});
+        } catch (error) { /* ignore */ }
+        return false;
+    },
+
+    /* ── Music (unchanged streaming behaviour) ─────────────────────────────── */
 
     resolveTrack(locationType) {
         if (locationType === 'combat' || locationType === 'battle') return ['battle','battleFast','battleCinematic'][Math.floor(Math.random()*3)];
@@ -180,28 +317,80 @@ const MusicSystem = {
         if (this.currentTrack) this.currentTrack.volume = this.volume;
     },
 
+    setSFXVolume(value) {
+        this.sfxVolume = Math.max(0, Math.min(1, Number(value)));
+        if (this.sfxGain) this.sfxGain.gain.value = this.sfxVolume;
+    },
+
     playSFX(type) {
         if (!this.sfxEnabled) return;
         this.init();
         const choices = this.sfx[type];
         if (!choices?.length) return;
         const src = choices[Math.floor(Math.random() * choices.length)];
-        const effect = new Audio(src);
-        effect.preload = 'auto';
-        effect.volume = this.sfxVolume;
-        effect.play().catch(error => {
-            if (error.name !== 'NotAllowedError' && error.name !== 'AbortError') {
-                console.warn(`Could not play sound effect: ${type}`, error);
-            }
-        });
+        this.playSFXSource(src);
     },
 
-    playSFXAndWait(type, maximumMs = 2200) {
+    /**
+     * Plays an effect and resolves when the effect has actually finished
+     * (capped at maximumMs). With decoded buffers the wait follows the clip's
+     * REAL duration, so board-game pacing (steps, deals, dice) stays in sync
+     * with the sound instead of racing a half-downloaded file.
+     * Music is ducked to 25% for the duration and always restored.
+     */
+    async playSFXAndWait(type, maximumMs = 2200) {
         if (!this.sfxEnabled) return Promise.resolve();
         this.init();
-        const choices=this.sfx[type];if(!choices?.length)return Promise.resolve();
-        const src=choices[Math.floor(Math.random()*choices.length)],effect=new Audio(src);effect.preload='auto';effect.volume=this.sfxVolume;const music=this.currentTrack,originalVolume=music?.volume;if(music)music.volume=Math.max(.03,originalVolume*.25);
-        return new Promise(resolve=>{let done=false;const finish=()=>{if(done)return;done=true;clearTimeout(timer);if(music&&this.currentTrack===music)music.volume=originalVolume;resolve();};const timer=setTimeout(finish,maximumMs);effect.addEventListener('ended',finish,{once:true});effect.addEventListener('error',finish,{once:true});effect.play().catch(finish);});
+        const choices = this.sfx[type];
+        if (!choices?.length) return Promise.resolve();
+        const src = choices[Math.floor(Math.random() * choices.length)];
+
+        const music = this.currentTrack;
+        const originalVolume = music?.volume;
+        if (music) music.volume = Math.max(0.03, (originalVolume ?? this.volume) * 0.25);
+        const restore = () => {
+            if (music && this.currentTrack === music && originalVolume !== undefined) {
+                music.volume = originalVolume;
+            }
+        };
+
+        // Preferred path: decoded buffer → precise duration, instant start.
+        if (this.ensureAudioContext()) {
+            let buffer = this.sfxBuffers[src];
+            if (!buffer || buffer === 'loading' || buffer === 'failed') {
+                buffer = await this.loadSFXBuffer(src);
+            }
+            if (buffer && buffer !== 'failed') {
+                const waitMs = Math.min(buffer.duration * 1000, maximumMs);
+                if (this.audioCtx.state === 'suspended') this.audioCtx.resume().catch(() => {});
+                const node = this.audioCtx.createBufferSource();
+                node.buffer = buffer;
+                node.connect(this.sfxGain);
+                node.start(0);
+                await new Promise(resolve => setTimeout(resolve, waitMs));
+                restore();
+                return Promise.resolve();
+            }
+        }
+
+        // Fallback path: HTMLAudio element (Web Audio unavailable or decode failed).
+        return new Promise(resolve => {
+            let done = false;
+            const finish = () => {
+                if (done) return;
+                done = true;
+                clearTimeout(timer);
+                restore();
+                resolve();
+            };
+            const effect = new Audio(src);
+            effect.preload = 'auto';
+            effect.volume = this.sfxVolume;
+            const timer = setTimeout(finish, maximumMs);
+            effect.addEventListener('ended', finish, { once: true });
+            effect.addEventListener('error', finish, { once: true });
+            effect.play().catch(finish);
+        });
     }
 };
 
