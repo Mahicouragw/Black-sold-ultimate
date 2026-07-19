@@ -387,7 +387,7 @@
         if(c.startsWith('watch ')||c.startsWith('view ')||c.startsWith('examine ')){this.examineEntity(c.replace(/^(watch|view|examine) /,''));return;}
         if(c==='watch'||c==='view'||c==='examine'){this.look();return;}
         if(c.startsWith('my name is ')){this.renameActiveHero(cmd.trim().slice(11));return;}
-        if(c.startsWith('info')){const topic=c.slice(4).trim();this.addNarrative(topic==='developer'?'Developed for the Black Sword Ultimate community.':topic==='online'?OnlineSystem.status:`Black Sword Ultimate v${window.APP_VERSION||'7.0.0'} build ${window.APP_BUILD||''}, online multiplayer RPG.`,'system');return;}
+        if(c.startsWith('info')){const topic=c.slice(4).trim();this.addNarrative(topic==='developer'?'Developed for the Black Sword Ultimate community.':topic==='online'?(window.OnlineSystem?.status||'Online features unavailable'):`Black Sword Ultimate v${window.APP_VERSION||'7.0.0'} build ${window.APP_BUILD||''}, online multiplayer RPG.`,'system');return;}
         if(c.startsWith('read ')){this.addNarrative(`You read the ${c.slice(5)}. Its words hint at Auralis, the Palace, and dangers beyond Kaliwasch.`,'location');return;}
         if(c.startsWith('open ')){this.addNarrative(`You open or inspect the ${c.slice(5)}.`, 'system');return;}
         if(c.startsWith('say ')){this.talkToNPC();return;}if(c==='goodbye'){this.save();this.showScreen('title-screen');return;}

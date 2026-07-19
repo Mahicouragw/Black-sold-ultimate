@@ -25,7 +25,7 @@ const OnlineSystem = {
         rate: 0.82 + (i % 5) * 0.07,
         voiceIndex: i % 10
     })),
-    selectedVoice: localStorage.getItem('black_sword_chat_voice') || 'system:default',
+    selectedVoice: (() => { try { return localStorage.getItem('black_sword_chat_voice') || 'system:default'; } catch (error) { return 'system:default'; } })(),
 
     async init() {
         if (this.ready) return;

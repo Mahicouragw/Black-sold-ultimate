@@ -207,7 +207,8 @@ const MusicSystem = {
             const effect = new Audio(src);
             effect.preload = 'auto';
             effect.volume = this.sfxVolume;
-            effect.play().catch(() => {});
+            const playResult = effect.play();
+            if (playResult && typeof playResult.catch === 'function') playResult.catch(() => {});
         } catch (error) { /* ignore */ }
         return false;
     },
@@ -389,7 +390,8 @@ const MusicSystem = {
             const timer = setTimeout(finish, maximumMs);
             effect.addEventListener('ended', finish, { once: true });
             effect.addEventListener('error', finish, { once: true });
-            effect.play().catch(finish);
+            const playResult = effect.play();
+            if (playResult && typeof playResult.catch === 'function') playResult.catch(finish);
         });
     }
 };
