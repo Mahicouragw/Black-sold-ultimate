@@ -1,0 +1,80 @@
+name: Build Flutter APK
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "flutter_apk/**"
+      - ".github/workflows/flutter-apk.yml"
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files
+        run: |
+          cd flutter_apk
+          flutter create --platforms=android --project-name black_sword --org com.mahicouragw .
+
+      - name: Add internet permission & app label
+        run: |
+          python3 - <<'EOF'
+          import re
+          p = 'flutter_apk/android/app/src/main/AndroidManifest.xml'
+          s = open(p).read()
+          if 'android.permission.INTERNET' not in s:
+              s = s.replace('<application',
+                            '    <uses-permission android:name="android.permission.INTERNET"/>\n    <application', 1)
+          s = re.sub(r'android:label="[^"]*"', 'android:label="Black Sword Ultimate"', s, count=1)
+          if 'usesCleartextTraffic' not in s:
+              s = re.sub(r'<application\b', '<application android:usesCleartextTraffic="true"', s, count=1)
+          open(p, 'w').write(s)
+          print('Manifest patched')
+          EOF
+
+      - name: Build debug APK
+        run: |
+          cd flutter_apk
+          flutter pub get
+          flutter build apk --debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: black-sword-ultimate-apk
+          path: flutter_apk/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 90
+
+      - name: Upload APK as Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: flutter_apk/build/app/outputs/flutter-apk/app-debug.apk
+          tag_name: flutter-apk-${{ github.run_number }}
+          name: "Black Sword Ultimate APK (build ${{ github.run_number }})"
+          body: |
+            🗡️ Black Sword Ultimate — Android APK built automatically from main.
+            - The app opens the live game at https://black-sold-ultimate.vercel.app — every web update reaches your phone instantly
+            - Install on Android: allow "Install unknown apps" for your browser/file manager
+            - Fully TalkBack-friendly: swipe to the text game, type commands, listen with TTS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
