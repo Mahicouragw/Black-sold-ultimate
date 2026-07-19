@@ -44,8 +44,8 @@
                 MusicSystem.playSFX('levelup');
             } else {
                 const left = Math.max(0, this.getEnemyQuota(locId, name) - book[name]);
-                const hint = left > 0 ? `${left} more ${name}${left === 1 ? '' : 's'} still lurk${left === 1 ? 's' : ''}` : `no more ${name}s remain`;
-                this.addNarrative(`${hint} here — ${living.length} monster type${living.length === 1 ? '' : 's'} left in this area. Type "foes" for the full list.`, 'system');
+                const hint = left > 0 ? `${left} more ${name}${left === 1 ? '' : 's'} still hunted here` : `${name} fully defeated here`;
+                this.addNarrative(`${hint} — ${living.length} monster type${living.length === 1 ? '' : 's'} left in this area. Type "foes" for the full list.`, 'system');
             }
             this.save();
         };
