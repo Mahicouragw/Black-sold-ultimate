@@ -22,6 +22,7 @@ const Game = {
         completedQuests: [],
         visited: ['kaliwasch'],
         kills: 0,
+        slainEnemies: {},
         musicEnabled: true,
         sfxEnabled: true,
         defending: false,
@@ -566,12 +567,21 @@ const Game = {
         const localNpcs = WorldData.npcs[locId] || [];
         if (localNpcs.length) this.addNarrative(`Nearby: ${localNpcs.map(n => n.name).join(', ')}. Type "talk" or "invite [name]".`, 'npc');
 
-        // Check for random encounter
-        if (!loc.safe && loc.enemies && loc.enemies.length > 0 && Math.random() > 0.5) {
+        // Check for random encounter — only monsters still alive in this area can appear.
+        const livingPack = this.getLivingEnemies(locId);
+        if (!loc.safe && livingPack.length > 0 && Math.random() > 0.5) {
             setTimeout(() => {
-                const enemyName = loc.enemies[Math.floor(Math.random() * loc.enemies.length)];
+                // Re-verify before striking: the hero may have moved away or a fight may already be running.
+                if (this.state.location !== locId || this.state.inCombat) return;
+                const stillHere = this.getLivingEnemies(locId);
+                if (!stillHere.length) return;
+                const enemyName = stillHere[Math.floor(Math.random() * stillHere.length)];
                 this.startCombat(enemyName);
             }, 1500);
+        }
+        // Peaceful, screen-reader friendly note once an area's pack is fully defeated.
+        if (this.areaClearedInfo(locId)) {
+            this.addNarrative('This area is peaceful — you have already defeated every monster here. 🕊️', 'system');
         }
 
         this.updateHUD();
@@ -672,9 +682,18 @@ const Game = {
             return;
         }
 
-        // Attack
+        // Attack — outside combat this hunts a living monster from this area only
         if (c === 'attack' || c === 'fight') {
             this.attack();
+            return;
+        }
+        if (c.startsWith('attack ') || c.startsWith('fight ')) {
+            this.attack(c.replace(/^(attack|fight) /, ''));
+            return;
+        }
+        // Scout the monster pack in this area (blind-friendly)
+        if (c === 'foes' || c === 'enemies' || c === 'monsters' || c === 'hunt') {
+            this.showLivingEnemies();
             return;
         }
 
@@ -777,6 +796,14 @@ const Game = {
             const discovered=this.state.parity?.discoveredItems||[],visible=loc.items.filter(i=>!WorldData.items[i]?.hidden||discovered.includes(`${this.state.location}:${i}`));
             if(visible.length)this.addNarrative(`You see: ${visible.map(i => WorldData.items[i]?.name || i).join(', ')}`, 'item');
         }
+
+        // Report the local monster pack (blind-friendly scouting).
+        const pack = this.getLivingEnemies(this.state.location);
+        if (pack.length) {
+            this.addNarrative(`🐾 Monsters lurking here: ${pack.join(', ')}. Type "foes" for remaining counts or "attack" to fight.`, 'system');
+        } else if (this.areaClearedInfo(this.state.location)) {
+            this.addNarrative('🕊️ Peace here — every monster in this area has been defeated.', 'system');
+        }
     },
 
     takeItem(itemName) {
@@ -875,13 +902,87 @@ const Game = {
         this.save();
     },
 
-    attack() {
-        const loc = WorldData.locations[this.state.location];
-        if (loc.enemies && loc.enemies.length > 0) {
-            const enemyName = loc.enemies[Math.floor(Math.random() * loc.enemies.length)];
-            this.startCombat(enemyName);
+    attack(targetName) {
+        // Already fighting? A typed "attack" means: strike the enemy in front of you.
+        if (this.state.inCombat) {
+            this.playerAttack();
+            return;
+        }
+
+        const locId = this.state.location;
+        const loc = WorldData.locations[locId];
+        const living = this.getLivingEnemies(locId);
+
+        if (loc && loc.enemies && loc.enemies.length > 0 && living.length === 0) {
+            this.addNarrative('You have already defeated every monster in this area. You can attack only in combat — travel onward to find new foes, or brave the Arena of Echoes for an endless fair fight.', 'system');
+            MusicSystem.playSFX('button');
+            return;
+        }
+        if (living.length === 0) {
+            this.addNarrative("There are no monsters here. You are not in combat.", 'system');
+            MusicSystem.playSFX('button');
+            return;
+        }
+
+        let enemyName = null;
+        const query = (targetName || '').replace(/^the\s+/, '').trim().toLowerCase();
+        if (query) {
+            enemyName = living.find(n => n.toLowerCase().includes(query)) || null;
+            if (!enemyName) {
+                this.addNarrative(`No living "${targetName}" here. Monsters still roaming this area: ${living.join(', ')}.`, 'system');
+                return;
+            }
         } else {
-            this.addNarrative("There's nothing to attack here.", 'system');
+            enemyName = living[Math.floor(Math.random() * living.length)];
+        }
+
+        this.addNarrative(`You hunt the ${enemyName}!`, 'combat');
+        this.startCombat(enemyName);
+    },
+
+    // How many times a monster may legitimately appear in an area.
+    // Quest-required kills are always guaranteed; bosses fall permanently after one true victory.
+    getEnemyQuota(locId, enemyName) {
+        const data = WorldData.enemies[enemyName] || {};
+        let quota = (data.boss || data.finalBoss) ? 1 : 3;
+        (WorldData.quests || []).forEach(quest => (quest.objectives || []).forEach(obj => {
+            if (obj.type === 'kill' && obj.target === enemyName) quota = Math.max(quota, obj.count || 1);
+        }));
+        return quota;
+    },
+
+    // Monsters of an area that this hero has not yet fully defeated.
+    getLivingEnemies(locId) {
+        const loc = WorldData.locations[locId];
+        if (!loc || !Array.isArray(loc.enemies)) return [];
+        const slain = (this.state.slainEnemies && this.state.slainEnemies[locId]) || {};
+        return loc.enemies.filter(name => (slain[name] || 0) < this.getEnemyQuota(locId, name));
+    },
+
+    // true only for areas that once had monsters and are now fully cleared.
+    areaClearedInfo(locId) {
+        const loc = WorldData.locations[locId];
+        if (!loc || !loc.enemies || !loc.enemies.length) return false;
+        return this.getLivingEnemies(locId).length === 0;
+    },
+
+    showLivingEnemies() {
+        const locId = this.state.location;
+        const loc = WorldData.locations[locId];
+        if (!loc || !loc.enemies || !loc.enemies.length) {
+            this.addNarrative("No monsters live in this area. You are not in combat.", 'system');
+            return;
+        }
+        const slain = (this.state.slainEnemies && this.state.slainEnemies[locId]) || {};
+        const rows = loc.enemies.map(name => {
+            const left = Math.max(0, this.getEnemyQuota(locId, name) - (slain[name] || 0));
+            return `${name}: ${left > 0 ? left + ' remaining' : 'fully defeated'}`;
+        });
+        const living = this.getLivingEnemies(locId);
+        if (living.length) {
+            this.addNarrative(`🐾 Monsters in this area — ${rows.join('; ')}. Type "attack" to fight one, or "attack [name]" to choose your target.`, 'system');
+        } else {
+            this.addNarrative(`🕊️ This area is fully cleared — ${rows.join('; ')}.`, 'system');
         }
     },
 
@@ -1589,7 +1690,8 @@ const Game = {
         this.addNarrative("use/eat [food or potion] - Restore HP or MP", 'system');
         this.addNarrative("equip [weapon/armor] - Equip swords, blunt weapons, armor or accessories", 'system');
         this.addNarrative("cast [spell] - Cast magic; Mass Heal restores the full battle group", 'system');
-        this.addNarrative("attack - Start combat", 'system');
+        this.addNarrative("attack [name] - Hunt a living monster in this area (defeated areas stay peaceful)", 'system');
+        this.addNarrative("foes - List the monsters still alive in this area", 'system');
         this.addNarrative("inventory/i - View inventory", 'system');
         this.addNarrative("stats - View character stats", 'system');
         this.addNarrative("map/m - View world map", 'system');
@@ -1691,6 +1793,7 @@ const Game = {
             quests: this.state.quests,
             completedQuests: this.state.completedQuests,
             kills: this.state.kills,
+            slainEnemies: this.state.slainEnemies || {},
             companions: this.state.companions,
             guild: this.state.guild,
             combatGroup: this.state.combatGroup
@@ -1735,6 +1838,7 @@ const Game = {
             this.state.quests = data.quests;
             this.state.completedQuests = data.completedQuests || [];
             this.state.kills = data.kills || 0;
+            this.state.slainEnemies = data.slainEnemies || {};
             this.state.friends = data.friends || [];
             this.state.friendRequests = data.friendRequests || [];
             this.state.companions = data.companions || [];
