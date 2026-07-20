@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 /// Black Sword Ultimate — accessible fantasy RPG, wrapped for Android.
 /// Loads the live game, so every website update reaches the app instantly.
@@ -66,6 +67,11 @@ class _GameScreenState extends State<GameScreen> {
         ),
       )
       ..loadRequest(Uri.parse(kGameUrl));
+    // Allow game sounds & music without requiring a tap first (Android WebView).
+    final platform = _controller.platform;
+    if (platform is AndroidWebViewController) {
+      platform.setMediaPlaybackRequiresUserGesture(false);
+    }
   }
 
   void _reload() {
