@@ -224,12 +224,54 @@ const OnlineSystem = {
         this.openGoogleDialog(false);
     },
 
+    // Detect in-app WebViews — Google blocks OAuth inside embedded WebViews.
+    isEmbeddedWebView() {
+        const ua = navigator.userAgent || '';
+        return /; wv\)|\bwv\)|webView|(iPhone|iPod|iPad).*AppleWebKit(?!.*(Safari|CriOS))/i.test(ua);
+    },
+
+    // Robustly load (or force-reload) the Google Identity Services script.
+    loadGisScript(force=false) {
+        if (window.google?.accounts?.id && !force) return true;
+        if (force) {
+            document.querySelector('script[data-gis="1"],script[src*="accounts.google.com/gsi/client"]')?.remove();
+            try { delete window.google; } catch { window.google = undefined; }
+            this._gisScriptRequested = false;
+        }
+        if (this._gisScriptRequested && !force) return false;
+        this._gisScriptRequested = true;
+        const s = document.createElement('script');
+        s.src = `https://accounts.google.com/gsi/client?ts=${Date.now()}`;
+        s.async = true; s.defer = true; s.dataset.gis = '1';
+        s.onerror = () => { this._gisLoadFailed = true; this._gisScriptRequested = false; };
+        document.head.appendChild(s);
+        return false;
+    },
+
     openGoogleDialog(merge=false,retry=0) {
         this.googleMergeRequested=merge;const panel=document.getElementById('google-login-panel'),status=document.getElementById('google-login-status');panel?.classList.remove('hidden');
-        if(!window.google?.accounts?.id){if(status)status.textContent='Loading Google sign-in…';if(retry<20)setTimeout(()=>this.openGoogleDialog(merge,retry+1),250);else if(status)status.textContent='Google sign-in could not load. Check browser tracking protection and internet access.';return;}
-        const config=window.SUPABASE_CONFIG;if(!this.googleButtonInitialized){google.accounts.id.initialize({client_id:config.googleClientId,callback:response=>this.handleGoogleCredential(response),auto_select:false,cancel_on_tap_outside:false,use_fedcm_for_prompt:true});this.googleButtonInitialized=true;}
-        const target=document.getElementById('google-signin-render');if(target){target.innerHTML='';google.accounts.id.renderButton(target,{theme:'outline',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:300});}
-        if(status)status.textContent=merge?'Sign in to the existing Google account; guest heroes will be merged.':'Sign in to restore the heroes linked to this Google account.';
+        // Google refuses OAuth inside in-app WebViews (our APK): guide the player
+        // instead of looping on a script Google will never finish serving.
+        if(this.isEmbeddedWebView()){
+            if(status)status.textContent='Google sign-in is blocked inside app WebViews by Google. Open https://black-sold-ultimate.vercel.app in Chrome, sign in once with the same Google account — your heroes then sync to the app automatically. Guest mode keeps working meanwhile.';
+            this.status='To link Google: open the game in Chrome once';this.updateIndicators();return;
+        }
+        if(!window.google?.accounts?.id){
+            if(this._gisLoadFailed||retry===10)this.loadGisScript(true);else this.loadGisScript();
+            if(status)status.textContent='Loading Google sign-in…';
+            if(retry<40)setTimeout(()=>this.openGoogleDialog(merge,retry+1),300);
+            else if(status)status.textContent='Google sign-in could not load on this network/device. Guest mode still works — try again on Wi-Fi or in Chrome.';
+            return;
+        }
+        this._gisLoadFailed=false;
+        const config=window.SUPABASE_CONFIG;
+        try{
+            if(!this.googleButtonInitialized){google.accounts.id.initialize({client_id:config.googleClientId,callback:response=>this.handleGoogleCredential(response),auto_select:false,cancel_on_tap_outside:false,use_fedcm_for_prompt:false});this.googleButtonInitialized=true;}
+            const target=document.getElementById('google-signin-render');if(target){target.innerHTML='';google.accounts.id.renderButton(target,{theme:'outline',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:300});}
+            if(status)status.textContent=merge?'Sign in to the existing Google account; guest heroes will be merged.':'Sign in to restore the heroes linked to this Google account.';
+        }catch(err){
+            if(status)status.textContent=`Google sign-in could not start in this browser (${err.message}). Open https://black-sold-ultimate.vercel.app in Chrome and try there — guest heroes are kept.`;
+        }
     },
 
     async handleGoogleCredential(response) {
@@ -237,8 +279,10 @@ const OnlineSystem = {
         if(status)status.textContent='Google verified. Restoring cloud heroes…';
         if(this.googleMergeRequested&&window.Game?.state?.player){localStorage.setItem('black_sword_pending_google_merge',JSON.stringify(window.Game.getCloudData()));localStorage.setItem('black_sword_merge_requested','true');}
         localStorage.setItem('black_sword_google_login_requested','true');
-        const {data,error}=await this.client.auth.signInWithIdToken({provider:'google',token:response.credential});
-        if(error){localStorage.removeItem('black_sword_google_login_requested');if(status)status.textContent=`Google sign-in failed: ${error.message}`;return;}
+        let data,error;
+        try{({data,error}=await this.client.auth.signInWithIdToken({provider:'google',token:response.credential}));}
+        catch(e){data=null;error=e;}
+        if(error){localStorage.removeItem('black_sword_google_login_requested');if(status)status.textContent=`Google sign-in failed: ${error.message||'network error — check your connection'}`;return;}
         this.user=data.user;this.linked=true;this.ready=true;await this.loadProfile();this.status='Google verified — restoring linked heroes';document.getElementById('google-login-panel')?.classList.add('hidden');await this.cacheCloudSave(true);this.updateIndicators();
     },
 
