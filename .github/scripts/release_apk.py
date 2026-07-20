@@ -51,18 +51,47 @@ def api(path, method="GET", data=None, raw=None, ctype="application/json", retri
     raise RuntimeError("unreachable")
 
 
+def delete_if_exists(tag):
+    """If a release for this tag exists (e.g. orphan from a failed run), remove it + the git ref."""
+    try:
+        _, rel = api(f"/repos/{REPO}/releases/tags/{tag}", retries=2)
+    except Exception:
+        return  # not found
+    rid = rel["id"]
+    print(f"tag {tag} already exists (release {rid}) - removing before recreate")
+    try:
+        api(f"/repos/{REPO}/releases/{rid}", "DELETE", retries=4)
+    except Exception as e:
+        print("release delete warn:", e)
+    try:
+        api(f"/repos/{REPO}/git/refs/tags/{tag}", "DELETE", retries=4)
+    except Exception as e:
+        print("tag ref delete warn:", e)
+
+
 def main():
     tag = f"{TAG_BASE}-{RUN_NUMBER}"
+    delete_if_exists(tag)
     print(f"Creating release {RELEASE_NAME} (build {RUN_NUMBER}) as tag {tag}")
 
-    status, release = api(f"/repos/{REPO}/releases", "POST", data={
-        "tag_name": tag,
+    body = {
         "name": f"{RELEASE_NAME} (build {RUN_NUMBER})",
         "body": "🎮 Auto-built APK. Install: allow 'Install unknown apps' on Android, then open the file.\n"
                 "The app shows the live game — every website update arrives instantly.",
         "draft": False,
         "prerelease": False,
-    })
+    }
+    try:
+        b = dict(body)
+        b["tag_name"] = tag
+        status, release = api(f"/repos/{REPO}/releases", "POST", data=b, retries=3)
+    except Exception as e:
+        # Outage/leftover collision: fall back to a unique timestamped tag.
+        tag = f"{TAG_BASE}-{RUN_NUMBER}-{int(time.time())}"
+        print("create failed, falling back to unique tag", tag, "| cause:", e)
+        b = dict(body)
+        b["tag_name"] = tag
+        status, release = api(f"/repos/{REPO}/releases", "POST", data=b)
     rel_id = release["id"]
     print("release id:", rel_id)
 
