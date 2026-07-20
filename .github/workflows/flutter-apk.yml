@@ -57,18 +57,21 @@ jobs:
           flutter pub get
           flutter build apk --debug
 
+      - name: Give the APK a friendly name
+        run: cp flutter_apk/build/app/outputs/flutter-apk/app-debug.apk flutter_apk/build/app/outputs/flutter-apk/BlackSwordUltimate.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: black-sword-ultimate-apk
-          path: flutter_apk/build/app/outputs/flutter-apk/app-debug.apk
+          path: flutter_apk/build/app/outputs/flutter-apk/BlackSwordUltimate.apk
           retention-days: 90
 
       - name: Upload APK as Release
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          files: flutter_apk/build/app/outputs/flutter-apk/app-debug.apk
+          files: flutter_apk/build/app/outputs/flutter-apk/BlackSwordUltimate.apk
           tag_name: flutter-apk-${{ github.run_number }}
           name: "Black Sword Ultimate APK (build ${{ github.run_number }})"
           body: |

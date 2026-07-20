@@ -18,6 +18,7 @@ TOKEN = os.environ["GH_TOKEN"]
 APK_PATH = os.environ["APK_PATH"]
 TAG_BASE = os.environ.get("TAG_BASE", "flutter-apk")
 RELEASE_NAME = os.environ.get("RELEASE_NAME", "App APK")
+ASSET_NAME = os.environ.get("ASSET_NAME") or os.path.basename(APK_PATH)
 REPO = os.environ["GITHUB_REPOSITORY"]
 RUN_NUMBER = os.environ.get("GITHUB_RUN_NUMBER", "0")
 
@@ -98,10 +99,10 @@ def main():
     with open(APK_PATH, "rb") as f:
         apk_bytes = f.read()
     size_mb = len(apk_bytes) / 1e6
-    print(f"uploading asset app-debug.apk ({size_mb:.1f} MB)")
+    print(f"uploading asset {ASSET_NAME} ({size_mb:.1f} MB)")
 
     # resolve upload host
-    upload_url = release["upload_url"].split("{")[0] + "?name=app-debug.apk"
+    upload_url = release["upload_url"].split("{")[0] + "?name=" + ASSET_NAME
     for attempt in range(6):
         try:
             req = urllib.request.Request(upload_url, data=apk_bytes, method="POST")

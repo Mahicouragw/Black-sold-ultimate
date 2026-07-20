@@ -53,3 +53,4 @@ jobs:
           APK_PATH: flutter_apk/build/app/outputs/flutter-apk/app-debug.apk
           TAG_BASE: flutter-apk
           RELEASE_NAME: Black Sword Ultimate APK
+          ASSET_NAME: BlackSwordUltimate.apk

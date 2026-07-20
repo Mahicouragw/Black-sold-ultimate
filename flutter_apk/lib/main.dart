@@ -9,6 +9,13 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 const String kGameUrl = 'https://black-sold-ultimate.vercel.app';
 const Color kBg = Color(0xFF101018);
 
+/// Google blocks OAuth in default WebViews by spotting `; wv)` in the stock
+/// user-agent. Presenting a normal Chrome mobile UA lets players use the
+/// in-app Google sign-in exactly like on the website (One Tap + link Google).
+const String kChromeUserAgent =
+    'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 '
+    '(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36';
+
 void main() => runApp(const BlackSwordApp());
 
 class BlackSwordApp extends StatelessWidget {
@@ -48,6 +55,7 @@ class _GameScreenState extends State<GameScreen> {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(kBg)
+      ..setUserAgent(kChromeUserAgent)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) => setState(() {
