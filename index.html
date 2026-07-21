@@ -376,11 +376,20 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.8.4</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.16.0</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
                     <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in & merge heroes</button>
+                    <hr class="settings-divider" aria-hidden="true">
+                    <label for="settings-pin-input">Recovery PIN — exactly 6 digits, never share it</label>
+                    <input id="settings-pin-input" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="e.g. 493815" aria-label="Six digit recovery PIN">
+                    <button id="btn-set-pin" class="menu-btn">🔐 Create or update recovery PIN</button>
+                    <label for="settings-login-id">Sign in with Player ID and PIN</label>
+                    <input id="settings-login-id" autocomplete="off" placeholder="Player ID, like KND-AB12-CD34" aria-label="Player ID for PIN sign in">
+                    <input id="settings-login-pin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="6-digit PIN" aria-label="PIN for Player ID sign in">
+                    <button id="btn-login-pin" class="menu-btn">🔑 Sign in with Player ID + PIN</button>
+                    <p id="settings-pin-status" class="settings-note" aria-live="polite"></p>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
                     <label for="rpg-difficulty">RPG battle difficulty</label>

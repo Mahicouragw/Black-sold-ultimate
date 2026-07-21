@@ -284,6 +284,8 @@ const Game = {
         });
         document.getElementById('btn-copy-player-id').addEventListener('click', () => OnlineSystem.copyPlayerCode());
         document.getElementById('btn-link-google').addEventListener('click', () => OnlineSystem.linkGoogle());
+        document.getElementById('btn-set-pin')?.addEventListener('click', () => OnlineSystem.setRecoveryPin(document.getElementById('settings-pin-input').value));
+        document.getElementById('btn-login-pin')?.addEventListener('click', () => OnlineSystem.loginWithPlayerPin(document.getElementById('settings-login-id').value, document.getElementById('settings-login-pin').value));
         document.getElementById('btn-google-merge').addEventListener('click', () => OnlineSystem.mergeWithGoogle());
         document.getElementById('btn-test-chat-voice').addEventListener('click', () => OnlineSystem.testSelectedVoice());
         document.getElementById('chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));

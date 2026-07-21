@@ -59,8 +59,27 @@ const OnlineSystem = {
             this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
             const oauthParams = new URLSearchParams(`${location.search || ''}&${(location.hash || '').replace(/^#/, '')}`);
             const oauthError = oauthParams.get('error_description') || oauthParams.get('error_code');
-            if (oauthError) this.status = `Google linking needs attention: ${decodeURIComponent(oauthError.replace(/\+/g, ' '))}. If this Google account already exists, use “sign in & merge heroes” in Settings.`;
+            if (oauthError) { localStorage.removeItem('black_sword_google_login_requested'); localStorage.removeItem('black_sword_merge_requested'); } if (oauthError) this.status = `Google linking needs attention: ${decodeURIComponent(oauthError.replace(/\+/g, ' '))}. If this Google account already exists, use “sign in & merge heroes” in Settings.`;
             await this.updatePresence();
+            // Returning from the in-app Google page? Run the full welcome flow.
+            if (this.linked && localStorage.getItem('black_sword_google_login_requested') === 'true') {
+                this.subscribe();
+                this.updateIndicators();
+                this.client.auth.onAuthStateChange(async (_event, newSession) => {
+                    try {
+                        if (!newSession) return;
+                        this.user = newSession.user;
+                        await this.loadProfile().catch(() => {});
+                        await this.refreshIdentityStatus();
+                        this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
+                        await this.cacheCloudSave().catch(() => {});
+                        this.updateIndicators();
+                        if (window.Game?.state?.player) this.saveGame(window.Game.getCloudData());
+                    } catch (authListenerError) { console.warn('Auth listener issue:', authListenerError?.message); }
+                });
+                await this.welcomeSignedInPlayer().catch(e => this.onboardingFallback(e));
+                return;
+            }
             await this.cacheCloudSave();
             this.subscribe();
             this.updateIndicators();
@@ -226,6 +245,18 @@ const OnlineSystem = {
         this.openGoogleDialog(false);
     },
 
+    // App mode: the APK wrapper loads the game with ?source=app. In app mode we
+    // use a full-page secure Google redirect instead of the popup button — the
+    // popup IFRAME is what used to get stuck inside WebViews after choosing an
+    // account. The flag persists so the return trip keeps working.
+    isAppMode() {
+        try {
+            const q = new URLSearchParams(location.search || '');
+            if (q.get('source') === 'app') localStorage.setItem('black_sword_app_mode', 'true');
+            return localStorage.getItem('black_sword_app_mode') === 'true';
+        } catch { return false; }
+    },
+
     // Detect in-app WebViews — Google blocks OAuth inside embedded WebViews.
     isEmbeddedWebView() {
         const ua = navigator.userAgent || '';
@@ -258,6 +289,23 @@ const OnlineSystem = {
             if(status)status.textContent='Google sign-in is blocked inside app WebViews by Google. Open https://black-sold-ultimate.vercel.app in Chrome, sign in once with the same Google account — your heroes then sync to the app automatically. Guest mode keeps working meanwhile.';
             this.status='To link Google: open the game in Chrome once';this.updateIndicators();return;
         }
+        if(this.isAppMode()){
+            // Full-page secure sign-in: no popup, no cookie trap, always returns.
+            const target=document.getElementById('google-signin-render');
+            if(target && !target.querySelector('button')){
+                target.innerHTML='';
+                const btn=document.createElement('button');
+                btn.className='menu-btn google-btn';
+                btn.setAttribute('aria-label','Continue with Google — opens the secure sign-in page');
+                btn.innerHTML='<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
+                btn.addEventListener('click',()=>this.startGoogleRedirect(this.googleMergeRequested));
+                target.appendChild(btn);
+            }
+            if(status)status.textContent=merge
+                ?'Tap Continue with Google. A secure sign-in page opens inside the app; after you choose your account you come straight back here, and guest heroes are merged.'
+                :'Tap Continue with Google. A secure sign-in page opens inside the app and returns you to the game automatically.';
+            return;
+        }
         if(!window.google?.accounts?.id){
             if(this._gisLoadFailed||retry===10)this.loadGisScript(true);else this.loadGisScript();
             if(status)status.textContent='Loading Google sign-in…';
@@ -273,6 +321,31 @@ const OnlineSystem = {
             if(status)status.textContent=merge?'Sign in to the existing Google account; guest heroes will be merged.':'Sign in to restore the heroes linked to this Google account.';
         }catch(err){
             if(status)status.textContent=`Google sign-in could not start in this browser (${err.message}). Open https://black-sold-ultimate.vercel.app in Chrome and try there — guest heroes are kept.`;
+        }
+    },
+
+    async startGoogleRedirect(merge) {
+        // Full-page OAuth: leaves the page, signs in at Google, and returns to
+        // the game with a code that supabase-js exchanges automatically.
+        const status=document.getElementById('google-login-status');
+        if(status)status.textContent='Opening secure Google sign-in…';
+        try{
+            if(merge&&window.Game?.state?.player){
+                localStorage.setItem('black_sword_pending_google_merge',JSON.stringify(window.Game.getCloudData()));
+                localStorage.setItem('black_sword_merge_requested','true');
+            }
+            localStorage.setItem('black_sword_google_login_requested','true');
+            const back=new URL(location.origin+'/');
+            back.searchParams.set('source','app');
+            const {error}=await this.client.auth.signInWithOAuth({
+                provider:'google',
+                options:{redirectTo:back.toString(),queryParams:{prompt:'select_account'}}
+            });
+            if(error)throw error;
+        }catch(e){
+            localStorage.removeItem('black_sword_google_login_requested');
+            localStorage.removeItem('black_sword_merge_requested');
+            if(status)status.textContent=`Could not open Google sign-in: ${e.message||'network error'}. Tap the button to try again — guest progress is safe.`;
         }
     },
 
@@ -415,6 +488,60 @@ const OnlineSystem = {
         // Direct Google token sign-in avoids exposing a Supabase redirect page.
         // The current guest roster is merged into the selected Google account.
         this.openGoogleDialog(true);
+    },
+
+    // ---- Player ID + PIN recovery (server functions verified live) ----
+    async setRecoveryPin(pin) {
+        const status=document.getElementById('settings-pin-status');
+        const say=(m)=>{ if(status)status.textContent=m; try{window.Game?.addNarrative?.(m,'system');}catch{} };
+        pin=(pin||'').trim();
+        if(!/^\d{6}$/.test(pin)){say('PIN must be exactly 6 digits — numbers only.');return false;}
+        if(!this.client||!this.ready){say('Still connecting… try again in a moment.');return false;}
+        say('Saving your PIN…');
+        try{
+            const {error}=await this.client.rpc('set_player_recovery_pin',{new_pin:pin,current_save:window.Game?window.Game.getCloudData():{}});
+            if(error)throw error;
+            try{localStorage.setItem('black_sword_pin_configured','true');}catch{}
+            say('PIN saved! You can now sign in from any device using your Player ID + this PIN.');
+            return true;
+        }catch(e){say(`Could not save PIN: ${e.message||'network error'}`);return false;}
+    },
+
+    async loginWithPlayerPin(code,pin) {
+        const status=document.getElementById('settings-pin-status');
+        const say=(m)=>{ if(status)status.textContent=m; try{window.Game?.addNarrative?.(m,'system');}catch{} };
+        code=(code||'').trim().toUpperCase();pin=(pin||'').trim();
+        if(!code){say('Enter your Player ID (copy it from Settings on the other device).');return false;}
+        if(!/^\d{6}$/.test(pin)){say('PIN is exactly 6 digits.');return false;}
+        if(!this.client||!this.ready){say('Still connecting… try again in a moment.');return false;}
+        say('Checking Player ID and PIN…');
+        try{
+            const {data,error}=await this.client.rpc('recover_progress_with_pin',{code,supplied_pin:pin});
+            if(error)throw error;
+            const payload=data||{};
+            let roster=payload.heroes?payload:(payload.player?{version:2,activeHeroId:'hero_cloud_legacy',heroes:{hero_cloud_legacy:payload}}:{version:2,activeHeroId:null,heroes:{}});
+            const count=Object.keys(roster.heroes||{}).length;
+            if(!count){say('That account has no saved heroes yet.');return false;}
+            if(!roster.activeHeroId||!roster.heroes[roster.activeHeroId])roster.activeHeroId=Object.keys(roster.heroes)[0];
+            if(window.Game){
+                localStorage.setItem(window.Game.state.rosterKey,JSON.stringify(roster));
+                localStorage.setItem(window.Game.state.saveKey,JSON.stringify(roster.heroes[roster.activeHeroId]));
+                window.Game.state.activeHeroId=roster.activeHeroId;
+                localStorage.setItem('black_sword_recovered_by_id','true');
+                const hero=roster.heroes[roster.activeHeroId];
+                this.updateHeroEntryPoints(true);
+                this.status=`Online — recovered ${count} hero${count===1?'':'es'} via Player ID`;
+                this.updateIndicators();
+                say(`Signed in with Player ID! Welcome back, ${hero?.player?.name||'hero'} — your heroes were restored on this device.`);
+                document.getElementById('settings-panel')?.classList.add('hidden');
+                window.Game.showHeroRoster();
+            }
+            return true;
+        }catch(e){
+            const msg=e.message||'network error';
+            say(msg.includes('Too many attempts')?msg:'Invalid Player ID or PIN. Check both carefully — the PIN is 6 digits set on the original device.');
+            return false;
+        }
     },
 
     async signOut() {

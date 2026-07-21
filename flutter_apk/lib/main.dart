@@ -6,7 +6,7 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 /// Loads the live game, so every website update reaches the app instantly.
 /// Fully TalkBack navigable: app bar, reload action and game content are
 /// all reachable by swipe.
-const String kGameUrl = 'https://black-sold-ultimate.vercel.app';
+const String kGameUrl = 'https://black-sold-ultimate.vercel.app/?source=app';
 const Color kBg = Color(0xFF101018);
 
 /// Google blocks OAuth in default WebViews by spotting `; wv)` in the stock
