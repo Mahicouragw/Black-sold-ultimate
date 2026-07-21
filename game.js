@@ -683,6 +683,10 @@ const Game = {
         }
 
         // Attack — outside combat this hunts a living monster from this area only
+        // Single-letter Alexa-style shortcuts: n s e w u d move, l look, i bag, a attack, f flee.
+        const letterAlias = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down', l: 'look', i: 'inventory', q: 'quests', m: 'map', a: 'attack', f: 'flee' };
+        if (letterAlias[c]) c = letterAlias[c];
+
         if (c === 'attack' || c === 'fight') {
             this.attack();
             return;
@@ -914,7 +918,7 @@ const Game = {
         const living = this.getLivingEnemies(locId);
 
         if (loc && loc.enemies && loc.enemies.length > 0 && living.length === 0) {
-            this.addNarrative('You have already defeated every monster in this area. You can attack only in combat — travel onward to find new foes, or brave the Arena of Echoes for an endless fair fight.', 'system');
+            this.addNarrative('This area is cleared. Travel onward for new foes, or fight on in the Arena of Echoes.', 'system');
             MusicSystem.playSFX('button');
             return;
         }
@@ -1027,12 +1031,12 @@ const Game = {
             if (['minor heal', 'heal', 'nature mend'].includes(key)) {
                 const healAmount = damage;
                 this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
-                this.addNarrative(`You cast ${spell}! Healed ${healAmount} HP!`, 'magic');
+                this.addNarrative(`Your magic restores ${healAmount} health. ${this.battleStatusText()}`, 'magic');
             } else if (key === 'mass heal') {
                 const healAmount = damage;
                 this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
                 this.state.companions.forEach(c => { c.hp = Math.min(c.maxHp, c.hp + healAmount); });
-                this.addNarrative(`You cast ${spell}! Everyone in your battle group recovers ${healAmount} HP!`, 'magic');
+                this.addNarrative(`Your magic restores ${healAmount} health to your whole battle group. ${this.battleStatusText()}`, 'magic');
             } else if (key === 'multi strike') {
                 const hits = [0,1,2].map(() => Math.max(1, Math.floor(damage / 3) + Math.floor(Math.random() * 5)));
                 const total = hits.reduce((a,b) => a + b, 0);
@@ -1041,7 +1045,7 @@ const Game = {
             } else if (key === 'blessing') {
                 this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + 20);
                 this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + 20);
-                this.addNarrative(`You cast ${spell}! Restored HP and MP!`, 'magic');
+                this.addNarrative(`A blessing restores your body and magic. ${this.battleStatusText()}`, 'magic');
             } else {
                 this.state.enemy.hp -= damage;
                 this.addNarrative(`You cast ${spell} for ${damage} damage!`, 'magic');
@@ -1050,10 +1054,13 @@ const Game = {
             MusicSystem.playSFX('magic');
             this.updateHUD();
 
-            if (this.state.enemy.hp <= 0) {
-                this.enemyDefeated();
-            } else {
-                this.enemyAttack();
+            const peacefulCast = ['minor heal', 'heal', 'nature mend', 'mass heal', 'blessing'].includes(key);
+            if (!peacefulCast) {
+                if (this.state.enemy.hp <= 0) {
+                    this.enemyDefeated();
+                } else {
+                    this.enemyAttack();
+                }
             }
         } else {
             this.addNarrative("You can only cast spells in combat.", 'system');
@@ -1126,6 +1133,16 @@ const Game = {
         }
     },
 
+    // Alexa-style spoken battle status: lets blind players compare HP/MP
+    // with the monster after every action. No dice jargon, just numbers.
+    battleStatusText() {
+        const p = this.state.player, e = this.state.enemy;
+        if (!p) return '';
+        let text = `You have ${p.hp} of ${p.maxHp} health and ${p.mp} of ${p.maxMp} magic.`;
+        if (this.state.inCombat && e && e.hp > 0) text += ` ${e.name} has ${e.hp} of ${e.maxHp} health.`;
+        return text;
+    },
+
     playerAttack() {
         const p = this.state.player;
         const e = this.state.enemy;
@@ -1148,6 +1165,7 @@ const Game = {
         if (e.hp <= 0) {
             this.enemyDefeated();
         } else {
+            this.addNarrative(this.battleStatusText(), 'system');
             this.companionTurn();
             if (this.state.inCombat && this.state.enemy && this.state.enemy.hp > 0) this.enemyAttack();
         }
@@ -1196,6 +1214,8 @@ const Game = {
 
         if (p.hp <= 0) {
             this.gameOver();
+        } else {
+            this.addNarrative(this.battleStatusText(), 'system');
         }
     },
 

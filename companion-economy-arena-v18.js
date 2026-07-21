@@ -9,7 +9,7 @@
  *
  * Currencies (fair economy — earnable in-game, no pay-to-win):
  *   🪙 gold coins   — common, from every battle; buys basic revives & arena rest
- *   🔴 rubies       — uncommon battle drops (18% + guaranteed pity after 5 dry
+ *   🔴 rubies       — RARE battle drops (6% + guaranteed pity after 12 dry
  *                     kills); revive one companion to 60%
  *   🟡 gold rubies  — rare drops from strong enemies & arena milestones;
  *                     revive one companion to FULL health
@@ -95,15 +95,15 @@
         const strong = (e?.xp || 0) >= 45 || e?.boss;
         const elite = (e?.xp || 0) >= 60 || e?.boss;
 
-        // Ruby: 18% chance, with a guaranteed pity ruby after 5 dry battles.
-        if (eco.battlesSinceRuby >= 5) {
+        // Ruby: 6% chance, with a guaranteed pity ruby after 12 dry battles — rare treasure, also sold for diamonds..
+        if (eco.battlesSinceRuby >= 12) {
             grant(g, 'ruby', 1, 'persistence reward — the arena gods are fair');
             eco.battlesSinceRuby = 0;
-        } else if (Math.random() < (strong ? 0.30 : 0.18)) {
+        } else if (Math.random() < (strong ? 0.15 : 0.06)) {
             grant(g, 'ruby', 1, 'loot');
             eco.battlesSinceRuby = 0;
         }
-        if (elite) grant(g, 'ruby', 1, 'elite foe trophy');
+        if (elite && Math.random() < 0.25) grant(g, 'ruby', 1, 'elite foe trophy');
         if (strong && Math.random() < 0.12) grant(g, 'goldRuby', 1, 'rare drop');
         if (elite && Math.random() < 0.25) grant(g, 'diamond', 1, 'very rare drop');
     }
@@ -123,7 +123,7 @@
         eco.lastDaily = today;
 
         grant(this, 'gold', 100 + p.level * 25, `day ${eco.dailyStreak} treasure`);
-        if (eco.dailyStreak % 3 === 0) grant(this, 'ruby', 1, 'streak bonus');
+        if (eco.dailyStreak % 7 === 0) grant(this, 'ruby', 1, 'streak bonus');
         if (eco.dailyStreak % 7 === 0) grant(this, 'goldRuby', 1, 'weekly streak bonus');
         this.addNarrative(`Daily streak: ${eco.dailyStreak} day${eco.dailyStreak === 1 ? '' : 's'}. Come back tomorrow for a bigger chest!`, 'system');
     };
@@ -282,7 +282,7 @@
 
         const wave = a.wave;
         grant(g, 'gold', 30 + wave * 10, `wave ${wave} purse`);
-        if (wave % 2 === 0) grant(g, 'ruby', 1, `wave ${wave} milestone`);
+        if (wave % 5 === 0) grant(g, 'ruby', 1, `wave ${wave} milestone`);
         if (wave % 5 === 0) grant(g, 'goldRuby', 1, `champion of wave ${wave}`);
         if (wave % 7 === 0) grant(g, 'diamond', 1, `legend of wave ${wave}`);
         if (wave > 0 && wave % 10 === 0) grant(g, 'diamond', 1, 'arena glory');

@@ -2,7 +2,7 @@
 // Black Sword Ultimate v20 — Achievements & Badges 🏆
 // ============================================================
 // Blind-first milestone system. Every unlock is announced aloud
-// via the narrative log and pays +1 🔴 ruby. Progress persists
+// via the narrative log and pays gold. Progress persists
 // with the hero. Type "achievements" (or "badges") anytime.
 // ============================================================
 (function () {
@@ -42,8 +42,8 @@
 
         function unlock(a) {
             Game.state.achievements.push(a.id);
-            if (Game.state.player) Game.state.player.rubies = (Game.state.player.rubies || 0) + 1;
-            Game.addNarrative(`🏆 Achievement unlocked: ${a.name} — ${a.desc} (+1 🔴 ruby)`, 'treasure');
+            if (Game.state.player) Game.state.player.gold = (Game.state.player.gold || 0) + 150;
+            Game.addNarrative(`🏆 Achievement unlocked: ${a.name} — ${a.desc} (+150 🪙 gold)`, 'treasure');
             MusicSystem.playSFX('levelup');
             Game.save();
         }
