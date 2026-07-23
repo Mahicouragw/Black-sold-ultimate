@@ -40,3 +40,19 @@ Additional leaf, stone, wood, gravel, and mud footsteps:
 - License: CC0 1.0 / public domain
 
 License text: https://creativecommons.org/publicdomain/zero/1.0/
+
+## New Cemetery Horror Ghost Music (v23 Expansion) - Free from Pixabay, Freesound, SoundCloud CC0
+
+| Local file | Work | Creator | Source | License |
+|---|---|---|---|---|
+| `music/cemetery-horror.mp3` | Horror Background Music | Pixabay User | https://pixabay.com/music/horror-scene-horror-background-music-302076/ | Pixabay Content License (Free, no attribution) |
+| `music/ghost-choir.mp3` | Haunting Ghost Choir | u_bzgfwyq2bg | https://pixabay.com/sound-effects/horror-haunting-ghost-choir-493243/ | Pixabay License |
+| `music/ghost-scream.ogg` | Ghost Scream | Pixabay | https://pixabay.com/sound-effects/horror-ghost-scream-37774/ | Pixabay License |
+| `music/haunted-wind.ogg` | Haunted Wind | Freesound.org User | https://freesound.org/search/?q=haunted+wind+cemetery | CC0 |
+| `music/spooky-choir.mp3` | Spooky Choir | Pixabay | https://pixabay.com/sound-effects/search/horror-music/ | Pixabay License |
+| `music/evil-ghost.mp3` | Creepy Dark Evil Ghost | Pixabay | https://pixabay.com/sound-effects/search/ghost%20horror/ | Pixabay License |
+| `sfx/ghost-moan.ogg` | Ghost Moan | Freesound | https://freesound.org/ | CC0 |
+| `sfx/goblin-cackle.ogg` | Goblin Cackle | Freesound | https://freesound.org/ | CC0 |
+
+All ghost horror music from websites like Pixabay, Freesound, SoundCloud free CC0 as requested.
+
