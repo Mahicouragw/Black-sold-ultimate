@@ -30,7 +30,7 @@ const WorldData = {
         shrine: {
             name: "Ancient Shrine",
             description: "An ancient shrine dedicated to the old gods stands here. Mystical symbols glow faintly on the stone altar. This is a place of power.",
-            exits: { south: "mountains" },
+            exits: { south: "mountains", east: "eagle_peak" },
             features: ["altar", "glowing runes", "offering bowl"],
             items: ["blessed amulet", "ancient scroll"],
             enemies: ["stone guardian"],
@@ -40,7 +40,7 @@ const WorldData = {
         eagle_peak: {
             name: "Eagle Peak",
             description: "The highest point in the mountains. From here, you can see the entire realm spread out below. A massive eagle's nest sits atop the peak.",
-            exits: { west: "mountains" },
+            exits: { west: "mountains", south: "shrine" },
             features: ["eagle's nest", "panoramic view"],
             items: ["golden egg", "sky feather"],
             enemies: ["mega eagle"],
@@ -51,7 +51,7 @@ const WorldData = {
         forest: {
             name: "West Forest",
             description: "Dense woodland surrounds you. Ancient oaks tower overhead, their branches blocking the sunlight. Sunbeams filter through the leaves. You hear birds singing and small creatures rustling in the underbrush.",
-            exits: { east: "kaliwasch" },
+            exits: { east: "kaliwasch", north: "mountains", south: "swamp" },
             features: ["abandoned cabin", "crystal stream", "ancient oak", "fairy circle"],
             items: ["herbs", "wooden staff", "acorn", "fairy dust"],
             enemies: ["wolf", "goblin scout", "forest spider"],
@@ -61,7 +61,7 @@ const WorldData = {
         ruins: {
             name: "Eastern Ruins",
             description: "Crumbling stone structures hint at a civilization that flourished here centuries ago. Mysterious symbols cover the weathered walls. The air feels heavy with ancient magic.",
-            exits: { west: "kaliwasch" },
+            exits: { west: "kaliwasch", north: "mountains", south: "swamp" },
             features: ["temple ruins", "hidden chest", "altar of wisdom", "broken columns"],
             items: ["ancient scroll", "golden amulet", "ruby gem", "mystic orb"],
             enemies: ["skeleton warrior", "undead mage", "ghost knight"],
@@ -81,7 +81,7 @@ const WorldData = {
         witch_hut: {
             name: "Witch's Hut",
             description: "A crooked hut sits on stilts over the swamp. Bottles of strange potions line the shelves. The witch cackles as she stirs her cauldron.",
-            exits: { west: "swamp" },
+            exits: { west: "swamp", north: "kaliwasch", east: "forest" },
             features: ["potion cauldron", "spell books", "crystal ball", "broomstick"],
             items: ["healing potion", "mana potion", "poison vial", "spell scroll"],
             enemies: ["swamp witch"],
@@ -91,7 +91,7 @@ const WorldData = {
         goblin_camp: {
             name: "Goblin Camp",
             description: "A crude camp of goblins. Stolen goods are scattered about. The goblins are cooking something unsavory over a fire.",
-            exits: { east: "swamp" },
+            exits: { east: "swamp", north: "forest", south: "dungeon_entrance" },
             features: ["goblin tents", "prison cage", "treasure pile", "cooking fire"],
             items: ["stolen gold", "goblin axe", "rusty key", "goblin ear"],
             enemies: ["goblin warrior", "goblin shaman", "goblin chief"],
@@ -102,7 +102,7 @@ const WorldData = {
         dungeon_entrance: {
             name: "Dungeon Entrance",
             description: "A massive cave mouth yawns before you, exhaling cold air that carries strange sounds from below. Ancient runes are carved into the stone archway, warning of the dangers within.",
-            exits: { north: "swamp", south: "depths" },
+            exits: { north: "swamp", south: "depths", west: "goblin_camp" },
             features: ["stone archway", "warning signs", "torch brackets", "skeleton remains"],
             items: ["torch", "rope", "skeleton key"],
             enemies: ["goblin guard", "skeleton guard"],
@@ -122,7 +122,7 @@ const WorldData = {
         dark_hall: {
             name: "Dark Hall",
             description: "A vast underground hall stretches before you. Columns of dark stone support the ceiling. Shadows seem to move on their own.",
-            exits: { north: "depths" },
+            exits: { north: "depths", south: "shadow_chamber", east: "depths" },
             features: ["dark columns", "shadow throne", "ancient murals"],
             items: ["shadow cloak", "dark crown"],
             enemies: ["dark mage", "shadow archer"],
@@ -132,7 +132,7 @@ const WorldData = {
         shadow_chamber: {
             name: "Shadow Chamber",
             description: "A circular chamber filled with living shadows. In the center, a pedestal holds a blade that seems to absorb all light around it.",
-            exits: { west: "depths" },
+            exits: { west: "depths", north: "dark_hall" },
             features: ["shadow pedestal", "light-eating darkness"],
             items: ["THE BLACK SWORD"],
             enemies: ["shadow lord"],
