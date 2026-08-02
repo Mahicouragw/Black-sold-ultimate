@@ -44,6 +44,10 @@ const MusicSystem = {
     sfxBuffers: {},
     /** src -> in-flight decode Promise (de-dupes concurrent loads) */
     sfxDecodePromises: {},
+    /** src -> true when the file is known to be absent (probed, not guessed). */
+    sfxMissingProbe: {},
+    /** src -> true when a probe is already in flight. */
+    sfxProbing: {},
 
     music: {
         town: { src: 'assets/audio/music/town.mp3', loop: true, title: 'Town' },
@@ -77,7 +81,23 @@ const MusicSystem = {
         heal: ['assets/audio/sfx/heal.wav'],
         'heal-chain': ['assets/audio/sfx/heal-chain.wav'],
         explore: ['assets/audio/sfx/explore.wav','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-mud.ogg'],
-        'board-dice':['assets/audio/sfx/board-dice.wav'],'board-piece':['assets/audio/sfx/board-piece.wav'],'card-shuffle':['assets/audio/sfx/card-shuffle.wav'],'card-draw':['assets/audio/sfx/card-draw.wav'],'board-turn':['assets/audio/sfx/board-turn.wav'],'board-error':['assets/audio/sfx/board-error.wav']
+        'board-dice':['assets/audio/sfx/board-dice.wav'],'board-piece':['assets/audio/sfx/board-piece.wav'],'card-shuffle':['assets/audio/sfx/card-shuffle.wav'],'card-draw':['assets/audio/sfx/card-draw.wav'],'board-turn':['assets/audio/sfx/board-turn.wav'],'board-error':['assets/audio/sfx/board-error.wav'],
+        // v7.17.0 — original CC0 synthesis assets (see scripts/gen-missing-audio.py)
+        'exp':['assets/audio/sfx/exp.wav'],
+        'miss':['assets/audio/sfx/miss.wav'],
+        'body-fall':['assets/audio/sfx/body-fall.wav'],
+        'check':['assets/audio/sfx/check.wav'],
+        'checkmate':['assets/audio/sfx/checkmate.wav'],
+        'chess-move':['assets/audio/sfx/chess-move.wav'],
+        'card-flip':['assets/audio/sfx/card-flip.wav'],
+        'carrom-strike':['assets/audio/sfx/carrom-strike.wav'],
+        'coin-collision':['assets/audio/sfx/coin-collision.wav'],
+        'ghost-scream':['assets/audio/sfx/ghost-scream.wav'],
+        'ghost-moan':['assets/audio/sfx/ghost-moan.wav'],
+        'goblin-cackle':['assets/audio/sfx/goblin-cackle.wav'],
+        'haunted-wind':['assets/audio/sfx/haunted-wind.wav'],
+        'monster-roar':['assets/audio/sfx/monster-roar.wav'],
+        'monster-hit':['assets/audio/sfx/monster-hit.wav']
     },
 
     init() {
@@ -181,14 +201,35 @@ const MusicSystem = {
     /** Decode every registered effect up-front. */
     preloadSFX() {
         const sources = [...new Set(Object.values(this.sfx).flat())];
-        sources.forEach(src => this.loadSFXBuffer(src));
+        sources.forEach(src => {
+            this.loadSFXBuffer(src);
+            this.probeSFX(src);
+        });
     },
 
     /**
-     * Zero-latency play of a decoded buffer. Falls back to HTMLAudio on first
-     * use (before its decode finishes) so a sound is never dropped.
-     * Subtle pitch jitter keeps repeated hits from sounding robotic.
+     * v7.17.0 — existence probe. Marks a source as missing so playSFX can skip
+     * it instantly instead of firing a doomed HTMLAudio/404 that silently drops
+     * the effect. Probing is one tiny HEAD/GET per unique file, fired once.
      */
+    probeSFX(src) {
+        if (this.sfxMissingProbe[src] !== undefined || this.sfxProbing[src]) return;
+        this.sfxProbing[src] = true;
+        fetch(src, { method: 'HEAD' })
+            .then(res => { this.sfxMissingProbe[src] = !res.ok; })
+            .catch(() => { this.sfxMissingProbe[src] = true; })
+            .finally(() => { this.sfxProbing[src] = false; });
+    },
+
+    /** Pick the first healthy choice for an sfx type (skips probed-missing files). */
+    resolveSFX(type) {
+        const choices = this.sfx[type];
+        if (!choices?.length) return null;
+        const healthy = choices.filter(src => this.sfxMissingProbe[src] !== true);
+        const pool = healthy.length ? healthy : choices;
+        return pool[Math.floor(Math.random() * pool.length)];
+    },
+
     playSFXSource(src) {
         const buffer = this.sfxBuffers[src];
         if (buffer && buffer !== 'loading' && buffer !== 'failed' && this.audioCtx) {
@@ -326,10 +367,14 @@ const MusicSystem = {
     playSFX(type) {
         if (!this.sfxEnabled) return;
         this.init();
-        const choices = this.sfx[type];
-        if (!choices?.length) return;
-        const src = choices[Math.floor(Math.random() * choices.length)];
-        this.playSFXSource(src);
+        const src = this.resolveSFX(type);
+        if (!src) { console.warn('SFX unavailable (no healthy file for type):', type); return; }
+        if (!this.playSFXSource(src)) {
+            // Even the HTMLAudio fallback can fail (e.g. decode blocked): guarantee sound.
+            if (this.sfxBuffers[src] === 'failed' || this.sfxMissingProbe[src] === true) {
+                console.warn('SFX failed to play:', src);
+            }
+        }
     },
 
     /**
@@ -342,9 +387,8 @@ const MusicSystem = {
     async playSFXAndWait(type, maximumMs = 2200) {
         if (!this.sfxEnabled) return Promise.resolve();
         this.init();
-        const choices = this.sfx[type];
-        if (!choices?.length) return Promise.resolve();
-        const src = choices[Math.floor(Math.random() * choices.length)];
+        const src = this.resolveSFX(type);
+        if (!src) { console.warn('SFX unavailable (no healthy file for type):', type); return Promise.resolve(); }
 
         const music = this.currentTrack;
         const originalVolume = music?.volume;

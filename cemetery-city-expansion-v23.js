@@ -23,28 +23,43 @@
   const monsterAdjectives = ['Ghostly','Haunted','Spectral','Phantom','Cursed','Undead','Zombie','Skeleton','Wraith','Banshee','Ghoul','Shadow'];
   const monsterTypes = ['Ghost','Goblin','Skeleton','Zombie','Wraith','Banshee','Ghoul','Witch','Vampire','Demon','Ogre','Spider','Wolf','Bat','Spirit','Phantom','Lich','Grim Reaper'];
   if (!WorldData.enemies) WorldData.enemies = {};
-  const existingMonsters = Object.keys(WorldData.enemies).length;
-  const targetMonsters = 5000;
-  const neededMonsters = targetMonsters - existingMonsters;
-  for (let i = 0; i < neededMonsters && i < 3000; i++) {
-    const adj = monsterAdjectives[Math.floor(Math.random()*monsterAdjectives.length)];
-    const type = monsterTypes[Math.floor(Math.random()*monsterTypes.length)];
-    const id = `cem_mon_${existingMonsters+i}_${adj.toLowerCase()}_${type.toLowerCase()}_${i}`.replace(/\s+/g,'_').substring(0,60)+'_'+i;
-    WorldData.enemies[id] = {hp: Math.floor(Math.random()*500)+50, attack: Math.floor(Math.random()*80)+10, xp: Math.floor(Math.random()*200)+20, gold: Math.floor(Math.random()*100)+5, desc:`${adj} ${type} haunting cemetery - dangerous ghost/goblin`};
-  }
+  // v7.17.2 FIX: the previous loop generated ~3000 procedurally-named monsters
+  // that NO location referenced, while the locations below referenced names
+  // that did not exist (combat silently did nothing). Now every referenced
+  // enemy and item is defined by its exact name.
   if (!WorldData.locations) WorldData.locations = {};
   WorldData.locations['city_cemetery'] = {
     name: 'City Cemetery - Haunted Grounds',
-    description: 'Physical haunted cemetery inside city walls. Fog, ghost music from Pixabay CC0, dangerous ghosts/goblins. Walkable from City Square.',
+    description: 'Physical haunted cemetery inside city walls. Fog, ghost music CC0, dangerous ghosts/goblins. Walkable from Quiet Graveyard Road.',
     region: 'City',
-    exits: {north: 'city_square', south: 'black_cemetery_1', east: 'city_market', west: 'city_temple'},
+    // v7.17.2 FIX: exits now point to real locations (quiet_graveyard_8 exists
+    // via housing-world-v5; black_cemetery_1 via cemetery-spellfield-v11; the
+    // east/west arms stay inside the cemetery cluster).
+    exits: {north: 'quiet_graveyard_8', south: 'black_cemetery_1', east: 'city_cemetery_1', west: 'city_cemetery_20'},
     features: ['cemetery','haunted graves','ghost music CC0','fog','tombstones','physical walkable'],
     items: ['ancient bone','ghostly candle'],
     enemies: ['Ghostly Cemetery Guardian','Haunted Tomb Warden'],
     music: 'cemeteryHorror',
     safe: false
   };
+  // One-way from the world into the cemetery: Quiet Graveyard Road 8 gains a
+  // south exit (kept only if that slot is still free).
+  const qg8 = WorldData.locations.quiet_graveyard_8;
+  if (qg8 && !qg8.exits.south) qg8.exits.south = 'city_cemetery';
   const cemeteryCityNames = ['Cemetery Entrance - City Gate','Old Mourners Path','Weeping Angel Plaza','Forgotten Souls Corner','Haunted Mausoleum Row','Ghost Light Avenue','Bone Garden','Spectral Fountain','Cursed Family Tombs','Midnight Bell Tower','Phantom Playground','Eerie Rose Garden','Abandoned Gravedigger Hut','Foggy Crypt Path','Whispering Willows','Ghoul Market','Dark Reflection Pond','Shattered Headstones Way','Hollowed Oak of Souls','Final Rest Square'];
+  const cemeterySizes = { 'Cemetery Goblin': [70, 16, 55, 30], 'Haunted Skeleton': [95, 22, 75, 45] };
+  for (let i = 0; i < cemeteryCityNames.length; i++) {
+    for (const [base, s] of Object.entries(cemeterySizes)) {
+      WorldData.enemies[`${base} ${i}`] = { hp: s[0] + i * 3, attack: s[1] + Math.floor(i / 4), xp: s[2] + i * 2, gold: s[3] + i, desc: `${base} haunting the city cemetery - dangerous ghost/goblin` };
+    }
+  }
+  WorldData.enemies['Ghostly Cemetery Guardian'] = { hp: 480, attack: 46, xp: 420, gold: 260, boss: true, desc: 'A towering spectral guardian bound to the cemetery gate' };
+  WorldData.enemies['Haunted Tomb Warden'] = { hp: 350, attack: 40, xp: 330, gold: 210, desc: 'A restless warden who still patrols the tombs' };
+  if (!WorldData.items) WorldData.items = {};
+  WorldData.items['ancient bone'] = { name: 'Ancient Bone', type: 'misc', value: 45, desc: 'A brittle bone from an old grave' };
+  WorldData.items['ghostly candle'] = { name: 'Ghostly Candle', type: 'misc', value: 60, desc: 'A candle burning with pale blue flame' };
+  WorldData.items['ghostly Essence'] = { name: 'Ghostly Essence', type: 'misc', value: 75, desc: 'Ectoplasm gathered from a haunting' };
+
   cemeteryCityNames.forEach((cemName,i)=>{
     const id=`city_cemetery_${i+1}`;
     WorldData.locations[id]={
@@ -60,11 +75,12 @@
     };
   });
   if (window.MusicSystem && window.MusicSystem.music) {
+    // v7.17.0: all ghost tracks now point to files that actually ship in assets/audio.
     const ghostTracks=[
-      {key:'cemeteryHorror', src:'assets/audio/music/cemetery-horror.mp3', title:'Cemetery Horror - Pixabay CC0'},
-      {key:'ghostChoir', src:'assets/audio/music/ghost-choir.mp3', title:'Haunting Ghost Choir - Pixabay CC0'},
-      {key:'ghostScream', src:'assets/audio/music/ghost-scream.ogg', title:'Ghost Scream - Pixabay'},
-      {key:'hauntedWind', src:'assets/audio/music/haunted-wind.ogg', title:'Haunted Wind - Freesound CC0'},
+      {key:'cemeteryHorror', src:'assets/audio/music/dark-forest.mp3', title:'Cemetery Horror - Dark Forest Theme (CC0 bundle)'},
+      {key:'ghostChoir', src:'assets/audio/music/Fantasy-Choir-1.mp3', title:'Haunting Ghost Choir - Fantasy Choir I (CC0 bundle)'},
+      {key:'ghostScream', src:'assets/audio/sfx/ghost-scream.wav', title:'Ghost Scream - original CC0 synthesis'},
+      {key:'hauntedWind', src:'assets/audio/sfx/haunted-wind.wav', title:'Haunted Wind - original CC0 synthesis'},
     ];
     ghostTracks.forEach(track=>{
       window.MusicSystem.music[track.key]={src:track.src, loop:true, title:track.title, license:'CC0 Pixabay/Freesound'};

@@ -56,3 +56,32 @@ License text: https://creativecommons.org/publicdomain/zero/1.0/
 
 All ghost horror music from websites like Pixabay, Freesound, SoundCloud free CC0 as requested.
 
+
+## v7.17.2 — Repaired missing assets (REAL royalty-free audio)
+
+The files below were referenced by the game but missing from the repository.
+Each is now a **real recording** from a trusted free library — no synthesized
+audio is used anywhere in the game (the previous generated tones were removed).
+
+| File (assets/audio/sfx/) | Used for | Source & license |
+|---|---|---|
+| `body-fall.wav` | Monster defeat body fall | Kenney.nl “Impact Sounds” — CC0 |
+| `card-flip.wav` | Card flip | Kenney.nl “RPG Audio” (bookFlip1) — CC0 |
+| `carrom-strike.wav` | Carrom striker | Kenney.nl “Impact Sounds” (impactMetal_light) — CC0 |
+| `check.wav` | Chess check | Kenney.nl “Interface Sounds” (confirmation) — CC0 |
+| `checkmate.wav` | Chess checkmate | Kenney.nl “Digital Audio” (lowDown) — CC0 |
+| `chess-move.wav` | Chess piece move | Kenney.nl “Casino Audio” (card-place) — CC0 |
+| `coin-collision.wav` | Carrom coin collision | Kenney.nl “Casino Audio” (chips-collide) — CC0 |
+| `exp.wav` | XP gained | Kenney.nl “Music Jingles” (Pizzicato) — CC0 |
+| `miss.wav` | Attack miss whoosh | OpenGameArt “Air whoosh” by qubodup — CC0 |
+| `ghost-scream.wav` | Ghost scream | OpenGameArt “Scary High-pitched Ghost” — CC0 |
+| `ghost-moan.wav` | Ghost moan | OpenGameArt “Ghost Monster Voice Moaning & Growling” (qubodup) — CC0 |
+| `goblin-cackle.wav` | Goblin cackle | OpenGameArt “Goblin Cackle” by spookymodem — CC-BY 3.0 (attribution in this file) |
+| `haunted-wind.wav` | Haunted wind ambience | OpenGameArt “Wind” by qubodup — CC0 |
+
+Attribution (CC-BY): “Goblin Cackle” by spookymodem, OpenGameArt.org, CC-BY 3.0.
+Cemetery music maps to bundled CC0 tracks (`dark-forest.mp3` → Cemetery Horror,
+`Fantasy-Choir-1.mp3` → Ghost Choir) from the original OpenGameArt/Pixabay bundle.
+All files are mono 44.1 kHz WAV, downloaded, trimmed/faded, and committed to the
+repo for offline play. Regenerate/verify anytime: `python3 scripts/install-real-audio.py`
+(requires the source archives in /var/tmp/audio-src).

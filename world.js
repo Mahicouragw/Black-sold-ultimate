@@ -156,6 +156,8 @@ const WorldData = {
 
         // Undead
         "skeleton warrior": { hp: 45, attack: 14, xp: 45, gold: 35, desc: "Rattling bones animated by dark magic" },
+        "dark mage": { hp: 140, attack: 30, xp: 120, gold: 90, desc: "A robed caster wielding corrupted arcane power" },
+        "shadow archer": { hp: 110, attack: 34, xp: 105, gold: 80, desc: "An archer cloaked in living shadow" },
         "skeleton guard": { hp: 60, attack: 16, xp: 60, gold: 45, desc: "An armored skeleton guardian" },
         "undead mage": { hp: 35, attack: 20, xp: 50, gold: 40, desc: "A floating robe with burning eyes" },
         "ghost knight": { hp: 70, attack: 22, xp: 80, gold: 60, desc: "A spectral warrior in ethereal armor" },

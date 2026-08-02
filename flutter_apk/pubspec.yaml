@@ -1,7 +1,7 @@
 name: black_sword_apk
 description: "Black Sword Ultimate - accessible fantasy RPG, wrapped natively for Android."
 publish_to: "none"
-version: 7.12.0+1
+version: 7.17.2+18
 
 environment:
   sdk: ^3.5.0

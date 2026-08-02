@@ -743,9 +743,13 @@ const Game = {
             return;
         }
 
-        // Talk to NPC
+        // Talk to NPC (v7.17.0: "talk" or "talk to <name>" — quest-aware dialog)
+        if (c.startsWith('talk to ')) {
+            this.talkToNPC(c.slice(8));
+            return;
+        }
         if (c.startsWith('talk ') || c === 'talk') {
-            this.talkToNPC();
+            this.talkToNPC(c.startsWith('talk ') ? c.slice(5) : '');
             return;
         }
 
@@ -1028,86 +1032,172 @@ const Game = {
         }
     },
 
-    talkToNPC() {
+    // v7.17.0 — smarter NPCs: talk to a named NPC, quest-aware hints, and role
+    // actions (healer/trader/guild) so villages feel alive.
+    talkToNPC(name) {
         const npcs = WorldData.npcs[this.state.location];
-        if (npcs && npcs.length > 0) {
-            const npc = npcs[Math.floor(Math.random() * npcs.length)];
-            const dialog = npc.dialog[Math.floor(Math.random() * npc.dialog.length)];
-            this.addNarrative(`${npc.name} says: "${dialog}"`, 'npc');
-            MusicSystem.playSFX('coin');
-        } else {
+        if (!npcs || npcs.length === 0) {
             this.addNarrative("There's no one to talk to here.", 'system');
+            return;
         }
+        let npc = null;
+        const query = (name || '').trim().toLowerCase();
+        if (query) {
+            npc = npcs.find(n => n.name.toLowerCase().includes(query));
+            if (!npc) {
+                this.addNarrative(`No one named "${name}" is here. Nearby: ${npcs.map(n => n.name).join(', ')}.`, 'system');
+                return;
+            }
+        } else {
+            npc = npcs[Math.floor(Math.random() * npcs.length)];
+        }
+
+        const dialog = this.npcDialog(npc);
+        this.addNarrative(`${npc.name} says: "${dialog}"`, 'npc');
+
+        // Role actions make NPCs useful, not just scenery.
+        const loc = WorldData.locations[this.state.location];
+        if (npc.role === 'healer') {
+            this.addNarrative(`${npc.name} nods toward the altar: "Quick heal restores your body when you need it."`, 'system');
+        } else if (npc.role === 'trader' && loc && loc.shop) {
+            this.addNarrative(`${npc.name} gestures at the wares: type "shop" to browse.`, 'item');
+        } else if (npc.role === 'guild') {
+            this.addNarrative('The quest board is open — type "quests" to review your current tasks.', 'system');
+        }
+        MusicSystem.playSFX('coin');
+    },
+
+    /** Pick NPC dialog flavored by the hero's quest state (v7.17.0). */
+    npcDialog(npc) {
+        const base = npc.dialog[Math.floor(Math.random() * npc.dialog.length)];
+        const activeQuest = this.state.quests.find(q => !this.state.completedQuests.includes(q.id));
+        const hints = {
+            guild: activeQuest
+                ? `The realm's need is great — ${activeQuest.name} still calls for a hero.`
+                : 'Every current task is settled. Travel far — new quests await beyond the city.',
+            healer: 'The altar of Auralis is always lit. Quick heal draws on its light.',
+            tavern: 'Travelers whisper that the deep places stir again. Keep your sword close.',
+            trader: 'My shelves hold supplies for every road. Gold buys what steel cannot.'
+        };
+        if (activeQuest && Math.random() < 0.45 && hints[npc.role]) return hints[npc.role];
+        if (this.state.completedQuests.length > 0 && Math.random() < 0.35) {
+            return `${base} Your deeds are already spoken of across the city.`;
+        }
+        return base;
     },
 
     castSpell(spellName) {
-        if (this.state.inCombat) {
-            const spell = this.state.player.spells.find(s =>
-                s.toLowerCase().includes(spellName.toLowerCase())
-            );
+        if (!this.state.inCombat) {
+            this.addNarrative("You can only cast spells in combat.", 'system');
+            return;
+        }
+        const spell = this.state.player.spells.find(s =>
+            s.toLowerCase().includes(spellName.toLowerCase())
+        );
 
-            if (!spell) {
-                this.addNarrative(`You don't know that spell. Available: ${this.state.player.spells.join(', ')}`, 'system');
-                return;
-            }
+        if (!spell) {
+            this.addNarrative(`You don't know that spell. Available: ${this.state.player.spells.join(', ')}`, 'system');
+            return;
+        }
 
-            const costs = { 'power strike': 15, 'multi strike': 24, 'battle cry': 20, 'fireball': 25, 'ice storm': 30, 'lightning bolt': 35, 'backstab': 15, 'smoke bomb': 20, 'minor heal': 14, 'heal': 20, 'mass heal': 38, 'nature mend': 22, 'holy light': 25, 'blessing': 15, 'hammer smite': 22, 'piercing volley': 28, 'chi burst': 24, 'thorn storm': 30 };
-            const cost = costs[spell.toLowerCase()] || 20;
+        const costs = { 'power strike': 15, 'multi strike': 24, 'battle cry': 20, 'fireball': 25, 'ice storm': 30, 'lightning bolt': 35, 'backstab': 15, 'smoke bomb': 20, 'minor heal': 14, 'heal': 20, 'mass heal': 38, 'nature mend': 22, 'holy light': 25, 'blessing': 15, 'hammer smite': 22, 'piercing volley': 28, 'chi burst': 24, 'thorn storm': 30 };
+        const cost = costs[spell.toLowerCase()] || 20;
 
-            if (this.state.player.mp < cost) {
-                this.addNarrative("Not enough mana!", 'system');
-                return;
-            }
+        if (this.state.player.mp < cost) {
+            this.addNarrative("Not enough mana!", 'system');
+            return;
+        }
 
-            this.state.player.mp -= cost;
+        this.state.player.mp -= cost;
 
-            // Calculate spell damage
-            const baseDamage = { 'power strike': 25, 'multi strike': 42, 'battle cry': 15, 'fireball': 45, 'ice storm': 40, 'lightning bolt': 50, 'backstab': 35, 'smoke bomb': 20, 'minor heal': 18, 'heal': 34, 'mass heal': 30, 'nature mend': 40, 'holy light': 35, 'blessing': 0, 'hammer smite': 48, 'piercing volley': 46, 'chi burst': 42, 'thorn storm': 44 };
-            const damage = (baseDamage[spell.toLowerCase()] || 30) + this.state.player.level * 3 + Math.floor(this.state.player.int / 3);
-            const key = spell.toLowerCase();
+        const baseDamage = { 'power strike': 25, 'multi strike': 42, 'battle cry': 15, 'fireball': 45, 'ice storm': 40, 'lightning bolt': 50, 'backstab': 35, 'smoke bomb': 20, 'minor heal': 18, 'heal': 34, 'mass heal': 30, 'nature mend': 40, 'holy light': 35, 'blessing': 0, 'hammer smite': 48, 'piercing volley': 46, 'chi burst': 42, 'thorn storm': 44 };
+        const damage = (baseDamage[spell.toLowerCase()] || 30) + this.state.player.level * 3 + Math.floor(this.state.player.int / 3);
+        const key = spell.toLowerCase();
 
+        this.combatSequence(async () => {
             if (['minor heal', 'heal', 'nature mend'].includes(key)) {
                 const healAmount = damage;
-                this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
-                this.addNarrative(`Your magic restores ${healAmount} health. ${this.battleStatusText()}`, 'magic');
+                const newHp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
+                const applied = newHp - this.state.player.hp;
+                this.state.player.hp = newHp;
+                if (this._pro) {
+                    await this._pro.healingSpell(applied, this.state.player.hp);
+                } else {
+                    MusicSystem.playSFX('heal');
+                    this.addNarrative(`Your magic restores ${applied} health. ${this.battleStatusText()}`, 'magic');
+                }
             } else if (key === 'mass heal') {
                 const healAmount = damage;
                 this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
                 this.state.companions.forEach(c => { c.hp = Math.min(c.maxHp, c.hp + healAmount); });
+                MusicSystem.playSFX('heal');
                 this.addNarrative(`Your magic restores ${healAmount} health to your whole battle group. ${this.battleStatusText()}`, 'magic');
             } else if (key === 'multi strike') {
-                const hits = [0,1,2].map(() => Math.max(1, Math.floor(damage / 3) + Math.floor(Math.random() * 5)));
-                const total = hits.reduce((a,b) => a + b, 0);
-                this.state.enemy.hp -= total;
+                const hits = [0, 1, 2].map(() => Math.max(1, Math.floor(damage / 3) + Math.floor(Math.random() * 5)));
+                const total = this.state.enemy ? hits.reduce((a, b) => a + b, 0) : 0;
+                MusicSystem.playSFX('attack');
+                for (const h of hits) {
+                    this.applyEnemyDamage(h, null);
+                    MusicSystem.playSFX('hit');
+                    await new Promise(r => setTimeout(r, 180));
+                }
                 this.addNarrative(`Multi Strike lands ${hits.length} hits (${hits.join(' + ')}) for ${total} damage!`, 'combat');
             } else if (key === 'blessing') {
                 this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + 20);
                 this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + 20);
+                MusicSystem.playSFX('magic');
                 this.addNarrative(`A blessing restores your body and magic. ${this.battleStatusText()}`, 'magic');
             } else {
-                this.state.enemy.hp -= damage;
-                this.addNarrative(`You cast ${spell} for ${damage} damage!`, 'magic');
+                MusicSystem.playSFX('magic');
+                this.applyEnemyDamage(damage, `You cast ${spell} for {damage} damage!`);
             }
 
-            MusicSystem.playSFX('magic');
             this.updateHUD();
 
             const peacefulCast = ['minor heal', 'heal', 'nature mend', 'mass heal', 'blessing'].includes(key);
             if (!peacefulCast) {
-                if (this.state.enemy.hp <= 0) {
-                    this.enemyDefeated();
-                } else {
-                    this.enemyAttack();
+                if (this.state.enemy && this.state.enemy.hp <= 0) {
+                    await this.enemyDefeated();
+                } else if (this.state.inCombat) {
+                    await this.enemyAttack();
                 }
             }
-        } else {
-            this.addNarrative("You can only cast spells in combat.", 'system');
-        }
+        });
     },
 
     // ============================================
     // COMBAT
     // ============================================
+
+    // v7.17.0 — every combat action runs through one serialized promise chain so
+    // sounds and TalkBack narration NEVER overlap, and turn order is exact:
+    // player → companions → enemy → (defeat → loot → XP → victory).
+    _combatChain: Promise.resolve(),
+
+    combatSequence(fn) {
+        this._combatChain = (this._combatChain || Promise.resolve())
+            .then(() => fn())
+            .catch(err => console.warn('combat sequence error:', err));
+        return this._combatChain;
+    },
+
+    /** Professional synchronized combat audio (professional-audio-combat-v24.js). */
+    get _pro() { return window.ProfessionalAudioCombat; },
+
+    /** Apply damage to the current enemy, honoring brace, with HUD update. */
+    applyEnemyDamage(amount, sourceText) {
+        const e = this.state.enemy;
+        if (!e) return 0;
+        let dmg = Math.max(1, Math.floor(Number(amount) || 0));
+        if (e.braceTurns > 0) {
+            dmg = Math.max(1, Math.ceil(dmg / 2));
+            e.braceTurns--;
+        }
+        e.hp = Math.max(0, e.hp - dmg);
+        if (sourceText) this.addNarrative(sourceText.replace('{damage}', String(dmg)), 'combat');
+        this.updateEnemyHUD();
+        return dmg;
+    },
 
     startCombat(enemyName) {
         const enemyData = WorldData.enemies[enemyName];
@@ -1127,7 +1217,11 @@ const Game = {
             gold: Math.floor(enemyData.gold * levelBonus),
             boss: enemyData.boss || false,
             finalBoss: enemyData.finalBoss || false,
-            desc: enemyData.desc
+            desc: enemyData.desc,
+            // v7.17.0 enemy AI state: brace halves incoming damage once; roar
+            // buffs the monster's attack briefly.
+            braceTurns: 0,
+            roarActive: false
         };
 
         if (!this.state.cleanEncounterMode) {
@@ -1141,12 +1235,13 @@ const Game = {
         this.updateEnemyHUD();
 
         MusicSystem.play('combat');
-        MusicSystem.playSFX('attack');
     },
 
     updateEnemyHUD() {
         const e = this.state.enemy;
-        document.getElementById('enemy-hp').textContent = `${Math.max(0, e.hp)}/${e.maxHp}`;
+        if (!e) return;
+        const el = document.getElementById('enemy-hp');
+        if (el) el.textContent = `${Math.max(0, e.hp)}/${e.maxHp}`;
     },
 
     handleCombat(action) {
@@ -1182,130 +1277,190 @@ const Game = {
     },
 
     playerAttack() {
-        const p = this.state.player;
-        const e = this.state.enemy;
+        if (!this.state.inCombat || !this.state.enemy) return;
+        this.combatSequence(async () => {
+            const p = this.state.player, e = this.state.enemy;
+            if (!e || e.hp <= 0 || !p) return;
 
-        const baseDamage = p.weaponDamage || 8;
-        const strBonus = Math.floor(p.str / 2);
-        const critChance = Math.floor(p.dex / 4);
-        const isCrit = Math.random() * 100 < critChance;
+            const baseDamage = Math.max(1, p.weaponDamage || 8);
+            const strBonus = Math.floor(p.str / 2);
+            const critChance = Math.floor(p.dex / 4);
+            const isCrit = Math.random() * 100 < critChance;
+            // v7.17.0: dodge chance so misses are possible (sounds + narration).
+            const isMiss = Math.random() * 100 < 8;
+            let damage = Math.max(1, baseDamage + strBonus + Math.floor(Math.random() * 6));
+            if (isCrit) damage *= 2;
 
-        let damage = baseDamage + strBonus + Math.floor(Math.random() * 6);
-        if (isCrit) damage *= 2;
+            if (this._pro) {
+                // Professional timeline: swing → hit/miss → narrate → remaining HP.
+                // Apply brace BEFORE narration so the narrated damage is accurate.
+                let dmg = damage;
+                if (e.braceTurns > 0) { dmg = Math.max(1, Math.ceil(dmg / 2)); e.braceTurns--; }
+                await this._pro.playerAttack('You', e.name, dmg, isCrit, isMiss, isMiss ? e.hp : Math.max(0, e.hp - dmg));
+                if (!isMiss) { e.hp = Math.max(0, e.hp - dmg); this.updateEnemyHUD(); }
+            } else {
+                if (isMiss) {
+                    MusicSystem.playSFX('miss');
+                    this.addNarrative(`Your attack misses ${e.name}!`, 'combat');
+                } else {
+                    MusicSystem.playSFX('hit');
+                    this.addNarrative(`You ${isCrit ? 'CRITICALLY ' : ''}attack for ${damage} damage!`, 'combat');
+                }
+                if (!isMiss) this.applyEnemyDamage(damage, null);
+            }
 
-        e.hp -= damage;
-
-        this.addNarrative(`You ${isCrit ? 'CRITICALLY ' : ''}attack for ${damage} damage!`, 'combat');
-        MusicSystem.playSFX('hit');
-
-        this.updateEnemyHUD();
-
-        if (e.hp <= 0) {
-            this.enemyDefeated();
-        } else {
-            this.addNarrative(this.battleStatusText(), 'system');
-            this.companionTurn();
-            if (this.state.inCombat && this.state.enemy && this.state.enemy.hp > 0) this.enemyAttack();
-        }
+            if (e.hp <= 0) { await this.enemyDefeated(); return; }
+            await this.companionTurn();
+            if (this.state.inCombat && this.state.enemy && this.state.enemy.hp > 0) await this.enemyAttack();
+        });
     },
 
     companionTurn() {
-        const active = this.state.companions.filter(c => c.hp > 0).slice(0, 3);
-        active.forEach(companion => {
-            if (!this.state.enemy || this.state.enemy.hp <= 0) return;
-            if (companion.heal && this.state.player.hp < this.state.player.maxHp * 0.45) {
-                const amount = Math.min(companion.heal, this.state.player.maxHp - this.state.player.hp);
-                this.state.player.hp += amount;
-                this.addNarrative(`${companion.name} heals you for ${amount} HP.`, 'magic');
-            } else {
-                const damage = companion.attack + Math.floor(Math.random() * 5);
-                this.state.enemy.hp -= damage;
-                this.addNarrative(`${companion.name} strikes for ${damage} damage!`, 'combat');
+        return this.combatSequence(async () => {
+            const active = this.state.companions.filter(c => c.hp > 0).slice(0, 3);
+            for (const companion of active) {
+                if (!this.state.enemy || this.state.enemy.hp <= 0) break;
+                if (companion.heal && this.state.player.hp < this.state.player.maxHp * 0.45) {
+                    const amount = Math.min(companion.heal, this.state.player.maxHp - this.state.player.hp);
+                    this.state.player.hp += amount;
+                    this.addNarrative(`${companion.name} heals you for ${amount} HP.`, 'magic');
+                    MusicSystem.playSFX('heal');
+                } else {
+                    const damage = Math.max(1, companion.attack + Math.floor(Math.random() * 5));
+                    const applied = this.applyEnemyDamage(damage, null);
+                    this.addNarrative(`${companion.name} strikes for ${applied} damage!`, 'combat');
+                    MusicSystem.playSFX('attack');
+                }
+                this.updateHUD();
             }
+            if (this.state.enemy && this.state.enemy.hp <= 0) await this.enemyDefeated();
         });
-        this.updateHUD();
-        if (this.state.enemy && this.state.enemy.hp <= 0) this.enemyDefeated();
-        else if (this.state.enemy) this.updateEnemyHUD();
     },
 
     defend() {
+        if (!this.state.inCombat) return;
         this.state.defending = true;
         this.addNarrative("You raise your guard!", 'system');
         this.enemyAttack();
     },
 
     enemyAttack() {
-        const p = this.state.player;
-        const e = this.state.enemy;
+        if (!this.state.inCombat || !this.state.enemy) return;
+        this.combatSequence(async () => {
+            const p = this.state.player, e = this.state.enemy;
+            if (!e || e.hp <= 0 || !p || p.hp <= 0) return;
 
-        let damage = Math.max(1, e.attack + Math.floor(Math.random() * 4) - Math.floor((p.defense || 0) / 2));
-        if (this.state.defending) {
-            damage = Math.floor(damage * 0.5);
-            this.state.defending = false;
-        }
+            // v7.17.0 enemy AI: a wounded monster may brace (halves incoming
+            // damage on its next hit) and bosses may roar (attack buff).
+            const pct = e.hp / e.maxHp;
+            if (pct < 0.25 && !e.braceTurns && Math.random() < 0.35) {
+                e.braceTurns = 1;
+                this.addNarrative(`${e.name} braces its defenses!`, 'combat');
+                return; // braced monsters skip their strike this turn
+            }
+            if (e.boss && !e.roarActive && pct < 0.5 && Math.random() < 0.4) {
+                e.roarActive = true;
+                e.attack = Math.floor(e.attack * 1.25);
+                this.addNarrative(`${e.name} ROARS and its attacks grow stronger!`, 'combat');
+                MusicSystem.playSFX('enemy-hit');
+                return;
+            }
 
-        p.hp -= damage;
-        MusicSystem.playSFX('enemy-hit');
-        this.addNarrative(`${e.name} hits you for ${damage} damage!`, 'combat');
+            const isMiss = Math.random() * 100 < (8 + Math.floor((p.dex || 0) / 3));
+            let damage = Math.max(1, e.attack + Math.floor(Math.random() * 4) - Math.floor((p.defense || 0) / 2));
+            if (this.state.defending) {
+                damage = Math.max(1, Math.floor(damage * 0.5));
+                this.state.defending = false;
+            }
 
-        this.updateHUD();
+            if (this._pro) {
+                await this._pro.monsterAttack(e.name, damage, isMiss, Math.max(0, p.hp - damage));
+            } else if (isMiss) {
+                MusicSystem.playSFX('miss');
+            } else {
+                MusicSystem.playSFX('enemy-hit');
+            }
 
-        if (p.hp <= 0) {
-            this.gameOver();
-        } else {
-            this.addNarrative(this.battleStatusText(), 'system');
-        }
+            if (isMiss) {
+                this.addNarrative(`${e.name} attacks but you dodge the blow!`, 'combat');
+            } else {
+                p.hp = Math.max(0, p.hp - damage);
+                this.addNarrative(`${e.name} hits you for ${damage} damage!`, 'combat');
+            }
+
+            this.updateHUD();
+            if (p.hp <= 0) {
+                this.gameOver();
+            } else if (!this._pro) {
+                this.addNarrative(this.battleStatusText(), 'system');
+            }
+        });
     },
 
+    // v7.17.0 — ordered defeat sequence: defeat sounds → loot → XP → quest →
+    // victory. The victory fanfare NEVER plays before loot and XP narration ends.
     enemyDefeated() {
-        const e = this.state.enemy;
-        const p = this.state.player;
+        return this.combatSequence(async () => {
+            const e = this.state.enemy;
+            const p = this.state.player;
+            if (!e || !p) return;
 
-        p.xp += e.xp;
-        p.gold += e.gold;
-        this.state.kills++;
+            p.xp += e.xp;
+            p.gold += e.gold;
+            this.state.kills++;
 
-        this.addNarrative(`🎉 ${e.name} defeated! +${e.xp} XP, +${e.gold} gold`, 'treasure');
-        MusicSystem.playSFX('victory');
+            if (this._pro) {
+                const oldLevel = p.level;
+                await this._pro.monsterDefeat(e.name);
+                await this._pro.loot(e.name, e.gold > 0 ? [{ gold: e.gold }] : []);
+                // Level up state first so the XP narration reports the true level
+                // (narration/sound handled by the professional timeline).
+                if (p.xp >= p.xpToNext) this.levelUp(true);
+                await this._pro.experience(e.xp, p.level, oldLevel);
+            } else {
+                this.addNarrative(`🎉 ${e.name} defeated! +${e.xp} XP, +${e.gold} gold`, 'treasure');
+                MusicSystem.playSFX('victory');
+                if (p.xp >= p.xpToNext) this.levelUp();
+            }
 
-        // Level up check
-        if (p.xp >= p.xpToNext) {
-            this.levelUp();
-        }
+            // Check for Black Sword
+            if (e.finalBoss) {
+                await this.victory();
+                return;
+            }
 
-        // Check for Black Sword
-        if (e.finalBoss) {
-            this.victory();
-            return;
-        }
+            // Check quests
+            this.checkQuests('kill', e.name);
 
-        // Check quests
-        this.checkQuests('kill', e.name);
-
-        // End combat
-        this.state.inCombat = false;
-        this.state.enemy = null;
-        document.getElementById('combat-panel').classList.add('hidden');
-
-        MusicSystem.play(this.getLocationMusic());
-        this.updateHUD();
-        this.save();
-    },
-
-    tryFlee() {
-        const e = this.state.enemy;
-        const fleeChance = e.boss ? 0.2 : 0.5;
-
-        if (Math.random() < fleeChance) {
-            this.addNarrative("You escaped!", 'system');
+            // End combat
             this.state.inCombat = false;
             this.state.enemy = null;
             document.getElementById('combat-panel').classList.add('hidden');
+
+            if (this._pro) await this._pro.victory();
             MusicSystem.play(this.getLocationMusic());
-        } else {
-            this.addNarrative("Failed to escape!", 'system');
-            this.enemyAttack();
-        }
+            this.updateHUD();
+            this.save();
+        });
+    },
+
+    tryFlee() {
+        if (!this.state.inCombat) return;
+        this.combatSequence(async () => {
+            const e = this.state.enemy;
+            const fleeChance = e.boss ? 0.2 : 0.5;
+
+            if (Math.random() < fleeChance) {
+                this.addNarrative("You escaped!", 'system');
+                this.state.inCombat = false;
+                this.state.enemy = null;
+                document.getElementById('combat-panel').classList.add('hidden');
+                MusicSystem.play(this.getLocationMusic());
+            } else {
+                this.addNarrative("Failed to escape!", 'system');
+                await this.enemyAttack();
+            }
+        });
     },
 
     showSpellPanel() {
@@ -1358,7 +1513,7 @@ const Game = {
         });
     },
 
-    levelUp() {
+    levelUp(quiet) {
         const p = this.state.player;
         p.level++;
         p.xp -= p.xpToNext;
@@ -1371,8 +1526,10 @@ const Game = {
         p.dex += 1;
         p.int += 1;
 
-        this.addNarrative(`⬆️ LEVEL UP! You are now level ${p.level}!`, 'treasure');
-        MusicSystem.playSFX('levelup');
+        if (!quiet) {
+            this.addNarrative(`⬆️ LEVEL UP! You are now level ${p.level}!`, 'treasure');
+            MusicSystem.playSFX('levelup');
+        }
     },
 
     // ============================================
