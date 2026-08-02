@@ -1,0 +1,21 @@
+name: Web Build (Vercel-ready)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci || npm install --no-audit --no-fund
+      - run: npm run build
+      - name: Verify bundle
+        run: |
+          test -f www/index.html && echo "web bundle OK"
+          node scripts/pwa-check.mjs
