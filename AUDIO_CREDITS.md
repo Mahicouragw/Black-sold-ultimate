@@ -85,3 +85,31 @@ Cemetery music maps to bundled CC0 tracks (`dark-forest.mp3` → Cemetery Horror
 All files are mono 44.1 kHz WAV, downloaded, trimmed/faded, and committed to the
 repo for offline play. Regenerate/verify anytime: `python3 scripts/install-real-audio.py`
 (requires the source archives in /var/tmp/audio-src).
+
+## v7.17.3 — REAL background music (was missing from every deployment!)
+
+The 14 background-music tracks were REFERENCED by music.js but NEVER committed to
+the repository — the game ran with silent music on every live deployment. All
+tracks are now real, looping, royalty-free recordings from OpenGameArt.org:
+
+| Game file (assets/audio/music/) | Used for | Source track | Author | License |
+|---|---|---|---|---|
+| `town.mp3` | City/town theme | Fantasy Night Town | amacnaughton | CC-BY 3.0 |
+| `inn.mp3` | Tavern/inn (The Old Tower Inn) | Chiptune Medieval: The Old Tower Inn | Nenad Vukadinović | CC0 |
+| `exploration.mp3` | Overland exploration | Of Far Different Nature — Epic Departure | of far different nature | CC-BY 3.0 |
+| `dark-forest.mp3` | Forest / cemetery horror | Cathedral in the Forest (ambient loop) | (public domain) | CC0 / Public Domain |
+| `Fantasy-Choir-1.mp3` | Temple | A Wintertale | jobromedia | CC-BY 3.0 |
+| `Fantasy-Choir-2.mp3` | Palace | A New Town (RPG theme) | (public domain) | CC0 / Public Domain |
+| `Fantasy-Choir-3.mp3` | Epic exploration | Beyond the Frozen Veil | (public domain) | CC0 / Public Domain |
+| `adventure-intro.wav` | Title intro | Adventure Theme Intro | nene | CC0 |
+| `dungeon.ogg` | Dungeon ambience | RPG Ambience — Dungeon | Hitctrl | CC-BY 3.0 |
+| `battle.ogg` | Battle theme | Battle March (epic orchestral loop) | PlayOnLoop | CC-BY 3.0 |
+| `battle-fast.mp3` | Fast battle loop | Battle in the Stratosphere | Scrabbit | CC-BY 3.0 |
+| `determined-pursuit.mp3` | Cinematic battle | Chase | (public domain) | CC0 |
+| `boss.mp3` | Boss battle | A Slave To No One (RPG Orchestral Essentials) | Inspector J | CC-BY 3.0 |
+| `victory.mp3` | Victory fanfare | And The Winner Is | (public domain) | CC0 |
+
+CC-BY attribution (as required): tracks by amacnaughton, of far different nature,
+jobromedia, Hitctrl, PlayOnLoop, Scrabbit and Inspector J are used under the
+Creative Commons Attribution 3.0 license via OpenGameArt.org. All other tracks
+are CC0 / Public Domain. No synthesized music anywhere.

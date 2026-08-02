@@ -60,8 +60,8 @@ const MusicSystem = {
         intro: { src: 'assets/audio/music/adventure-intro.wav', loop: false, title: 'Adventure Intro' },
         dungeon: { src: 'assets/audio/music/dungeon.ogg', loop: true, title: 'Loopable Dungeon Ambience' },
         battle: { src: 'assets/audio/music/battle.ogg', loop: true, title: 'Battle RPG Theme Variation' },
-        battleFast: { src: 'assets/audio/music/battle-fast.wav', loop: true, title: 'Fast Fight Battle Loop' },
-        battleCinematic: { src: 'assets/audio/music/determined-pursuit.wav', loop: true, title: 'Determined Pursuit' },
+        battleFast: { src: 'assets/audio/music/battle-fast.mp3', loop: true, title: 'Fast Fight Battle Loop' },
+        battleCinematic: { src: 'assets/audio/music/determined-pursuit.mp3', loop: true, title: 'Determined Pursuit' },
         boss: { src: 'assets/audio/music/boss.mp3', loop: true, title: 'Battle RPG Theme' },
         victory: { src: 'assets/audio/music/victory.mp3', loop: false, title: 'Victory' }
     },
