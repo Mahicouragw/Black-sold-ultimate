@@ -806,7 +806,7 @@ const Game = {
         // Report the local monster pack (blind-friendly scouting).
         const pack = this.getLivingEnemies(this.state.location);
         if (pack.length) {
-            this.addNarrative(`🐾 Monsters lurking here: ${pack.join(', ')}. Type "foes" for remaining counts or "attack" to fight.`, 'system');
+            this.addNarrative(`🐾 Monsters lurking here: ${pack.join(', ')}. Type "foes" for remaining counts. Combat begins only when an enemy encounters you, a quest requires it, or an NPC initiates it.`, 'system');
         } else if (this.areaClearedInfo(this.state.location)) {
             this.addNarrative('🕊️ Peace here — every monster in this area has been defeated.', 'system');
         }
@@ -909,41 +909,68 @@ const Game = {
     },
 
     attack(targetName) {
+        // Per spec: combat should only happen when a battle has been started by
+        //   (a) a quest, (b) an enemy encounter, or (c) an NPC.
+        // Typing "attack" outside combat should respond "You are not currently in combat"
+        // and must NOT start a new hunt.
+        //
+        // Backwards compatibility: the original "hunt a monster" command is
+        // still available as "hunt <name>" so the rest of the game keeps working.
+
         // Already fighting? A typed "attack" means: strike the enemy in front of you.
         if (this.state.inCombat) {
             this.playerAttack();
             return;
         }
 
-        const locId = this.state.location;
-        const loc = WorldData.locations[locId];
-        const living = this.getLivingEnemies(locId);
-
-        if (loc && loc.enemies && loc.enemies.length > 0 && living.length === 0) {
-            this.addNarrative('This area is cleared. Travel onward for new foes, or fight on in the Arena of Echoes.', 'system');
-            MusicSystem.playSFX('button');
-            return;
-        }
-        if (living.length === 0) {
-            this.addNarrative("There are no monsters here. You are not in combat.", 'system');
-            MusicSystem.playSFX('button');
+        // If a battle is pending (started by quest/encounter/NPC, awaiting player's
+        // first attack), allow the attack to proceed.
+        if (this.state.pendingCombat) {
+            this.startCombat(this.state.pendingCombat);
+            this.state.pendingCombat = null;
             return;
         }
 
-        let enemyName = null;
-        const query = (targetName || '').replace(/^the\s+/, '').trim().toLowerCase();
-        if (query) {
-            enemyName = living.find(n => n.toLowerCase().includes(query)) || null;
-            if (!enemyName) {
-                this.addNarrative(`No living "${targetName}" here. Monsters still roaming this area: ${living.join(', ')}.`, 'system');
+        // Explicit "hunt" command: keep the legacy behaviour of starting a fight
+        // with any living monster in the area. This preserves the existing gameplay
+        // loop while making plain "attack" safe.
+        const isHunt = (targetName || '').toLowerCase().startsWith('hunt');
+        const huntTarget = isHunt ? (targetName || '').replace(/^hunt\s*/i, '').trim() : '';
+
+        if (isHunt) {
+            const locId = this.state.location;
+            const loc = WorldData.locations[locId];
+            const living = this.getLivingEnemies(locId);
+            if (loc && loc.enemies && loc.enemies.length > 0 && living.length === 0) {
+                this.addNarrative('This area is cleared. Travel onward for new foes, or fight on in the Arena of Echoes.', 'system');
+                MusicSystem.playSFX('button');
                 return;
             }
-        } else {
-            enemyName = living[Math.floor(Math.random() * living.length)];
+            if (living.length === 0) {
+                this.addNarrative("There are no monsters here to hunt.", 'system');
+                MusicSystem.playSFX('button');
+                return;
+            }
+            let enemyName = null;
+            const query = huntTarget.replace(/^the\s+/, '').trim().toLowerCase();
+            if (query) {
+                enemyName = living.find(n => n.toLowerCase().includes(query)) || null;
+                if (!enemyName) {
+                    this.addNarrative(`No living "${huntTarget}" here. Monsters still roaming this area: ${living.join(', ')}.`, 'system');
+                    return;
+                }
+            } else {
+                enemyName = living[Math.floor(Math.random() * living.length)];
+            }
+            this.addNarrative(`You hunt the ${enemyName}!`, 'combat');
+            this.startCombat(enemyName);
+            return;
         }
 
-        this.addNarrative(`You hunt the ${enemyName}!`, 'combat');
-        this.startCombat(enemyName);
+        // Default: "attack" with no battle in progress. Per the spec, do NOT start
+        // a new hunt. Tell the player they are not in combat.
+        this.addNarrative("You are not currently in combat.", 'system');
+        MusicSystem.playSFX('button');
     },
 
     // How many times a monster may legitimately appear in an area.
@@ -986,7 +1013,7 @@ const Game = {
         });
         const living = this.getLivingEnemies(locId);
         if (living.length) {
-            this.addNarrative(`🐾 Monsters in this area — ${rows.join('; ')}. Type "attack" to fight one, or "attack [name]" to choose your target.`, 'system');
+            this.addNarrative(`🐾 Monsters in this area — ${rows.join('; ')}. Combat begins when an enemy encounters you, a quest requires it, or an NPC initiates it. Use "hunt" to start a fight manually.`, 'system');
         } else {
             this.addNarrative(`🕊️ This area is fully cleared — ${rows.join('; ')}.`, 'system');
         }
