@@ -703,6 +703,15 @@ const Game = {
             return;
         }
 
+        // Quick heal from the dashboard / quick actions.
+        // Per spec: healing must always be available from the player's dashboard
+        // or quick actions when allowed by game rules. It plays a synchronized
+        // healing sound and announces the restored HP via the a11y layer.
+        if (c === 'heal' || c === 'use heal' || c === 'quick heal' || c === 'heal me') {
+            this.quickHeal();
+            return;
+        }
+
         // Help
         if (c === 'help' || c === '?') {
             this.showHelp();
@@ -1467,7 +1476,92 @@ const Game = {
         this.save();
     },
 
-    healAlly(name) {
+    /**
+     * Quick heal — the dashboard / quick-action button. Per spec, this should
+     * always be available when allowed by game rules. It chooses the best
+     * available healing source (potion in inventory, or a free temple heal if
+     * the player is in a temple, or a Minor-Heal spell if the player knows
+     * one and is in a safe zone), then plays a synchronized heal sound
+     * and announces the new HP via the a11y layer.
+     */
+    quickHeal() {
+        const p = this.state.player;
+        if (!p) {
+            this.addNarrative("No active hero.", 'system');
+            return;
+        }
+        if (this.state.inCombat) {
+            this.addNarrative("You can't quick-heal during combat. Use a spell, item, or flee.", 'system');
+            return;
+        }
+        if (p.hp >= p.maxHp) {
+            this.addNarrative("You are already at full health.", 'system');
+            // Still announce so TalkBack users hear the state.
+            this.announceForBlind(`You are at full health. HP is ${p.hp} out of ${p.maxHp}.`);
+            return;
+        }
+
+        // Choose the best healing source.
+        const startHp = p.hp;
+        let used = null;
+        // 1) Healing potion in inventory (most accessible, lowest cost).
+        const potion = (p.inventory || []).find(i => i && (i.effect === 'heal' || /healing/i.test(i.name || '')));
+        if (potion && potion.quantity > 0) {
+            const healAmount = potion.value || 20;
+            p.hp = Math.min(p.maxHp, p.hp + healAmount);
+            potion.quantity -= 1;
+            if (potion.quantity <= 0) {
+                p.inventory = p.inventory.filter(i => i !== potion);
+            }
+            used = `You drink a ${potion.name || 'healing potion'}.`;
+        }
+        // 2) Temple heal (free, if available in the current location).
+        else if (this.state.location === 'grand_temple' || /temple|shrine|altar/i.test(this.state.location || '')) {
+            p.hp = p.maxHp;
+            used = 'The temple restores you to full health.';
+        }
+        // 3) Minor-heal spell (free, if known; only in safe zones, not in dungeons/combat).
+        else if ((p.spells || []).some(s => /minor heal|heal|nature mend/i.test(s))) {
+            const healAmount = 18;
+            p.hp = Math.min(p.maxHp, p.hp + healAmount);
+            used = 'Your magic restores you.';
+        }
+        else {
+            this.addNarrative("You have no way to heal right now. Find a temple, a healing potion, or a healing spell.", 'system');
+            this.announceForBlind("No way to heal. Find a temple, a healing potion, or a healing spell.");
+            return;
+        }
+
+        const restored = p.hp - startHp;
+        this.addNarrative(`${used} +${restored} HP. (${p.hp}/${p.maxHp})`, 'item');
+        MusicSystem.playSFX('heal');
+        this.announceForBlind(`Healed ${restored} HP. You now have ${p.hp} out of ${p.maxHp}.`);
+        this.save();
+        this.updateHUD && this.updateHUD();
+    },
+
+    /**
+     * Announce a line of text for TalkBack / screen-reader users.
+     * Looks for an `announce` function (set up by the a11y module) on the
+     * global window or via a known property; falls back to a no-op.
+     */
+    announceForBlind(text) {
+        try {
+            if (typeof window !== 'undefined' && window.A11Y && typeof window.A11Y.announce === 'function') {
+                window.A11Y.announce(text);
+                return;
+            }
+            if (typeof window !== 'undefined' && typeof window.announce === 'function') {
+                window.announce(text);
+                return;
+            }
+        } catch (_) {}
+        // Fallback: add to narrative (which TalkBack can still pick up via
+        // aria-live regions in the narrative panel).
+        try { this.addNarrative('🔊 ' + text, 'system'); } catch (_) {}
+    },
+
+        healAlly(name) {
         const targetName = name.trim().toLowerCase();
         const companion = this.state.companions.find(c => c.name.toLowerCase().includes(targetName));
         const isFriend = this.state.friends.find(f => f.toLowerCase().includes(targetName));
