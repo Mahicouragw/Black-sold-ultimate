@@ -157,7 +157,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.8.4** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.17.3** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
@@ -168,12 +168,12 @@ npm run cap:sync
 
 ## 🚀 Quick Deploy
 
-[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/YOUR_USERNAME/black-sword-ultimate)
+[![Deploy to Vercel](https://vercel.com/button)](https://vercel.com/import/project?template=https://github.com/Mahicouragw/Black-sold-ultimate)
 
 Or:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/black-sword-ultimate.git
+git clone https://github.com/Mahicouragw/Black-sold-ultimate.git
 cd black-sword-ultimate
 vercel
 ```
@@ -235,3 +235,7 @@ Music: Battle Explorer, Incompetech, Pixabay (Royalty Free)
 ## 📄 License
 
 MIT License
+
+## v7.17.3 Android refresh
+
+The Android workflow now validates the PWA and security checks before building, uses the current source version, and publishes a consistently named `BlackSwordUltimate.apk` release asset.
