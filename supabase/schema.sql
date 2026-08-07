@@ -131,8 +131,18 @@ do $$ declare p record; begin
   loop execute format('drop policy if exists %I on %I.%I', p.policyname, p.schemaname, p.tablename); end loop;
 end $$;
 
--- Profiles contain no email address. Authenticated guests may search safe public profile fields.
+-- Profiles contain no email address. Signed-in users (including anonymous-auth guests)
+-- may search safe public profile fields, create their own fallback row, and update
+-- only their own public gameplay presence. RLS policies do not grant SQL privileges,
+-- so keep these grants in sync with the policies below.
+revoke all on table public.profiles from anon;
+revoke update on table public.profiles from authenticated;
+grant select, insert on table public.profiles to authenticated;
+grant update (display_name, level, current_location, last_seen) on table public.profiles to authenticated;
+
 create policy profiles_read on public.profiles for select to authenticated using (true);
+create policy profiles_insert_self on public.profiles for insert to authenticated
+  with check (id = auth.uid());
 create policy profiles_update_self on public.profiles for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
