@@ -25,7 +25,7 @@ jobs:
         run: |
           npm ci
           npm run pwa:check
-          npm run security
+          node scripts/security-check.mjs
           npm run build
           npx cap sync android
       - name: Build APK
