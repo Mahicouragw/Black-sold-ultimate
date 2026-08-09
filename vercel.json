@@ -1,11 +1,16 @@
 {
-  "version": 2,
-  "builds": [
-    { "src": "api/translate.js", "use": "@vercel/node" },
-    { "src": "**/*", "use": "@vercel/static" }
+  "outputDirectory": "www",
+  "rewrites": [
+    { "source": "/api/translate", "destination": "/api/translate.js" }
   ],
-  "routes": [
-    { "src": "/api/translate", "dest": "/api/translate.js" },
-    { "src": "/(.*)", "dest": "/$1" }
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" }
+      ]
+    }
   ]
 }

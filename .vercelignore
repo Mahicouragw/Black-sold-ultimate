@@ -1,8 +1,4 @@
 android/
 ios/
-www/
 node_modules/
-scripts/
-supabase/
-*.md
 .git/

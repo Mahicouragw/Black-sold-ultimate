@@ -4,6 +4,8 @@
   "private": true,
   "description": "Accessible open-world multiplayer fantasy RPG",
   "scripts": {
+    "dev": "node scripts/dev-server.mjs",
+    "start": "node scripts/dev-server.mjs",
     "build": "node scripts/build-mobile.mjs",
     "pwa:check": "node scripts/pwa-check.mjs",
     "security": "npm audit --audit-level=high && node scripts/security-check.mjs",
