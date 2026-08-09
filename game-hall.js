@@ -102,13 +102,15 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
  legalLudoTokens(seat,die){return this.state.tokens[seat].map((pos,index)=>({pos,index})).filter(t=>(t.pos<0&&die===6)||(t.pos>=0&&t.pos+die<=56));},
  async passLudoTurn(){
   const who=this.playerColoredName(this.state.turn);
-  this.announce(`${who} rolled ${this.state.roll}, not moving.`);
+  this.announce(`${who} rolled ${this.state.roll}, not moving. Turn passes.`);
   await MusicSystem.playSFXAndWait('board-turn',400);
+  await this.pause(3500);
   this.state.roll=null;
   this.state.turn=(this.state.turn+1)%this.state.tokens.length;
   this.render();
   this.announceTurn();
-  if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),700);
+  await this.pause(2500);
+  if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),2500);
  },
  enterGameplayMode(){
   const list=document.getElementById('hall-game-list');
@@ -158,7 +160,7 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   await MusicSystem.playSFXAndWait('board-dice',1500);
   const die=1+Math.floor(Math.random()*6);
   this.announce(`${who} rolled ${die}.`);
-  await this.pause(300);
+  await this.pause(3500);
   if(this.type==='snakes')await this.snakesMove(die);
   else{
    this.state.roll=die;
@@ -174,27 +176,33 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   let landed=start+die;if(landed>100)landed=start;
   if(landed===start){
    this.announce(`${who} rolled ${die} from square ${start}, not moving.`);
+   await this.pause(3500);
   }else{
    this.announce(`${who} moved from square ${start} to square ${landed}.`);
    await MusicSystem.playSFXAndWait('board-piece',350);
+   await this.pause(3500);
   }
   let final=landed;
   if(LADDERS[final]){
    this.announce(`${who} reached ${final} and climbs a ladder to ${LADDERS[final]}.`);
    await MusicSystem.playSFXAndWait('board-piece',500);
    final=LADDERS[final];
+   await this.pause(4000);
   }else if(SNAKES[final]){
    this.announce(`${who} reached ${final} and slides down a snake to ${SNAKES[final]}.`);
    await MusicSystem.playSFXAndWait('board-piece',500);
    final=SNAKES[final];
+   await this.pause(4000);
   }
   this.state.positions[p]=final;
   this.announce(`${who} now stands on square ${final}.`);
+  await this.pause(2500);
   if(final===100){this.state.winner=p;this.finish(`${who} won Snakes & Ladders.`);return;}
   this.state.turn=(p+1)%this.state.positions.length;
   this.render();
   this.announceTurn();
-  if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),700);
+  await this.pause(2500);
+  if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),2500);
  },
  async moveLudo(token){
   const p=this.state.turn,who=this.playerColoredName(p),die=this.state.roll,pos=this.state.tokens[p][token];
@@ -205,10 +213,12 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   else{
    this.announce(`${who} rolled ${die} from square ${pos<0?'yard':pos}, not moving.`);
    await MusicSystem.playSFXAndWait('board-error',400);
+   await this.pause(3500);
    return;
   }
   this.announce(`${who} moved token ${token+1} from square ${pos<0?'yard':pos} to square ${next}.`);
   await MusicSystem.playSFXAndWait('board-piece',350);
+  await this.pause(3500);
   this.state.tokens[p][token]=next;
   const safe=[0,8,13,21,26,34,39,47];
   let captured=false;
@@ -216,14 +226,19 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
    if(seat!==p)this.state.tokens[seat]=tokens.map(x=>{if(x===next){captured=true;return-1;}return x;});
   });
   this.announce(captured?`${who} captures an opponent token on square ${next}.`:`${who} token ${token+1} reaches square ${next}.`);
+  await this.pause(3000);
   this.state.roll=null;
   if(this.state.tokens[p].every(x=>x===56)){this.finish(`${who} won Ludo.`);return;}
   const extra=die===6||captured;
   this.state.turn=extra?p:(p+1)%this.state.tokens.length;
   this.render();
-  if(extra)this.announce(`${who} earns another turn.`);
+  if(extra){
+   this.announce(`${who} earns another turn.`);
+   await this.pause(2500);
+  }
   this.announceTurn();
-  if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),900);
+  await this.pause(2500);
+  if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),2500);
  },
  async botLudo(){
   if(!this.isAI(this.state.turn))return;
@@ -231,12 +246,14 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   if(legal.length)await this.moveLudo(legal[0].i);
   else{
    this.announce(`${this.playerColoredName(seat)} cannot use this roll.`);
+   await MusicSystem.playSFXAndWait('board-turn',400);
+   await this.pause(3500);
    this.state.roll=null;
    this.state.turn=(seat+1)%this.state.tokens.length;
-   await MusicSystem.playSFXAndWait('board-turn',500);
    this.render();
    this.announceTurn();
-   if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),700);
+   await this.pause(2500);
+   if(this.isAI(this.state.turn))setTimeout(()=>this.roll(),2500);
   }
  },
  startBlackjack(){const deck=[];for(const suit of ['S','H','D','C'])for(const rank of ['A','2','3','4','5','6','7','8','9','10','J','Q','K'])deck.push(rank+suit);for(let i=deck.length-1;i;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]];}this.state={deck,player:[deck.pop(),deck.pop()],dealer:[deck.pop(),deck.pop()],done:false};},
