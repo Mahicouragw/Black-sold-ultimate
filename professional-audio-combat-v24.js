@@ -481,18 +481,9 @@
       },
       
       async pieceMove(steps, position, playerName) {
-        // Play movement sound synchronized with every movement
-        for (let i = 1; i <= steps; i++) {
-          await ProfessionalAudioCombat.playExact('boardPieceStep');
-          await new Promise(r => setTimeout(r, 250)); // 250ms per step
-          
-          if (playerName) {
-            // Announce each step for 4 players
-            await ProfessionalAudioCombat.narrate(`${playerName} moves ${i}...`, 'polite');
-            await new Promise(r => setTimeout(r, 100));
-          }
-        }
-        // Stop movement sound exactly when movement ends (handled by waiting real duration)
+        // Play brief movement sound without step-by-step narration spam
+        await ProfessionalAudioCombat.playExact('boardPieceStep');
+        await new Promise(r => setTimeout(r, 150));
       },
       
       async snakeBite(from, to) {
