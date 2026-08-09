@@ -1,4 +1,5 @@
 /* The Black Sword Chronicles - Ultimate Edition Styles */
+.hidden { display: none !important; }
 
 :root {
     --bg-dark: #050505;

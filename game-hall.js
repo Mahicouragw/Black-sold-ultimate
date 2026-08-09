@@ -117,20 +117,20 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   const setup=document.getElementById('hall-setup');
   const help=document.getElementById('hall-help');
   const onlineDetails=document.getElementById('hall-online-details');
-  if(list) list.classList.add('hidden');
-  if(setup) setup.classList.add('hidden');
-  if(help) help.classList.add('hidden');
-  if(onlineDetails) onlineDetails.classList.add('hidden');
+  if(list){ list.classList.add('hidden'); list.style.display='none'; }
+  if(setup){ setup.classList.add('hidden'); setup.style.display='none'; }
+  if(help){ help.classList.add('hidden'); help.style.display='none'; }
+  if(onlineDetails){ onlineDetails.classList.add('hidden'); onlineDetails.style.display='none'; }
  },
  exitGameplayMode(){
   const list=document.getElementById('hall-game-list');
   const setup=document.getElementById('hall-setup');
   const help=document.getElementById('hall-help');
   const onlineDetails=document.getElementById('hall-online-details');
-  if(list) list.classList.remove('hidden');
-  if(setup) setup.classList.remove('hidden');
-  if(help) help.classList.remove('hidden');
-  if(onlineDetails) onlineDetails.classList.remove('hidden');
+  if(list){ list.classList.remove('hidden'); list.style.display=''; }
+  if(setup){ setup.classList.remove('hidden'); setup.style.display=''; }
+  if(help){ help.classList.remove('hidden'); help.style.display=''; }
+  if(onlineDetails){ onlineDetails.classList.remove('hidden'); onlineDetails.style.display=''; }
   this.state=null;
   document.getElementById('hall-board').innerHTML='';
   document.getElementById('hall-controls').innerHTML=`<button onclick="GameHall.startLocal()">Start vs Computer</button>`;
@@ -179,18 +179,30 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
    await this.pause(3500);
   }else{
    this.announce(`${who} moved from square ${start} to square ${landed}.`);
-   await MusicSystem.playSFXAndWait('board-piece',350);
+   if(window.ProfessionalAudioCombat && window.ProfessionalAudioCombat.boardGames){
+     await window.ProfessionalAudioCombat.boardGames.pieceMove(die);
+   }else{
+     await MusicSystem.playSFXAndWait('board-piece',350);
+   }
    await this.pause(3500);
   }
   let final=landed;
   if(LADDERS[final]){
    this.announce(`${who} reached ${final} and climbs a ladder to ${LADDERS[final]}.`);
-   await MusicSystem.playSFXAndWait('board-piece',500);
+   if(window.ProfessionalAudioCombat && window.ProfessionalAudioCombat.boardGames){
+     await window.ProfessionalAudioCombat.boardGames.ladderClimb(final, LADDERS[final]);
+   }else{
+     await MusicSystem.playSFXAndWait('board-piece',500);
+   }
    final=LADDERS[final];
    await this.pause(4000);
   }else if(SNAKES[final]){
    this.announce(`${who} reached ${final} and slides down a snake to ${SNAKES[final]}.`);
-   await MusicSystem.playSFXAndWait('board-piece',500);
+   if(window.ProfessionalAudioCombat && window.ProfessionalAudioCombat.boardGames){
+     await window.ProfessionalAudioCombat.boardGames.snakeBite(final, SNAKES[final]);
+   }else{
+     await MusicSystem.playSFXAndWait('board-piece',500);
+   }
    final=SNAKES[final];
    await this.pause(4000);
   }
@@ -217,7 +229,11 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
    return;
   }
   this.announce(`${who} moved token ${token+1} from square ${pos<0?'yard':pos} to square ${next}.`);
-  await MusicSystem.playSFXAndWait('board-piece',350);
+  if(window.ProfessionalAudioCombat && window.ProfessionalAudioCombat.boardGames){
+    await window.ProfessionalAudioCombat.boardGames.pieceMove(pos<0?1:die);
+  }else{
+    await MusicSystem.playSFXAndWait('board-piece',350);
+  }
   await this.pause(3500);
   this.state.tokens[p][token]=next;
   const safe=[0,8,13,21,26,34,39,47];

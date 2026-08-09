@@ -481,25 +481,27 @@
       },
       
       async pieceMove(steps, position, playerName) {
-        // Play brief movement sound without step-by-step narration spam
-        await ProfessionalAudioCombat.playExact('boardPieceStep');
-        await new Promise(r => setTimeout(r, 150));
+        // Play wooden footstep sound effect once for each step moved (e.g. 3 times for roll of 3)
+        // Zero spoken speech — sound effects only!
+        const count = Math.max(1, Math.min(12, Number(steps) || 1));
+        for (let i = 1; i <= count; i++) {
+          await ProfessionalAudioCombat.playExact('boardPieceStep');
+          await new Promise(r => setTimeout(r, 220)); // 220ms per footstep sound
+        }
       },
       
       async snakeBite(from, to) {
-        await ProfessionalAudioCombat.playExact('snake_hiss');
-        await new Promise(r => setTimeout(r, 600));
-        await ProfessionalAudioCombat.playExact('snake_fall');
-        await new Promise(r => setTimeout(r, 800));
-        await ProfessionalAudioCombat.narrate(`Oh no! A snake bit you. Moving down to square ${to}.`);
+        await ProfessionalAudioCombat.playExact('miss'); // Calm sliding CC0 whoosh
+        await new Promise(r => setTimeout(r, 450));
+        await ProfessionalAudioCombat.playExact('bodyFall'); // Soft CC0 landing thud
+        await new Promise(r => setTimeout(r, 450));
       },
       
       async ladderClimb(from, to) {
-        await ProfessionalAudioCombat.playExact('ladder_climb');
-        await new Promise(r => setTimeout(r, 600));
-        await ProfessionalAudioCombat.playExact('ladder_success');
-        await new Promise(r => setTimeout(r, 400));
-        await ProfessionalAudioCombat.narrate(`Great! You climbed a ladder to square ${to}.`);
+        await ProfessionalAudioCombat.playExact('healingStart'); // Magic CC0 shimmer rising
+        await new Promise(r => setTimeout(r, 500));
+        await ProfessionalAudioCombat.playExact('levelUp'); // Success CC0 chime
+        await new Promise(r => setTimeout(r, 500));
       },
       
       async carromStrike(playerName) {
