@@ -376,7 +376,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.16.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.17.3</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -452,39 +452,41 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="assets/vendor/supabase-2.57.4.js"></script>
     <script src="supabase-config.js"></script>
+    <!-- v7.17.0: critical core first (sync), then expansions deferred so the
+         title screen paints before the 30+ patches parse. -->
     <script src="music.js"></script>
     <script src="world.js"></script>
     <script src="expansion.js"></script>
     <script src="regions-v4.js"></script>
     <script src="online.js"></script>
     <script src="game.js"></script>
-    <script src="sacred.js"></script>
-    <script src="alexa-parity.js"></script>
-    <script src="equipment-sets.js"></script>
-    <script src="housing-world-v5.js"></script>
-    <script src="forest-expansion-v6.js"></script>
-    <script src="island-tunnel-fishing.js"></script>
-    <script src="translation.js"></script>
-    <script src="chat-rooms.js"></script>
-    <script src="voice-artifacts-maps.js"></script>
-    <script src="spell-mastery-black-sword.js"></script>
-    <script src="world-grid-houses-combat-v8.js"></script>
-    <script src="city-directory-v9.js"></script>
-    <script src="context-actions-houses-prayer-v10.js"></script>
-    <script src="cemetery-spellfield-combat-v11.js"></script>
-  <script src="cemetery-city-expansion-v23.js"></script>
-  <script src="professional-audio-combat-v24.js"></script>
-    <script src="battle-summary-cleantext-v12.js"></script>
-    <script src="expansive-forest-multitarget-v13.js"></script>
-    <script src="fair-group-combat-v14.js"></script>
-    <script src="wayfinder-battle-actions-v15.js"></script>
-    <script src="security-privacy-v16.js"></script>
-    <script src="resource-recovery-forest-exit-v17.js"></script>
-    <script src="companion-economy-arena-v18.js"></script>
-    <script src="hunt-clear-v19.js"></script>
-    <script src="hunt-achievements-v20.js"></script>
-    <script src="hunt-wayfinder-v21.js"></script>
-    <script src="horse-racing-v22.js"></script>
+    <script defer src="sacred.js"></script>
+    <script defer src="alexa-parity.js"></script>
+    <script defer src="equipment-sets.js"></script>
+    <script defer src="housing-world-v5.js"></script>
+    <script defer src="forest-expansion-v6.js"></script>
+    <script defer src="island-tunnel-fishing.js"></script>
+    <script defer src="translation.js"></script>
+    <script defer src="chat-rooms.js"></script>
+    <script defer src="voice-artifacts-maps.js"></script>
+    <script defer src="spell-mastery-black-sword.js"></script>
+    <script defer src="world-grid-houses-combat-v8.js"></script>
+    <script defer src="city-directory-v9.js"></script>
+    <script defer src="context-actions-houses-prayer-v10.js"></script>
+    <script defer src="cemetery-spellfield-combat-v11.js"></script>
+    <script defer src="cemetery-city-expansion-v23.js"></script>
+    <script defer src="professional-audio-combat-v24.js"></script>
+    <script defer src="battle-summary-cleantext-v12.js"></script>
+    <script defer src="expansive-forest-multitarget-v13.js"></script>
+    <script defer src="fair-group-combat-v14.js"></script>
+    <script defer src="wayfinder-battle-actions-v15.js"></script>
+    <script defer src="security-privacy-v16.js"></script>
+    <script defer src="resource-recovery-forest-exit-v17.js"></script>
+    <script defer src="companion-economy-arena-v18.js"></script>
+    <script defer src="hunt-clear-v19.js"></script>
+    <script defer src="hunt-achievements-v20.js"></script>
+    <script defer src="hunt-wayfinder-v21.js"></script>
+    <script defer src="horse-racing-v22.js"></script>
     <script type="module" src="game-hall.js"></script>
     <script src="pwa.js"></script>
 </body>

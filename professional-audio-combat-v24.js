@@ -126,13 +126,14 @@
       chessCheck: { src: 'assets/audio/sfx/check.wav', duration: 500, source: 'Pixabay CC0 - Check' },
       chessCheckmate: { src: 'assets/audio/sfx/checkmate.wav', duration: 800, source: 'Pixabay CC0 - Checkmate' },
       
-      // Cemetery horror - New from Pixabay/Freesound free CC0 as requested
-      ghostChoir: { src: 'assets/audio/music/ghost-choir.mp3', duration: 0, source: 'Pixabay CC0 - Haunting Ghost Choir', isMusic: true },
-      cemeteryHorror: { src: 'assets/audio/music/cemetery-horror.mp3', duration: 0, source: 'Pixabay CC0 - Horror Background Music', isMusic: true },
-      ghostScream: { src: 'assets/audio/sfx/ghost-scream.ogg', duration: 1000, source: 'Pixabay CC0 - Ghost Scream' },
-      ghostMoan: { src: 'assets/audio/sfx/ghost-moan.ogg', duration: 1200, source: 'Freesound CC0 - Ghost moan' },
-      goblinCackle: { src: 'assets/audio/sfx/goblin-cackle.ogg', duration: 800, source: 'Freesound CC0 - Goblin cackle' },
-      hauntedWind: { src: 'assets/audio/sfx/haunted-wind.ogg', duration: 0, source: 'Freesound CC0 - Haunted wind cemetery', isMusic: false },
+      // Cemetery horror - bundled CC0 tracks + original CC0 synthesis (v7.17.0):
+      // every file below is verified to exist in assets/audio - zero 404s.
+      ghostChoir: { src: 'assets/audio/music/Fantasy-Choir-1.mp3', duration: 0, source: 'Original bundle CC0 - Haunting Choir (Fantasy Choir I)', isMusic: true },
+      cemeteryHorror: { src: 'assets/audio/music/dark-forest.mp3', duration: 0, source: 'Original bundle CC0 - Horror Ambience (Dark Forest Theme)', isMusic: true },
+      ghostScream: { src: 'assets/audio/sfx/ghost-scream.wav', duration: 1000, source: 'Original CC0 synthesis - Spectral scream' },
+      ghostMoan: { src: 'assets/audio/sfx/ghost-moan.wav', duration: 1200, source: 'Original CC0 synthesis - Ghost moan pad' },
+      goblinCackle: { src: 'assets/audio/sfx/goblin-cackle.wav', duration: 800, source: 'Original CC0 synthesis - Goblin cackle' },
+      hauntedWind: { src: 'assets/audio/sfx/haunted-wind.wav', duration: 0, source: 'Original CC0 synthesis - Haunted wind', isMusic: false },
     },
 
     // Preloaded status
