@@ -4,8 +4,12 @@
  * - True 2D Non-Looping Map Grid: Enforces corners and intersections (e.g. 10 streets East-West where Street 10 turns South/West without looping back to start)
  * - Shop Cleanup: Enforces shops ONLY in cities (Valoria, Kaliwasch), removing shops from wilderness, dark forest, caves
  * - Clean Alexa Item Attributes: Items have explicit light, abilities, weapons, armor attributes
- * - Quest Boss Automatic Ambush vs Command Endless Battles: Goblin Chief automatically ambushes BEFORE quest completion; AFTER completion, peace while walking, but typing 'hunt' or 'attack' starts endless battles
- * - UI Attack Button Help: Clicking Attack with no battle says "There is no active battle. Command 'hunt' or 'attack <enemy>' to start an endless battle!"
+ * - Quest Boss Combat via Attack Command: No automatic quest ambushes; clicking Attack or typing 'attack' starts combat against the location's enemy/boss
+ * - Random Wilderness Encounters ("not always, sometimes"): ~35% chance when moving in wild areas, with working Escape/Flee
+ * - Dashboard Clean Compass: Keeps ONLY North, West, East, South buttons on the main dashboard compass pad
+ * - Backpack Inventory Actions: Every item has Use, Equip, and Throw buttons + "Take Ground Loot" button when ground items exist
+ * - Palace Companion Quests & Guild Master Revive: Companions give quests at Palace; Guild Masters revive fallen companions
+ * - Anti-Insult / Anti-Cheating Community Code of Conduct Message across all chat rooms
  * - 100% TalkBack accessibility & synchronized audio events
  */
 
@@ -53,7 +57,6 @@
     desc: 'A glowing codex detailing spoken spells, mechanism puzzles, and guild brotherhood alliances.'
   };
 
-  // Add light and ability attributes to existing common items
   if (WorldData.items['ghostly candle']) {
     WorldData.items['ghostly candle'].light = 15;
     WorldData.items['ghostly candle'].ability = 'Illuminates dark caves and crypts without consuming magic';
@@ -89,7 +92,7 @@
     desc: 'A lurking specter in the sunken Mire of Sorrows.'
   };
 
-  // 3. REGISTER 21 INTERCONNECTED ALEXA RPG LOCATIONS & GOBLIN CAMP QUEST
+  // 3. REGISTER 21 INTERCONNECTED ALEXA RPG LOCATIONS
   const alexaLocations = [
     // REGION 1: VALORIA (Bastion City)
     {
@@ -97,7 +100,7 @@
       name: 'Valoria — The Grand Bastion City',
       desc: 'A magnificent fortress city inspired by ancient Narkuma lore. Banners of gold and black flutter from towering stone walls.',
       exits: { south: 'kaliwasch_north_gate', north: 'valoria_square', east: 'valoria_market', west: 'valoria_street_1' },
-      features: ['city gate', 'safe sanctuary', 'guild banner'],
+      features: ['city gate', 'safe sanctuary', 'guild banner', 'palace entrance'],
       items: ['alexa codex'],
       enemies: [],
       safe: true,
@@ -125,13 +128,10 @@
       enemies: [],
       safe: true,
       music: 'inn'
-    },
-
-    // 10-STREET VALORIA WEST CORRIDOR (Non-Looping East-West grid with corners!)
-    // Street 1 to 9 go East-West; Street 10 turns South into Sylvana Goblin Camp without looping back to Street 1!
+    }
   ];
 
-  // Register the 10 Streets
+  // Register the 10 Streets (East-West with Corner at Street 10 turning South/West without looping!)
   for (let i = 1; i <= 10; i++) {
     const isFirst = i === 1;
     const isLast = i === 10;
@@ -143,7 +143,7 @@
       exits.west = `valoria_street_${i + 1}`;
       if (i === 5) exits.north = 'sylvana_wilds_1';
     } else {
-      // Street 10 turns the corner South to Goblin Camp! No infinite loop!
+      // Street 10 turns corner South to Goblin Camp! No infinite loop!
       exits.south = 'sylvana_goblin_camp_1';
     }
 
@@ -160,13 +160,12 @@
     };
   }
 
-  // REGISTER THE REST OF THE ALEXA WILDERNESS & GOBLIN CAMP LOCATIONS
+  // WILDERNESS & GOBLIN CAMP LOCATIONS
   const wildLocations = [
-    // SYLVANA GOBLIN CAMP (Quest Boss automatically ambushes first time; after that, peace unless command 'hunt'/'attack')
     {
       id: 'sylvana_goblin_camp_1',
       name: 'Sylvana — Goblin Camp Entrance',
-      desc: 'A fortified wooden barricade at the edge of the forest where goblins patrol.',
+      desc: 'A fortified wooden barricade at the edge of the forest where goblins patrol. Command "attack" or click Attack to fight.',
       exits: { north: 'valoria_street_10', south: 'sylvana_goblin_camp_2', east: 'sylvana_wilds_1' },
       features: ['barricade', 'campfire'],
       items: ['mithril shard'],
@@ -177,7 +176,7 @@
     {
       id: 'sylvana_goblin_camp_2',
       name: 'Sylvana — Goblin Chief Warlord Camp',
-      desc: 'The central command tent of the goblin hoard. A mountain of stolen rupees and weapons lies piled on an altar.',
+      desc: 'The central command tent of the goblin hoard. You see the Goblin Chief guarding a pile of treasure. Click Attack or type "attack" to initiate combat!',
       exits: { north: 'sylvana_goblin_camp_1', east: 'sylvana_wilds_2', south: 'sylvana_goblin_camp_3' },
       features: ['command tent', 'loot pile'],
       items: ['rune key of valoria'],
@@ -293,7 +292,7 @@
     {
       id: 'drakkar_keep_3',
       name: 'Drakkar Keep — Dragonlord Sanctum',
-      desc: 'The innermost chamber of the fortress where Archmage Malakor performs forbidden experiments.',
+      desc: 'The innermost chamber of the fortress where Archmage Malakor performs forbidden experiments. Click Attack to challenge Malakor!',
       exits: { south: 'drakkar_keep_2', west: 'drakkar_keep_1', east: 'mithril_caverns_2', north: 'solaris_summit_1' },
       features: ['altar', 'runed circle'],
       items: ['dragon scale armor'],
@@ -398,7 +397,7 @@
     {
       id: 'solaris_summit_3',
       name: 'Solaris Summit — Peak of Narkuma',
-      desc: 'The pinnacle of the world where Narkuma the Shadow Dragon guards the ultimate blackrock secret.',
+      desc: 'The pinnacle of the world where Narkuma the Shadow Dragon guards the ultimate blackrock secret. Click Attack to challenge Narkuma!',
       exits: { south: 'solaris_summit_1', west: 'solaris_summit_2', east: 'celestial_sanctum_3', north: 'valoria_citadel' },
       features: ['dragon peak', 'blackrock altar'],
       items: ['dragon scale armor'],
@@ -408,7 +407,6 @@
     }
   ];
 
-  // Register all locations
   alexaLocations.concat(wildLocations).forEach(loc => {
     WorldData.locations[loc.id] = {
       name: loc.name,
@@ -423,7 +421,6 @@
     };
   });
 
-  // Connect Valoria Citadel to Kaliwasch North Gate
   if (WorldData.locations['kaliwasch_north_gate']) {
     WorldData.locations['kaliwasch_north_gate'].exits.north = 'valoria_citadel';
   }
@@ -440,39 +437,27 @@
     }
   });
 
-  // 5. QUEST BOSS AUTOMATIC ENCOUNTER vs ENDLESS BATTLES VIA 'ATTACK' / 'HUNT' COMMAND
-  // Hook into Game location entry to check for Goblin Chief Quest Ambush
+  // 5. WILDERNESS RANDOM ENCOUNTERS ("sometimes, not always") + FLEE/ESCAPE WORKS
   const oldEnter = window.Game?.enterLocation?.bind(window.Game);
   if (oldEnter) {
     window.Game.enterLocation = function(locationId) {
       oldEnter(locationId);
-      // Check for Goblin Chief Quest Ambush
-      if ((locationId === 'sylvana_goblin_camp_2' || locationId === 'sylvana_goblin_camp_1') && !this.state.completedQuests?.['goblin_chief']) {
-        this.addNarrative('⚠️ As you enter the Goblin Camp, the Goblin Chief ambushes you! Defeat him to clear the Goblin Camp quest!', 'combat');
-        if (window.MusicSystem) window.MusicSystem.playSFX('monster-roar');
-        setTimeout(() => {
-          if (!this.state.combat) this.startCombat('Goblin Chief');
-        }, 800);
+      const loc = WorldData.locations[locationId];
+      // Random encounter: only in unsafe wild areas, "sometimes (~30% chance)", NOT always!
+      if (loc && !loc.safe && loc.enemies && loc.enemies.length > 0) {
+        if (Math.random() < 0.32 && !this.state.combat) {
+          const enemyName = loc.enemies[Math.floor(Math.random() * loc.enemies.length)];
+          this.addNarrative(`⚠️ Random Encounter! A lurking ${enemyName} crosses your path!`, 'combat');
+          if (window.MusicSystem) window.MusicSystem.playSFX('monster-roar');
+          setTimeout(() => {
+            if (!this.state.combat) this.startCombat(enemyName);
+          }, 600);
+        }
       }
     };
   }
 
-  // Override checkCombatVictory to mark Goblin Chief quest complete
-  const oldVictory = window.Game?.checkCombatVictory?.bind(window.Game);
-  if (oldVictory) {
-    window.Game.checkCombatVictory = function() {
-      const enemyName = this.state.combat?.enemy?.name;
-      oldVictory();
-      if (enemyName === 'Goblin Chief') {
-        if (!this.state.completedQuests) this.state.completedQuests = {};
-        this.state.completedQuests['goblin_chief'] = true;
-        this.addNarrative('🎉 You have slain the Goblin Chief! The Goblin Camp quest is complete. You may now explore in peace or command "hunt" for endless battles!', 'treasure');
-        this.save();
-      }
-    };
-  }
-
-  // Override UI Attack Button (#btn-attack) when there is NO battle in progress
+  // 6. UI ATTACK BUTTON (#btn-attack): Clicking Attack starts battle against location's enemy/boss!
   const oldAttackBtn = window.Game?.attack?.bind(window.Game);
   if (oldAttackBtn) {
     window.Game.attack = function() {
@@ -480,27 +465,198 @@
         oldAttackBtn();
         return;
       }
-      // When clicking Attack with no battle in progress:
-      this.addNarrative('There is no active battle. Command "hunt" or "attack <enemy>" to encounter an enemy in endless battles!', 'system');
+      const loc = WorldData.locations[this.state.location];
+      if (loc && loc.enemies && loc.enemies.length > 0) {
+        const enemyName = loc.enemies[0];
+        this.addNarrative(`⚔️ You attack the ${enemyName}!`, 'combat');
+        if (window.MusicSystem) window.MusicSystem.playSFX('monster-roar');
+        this.startCombat(enemyName);
+        return;
+      }
+      this.addNarrative('There is no enemy to attack here. Explore wild forests, caves, or camps to fight!', 'system');
       if (window.MusicSystem) window.MusicSystem.playSFX('board-error');
     };
   }
 
-  // Command parity: 'attack' or 'hunt' inside a location starts endless battles
+  // 7. BACKPACK INVENTORY: Use, Equip, Throw, and Take Ground Loot!
+  const oldShowInv = window.Game?.showInventory?.bind(window.Game);
+  if (oldShowInv) {
+    window.Game.showInventory = function() {
+      const panel = document.getElementById('inventory-panel');
+      const list = document.getElementById('inv-list');
+      if (!list || !panel) return;
+
+      list.innerHTML = '';
+
+      // Take ground loot section at top
+      const loc = WorldData.locations[this.state.location];
+      const groundItems = (loc?.items || []).concat(this.state.sacred?.groundLoot || []);
+      if (groundItems.length > 0) {
+        const lootBox = document.createElement('div');
+        lootBox.style.cssText = 'background:#1c2518;border:1px solid #3c6528;padding:8px;margin-bottom:10px;border-radius:4px;';
+        const title = document.createElement('div');
+        title.innerHTML = '<strong>🌱 Items on the Ground:</strong>';
+        lootBox.appendChild(title);
+        groundItems.forEach((gItem, idx) => {
+          const itemName = typeof gItem === 'string' ? gItem : gItem.name;
+          const btn = document.createElement('button');
+          btn.className = 'small-action-btn';
+          btn.style.margin = '4px 4px 0 0';
+          btn.textContent = `Take Ground Loot: ${this.escapeHTML(itemName)}`;
+          btn.onclick = () => {
+            if (typeof gItem === 'string') {
+              const itemObj = WorldData.items[gItem] || { name: gItem, type: 'misc', value: 10 };
+              this.addItemToInventory(gItem, itemObj);
+              loc.items.splice(idx, 1);
+            } else {
+              this.addItemToInventory(gItem.id || gItem.name, gItem);
+              if (this.state.sacred?.groundLoot) this.state.sacred.groundLoot.splice(idx, 1);
+            }
+            this.addNarrative(`Picked up ${itemName} from the ground!`, 'treasure');
+            if (window.MusicSystem) window.MusicSystem.playSFX('pickup');
+            this.showInventory();
+            this.updateHUD();
+            this.save();
+          };
+          lootBox.appendChild(btn);
+        });
+        list.appendChild(lootBox);
+      }
+
+      if (!this.state.inventory || this.state.inventory.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.className = 'system';
+        emptyMsg.textContent = 'Your backpack inventory is empty.';
+        list.appendChild(emptyMsg);
+      } else {
+        this.state.inventory.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'inv-item';
+          const canEquip = ['weapon','armor','helmet','gloves','boots','accessory'].includes(item.type);
+          const nameEsc = this.escapeHTML(item.name);
+          const jsEsc = this.escapeHTML(this.escapeJS(item.name));
+          
+          div.innerHTML = `
+            <span><strong>${nameEsc}</strong> <small>(${this.escapeHTML(item.type || 'misc')})</small><br><span style="font-size:11px;color:#aaa;">${this.escapeHTML(item.desc || item.ability || '')}</span></span>
+            <span style="display:flex;gap:4px;">
+              <button onclick="Game.useItem('${jsEsc}')">Use</button>
+              ${canEquip ? `<button onclick="Game.equipItem('${jsEsc}')">Equip</button>` : ''}
+              <button onclick="Game.throwItem('${jsEsc}')" style="background:#5a1e1e;">Throw</button>
+            </span>`;
+          list.appendChild(div);
+        });
+      }
+
+      panel.classList.remove('hidden');
+    };
+  }
+
+  // Add Game.throwItem method
+  window.Game.throwItem = function(query) {
+    const idx = this.state.inventory.findIndex(i => i.name.toLowerCase() === query.toLowerCase());
+    if (idx === -1) return;
+    const item = this.state.inventory[idx];
+    item.quantity--;
+    if (item.quantity <= 0) this.state.inventory.splice(idx, 1);
+    this.addNarrative(`Thrown away 1x ${item.name}.`, 'item');
+    if (window.MusicSystem) window.MusicSystem.playSFX('miss');
+    this.showInventory();
+    this.updateHUD();
+    this.save();
+  };
+
+  // 8. PALACE COMPANION QUESTS & GUILD MASTER REVIVES
+  const oldEnterLoc = window.Game?.enterLocation?.bind(window.Game);
+  if (oldEnterLoc) {
+    window.Game.enterLocation = function(locationId) {
+      oldEnterLoc(locationId);
+      if (locationId === 'palace' || locationId === 'royal_palace' || locationId === 'valoria_citadel') {
+        this.addNarrative('👑 You visit the Royal Palace! The Royal Companion & Guild Master is here. Type or click "Talk to Companion" to receive a Palace Quest or recruit a companion, and "Revive Companions" to restore fallen allies!', 'treasure');
+      }
+    };
+  }
+
+  window.Game.talkToCompanion = function() {
+    const quests = [
+      'Defeat the Goblin Chief in Sylvana Wilds',
+      'Slay Narkuma the Shadow Dragon at Solaris Summit',
+      'Explore the 10 Streets of Valoria West Avenue',
+      'Recover an Alexa Codex from the Celestial Sanctum'
+    ];
+    const quest = quests[Math.floor(Math.random() * quests.length)];
+    this.addNarrative(`👑 Royal Companion Lyra offers a Palace Quest: "${quest}". Complete it to win honors and unlock companions!`, 'npc');
+    if (window.MusicSystem) window.MusicSystem.playSFX('levelup');
+  };
+
+  window.Game.reviveCompanions = function() {
+    let revived = 0;
+    (this.state.companions || []).forEach(c => {
+      if (c.hp <= 0) {
+        c.hp = c.maxHp;
+        revived++;
+      }
+    });
+    if (revived > 0) {
+      this.addNarrative(`✨ The Guild Master revives ${revived} fallen companion(s) to full health!`, 'green-light');
+      if (window.MusicSystem) window.MusicSystem.playSFX('heal-chain');
+    } else {
+      this.addNarrative('All of your companions are already at full health.', 'system');
+    }
+    this.updateHUD();
+    this.save();
+  };
+
+  // 9. CLEAN DASHBOARD COMPASS PAD (Only North, West, East, South!) & REMOVE CLUTTER
+  document.addEventListener('DOMContentLoaded', () => {
+    // Keep ONLY North, West, East, South in compass pad
+    const dirBtns = document.querySelectorAll('.compass-pad .dir-btn');
+    dirBtns.forEach(btn => {
+      const cmd = btn.getAttribute('data-cmd')?.toLowerCase();
+      if (cmd !== 'north' && cmd !== 'west' && cmd !== 'east' && cmd !== 'south') {
+        btn.remove();
+      }
+    });
+
+    // Add Palace Companion / Guild Master buttons when at Palace or Citadel
+    const actionBtns = document.querySelector('.action-btns');
+    if (actionBtns && !document.getElementById('btn-palace-companion')) {
+      const btnComp = document.createElement('button');
+      btnComp.id = 'btn-palace-companion';
+      btnComp.className = 'action-btn';
+      btnComp.textContent = '👑 Companion Quest';
+      btnComp.onclick = () => window.Game.talkToCompanion();
+      actionBtns.appendChild(btnComp);
+
+      const btnRevive = document.createElement('button');
+      btnRevive.id = 'btn-guild-revive';
+      btnRevive.className = 'action-btn';
+      btnRevive.textContent = '✨ Revive Companions';
+      btnRevive.onclick = () => window.Game.reviveCompanions();
+      actionBtns.appendChild(btnRevive);
+    }
+
+    // 10. ANTI-INSULT / ANTI-CHEATING COMMUNITY CODE OF CONDUCT MESSAGE
+    const chatCompose = document.querySelector('.social-compose');
+    if (chatCompose && !document.getElementById('community-guidelines-banner')) {
+      const banner = document.createElement('div');
+      banner.id = 'community-guidelines-banner';
+      banner.style.cssText = 'background:#2d1a1a;border:1px solid #7d3c3c;padding:6px 10px;margin-bottom:8px;border-radius:4px;font-size:12px;color:#f0d0d0;';
+      banner.innerHTML = '<strong>⚠️ Community Guidelines:</strong> Insulting others, harassment, hate speech, or exploiting/cheating makes games frustrating for everyone and will result in an immediate ban. Treat fellow heroes with respect across all streets and cities!';
+      chatCompose.parentNode.insertBefore(banner, chatCompose);
+    }
+  });
+
+  // Command parity
   const oldCmd = window.Game?.processCommand?.bind(window.Game);
   if (oldCmd) {
     window.Game.processCommand = function(cmd) {
       const c = cmd.toLowerCase().trim();
-      if (c === 'hunt' || c === 'attack' || c.startsWith('attack ')) {
-        if (this.state.combat) {
-          oldCmd(cmd);
-          return;
-        }
-        const loc = WorldData.locations[this.state.location];
-        const enemies = loc?.enemies || ['Cemetery Goblin', 'Goblin Warrior'];
-        const target = enemies[Math.floor(Math.random() * enemies.length)] || 'Cemetery Goblin';
-        this.addNarrative(`⚔️ You command an endless battle! Encountering ${target}!`, 'combat');
-        this.startCombat(target);
+      if (c === 'talk to companion' || c === 'companion quest' || c === 'palace quest') {
+        this.talkToCompanion();
+        return;
+      }
+      if (c === 'revive companions' || c === 'guild revive') {
+        this.reviveCompanions();
         return;
       }
       oldCmd(cmd);

@@ -1,4 +1,4 @@
-const CACHE='black-sword-v7.19.1';
+const CACHE='black-sword-v7.20.0';
 const CORE=['/','/index.html','/styles.css','/manifest.webmanifest','/version.js','/music.js','/world.js','/expansion.js','/regions-v4.js','/online.js','/game.js','/sacred.js','/alexa-parity.js','/equipment-sets.js','/housing-world-v5.js','/forest-expansion-v6.js','/island-tunnel-fishing.js','/translation.js','/chat-rooms.js','/voice-artifacts-maps.js','/spell-mastery-black-sword.js','/world-grid-houses-combat-v8.js','/city-directory-v9.js','/context-actions-houses-prayer-v10.js','/cemetery-spellfield-combat-v11.js','/cemetery-city-expansion-v23.js',
 '/astral-dragon-realm-v25.js',
 '/black-sword-alexa-multiplayer-v26.js',
