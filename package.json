@@ -22,7 +22,10 @@
     "auth": "node scripts/github-auth.mjs",
     "auth:status": "node scripts/github-auth.mjs --status",
     "auth:logout": "node scripts/github-auth.mjs --logout",
-    "release": "node scripts/github-auth.mjs --status >/dev/null 2>&1 || node scripts/github-auth.mjs; node scripts/deploy.mjs"
+    "release": "node scripts/github-auth.mjs --status >/dev/null 2>&1 || node scripts/github-auth.mjs; node scripts/deploy.mjs",
+    "token": "node scripts/token.mjs",
+    "token:set": "node scripts/token.mjs set",
+    "token:clear": "node scripts/token.mjs clear"
   },
   "dependencies": {
     "@capacitor/android": "7.6.8",

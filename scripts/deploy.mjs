@@ -25,7 +25,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, access } from 'node:fs/promises';
+import { readFile, access, rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
@@ -309,6 +309,11 @@ async function main() {
 
     await waitForWorkflow(SECRET, sha);
     const results = await verifyLive(version);
+
+    // Build output is 67 MB of duplicated audio. It is regenerable and it
+    // overflows the workspace snapshot budget, so never leave it behind.
+    await rm('www', { recursive: true, force: true }).catch(() => {});
+    log('🧹', 'Removed regenerable build output (www/)');
 
     step('Release summary');
     console.log(`  Version : ${version}`);
