@@ -32,9 +32,19 @@ import { readFile, writeFile, unlink, chmod, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import path from 'node:path';
 
+const DROP = path.resolve(process.cwd(), 'TOKEN-HERE.txt');
 const LOCAL = path.resolve(process.cwd(), '.deploy-token');
 const GLOBAL = path.join(homedir(), '.bsu-deploy-token');
 const ENV_KEYS = ['GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_PAT', 'BSU_DEPLOY_TOKEN'];
+
+const DROP_TEMPLATE = `PASTE YOUR GITHUB TOKEN ON THE LINE BELOW, THEN SAVE.
+
+PASTE_TOKEN_HERE
+
+That is all. Tell the AI "token added" and it will pick this up automatically.
+This file is git-ignored. Your token is moved to a private store and this file
+is blanked the moment it is read, so the secret never lingers here.
+`;
 
 const mask = token => !token ? '(none)'
     : token.length < 12 ? '***'
@@ -47,11 +57,32 @@ async function readFileToken(file) {
     } catch { return null; }
 }
 
+/**
+ * Phone users have no terminal. They open TOKEN-HERE.txt in the workspace file
+ * viewer, replace the placeholder with their token, and save. We harvest it into
+ * the private store and immediately blank the visible file so the secret does
+ * not sit in plain sight or reach a snapshot.
+ */
+async function harvestDropFile() {
+    const raw = await readFileToken(DROP);
+    if (!raw) return null;
+    const token = raw.split('\n').map(line => line.trim())
+        .find(line => /^(gh[pousr]_|github_pat_)/.test(line));
+    if (!token) return null;
+    await writeFile(LOCAL, token, { mode: 0o600 });
+    await chmod(LOCAL, 0o600).catch(() => {});
+    await writeFile(GLOBAL, token, { mode: 0o600 }).catch(() => {});
+    await writeFile(DROP, DROP_TEMPLATE, { mode: 0o600 });
+    return token;
+}
+
 async function find() {
     for (const key of ENV_KEYS) {
         const value = process.env[key]?.trim();
         if (value) return { token: value, source: `env ${key}` };
     }
+    const dropped = await harvestDropFile();
+    if (dropped) return { token: dropped, source: 'TOKEN-HERE.txt (moved to private store)' };
     for (const [file, label] of [[LOCAL, '.deploy-token'], [GLOBAL, '~/.bsu-deploy-token']]) {
         const value = await readFileToken(file);
         if (value) return { token: value, source: label };

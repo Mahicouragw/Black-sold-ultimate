@@ -39,6 +39,7 @@ const LIVE_SITES = [
 ];
 const TOKEN_ENV_KEYS = ['GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_PAT', 'BSU_DEPLOY_TOKEN'];
 const TOKEN_FILES = ['.deploy-token', path.join(homedir(), '.bsu-deploy-token')];
+const DROP_FILE = 'TOKEN-HERE.txt';
 
 const args = process.argv.slice(2);
 const flag = name => args.includes(`--${name}`);
@@ -90,6 +91,13 @@ async function resolveToken() {
         const value = process.env[key]?.trim();
         if (value) return { token: value, source: `environment variable ${key}` };
     }
+    // Phone-friendly: a token typed into TOKEN-HERE.txt in the workspace viewer.
+    try {
+        const raw = await readFile(DROP_FILE, 'utf8');
+        const token = raw.split('\n').map(line => line.trim())
+            .find(line => /^(gh[pousr]_|github_pat_)/.test(line));
+        if (token) return { token, source: `file ${DROP_FILE}` };
+    } catch { /* not present */ }
     for (const file of TOKEN_FILES) {
         try {
             await access(file);

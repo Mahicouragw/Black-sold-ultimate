@@ -14,3 +14,4 @@ ios/App/DerivedData/
 # Deployment credential — never commit
 .deploy-token
 *.deploy-token
+TOKEN-HERE.txt
