@@ -123,7 +123,7 @@ const OnlineSystem = {
     populateVoiceSelectors() {
         this.systemVoices=('speechSynthesis'in window?speechSynthesis.getVoices():[]).filter((v,i,a)=>a.findIndex(x=>x.name===v.name&&x.lang===v.lang)===i);
         ['chat-voice','settings-chat-voice'].forEach(id=>{const select=document.getElementById(id);if(!select)return;select.innerHTML='';const base=document.createElement('option');base.value='system:default';base.textContent='Default device voice';select.appendChild(base);this.systemVoices.forEach(v=>{const option=document.createElement('option');option.value=`system:${v.name}`;option.textContent=`${v.name} — ${v.lang}${v.localService?' • installed':''}`;select.appendChild(option);});if([...select.options].some(o=>o.value===this.selectedVoice))select.value=this.selectedVoice;else{this.selectedVoice='system:default';select.value=this.selectedVoice;}});
-        const auto=document.getElementById('chat-auto-speak');if(auto)auto.checked=localStorage.getItem('black_sword_auto_speak')!=='false';
+        const auto=document.getElementById('chat-auto-speak');if(auto)auto.checked=localStorage.getItem('black_sword_auto_speak')==='true';
     },
 
     setVoiceProfile(id) {
@@ -133,20 +133,23 @@ const OnlineSystem = {
         ['chat-voice','settings-chat-voice'].forEach(selectId => { const el=document.getElementById(selectId); if(el) el.value=id; });
     },
 
-    speakText(text, voiceId = this.selectedVoice, language = 'en-US') {
-        if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) {
-            window.Game?.addNarrative?.('Spoken chat is not supported by this browser.', 'system'); return;
+    speakText(text, voiceId = this.selectedVoice, language = 'en-US', options = {}) {
+        if (!window.AudioManager || !('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) {
+            window.Game?.addNarrative?.('Spoken chat is not supported by this browser.', 'system');
+            return Promise.resolve(false);
         }
-        const legacyProfile=this.voiceProfiles.find(v=>v.id===voiceId),systemName=voiceId.startsWith('system:')?voiceId.slice(7):null;
-        const utterance=new SpeechSynthesisUtterance(String(text).slice(0,300));utterance.pitch=legacyProfile?.pitch||1;utterance.rate=legacyProfile?.rate||1;utterance.volume=.9;utterance.lang=language;
-        const voices=speechSynthesis.getVoices(),languageVoices=voices.filter(v=>v.lang?.toLowerCase().startsWith(language.slice(0,2).toLowerCase()));
-        if(systemName&&systemName!=='default')utterance.voice=voices.find(v=>v.name===systemName)||languageVoices[0]||voices[0];
-        else if(legacyProfile){const hints=legacyProfile.id.startsWith('girl')?['female','zira','samantha','victoria','karen','veena']:['male','david','daniel','george','james','ravi'];const pool=languageVoices.length?languageVoices:voices,preferred=pool.filter(v=>hints.some(h=>v.name.toLowerCase().includes(h)));if((preferred.length?preferred:pool).length)utterance.voice=(preferred.length?preferred:pool)[legacyProfile.voiceIndex%(preferred.length?preferred:pool).length];}
-        else utterance.voice=languageVoices[0]||voices[0];
-        speechSynthesis.cancel(); speechSynthesis.speak(utterance);
+        // AudioManager owns one serialized device-TTS queue and ducks music for
+        // the utterance lifetime. It chooses an exact-language, base-language,
+        // then default installed voice fallback without cancelling other speech.
+        return window.AudioManager.playVoice(String(text).slice(0, 600), {
+            voiceId,
+            language,
+            force: Boolean(options.force),
+            priority: Boolean(options.priority)
+        });
     },
 
-    testSelectedVoice() { const name=this.selectedVoice.startsWith('system:')?this.selectedVoice.slice(7):this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label;this.speakText(`This is ${name&&name!=='default'?name:'the default device voice'} in Black Sword chat.`); },
+    testSelectedVoice() { const name=this.selectedVoice.startsWith('system:')?this.selectedVoice.slice(7):this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label;this.speakText(`This is ${name&&name!=='default'?name:'the default device voice'} in Black Sword chat.`,this.selectedVoice,'en-US',{force:true}); },
     async speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m){const text=await (window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body));this.speakText(`${m.sender?.display_name||'Hero'} says: ${text}`,m.voice_id||'system:default',window.TranslationService?.target||'en');} },
 
     setupHeroAutocomplete() {
@@ -435,7 +438,7 @@ const OnlineSystem = {
     // Speak + narrate so TalkBack players hear the welcome, sighted players see it.
     announceToPlayer(text) {
         try{window.Game?.addNarrative?.(text,'npc');}catch{}
-        try{if(localStorage.getItem('black_sword_auto_speak')!=='false')this.speakText(text);}catch{}
+        try{if(localStorage.getItem('black_sword_auto_speak')==='true')this.speakText(text);}catch{}
         const titleStatus=document.getElementById('title-account-status');if(titleStatus)titleStatus.textContent=text;
     },
 
@@ -789,7 +792,7 @@ const OnlineSystem = {
         const membershipResult=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).limit(1).maybeSingle();
         const hasV6=!membershipResult.error;this.activeCombatGroup=membershipResult.data?.group_id||null;
         let channel=this.client.channel('black-sword-social')
-            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=this.normalizeLanguageMessage(payload.new);if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')!=='false'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>this.speakText(text,m.voice_id||'system:default',window.TranslationService?.target||'en'));}})
+            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=this.normalizeLanguageMessage(payload.new);if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')==='true'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>this.speakText(text,m.voice_id||'system:default',window.TranslationService?.target||'en'));}})
             .on('postgres_changes',{event:'*',schema:'public',table:'friend_requests'},()=>this.refreshOpenSocial());
         if(hasV6) channel=channel
             .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_battle_actions'},payload=>{const a=payload.new,g=window.Game;if(a.group_id!==this.activeCombatGroup||a.user_id===this.user?.id||!g?.state?.inCombat||!g.state.enemy)return;if(g.state.enemy.name.toLowerCase()!==String(a.monster_name).toLowerCase())return;g.applyEnemyDamage(a.damage,null);g.updateEnemyHUD();if(g.state.enemy.hp<=0)g.enemyDefeated();})

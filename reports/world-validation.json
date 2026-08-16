@@ -1,0 +1,137 @@
+{
+  "status": "PASS",
+  "generatedAt": "2026-08-15T17:00:16.882Z",
+  "finite": true,
+  "locations": 1145,
+  "regions": 98,
+  "edges": 3048,
+  "reachable": 785,
+  "conditionalLockedLocations": 360,
+  "unexpectedUnreachableLocations": 0,
+  "directionCounts": {
+    "north": 621,
+    "northeast": 47,
+    "east": 644,
+    "southeast": 32,
+    "south": 621,
+    "southwest": 47,
+    "west": 648,
+    "northwest": 32,
+    "up": 154,
+    "down": 202
+  },
+  "cardinalPercent": {
+    "north": 24.51,
+    "south": 24.51,
+    "east": 25.41,
+    "west": 25.57
+  },
+  "longestChains": {
+    "north": {
+      "edges": 6,
+      "path": [
+        "shadow_chamber",
+        "dark_hall",
+        "depths",
+        "dungeon_entrance",
+        "swamp",
+        "kaliwasch_district_30",
+        "kaliwasch_district_25"
+      ]
+    },
+    "northeast": {
+      "edges": 2,
+      "path": [
+        "kaliwasch_district_1",
+        "mountains",
+        "high_mountain_road_1"
+      ]
+    },
+    "east": {
+      "edges": 6,
+      "path": [
+        "village_1_west_gate",
+        "village_1_center",
+        "village_1_east_gate",
+        "village_2_west_gate",
+        "village_2_center",
+        "village_2_east_gate",
+        "village_3_west_gate"
+      ]
+    },
+    "southeast": {
+      "edges": 2,
+      "path": [
+        "kaliwasch_district_30",
+        "realm_1_8",
+        "realm_1_6"
+      ]
+    },
+    "south": {
+      "edges": 6,
+      "path": [
+        "kaliwasch_district_25",
+        "kaliwasch_district_30",
+        "swamp",
+        "dungeon_entrance",
+        "depths",
+        "dark_hall",
+        "shadow_chamber"
+      ]
+    },
+    "southwest": {
+      "edges": 2,
+      "path": [
+        "kaliwasch_district_22",
+        "kaliwasch_district_21",
+        "cityward_forest_trail_20"
+      ]
+    },
+    "west": {
+      "edges": 6,
+      "path": [
+        "village_3_west_gate",
+        "village_2_east_gate",
+        "village_2_center",
+        "village_2_west_gate",
+        "village_1_east_gate",
+        "village_1_center",
+        "village_1_west_gate"
+      ]
+    },
+    "northwest": {
+      "edges": 2,
+      "path": [
+        "realm_1_6",
+        "realm_1_8",
+        "kaliwasch_district_30"
+      ]
+    },
+    "up": {
+      "edges": 2,
+      "path": [
+        "kaliwasch_district_20",
+        "kaliwasch_guild_hall",
+        "kaliwasch_spell_field_1"
+      ]
+    },
+    "down": {
+      "edges": 4,
+      "path": [
+        "public_house_kaliwasch_10_foyer",
+        "public_house_kaliwasch_10_door",
+        "public_houses_kaliwasch_lane_2",
+        "public_house_kaliwasch_5_door",
+        "public_houses_kaliwasch_lane"
+      ]
+    }
+  },
+  "loopClassification": {
+    "INTENTIONAL_LOOP": 1498,
+    "VALID_ROUTE": 378,
+    "ACCIDENTAL_LOOP": 0
+  },
+  "runtimeRepairs": 91,
+  "issues": [],
+  "warnings": []
+}

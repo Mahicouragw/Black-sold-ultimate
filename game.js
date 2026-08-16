@@ -560,8 +560,8 @@ const Game = {
         // Show description
         this.addNarrative(loc.description, 'location');
 
-        // Show only standard compass/vertical directions in a consistent order.
-        const directionOrder = ['north','west','east','south','up','down'];
+        // Show the actual finite-world exits in a stable compass order.
+        const directionOrder = ['northwest','north','northeast','west','east','southwest','south','southeast','up','down'];
         const exits = directionOrder.filter(direction => loc.exits[direction]);
         this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
         this.updateDirectionButtons(loc.exits);
@@ -648,8 +648,8 @@ const Game = {
         const c = cmd.toLowerCase().trim();
 
         // Movement
-        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
-            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
+        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'northeast', 'ne', 'northwest', 'nw', 'southeast', 'se', 'southwest', 'sw', 'up', 'u', 'down', 'd'].includes(c)) {
+            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west', ne: 'northeast', nw: 'northwest', se: 'southeast', sw: 'southwest', u: 'up', d: 'down' };
             this.move(dirMap[c] || c);
             return;
         }
@@ -786,27 +786,36 @@ const Game = {
 
     move(direction) {
         const loc = WorldData.locations[this.state.location];
-        const dest = loc.exits[direction];
+        const dest = loc?.exits?.[direction];
 
-        if (!dest) {
-            this.addNarrative("You can't go that way.", 'system');
+        if (!dest || !WorldData.locations[dest]) {
+            this.addNarrative(`You cannot move ${direction} from here.`, 'system');
             MusicSystem.playSFX('explore');
             return;
         }
-
-        this.addNarrative(`You travel ${direction}...`, 'system');
+        // Serialize movement so rapid keyboard/voice input cannot dispatch two
+        // logical moves from the same origin or produce duplicate announcements.
+        if (this._movementPending) return;
+        this._movementPending = true;
         MusicSystem.playSFX('explore');
 
         setTimeout(() => {
-            this.enterLocation(dest);
-        }, 500);
+            try {
+                const target = WorldData.locations[dest];
+                if (!target) return;
+                this.addNarrative(`You moved ${direction} to ${target.name}.`, 'location');
+                this.enterLocation(dest);
+            } finally {
+                this._movementPending = false;
+            }
+        }, 320);
     },
 
     look() {
         this.showLocationArt(this.state.location);
         const loc = WorldData.locations[this.state.location];
         this.addNarrative(loc.description, 'location');
-        const directionOrder = ['north','west','east','south','up','down'];
+        const directionOrder = ['northwest','north','northeast','west','east','southwest','south','southeast','up','down'];
         const exits = directionOrder.filter(direction => loc.exits[direction]);
         this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
         this.updateDirectionButtons(loc.exits);
@@ -2071,7 +2080,8 @@ const Game = {
     },
 
     victory() {
-        MusicSystem.playSFX('victory');
+        // The battle timeline already played the centralized victory transition;
+        // do not layer a duplicate fanfare over the final announcement.
         this.addNarrative("🏆 YOU HAVE CLAIMED THE BLACK SWORD!", 'treasure');
         this.addNarrative("The realm of Kandor is saved!", 'treasure');
 

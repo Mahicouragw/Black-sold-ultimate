@@ -1,115 +1,95 @@
-# Audio Credits and Licenses
+# Audio Credits and Licences
 
-All audio bundled in `assets/audio/` comes from OpenGameArt and is released under **CC0 1.0 / public domain**. Attribution is not legally required, but the creators and source pages are credited here with thanks.
+Verified: **2026-08-15**. The machine-readable source of truth is [`assets/audio/audio-manifest.json`](assets/audio/audio-manifest.json). Every bundled audio file has one manifest record; validation fails for missing files, missing licence fields, duplicate paths, unsupported/empty files, or orphaned assets.
+
+“Royalty-free” is not treated as a licence. The exact licence for each work is recorded below. CC BY and CC BY-SA requirements apply to the identified files; the remaining identified works are CC0. No commercial recordings, YouTube/Spotify rips, or undocumented placeholder music are bundled.
 
 ## Music
 
-| Local file | Work | Creator | Source | License |
-|---|---|---|---|---|
-| `music/town.mp3` | Town | Pro Sensory | https://opengameart.org/content/town | CC0 1.0 |
-| `music/exploration.mp3` | Unexplored Expansion | Bo Jingles / TAD | https://opengameart.org/content/unexplored-expansion | CC0 1.0 |
-| `music/dungeon.ogg` | Loopable Dungeon Ambience | JaggedStone | https://opengameart.org/content/loopable-dungeon-ambience | CC0 1.0 |
-| `music/battle.ogg` | Battle RPG Theme Variation | Cleyton Kauffman | https://opengameart.org/content/boss-battle-theme | CC0 1.0 |
-| `music/boss.mp3` | Battle RPG Theme | Cleyton Kauffman | https://opengameart.org/content/boss-battle-theme | CC0 1.0 |
-| `music/victory.mp3` | Victory | celestialghost8 | https://opengameart.org/content/victory | CC0 1.0 |
-| `music/dark-forest.mp3` | Dark Forest Theme | cynicmusic | https://opengameart.org/content/dark-forest-theme | CC0 1.0 |
-| `music/battle-fast.wav` | Fast Fight / Battle Music (Looped) | Ville Nousiainen / XCVG | https://opengameart.org/content/fast-fight-battle-music-looped | CC0 1.0 |
-| `music/inn.mp3` | Medieval: The Old Tower Inn | RandomMind | https://opengameart.org/content/medieval-the-old-tower-inn | CC0 1.0 |
-| `music/Fantasy-Choir-1.mp3` | Fantasy Choir 1 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
-| `music/Fantasy-Choir-2.mp3` | Fantasy Choir 2 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
-| `music/Fantasy-Choir-3.mp3` | Fantasy Choir 3 | César da Rocha | https://opengameart.org/content/fantasy-choir-3-orchestral-pieces | CC0 1.0 |
-| `music/determined-pursuit.wav` | Determined Pursuit | Emma MA | https://opengameart.org/content/determined-pursuit-epic-orchestra-loop | CC0 1.0 |
-| `music/adventure-intro.wav` | Adventure Intro Title | nene | https://opengameart.org/content/adventure-intro-title-cinematic-epic | CC0 1.0 |
+| Filename | Title | Artist / creator | Source and source page | Licence | Requirements / attribution | Date accessed |
+|---|---|---|---|---|---|---|
+| `assets/audio/music/Fantasy-Choir-1.mp3` | A Winter Tale | Johan Brodd (jobromedia) | [OpenGameArt](https://opengameart.org/content/a-winter-tale) | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) | Credit Johan Brodd, link the licence, indicate this format conversion, and distribute the adapted audio under CC BY-SA 3.0. “A Winter Tale” by Johan Brodd, used and locally transcoded under CC BY-SA 3.0. Local adapted audio is offered under CC BY-SA 3.0. | 2026-08-15 |
+| `assets/audio/music/Fantasy-Choir-2.mp3` | A New Town (RPG Theme) | The Cynic Project / cynicmusic | [OpenGameArt](https://opengameart.org/content/a-new-town-rpg-theme) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit requested by creator: The Cynic Project / pixelsphere.org / cynicmusic.com. | 2026-08-15 |
+| `assets/audio/music/Fantasy-Choir-3.mp3` | Beyond the Frozen Veil | Synth-thetic | [OpenGameArt](https://opengameart.org/content/beyond-the-frozen-veil) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Beyond the Frozen Veil” by Synth-thetic. | 2026-08-15 |
+| `assets/audio/music/adventure-intro.wav` | Adventure Intro Title [Cinematic, Epic] | nene | [OpenGameArt](https://opengameart.org/content/adventure-intro-title-cinematic-epic) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Adventure Intro Title” by nene. | 2026-08-15 |
+| `assets/audio/music/battle-fast.mp3` | Battle in the Stratosphere | Scott Elliott (Scrabbit) | [OpenGameArt](https://opengameart.org/content/battle-in-the-stratosphere) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Battle in the Stratosphere” by Scott Elliott, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |
+| `assets/audio/music/battle.ogg` | Battle March - Epic Orchestral Music Loop | PlayOnLoop | [OpenGameArt](https://opengameart.org/content/battle-march-epic-orchestral-music-loop) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Battle March” by PlayOnLoop, used under CC BY 3.0; converted to the bundled OGG. Credit link: PlayOnLoop.com. | 2026-08-15 |
+| `assets/audio/music/boss.mp3` | A Slave To No One | Jonathan Shaw (InspectorJ) | [OpenGameArt](https://opengameart.org/content/a-slave-to-no-one-rpg-orchestral-essentials) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “A Slave To No One” composed by Jonathan Shaw (www.jshaw.co.uk), used under CC BY 3.0; converted to the bundled MP3. | 2026-08-15 |
+| `assets/audio/music/dark-forest.mp3` | Cathedral in the Forest (ambient loop) | congusbongus | [OpenGameArt](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Cathedral in the Forest” by congusbongus. | 2026-08-15 |
+| `assets/audio/music/determined-pursuit.mp3` | Determined Pursuit (epic orchestra loop) | Emma_MA | [OpenGameArt](https://opengameart.org/content/determined-pursuit-epic-orchestra-loop) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Determined Pursuit” by Emma_MA. | 2026-08-15 |
+| `assets/audio/music/dungeon.ogg` | RPG Ambience - Dungeon | HitCtrl | [OpenGameArt](https://opengameart.org/content/rpg-ambience-dungeon) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “RPG Ambience - Dungeon” by HitCtrl, used under CC BY 3.0; converted to the bundled OGG. | 2026-08-15 |
+| `assets/audio/music/exploration.mp3` | Epic Departure [v2] | Of Far Different Nature | [itch.io (creator page)](https://fardifferent.itch.io/loops) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Epic Departure [v2]” by Of Far Different Nature, from Loop Box #3, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |
+| `assets/audio/music/inn.mp3` | Medieval: The Old Tower Inn | RandomMind | [OpenGameArt](https://opengameart.org/content/medieval-the-old-tower-inn) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Medieval: The Old Tower Inn” by RandomMind. | 2026-08-15 |
+| `assets/audio/music/town.mp3` | Fantasy Music - Night Town | Angus Macnaughton | [OpenGameArt](https://opengameart.org/content/fantasy-music-night-town) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Fantasy Music - Night Town” © Angus Macnaughton 2014, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |
+| `assets/audio/music/victory.mp3` | Victory | celestialghost8 | [OpenGameArt](https://opengameart.org/content/victory) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Victory” by celestialghost8. | 2026-08-15 |
 
 ## Sound effects
 
-The real sword swings, sword impacts, magic, spell, door, coin, pickup, interface, and creature recordings in `assets/audio/sfx/` are selected from:
+| Filename | Title / source clip | Artist / creator | Source and source page | Licence | Requirements / attribution | Date accessed |
+|---|---|---|---|---|---|---|
+| `assets/audio/sfx/attack-fast.wav` | Attack Fast | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/attack-heavy.wav` | Attack Heavy | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/attack.wav` | Attack | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/board-dice.wav` | Board Dice | HaelDB | [OpenGameArt — Card Game Sounds](https://opengameart.org/content/card-game-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Card Game Sounds by HaelDB. | 2026-08-15 |
+| `assets/audio/sfx/board-error.wav` | Board Error | HaelDB | [OpenGameArt — Card Game Sounds](https://opengameart.org/content/card-game-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Card Game Sounds by HaelDB. | 2026-08-15 |
+| `assets/audio/sfx/board-piece.wav` | Board Piece | HaelDB | [OpenGameArt — Card Game Sounds](https://opengameart.org/content/card-game-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Card Game Sounds by HaelDB. | 2026-08-15 |
+| `assets/audio/sfx/board-turn.wav` | Board Turn | HaelDB | [OpenGameArt — Card Game Sounds](https://opengameart.org/content/card-game-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Card Game Sounds by HaelDB. | 2026-08-15 |
+| `assets/audio/sfx/body-fall.wav` | Impact Soft Heavy | Kenney | [Kenney — Impact Sounds](https://kenney.nl/assets/impact-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/card-draw.wav` | Card Draw | HaelDB | [OpenGameArt — Card Game Sounds](https://opengameart.org/content/card-game-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Card Game Sounds by HaelDB. | 2026-08-15 |
+| `assets/audio/sfx/card-flip.wav` | Book Flip 1 | Kenney | [Kenney — RPG Audio](https://kenney.nl/assets/rpg-audio) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/card-shuffle.wav` | Card Shuffle | HaelDB | [OpenGameArt — Card Game Sounds](https://opengameart.org/content/card-game-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Card Game Sounds by HaelDB. | 2026-08-15 |
+| `assets/audio/sfx/carrom-strike.wav` | Impact Metal Light | Kenney | [Kenney — Impact Sounds](https://kenney.nl/assets/impact-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/check.wav` | Confirmation 001 | Kenney | [Kenney — Interface Sounds](https://kenney.nl/assets/interface-sounds) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/checkmate.wav` | Low Down | Kenney | [Kenney — Digital Audio](https://kenney.nl/assets/digital-audio) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/chess-move.wav` | Card Place 1 | Kenney | [Kenney — Casino Audio](https://kenney.nl/assets/casino-audio) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/coin-collision.wav` | Chips Collide 1 | Kenney | [Kenney — Casino Audio](https://kenney.nl/assets/casino-audio) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/coin.wav` | Coin | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/death.wav` | Death | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/door.wav` | Door | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/exp.wav` | Pizzicato Jingle 01 | Kenney | [Kenney — Music Jingles](https://kenney.nl/assets/music-jingles) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Kenney (kenney.nl). | 2026-08-15 |
+| `assets/audio/sfx/explore.wav` | Explore | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/ghost-moan.wav` | Ghost Monster Voice Moaning & Growling | Iwan “qubodup” Gabovitch | [OpenGameArt](https://opengameart.org/content/ghost-monster-voice-moaning-growling) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Ghost Monster Voice Moaning & Growling by qubodup. | 2026-08-15 |
+| `assets/audio/sfx/ghost-scream.wav` | Scary High-pitched Ghost | Fupi | [OpenGameArt](https://opengameart.org/content/scary-high-pitched-ghost) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Scary High-pitched Ghost by Fupi. | 2026-08-15 |
+| `assets/audio/sfx/goblin-cackle.wav` | Goblin Cackle | spookymodem / Joseph Krebs | [OpenGameArt](https://opengameart.org/content/goblin-cackle) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Goblin Cackle” by spookymodem (Joseph Krebs), used under CC BY 3.0; converted to bundled WAV. | 2026-08-15 |
+| `assets/audio/sfx/haunted-wind.wav` | Wind | IgnasD | [OpenGameArt](https://opengameart.org/content/wind) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Wind by IgnasD. | 2026-08-15 |
+| `assets/audio/sfx/heal-chain.wav` | Heal Chain | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/heal.wav` | Heal | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/hit-metal-1.wav` | Hit Metal 1 | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/hit-metal-2.wav` | Hit Metal 2 | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/hit.wav` | Hit | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/levelup.wav` | Levelup | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/magic.wav` | Magic | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/miss.wav` | Air Whoosh | pyranostudios | [OpenGameArt](https://opengameart.org/content/air-whoosh) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Air Whoosh by pyranostudios. | 2026-08-15 |
+| `assets/audio/sfx/monster-hit.wav` | Monster Hit | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/monster-roar.wav` | Monster Roar | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/pickup.wav` | Pickup | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/spell-arcane.wav` | Spell Arcane | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/spell-cast.wav` | Spell Cast | artisticdude | [OpenGameArt — RPG Sound Pack](https://opengameart.org/content/rpg-sound-pack) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: RPG Sound Pack by artisticdude. | 2026-08-15 |
+| `assets/audio/sfx/step-gravel.ogg` | Step Gravel | TinyWorlds / kddekadenz | [OpenGameArt — Different Steps](https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Different Steps by TinyWorlds; embedded file artist metadata names kddekadenz. | 2026-08-15 |
+| `assets/audio/sfx/step-leaves-1.ogg` | Step Leaves 1 | TinyWorlds / kddekadenz | [OpenGameArt — Different Steps](https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Different Steps by TinyWorlds; embedded file artist metadata names kddekadenz. | 2026-08-15 |
+| `assets/audio/sfx/step-leaves-2.ogg` | Step Leaves 2 | TinyWorlds / kddekadenz | [OpenGameArt — Different Steps](https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Different Steps by TinyWorlds; embedded file artist metadata names kddekadenz. | 2026-08-15 |
+| `assets/audio/sfx/step-mud.ogg` | Step Mud | TinyWorlds / kddekadenz | [OpenGameArt — Different Steps](https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Different Steps by TinyWorlds; embedded file artist metadata names kddekadenz. | 2026-08-15 |
+| `assets/audio/sfx/step-stone.ogg` | Step Stone | TinyWorlds / kddekadenz | [OpenGameArt — Different Steps](https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Different Steps by TinyWorlds; embedded file artist metadata names kddekadenz. | 2026-08-15 |
+| `assets/audio/sfx/step-wood.ogg` | Step Wood | TinyWorlds / kddekadenz | [OpenGameArt — Different Steps](https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: Different Steps by TinyWorlds; embedded file artist metadata names kddekadenz. | 2026-08-15 |
 
-- **RPG Sound Pack** by artisticdude
-- Source: https://opengameart.org/content/rpg-sound-pack
-- License: CC0 1.0 / public domain
+## Required attribution text
 
-Board/card sounds for dice rolls, piece movement, card draw, shuffle and turn cues:
-- **Card Game Sounds** by HaelDB
-- Source: https://opengameart.org/content/card-game-sounds
-- License: CC0 1.0 / public domain
+The following notice must remain with redistributed copies of the game:
 
-Additional leaf, stone, wood, gravel, and mud footsteps:
-- **Different steps on wood, stone, leaves, gravel and mud** by TinyWorlds
-- Source: https://opengameart.org/content/different-steps-on-wood-stone-leaves-gravel-and-mud
-- License: CC0 1.0 / public domain
+- “Fantasy Music - Night Town” © Angus Macnaughton 2014 — CC BY 4.0.
+- “Epic Departure [v2]” by Of Far Different Nature — CC BY 4.0.
+- “A Winter Tale” by Johan Brodd — CC BY-SA 3.0. The bundled transcoded adaptation remains available under CC BY-SA 3.0.
+- “RPG Ambience - Dungeon” by HitCtrl — CC BY 3.0.
+- “Battle March” by PlayOnLoop — CC BY 3.0; credit link: https://playonloop.com/.
+- “Battle in the Stratosphere” by Scott Elliott — CC BY 4.0.
+- “A Slave To No One” composed by Jonathan Shaw (https://www.jshaw.co.uk/) — CC BY 3.0.
+- “Goblin Cackle” by spookymodem / Joseph Krebs — CC BY 3.0.
 
-License text: https://creativecommons.org/publicdomain/zero/1.0/
+Format conversion, trimming, or resampling is disclosed in the per-file entries. CC0 courtesy credits are retained to thank the creators even where attribution is not legally required.
 
-## New Cemetery Horror Ghost Music (v23 Expansion) - Free from Pixabay, Freesound, SoundCloud CC0
+## Licence links
 
-| Local file | Work | Creator | Source | License |
-|---|---|---|---|---|
-| `music/cemetery-horror.mp3` | Horror Background Music | Pixabay User | https://pixabay.com/music/horror-scene-horror-background-music-302076/ | Pixabay Content License (Free, no attribution) |
-| `music/ghost-choir.mp3` | Haunting Ghost Choir | u_bzgfwyq2bg | https://pixabay.com/sound-effects/horror-haunting-ghost-choir-493243/ | Pixabay License |
-| `music/ghost-scream.ogg` | Ghost Scream | Pixabay | https://pixabay.com/sound-effects/horror-ghost-scream-37774/ | Pixabay License |
-| `music/haunted-wind.ogg` | Haunted Wind | Freesound.org User | https://freesound.org/search/?q=haunted+wind+cemetery | CC0 |
-| `music/spooky-choir.mp3` | Spooky Choir | Pixabay | https://pixabay.com/sound-effects/search/horror-music/ | Pixabay License |
-| `music/evil-ghost.mp3` | Creepy Dark Evil Ghost | Pixabay | https://pixabay.com/sound-effects/search/ghost%20horror/ | Pixabay License |
-| `sfx/ghost-moan.ogg` | Ghost Moan | Freesound | https://freesound.org/ | CC0 |
-| `sfx/goblin-cackle.ogg` | Goblin Cackle | Freesound | https://freesound.org/ | CC0 |
-
-All ghost horror music from websites like Pixabay, Freesound, SoundCloud free CC0 as requested.
-
-
-## v7.17.2 — Repaired missing assets (REAL royalty-free audio)
-
-The files below were referenced by the game but missing from the repository.
-Each is now a **real recording** from a trusted free library — no synthesized
-audio is used anywhere in the game (the previous generated tones were removed).
-
-| File (assets/audio/sfx/) | Used for | Source & license |
-|---|---|---|
-| `body-fall.wav` | Monster defeat body fall | Kenney.nl “Impact Sounds” — CC0 |
-| `card-flip.wav` | Card flip | Kenney.nl “RPG Audio” (bookFlip1) — CC0 |
-| `carrom-strike.wav` | Carrom striker | Kenney.nl “Impact Sounds” (impactMetal_light) — CC0 |
-| `check.wav` | Chess check | Kenney.nl “Interface Sounds” (confirmation) — CC0 |
-| `checkmate.wav` | Chess checkmate | Kenney.nl “Digital Audio” (lowDown) — CC0 |
-| `chess-move.wav` | Chess piece move | Kenney.nl “Casino Audio” (card-place) — CC0 |
-| `coin-collision.wav` | Carrom coin collision | Kenney.nl “Casino Audio” (chips-collide) — CC0 |
-| `exp.wav` | XP gained | Kenney.nl “Music Jingles” (Pizzicato) — CC0 |
-| `miss.wav` | Attack miss whoosh | OpenGameArt “Air whoosh” by qubodup — CC0 |
-| `ghost-scream.wav` | Ghost scream | OpenGameArt “Scary High-pitched Ghost” — CC0 |
-| `ghost-moan.wav` | Ghost moan | OpenGameArt “Ghost Monster Voice Moaning & Growling” (qubodup) — CC0 |
-| `goblin-cackle.wav` | Goblin cackle | OpenGameArt “Goblin Cackle” by spookymodem — CC-BY 3.0 (attribution in this file) |
-| `haunted-wind.wav` | Haunted wind ambience | OpenGameArt “Wind” by qubodup — CC0 |
-
-Attribution (CC-BY): “Goblin Cackle” by spookymodem, OpenGameArt.org, CC-BY 3.0.
-Cemetery music maps to bundled CC0 tracks (`dark-forest.mp3` → Cemetery Horror,
-`Fantasy-Choir-1.mp3` → Ghost Choir) from the original OpenGameArt/Pixabay bundle.
-All files are mono 44.1 kHz WAV, downloaded, trimmed/faded, and committed to the
-repo for offline play. Regenerate/verify anytime: `python3 scripts/install-real-audio.py`
-(requires the source archives in /var/tmp/audio-src).
-
-## v7.17.3 — REAL background music (was missing from every deployment!)
-
-The 14 background-music tracks were REFERENCED by music.js but NEVER committed to
-the repository — the game ran with silent music on every live deployment. All
-tracks are now real, looping, royalty-free recordings from OpenGameArt.org:
-
-| Game file (assets/audio/music/) | Used for | Source track | Author | License |
-|---|---|---|---|---|
-| `town.mp3` | City/town theme | Fantasy Night Town | amacnaughton | CC-BY 3.0 |
-| `inn.mp3` | Tavern/inn (The Old Tower Inn) | Chiptune Medieval: The Old Tower Inn | Nenad Vukadinović | CC0 |
-| `exploration.mp3` | Overland exploration | Of Far Different Nature — Epic Departure | of far different nature | CC-BY 3.0 |
-| `dark-forest.mp3` | Forest / cemetery horror | Cathedral in the Forest (ambient loop) | (public domain) | CC0 / Public Domain |
-| `Fantasy-Choir-1.mp3` | Temple | A Wintertale | jobromedia | CC-BY 3.0 |
-| `Fantasy-Choir-2.mp3` | Palace | A New Town (RPG theme) | (public domain) | CC0 / Public Domain |
-| `Fantasy-Choir-3.mp3` | Epic exploration | Beyond the Frozen Veil | (public domain) | CC0 / Public Domain |
-| `adventure-intro.wav` | Title intro | Adventure Theme Intro | nene | CC0 |
-| `dungeon.ogg` | Dungeon ambience | RPG Ambience — Dungeon | Hitctrl | CC-BY 3.0 |
-| `battle.ogg` | Battle theme | Battle March (epic orchestral loop) | PlayOnLoop | CC-BY 3.0 |
-| `battle-fast.mp3` | Fast battle loop | Battle in the Stratosphere | Scrabbit | CC-BY 3.0 |
-| `determined-pursuit.mp3` | Cinematic battle | Chase | (public domain) | CC0 |
-| `boss.mp3` | Boss battle | A Slave To No One (RPG Orchestral Essentials) | Inspector J | CC-BY 3.0 |
-| `victory.mp3` | Victory fanfare | And The Winner Is | (public domain) | CC0 |
-
-CC-BY attribution (as required): tracks by amacnaughton, of far different nature,
-jobromedia, Hitctrl, PlayOnLoop, Scrabbit and Inspector J are used under the
-Creative Commons Attribution 3.0 license via OpenGameArt.org. All other tracks
-are CC0 / Public Domain. No synthesized music anywhere.
+- CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+- CC BY 3.0: https://creativecommons.org/licenses/by/3.0/
+- CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
+- CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/

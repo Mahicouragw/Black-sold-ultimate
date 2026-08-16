@@ -49,7 +49,7 @@
             </div>
 
             <p class="credits">
-                Music &amp; SFX: Real CC0 audio from OpenGameArt creators<br>
+                Real CC0, CC BY and CC BY-SA audio with <a href="AUDIO_CREDITS.md">verified creator credits</a><br>
                 Inspired by Narkuma's "The Black Sword" on Alexa
             </p>
         </div>
@@ -197,8 +197,8 @@
                 </ul>
 
                 <h3>🎵 Music</h3>
-                <p>Click the music buttons to toggle real cinematic music and recorded sound effects. Only one location or battle track plays at a time.</p>
-                <p class="music-credit">CC0 audio from OpenGameArt. Full creator and license details are in AUDIO_CREDITS.md.</p>
+                <p>Contextual playlists smart-shuffle real cinematic tracks. World music resumes after an independent battle playlist, and music ducks for opt-in device speech.</p>
+                <p class="music-credit">Verified CC0, CC BY and CC BY-SA audio. See <a href="AUDIO_CREDITS.md">full per-file creator, source, licence, requirement and access-date records</a>.</p>
             </div>
 
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
@@ -240,12 +240,17 @@
             <!-- Action Bar -->
             <div class="action-bar">
                 <div class="dpad" aria-label="Available directions">
-                    <button class="dir-btn" data-cmd="north">North</button>
-                    <button class="dir-btn" data-cmd="west">West</button>
-                    <button class="dir-btn" data-cmd="east">East</button>
-                    <button class="dir-btn" data-cmd="south">South</button>
-                    <button class="dir-btn" data-cmd="up">Up</button>
-                    <button class="dir-btn" data-cmd="down">Down</button>
+                    <button class="dir-btn dir-nw" data-cmd="northwest">Northwest</button>
+                    <button class="dir-btn dir-n" data-cmd="north">North</button>
+                    <button class="dir-btn dir-ne" data-cmd="northeast">Northeast</button>
+                    <button class="dir-btn dir-w" data-cmd="west">West</button>
+                    <span class="dpad-center" aria-hidden="true">◆</span>
+                    <button class="dir-btn dir-e" data-cmd="east">East</button>
+                    <button class="dir-btn dir-sw" data-cmd="southwest">Southwest</button>
+                    <button class="dir-btn dir-s" data-cmd="south">South</button>
+                    <button class="dir-btn dir-se" data-cmd="southeast">Southeast</button>
+                    <button class="dir-btn dir-up" data-cmd="up">Up</button>
+                    <button class="dir-btn dir-down" data-cmd="down">Down</button>
                 </div>
                 <div class="action-btns">
                     <button class="action-btn" data-cmd="look">👁️ Look</button>
@@ -320,7 +325,7 @@
                 <div class="chat-voice-controls">
                     <label for="chat-voice">Your message voice</label>
                     <select id="chat-voice" aria-label="Choose chat voice"></select>
-                    <label><input type="checkbox" id="chat-auto-speak" checked> Speak incoming messages</label>
+                    <label><input type="checkbox" id="chat-auto-speak"> Speak incoming messages</label>
                     <button id="btn-test-chat-voice" class="small-action-btn">Test Selected Voice</button>
                 </div>
                 <div id="social-content"></div>
@@ -376,7 +381,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.20.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.21.0</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -390,6 +395,20 @@
                     <input id="settings-login-pin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="6-digit PIN" aria-label="PIN for Player ID sign in">
                     <button id="btn-login-pin" class="menu-btn">🔑 Sign in with Player ID + PIN</button>
                     <p id="settings-pin-status" class="settings-note" aria-live="polite"></p>
+                    <fieldset class="audio-settings" aria-describedby="audio-settings-help">
+                        <legend>Audio and device speech</legend>
+                        <label class="setting-toggle" for="setting-music-enabled"><input type="checkbox" id="setting-music-enabled"> Music on</label>
+                        <label for="setting-music-volume">Music volume <output id="setting-music-volume-value" for="setting-music-volume">32%</output></label>
+                        <input type="range" id="setting-music-volume" min="0" max="100" step="1" value="32" aria-label="Music volume, 0 to 100 percent">
+                        <label class="setting-toggle" for="setting-music-shuffle"><input type="checkbox" id="setting-music-shuffle"> Smart music shuffle</label>
+                        <label class="setting-toggle" for="setting-sfx-enabled"><input type="checkbox" id="setting-sfx-enabled"> Sound effects on</label>
+                        <label for="setting-sfx-volume">Sound effects volume <output id="setting-sfx-volume-value" for="setting-sfx-volume">55%</output></label>
+                        <input type="range" id="setting-sfx-volume" min="0" max="100" step="1" value="55" aria-label="Sound effects volume, 0 to 100 percent">
+                        <label class="setting-toggle" for="setting-voice-enabled"><input type="checkbox" id="setting-voice-enabled"> Device voice and TTS on</label>
+                        <label for="setting-voice-volume">Device voice volume <output id="setting-voice-volume-value" for="setting-voice-volume">90%</output></label>
+                        <input type="range" id="setting-voice-volume" min="0" max="100" step="1" value="90" aria-label="Device voice volume, 0 to 100 percent">
+                        <p id="audio-settings-help" class="settings-note">Device speech is off by default to avoid duplicating TalkBack. Turn it on for spoken chat; music automatically ducks while speech plays.</p>
+                    </fieldset>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
                     <label for="rpg-difficulty">RPG battle difficulty</label>
@@ -489,6 +508,7 @@
     <script defer src="hunt-achievements-v20.js"></script>
     <script defer src="hunt-wayfinder-v21.js"></script>
     <script defer src="horse-racing-v22.js"></script>
+    <script defer src="world-navigation-v27.js"></script>
     <script type="module" src="game-hall.js"></script>
     <script src="pwa.js"></script>
 </body>

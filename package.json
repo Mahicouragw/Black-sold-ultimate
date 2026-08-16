@@ -1,6 +1,6 @@
 {
   "name": "black-sword-ultimate",
-  "version": "7.20.0",
+  "version": "7.21.0",
   "private": true,
   "description": "Accessible open-world multiplayer fantasy RPG",
   "scripts": {
@@ -11,7 +11,11 @@
     "security": "npm audit --audit-level=high && node scripts/security-check.mjs",
     "cap:sync": "npm run build && npx cap sync",
     "cap:android": "npm run cap:sync && npx cap open android",
-    "cap:ios": "npm run cap:sync && npx cap open ios"
+    "cap:ios": "npm run cap:sync && npx cap open ios",
+    "test": "node --test tests/*.test.mjs",
+    "audio:validate": "node scripts/validate-audio.mjs",
+    "world:validate": "node scripts/validate-world.mjs",
+    "validate": "npm run audio:validate && npm run world:validate"
   },
   "dependencies": {
     "@capacitor/android": "7.6.8",
@@ -20,7 +24,8 @@
     "chess.js": "^1.4.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "7.6.8"
+    "@capacitor/cli": "7.6.8",
+    "jsdom": "^26.1.0"
   },
   "engines": {
     "node": ">=20.0.0"

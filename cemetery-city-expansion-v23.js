@@ -64,27 +64,22 @@
     const id=`city_cemetery_${i+1}`;
     WorldData.locations[id]={
       name:cemName,
-      description:`${cemName} is physical haunted cemetery inside city. Ghost music from Pixabay CC0 (Haunting Ghost Choir, Ghost Scream, Horror Background Music) and Freesound CC0, dangerous monsters ghosts/goblins.`,
+      description:`${cemName} is physical haunted cemetery inside city. Verified OpenGameArt music and sound effects with licences recorded in AUDIO_CREDITS.md, dangerous monsters ghosts/goblins.`,
       region:'City Cemetery',
       exits:{north:i===0?'city_cemetery':`city_cemetery_${i}`, south:i===cemeteryCityNames.length-1?'city_cemetery':`city_cemetery_${i+2}`},
-      features:['cemetery city','physical','haunted','ghost music Pixabay CC0','walkable','ghosts','goblins'],
+      features:['cemetery city','physical','haunted','verified licensed ghost audio','walkable','ghosts','goblins'],
       items:['ghostly Essence'],
       enemies:['Cemetery Goblin '+i,'Haunted Skeleton '+i],
       music:i%2===0?'cemeteryHorror':'ghostChoir',
       safe:i%5===0
     };
   });
-  if (window.MusicSystem && window.MusicSystem.music) {
-    // v7.17.0: all ghost tracks now point to files that actually ship in assets/audio.
-    const ghostTracks=[
-      {key:'cemeteryHorror', src:'assets/audio/music/dark-forest.mp3', title:'Cemetery Horror - Dark Forest Theme (CC0 bundle)'},
-      {key:'ghostChoir', src:'assets/audio/music/Fantasy-Choir-1.mp3', title:'Haunting Ghost Choir - Fantasy Choir I (CC0 bundle)'},
-      {key:'ghostScream', src:'assets/audio/sfx/ghost-scream.wav', title:'Ghost Scream - original CC0 synthesis'},
-      {key:'hauntedWind', src:'assets/audio/sfx/haunted-wind.wav', title:'Haunted Wind - original CC0 synthesis'},
-    ];
-    ghostTracks.forEach(track=>{
-      window.MusicSystem.music[track.key]={src:track.src, loop:true, title:track.title, license:'CC0 Pixabay/Freesound'};
-    });
+  if (window.AudioManager) {
+    // Location data selects a context, never a fixed or SFX-backed music file.
+    // The centralized manager maps both legacy labels to the verified cemetery
+    // playlist (Cathedral in the Forest, RPG Ambience and A Winter Tale).
+    window.AudioManager.contextAliases.cemeteryhorror='CEMETERY';
+    window.AudioManager.contextAliases.ghostchoir='CEMETERY';
   }
   console.log(`Cemetery City Expansion Loaded: Items ${Object.keys(WorldData.items).length}, Monsters ${Object.keys(WorldData.enemies).length}, Locations ${Object.keys(WorldData.locations).length}`);
 })();

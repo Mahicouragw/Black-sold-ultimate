@@ -4,7 +4,7 @@
   button.addEventListener('click',async()=>{if(!installPrompt)return;await installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;button.hidden=true;});
   window.addEventListener('appinstalled',()=>{button.hidden=true;});
   if('serviceWorker'in navigator){
-    window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').then(reg=>{
+    window.addEventListener('load',()=>navigator.serviceWorker.register(new URL('sw.js',document.baseURI)).then(reg=>{
       reg.addEventListener('updatefound',()=>{
         const newSW=reg.installing;
         if(newSW)newSW.addEventListener('statechange',()=>{

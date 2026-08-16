@@ -3,7 +3,7 @@
  * AAA Professional RPG - Every sound, animation, combat event, TalkBack announcement synchronized exactly like commercial game
  * 
  * AUDIO SYSTEM Requirements:
- * - High-quality royalty-free sound effects and music from Pixabay, Kenney, OpenGameArt, Mixkit, Freesound CC0
+ * - Verified CC0, CC BY and CC BY-SA audio from Kenney, OpenGameArt and creator distribution pages
  * - Automatically preload and cache sounds before gameplay
  * - Never allow sounds to overlap incorrectly
  * - Every sound must play at exact gameplay event
@@ -82,7 +82,7 @@
       hitMetal2: { src: 'assets/audio/sfx/hit-metal-2.wav', duration: 350, source: 'OpenGameArt CC0' },
       
       // Miss
-      miss: { src: 'assets/audio/sfx/miss.wav', duration: 300, source: 'Pixabay CC0 - Whoosh miss', next: 'narration' },
+      miss: { src: 'assets/audio/sfx/miss.wav', duration: 300, source: 'OpenGameArt CC0 - Air Whoosh by pyranostudios', next: 'narration' },
       
       // Monster attack
       monsterAttack: { src: 'assets/audio/sfx/monster-roar.wav', duration: 800, source: 'OpenGameArt CC0 - Monster roar', next: 'monsterHitCheck' },
@@ -103,37 +103,37 @@
       itemFound: { src: 'assets/audio/sfx/pickup.wav', duration: 400, source: 'OpenGameArt CC0 - Pickup' },
       
       // Experience
-      expGain: { src: 'assets/audio/sfx/exp.wav', duration: 400, source: 'Pixabay CC0 - Experience' },
+      expGain: { src: 'assets/audio/sfx/exp.wav', duration: 400, source: 'Kenney CC0 - Pizzicato Jingle 01' },
       levelUp: { src: 'assets/audio/sfx/levelup.wav', duration: 1500, source: 'OpenGameArt CC0 - Level up' },
       
       // Victory - MUST NEVER begin before all defeated, defeat sounds, loot, exp finish
       victoryFanfare: { src: 'assets/audio/music/victory.mp3', duration: 3000, source: 'celestialghost8 CC0 - Victory', isMusic: true },
       
       // Board games - Real sounds from free sources, not generated
-      boardDice: { src: 'assets/audio/sfx/board-dice.wav', duration: 800, source: 'Pixabay CC0 - Real dice roll', next: 'diceResult' },
+      boardDice: { src: 'assets/audio/sfx/board-dice.wav', duration: 800, source: 'OpenGameArt CC0 - Card Game Sounds by HaelDB', next: 'diceResult' },
       boardPiece: { src: 'assets/audio/sfx/board-piece.wav', duration: 300, source: 'OpenGameArt CC0 - Board piece' },
       boardPieceStep: { src: 'assets/audio/sfx/step-wood.ogg', duration: 250, source: 'TinyWorlds CC0 - Wood steps' },
       boardTurn: { src: 'assets/audio/sfx/board-turn.wav', duration: 400, source: 'OpenGameArt CC0' },
       boardError: { src: 'assets/audio/sfx/board-error.wav', duration: 300, source: 'OpenGameArt CC0' },
-      cardFlip: { src: 'assets/audio/sfx/card-flip.wav', duration: 200, source: 'HaelDB CC0 - Card Game Sounds' },
+      cardFlip: { src: 'assets/audio/sfx/card-flip.wav', duration: 200, source: 'Kenney CC0 - RPG Audio, Book Flip 1' },
       cardShuffle: { src: 'assets/audio/sfx/card-shuffle.wav', duration: 800, source: 'HaelDB CC0' },
       cardDraw: { src: 'assets/audio/sfx/card-draw.wav', duration: 300, source: 'HaelDB CC0' },
-      carromStrike: { src: 'assets/audio/sfx/carrom-strike.wav', duration: 500, source: 'Freesound CC0 - Real carrom striking 100708_1364126', next: 'collision' },
-      carromCollision: { src: 'assets/audio/sfx/coin-collision.wav', duration: 200, source: 'Kenney CC0 - Coin collision' },
+      carromStrike: { src: 'assets/audio/sfx/carrom-strike.wav', duration: 500, source: 'Kenney CC0 - Impact Metal Light', next: 'collision' },
+      carromCollision: { src: 'assets/audio/sfx/coin-collision.wav', duration: 200, source: 'Kenney CC0 - Casino Audio, Chips Collide 1' },
       carromPocket: { src: 'assets/audio/sfx/coin.wav', duration: 400, source: 'OpenGameArt CC0' },
-      chessMove: { src: 'assets/audio/sfx/chess-move.wav', duration: 300, source: 'Freesound CC0 - Chess piece move' },
+      chessMove: { src: 'assets/audio/sfx/chess-move.wav', duration: 300, source: 'Kenney CC0 - Casino Audio, Card Place 1' },
       chessCapture: { src: 'assets/audio/sfx/attack.wav', duration: 400, source: 'OpenGameArt CC0' },
-      chessCheck: { src: 'assets/audio/sfx/check.wav', duration: 500, source: 'Pixabay CC0 - Check' },
-      chessCheckmate: { src: 'assets/audio/sfx/checkmate.wav', duration: 800, source: 'Pixabay CC0 - Checkmate' },
+      chessCheck: { src: 'assets/audio/sfx/check.wav', duration: 500, source: 'Kenney CC0 - Confirmation 001' },
+      chessCheckmate: { src: 'assets/audio/sfx/checkmate.wav', duration: 800, source: 'Kenney CC0 - Digital Audio, Low Down' },
       
-      // Cemetery horror - bundled CC0 tracks + original CC0 synthesis (v7.17.0):
+      // Cemetery horror - verified real recordings and licensed music:
       // every file below is verified to exist in assets/audio - zero 404s.
-      ghostChoir: { src: 'assets/audio/music/Fantasy-Choir-1.mp3', duration: 0, source: 'Original bundle CC0 - Haunting Choir (Fantasy Choir I)', isMusic: true },
-      cemeteryHorror: { src: 'assets/audio/music/dark-forest.mp3', duration: 0, source: 'Original bundle CC0 - Horror Ambience (Dark Forest Theme)', isMusic: true },
-      ghostScream: { src: 'assets/audio/sfx/ghost-scream.wav', duration: 1000, source: 'Original CC0 synthesis - Spectral scream' },
-      ghostMoan: { src: 'assets/audio/sfx/ghost-moan.wav', duration: 1200, source: 'Original CC0 synthesis - Ghost moan pad' },
-      goblinCackle: { src: 'assets/audio/sfx/goblin-cackle.wav', duration: 800, source: 'Original CC0 synthesis - Goblin cackle' },
-      hauntedWind: { src: 'assets/audio/sfx/haunted-wind.wav', duration: 0, source: 'Original CC0 synthesis - Haunted wind', isMusic: false },
+      ghostChoir: { src: 'assets/audio/music/Fantasy-Choir-1.mp3', duration: 0, source: 'OpenGameArt CC BY-SA 3.0 - A Winter Tale by Johan Brodd', isMusic: true },
+      cemeteryHorror: { src: 'assets/audio/music/dark-forest.mp3', duration: 0, source: 'OpenGameArt CC0 - Cathedral in the Forest by congusbongus', isMusic: true },
+      ghostScream: { src: 'assets/audio/sfx/ghost-scream.wav', duration: 1000, source: 'OpenGameArt CC0 - Scary High-pitched Ghost by Fupi' },
+      ghostMoan: { src: 'assets/audio/sfx/ghost-moan.wav', duration: 1200, source: 'OpenGameArt CC0 - Ghost Monster Voice by qubodup' },
+      goblinCackle: { src: 'assets/audio/sfx/goblin-cackle.wav', duration: 800, source: 'OpenGameArt CC BY 3.0 - Goblin Cackle by spookymodem' },
+      hauntedWind: { src: 'assets/audio/sfx/haunted-wind.wav', duration: 0, source: 'OpenGameArt CC0 - Wind by IgnasD', isMusic: false },
     },
 
     // Preloaded status
@@ -431,16 +431,17 @@
     },
 
     // VICTORY - MUST NEVER begin before all monsters defeated, all defeat sounds, loot, exp finish
-    async victory() {
-      // Wait to ensure all previous narrations and sounds finished
+    async victory(options = {}) {
+      // Wait to ensure all previous narrations and sounds finish. The central
+      // AudioManager owns the battle → victory → world music transition, so the
+      // timeline can suppress this legacy SFX copy and avoid a doubled fanfare.
       while (this.isNarrating || this.narrationQueue.length > 0) {
         await new Promise(r => setTimeout(r, 200));
       }
-      
-      // Only then: Play victory fanfare
-      await this.playExact('victoryFanfare');
-      await new Promise(r => setTimeout(r, 500));
-      
+      if (!options.skipFanfare) {
+        await this.playExact('victoryFanfare');
+        await new Promise(r => setTimeout(r, 500));
+      }
       await this.narrate(`You have won the battle.`);
     },
 

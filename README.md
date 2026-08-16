@@ -8,13 +8,15 @@ See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`
 
 ## 🎵 Music and Sound Credits
 
-The game now bundles real cinematic music and recorded RPG sound effects from **OpenGameArt**, all released under **CC0 / public domain**. It no longer generates procedural oscillator music.
+The game bundles 14 real music tracks and 44 recorded sound effects from verified creator pages on **OpenGameArt**, **Kenney**, and the creator’s itch.io distribution. Assets are individually licensed under CC0, CC BY 3.0/4.0, or CC BY-SA 3.0 as recorded; the project does not treat “royalty-free” as a licence.
 
-See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page, and license.
+See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.json`](assets/audio/audio-manifest.json) for every filename, work, creator, source page, licence requirement, attribution, and verification date.
 
 ## 🎮 Features
 
-- 🌍 Open World Exploration (109 locations across the original realm + 12 expanded regions)
+- 🌍 Finite Open World Exploration (1,145 defined locations across 98 logical regions; no infinite procedural locations)
+- 🎵 Context playlists with multiple real tracks, no-repeat smart shuffle, world/battle layers, fades, victory transitions, persisted volume controls, and opt-in queued device TTS
+- 🧭 One validated world graph shared by movement and Wayfinder, with diagonal switchbacks, finite boundaries, branch-aware loops, and a six-edge straight-chain maximum
 - 👹 122 monster types and bosses
 - 🛒 24 location shops using rupees
 - 👥 Multiplayer Pass & Play (2-4 players)
@@ -157,10 +159,12 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for every track, creator, source page
 
 ## 📱 PWA and Mobile Apps
 
-Version **7.17.3** includes an installable PWA, offline shell, service worker, Android/iOS Capacitor projects, and security-audit scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
+Version **7.21.0** includes an installable PWA, project-relative GitHub Pages paths, offline audio/graph assets, service workers, Android/iOS Capacitor projects, and security/asset/world validation scripts. See [`MOBILE_BUILD.md`](MOBILE_BUILD.md).
 
 ```bash
 npm install
+npm test
+npm run validate
 npm run pwa:check
 npm run security
 npm run cap:sync
@@ -230,7 +234,7 @@ Inspired by **"The Black Sword"** by Narkuma on Amazon Alexa.
 
 Original Alexa Skill: https://www.amazon.com/Narkuma-the-black-sword/dp/B07B973X4M
 
-Music: Battle Explorer, Incompetech, Pixabay (Royalty Free)
+Music and sound: see [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) for the required per-file CC BY / CC BY-SA attributions and CC0 courtesy credits.
 
 ## 📄 License
 

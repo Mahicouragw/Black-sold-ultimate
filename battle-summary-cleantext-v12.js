@@ -26,14 +26,16 @@
           await pro.loot(e.name,e.gold>0?[{gold:e.gold}]:[]);
           await pro.experience(e.xp,p.level,oldLevel);
         }
-        this.state.inCombat=false;const finalBoss=e.finalBoss;this.state.enemy=null;document.getElementById('combat-panel').classList.add('hidden');MusicSystem.play(this.getLocationMusic());this.updateHUD();
+        this.state.inCombat=false;const finalBoss=e.finalBoss;this.state.enemy=null;document.getElementById('combat-panel').classList.add('hidden');this.updateHUD();
         add.call(this,`Battle finished. ${summary.defeated.join(', ')} defeated.`,'treasure');
         if(summary.levels&&!pro)add.call(this,`Level up! ${p.name} reached level ${p.level}.`,'treasure');
         if(!pro)add.call(this,`Experience gained: ${summary.xp}. Gold gained: ${summary.gold}.`,'treasure');
         if(summary.drops.length){const counts={};summary.drops.forEach(i=>counts[i.name]=(counts[i.name]||0)+1);add.call(this,`Dropped items: ${Object.entries(counts).map(([n,q])=>`${n} x${q}`).join(', ')}. Type \u201cloot\u201d to collect available ground items.`,'item');summary.drops.forEach(item=>OnlineSystem.dropWorldItem(summary.location,item).then(ok=>{if(!ok)this.state.sacred.groundLoot.push(item);}));}
         else add.call(this,'Dropped items: none.','system');
         if(summary.drops.length)setTimeout(()=>this.showBattleLootActions?.(summary.drops.map(i=>i.name)),650);
-        if(pro){await pro.victory();}else{MusicSystem.playSFX('victory');}this.save();if(finalBoss)this.victory();
+        if(pro){await pro.victory({skipFanfare:true});}
+        await MusicSystem.endBattle({victory:true,worldContext:this.getLocationMusic()});
+        this.save();if(finalBoss)this.victory();
     };
     window.CleanBattleText={cleanDescription};
 })();
