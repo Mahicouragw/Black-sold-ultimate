@@ -15,7 +15,10 @@
     "test": "node --test tests/*.test.mjs",
     "audio:validate": "node scripts/validate-audio.mjs",
     "world:validate": "node scripts/validate-world.mjs",
-    "validate": "npm run audio:validate && npm run world:validate"
+    "validate": "npm run audio:validate && npm run world:validate",
+    "deploy": "node scripts/deploy.mjs",
+    "deploy:dry": "node scripts/deploy.mjs --dry-run",
+    "deploy:verify": "node scripts/deploy.mjs --verify-only"
   },
   "dependencies": {
     "@capacitor/android": "7.6.8",

@@ -10,3 +10,7 @@ android/app/src/main/assets/public/
 ios/App/App/public/
 ios/App/Pods/
 ios/App/DerivedData/
+
+# Deployment credential — never commit
+.deploy-token
+*.deploy-token

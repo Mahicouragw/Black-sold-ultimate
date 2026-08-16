@@ -1,0 +1,91 @@
+# Zero-credential release path.
+#
+# GitHub Actions injects its own short-lived GITHUB_TOKEN, so this workflow can
+# verify and release WITHOUT anyone creating a personal access token. Trigger it
+# from the Actions tab ("Run workflow") or from any machine/agent that already
+# has repository access.
+#
+# This is the fallback when no local token is available: the same preflight gates
+# run, and the same live-site verification confirms both public sites.
+name: Release and verify
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip preflight tests (emergency hotfix only)'
+        type: boolean
+        default: false
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-verify
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Preflight and live verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Regression suite
+        if: ${{ !inputs.skip_tests }}
+        run: npm test
+
+      - name: Audio and world validation
+        if: ${{ !inputs.skip_tests }}
+        run: npm run validate
+
+      - name: PWA and service workers
+        if: ${{ !inputs.skip_tests }}
+        run: npm run pwa:check
+
+      - name: Security and secret scan
+        if: ${{ !inputs.skip_tests }}
+        run: npm run security
+
+      - name: Production build
+        if: ${{ !inputs.skip_tests }}
+        run: npm run build
+
+      # Pages/Vercel deploy from their own workflows on the same push. Give them
+      # time to publish, then assert the public sites really serve this version.
+      - name: Wait for deployments to publish
+        run: sleep 90
+
+      - name: Verify both public sites serve the released version
+        run: node scripts/deploy.mjs --verify-only
+
+      - name: Assert live version matches package version
+        run: |
+          EXPECTED=$(node -p "require('./version.js') || ''" 2>/dev/null || grep -oP "APP_VERSION = '\K[^']+" version.js)
+          echo "Expected version: $EXPECTED"
+          for URL in "https://mahicouragw.github.io/Black-sold-ultimate/version.js" \
+                     "https://black-sold-ultimate.vercel.app/version.js"; do
+            for ATTEMPT in 1 2 3 4 5 6 7 8; do
+              LIVE=$(curl -fsSL "$URL?cb=$RANDOM" | grep -oP "APP_VERSION = '\K[^']+" || echo "unreachable")
+              if [ "$LIVE" = "$EXPECTED" ]; then
+                echo "OK  $URL -> $LIVE"
+                break
+              fi
+              echo "... $URL -> $LIVE (attempt $ATTEMPT, retrying)"
+              if [ "$ATTEMPT" = "8" ]; then
+                echo "FAIL $URL never reached $EXPECTED"
+                exit 1
+              fi
+              sleep 30
+            done
+          done
+          echo "Both public sites serve $EXPECTED."
