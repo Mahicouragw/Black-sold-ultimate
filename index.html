@@ -124,7 +124,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Background:</label>
+                    <label for="char-background">Background:</label>
                     <select id="char-background">
                         <option value="soldier">Soldier - Start with better weapon</option>
                         <option value="scholar">Scholar - Start with more spells</option>
@@ -156,7 +156,7 @@
             </div>
 
             <div class="form-group">
-                <label>Number of Players:</label>
+                <label for="mp-count">Number of Players:</label>
                 <select id="mp-count">
                     <option value="2">2 Players</option>
                     <option value="3">3 Players</option>
@@ -165,7 +165,7 @@
             </div>
 
             <div class="form-group">
-                <label>Game Mode:</label>
+                <label for="mp-mode">Game Mode:</label>
                 <select id="mp-mode">
                     <option value="coop">Cooperative - Work together!</option>
                     <option value="pvp">PvP - Battle each other!</option>
@@ -238,6 +238,10 @@
             <div id="game-area">
                 <div id="location-art" class="ascii-art" aria-live="polite"></div>
                 <div id="narrative" class="narrative" role="log" aria-live="polite"></div>
+                <section id="combat-status" class="inline-combat-status hidden" aria-labelledby="combat-status-heading">
+                    <h3 id="combat-status-heading">Current encounter</h3>
+                    <p id="combat-status-text"></p>
+                </section>
             </div>
 
             <!-- Command Input -->
@@ -277,8 +281,9 @@
                 </div>
             </div>
 
-            <!-- Combat Panel -->
-            <div id="combat-panel" class="panel hidden">
+            <!-- Hidden compatibility state for legacy extensions. Combat is command-only
+                 in the current world location and never opens this container. -->
+            <div id="combat-panel" class="hidden" hidden inert aria-hidden="true" data-legacy-combat-state>
                 <h3 id="enemy-name">Enemy</h3>
                 <p id="enemy-desc" class="enemy-desc"></p>
                 <div class="enemy-health">
@@ -331,7 +336,7 @@
             <!-- Social / companion chat -->
             <div id="social-panel" class="panel hidden" aria-label="Friends and companions">
                 <h3>🤝 Direct Messages, Friends & Companions</h3>
-                <p class="settings-note">This panel is for direct messages and friend requests. For public channels, close it and choose Chat Rooms.</p>
+                <p id="direct-chat-expiry-notice" class="settings-note">This panel is for direct messages and friend requests. Chat messages automatically expire after five minutes. Links, threats, harassment, abusive content, and spam are rejected by the server.</p>
                 <div class="chat-voice-controls">
                     <label for="chat-voice">Your message voice</label>
                     <select id="chat-voice" aria-label="Choose chat voice"></select>
@@ -340,8 +345,8 @@
                 </div>
                 <div id="social-content"></div>
                 <div class="social-compose">
-                    <input id="social-name" maxlength="40" placeholder="Recipient hero name for direct message">
-                    <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)">
+                    <input id="social-name" maxlength="40" placeholder="Recipient hero name for direct message" aria-label="Recipient hero name">
+                    <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)" aria-label="Direct message" aria-describedby="direct-chat-expiry-notice">
                     <button id="btn-social-send" class="menu-btn">Send Message / Request</button>
                 </div>
                 <button class="menu-btn close-btn">Close</button>
@@ -350,22 +355,31 @@
             <!-- Secure Chat Rooms -->
             <div id="chat-rooms-panel" class="panel hidden wide-panel" aria-label="Public and private chat rooms">
                 <h3>💬 Chat Rooms</h3>
+                <p id="room-chat-expiry-notice" class="settings-note">Chat messages automatically expire after five minutes. Server moderation rejects links, threats, harassment, abusive content, and spam.</p>
                 <div class="chat-room-layout">
                     <aside><button id="btn-refresh-rooms" class="menu-btn">Refresh Rooms</button><div id="chat-room-list"></div></aside>
                     <section>
                         <div id="active-room-info" class="settings-note">Choose a room.</div>
-                        <div id="room-message-log" class="chat-log room-log" aria-live="polite"></div>
-                        <div class="social-compose"><input id="room-message-input" maxlength="300" placeholder="Message"><button id="btn-send-room-message" class="menu-btn">Send</button></div>
+                        <div id="room-message-log" class="chat-log room-log" role="log" aria-live="polite" aria-relevant="additions text" aria-atomic="false"></div>
+                        <div class="social-compose"><input id="room-message-input" maxlength="300" placeholder="Message" aria-label="Room message" aria-describedby="room-chat-expiry-notice"><button id="btn-send-room-message" class="menu-btn">Send</button></div>
                     </section>
                 </div>
                 <details class="room-create"><summary>Create a custom room</summary>
-                    <input id="new-room-name" maxlength="40" placeholder="Room name">
-                    <select id="new-room-visibility"><option value="public">Public</option><option value="private">Private / invited members</option></select>
+                    <input id="new-room-name" maxlength="40" placeholder="Room name" aria-label="New room name">
+                    <select id="new-room-visibility" aria-label="New room visibility"><option value="public">Public</option><option value="private">Private / invited members</option></select>
                     <label>Maximum users <input id="new-room-limit" type="number" min="2" max="200" value="20"></label>
                     <label>Activation stay <select id="new-room-wait"><option value="5">5 minutes</option><option value="10">10 minutes</option></select></label>
                     <button id="btn-create-room" class="menu-btn primary">Create Room</button>
                 </details>
-                <div class="room-owner-actions"><input id="room-player-name" maxlength="40" placeholder="Exact hero name"><button id="btn-room-invite">Invite</button><button id="btn-room-blacklist">Blacklist</button><button id="btn-delete-room">Delete My Room</button></div>
+                <div class="room-owner-actions"><input id="room-player-name" maxlength="40" placeholder="Exact hero name" aria-label="Hero name for room invitation or blacklist"><button id="btn-room-invite">Invite</button><button id="btn-room-blacklist">Blacklist</button><button id="btn-delete-room">Delete My Room</button></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Authorized Moderator / Developer Inbox -->
+            <div id="moderator-inbox-panel" class="panel hidden wide-panel" aria-label="Moderator inbox">
+                <h3>Moderator Inbox</h3>
+                <p class="settings-note">Available only to accounts assigned an active moderator or developer role by the database administrator.</p>
+                <div id="moderator-inbox-list" role="list"></div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
 
@@ -391,7 +405,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.21.1</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.22.0</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -438,8 +452,8 @@
                         <option value="es">Español</option><option value="hi">हिन्दी</option><option value="it">Italiano</option>
                         <option value="pt">Português</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option>
                     </select>
-                    <label><input type="checkbox" id="auto-translate-chat" checked> Automatically translate incoming chat</label>
-                    <div id="translation-status" class="settings-note">Translation uses an on-device browser model when available.</div>
+                    <label><input type="checkbox" id="auto-translate-chat"> Automatically translate recent incoming chat</label>
+                    <div id="translation-status" class="settings-note">Optional translation is off by default to keep chat responsive on slow connections.</div>
                     <label for="voice-command-language">Voice-command language</label>
                     <select id="voice-command-language">
                         <option value="en-IN">English (India)</option><option value="en-US">English (US)</option>

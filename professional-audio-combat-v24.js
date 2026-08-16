@@ -64,9 +64,7 @@
 
 (function() {
   const ProfessionalAudioCombat = {
-    // Queue system to prevent overlapping and ensure exact timing
-    narrationQueue: [],
-    isNarrating: false,
+    // AudioManager owns spoken-event queueing.
     isPlayingCriticalSound: false,
     
     // Professional sound library with royalty-free sources
@@ -227,74 +225,13 @@
       await new Promise(r => setTimeout(r, 100));
     },
 
-    // Narration queue - never overlap, wait for correct timing
+    // Game events use the one AudioManager TTS queue and the normal narrative
+    // live region. This module does not maintain a competing speech queue.
     async narrate(text, priority = 'normal') {
-      return new Promise((resolve) => {
-        this.narrationQueue.push({ text, priority, resolve });
-        this.processNarrationQueue();
-      });
-    },
-
-    async processNarrationQueue() {
-      if (this.isNarrating || this.narrationQueue.length === 0) return;
-      
-      this.isNarrating = true;
-      const item = this.narrationQueue.shift();
-      
-      try {
-        // Add to game narrative (which also announces via TalkBack)
-        if (window.Game && window.Game.addNarrative) {
-          // Check if it's combat, system, etc. to use correct styling
-          const isCombat = item.text.toLowerCase().includes('damage') || item.text.toLowerCase().includes('hit') || item.text.toLowerCase().includes('health');
-          window.Game.addNarrative(item.text, isCombat ? 'combat' : 'system');
-        } else if (window.Game && window.Game.addMessage) {
-          window.Game.addMessage(item.text);
-        }
-
-        // Announce via TalkBack live region - important, don't interrupt
-        this.announceToTalkBack(item.text, item.priority);
-
-        // Actual game speech is owned and serialized by AudioManager. TalkBack
-        // live-region output above is separate and remains available when game
-        // TTS is off. Critical combat items cancel stale game speech.
-        if (window.AudioManager) {
-          await window.AudioManager.playVoice(item.text, {
-            priority: item.priority === 'assertive' ? 'critical' : false
-          });
-        }
-        
-      } catch (e) {
-        console.log('Narration error:', e);
-      } finally {
-        this.isNarrating = false;
-        item.resolve();
-        // Process next in queue
-        if (this.narrationQueue.length > 0) {
-          setTimeout(() => this.processNarrationQueue(), 100);
-        }
-      }
-    },
-
-    announceToTalkBack(text, priority) {
-      try {
-        // Use aria-live region for TalkBack
-        let liveRegion = document.getElementById('talkback-live');
-        if (!liveRegion) {
-          liveRegion = document.createElement('div');
-          liveRegion.id = 'talkback-live';
-          liveRegion.setAttribute('aria-live', priority === 'assertive' ? 'assertive' : 'polite');
-          liveRegion.setAttribute('aria-atomic', 'true');
-          liveRegion.style.cssText = 'position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden;';
-          document.body.appendChild(liveRegion);
-        }
-        // Clear then set to trigger announcement
-        liveRegion.textContent = '';
-        setTimeout(() => {
-          liveRegion.textContent = text;
-        }, 50);
-      } catch (e) {
-        console.log('TalkBack announce error:', e);
-      }
+      const isCombat=/damage|hit|health|attack|defeat/i.test(text),type=isCombat?'combat':'system';
+      if(window.Game?.emitGameEvent)return window.Game.emitGameEvent(text,type,{critical:priority==='assertive'});
+      window.Game?.addNarrative?.(text,type);
+      return window.AudioManager?.playVoice?.(text,{priority:priority==='assertive'?'critical':false})||false;
     },
 
     // ===== COMBAT TIMELINE - Exact order as specified =====
@@ -435,9 +372,6 @@
       // Wait to ensure all previous narrations and sounds finish. The central
       // AudioManager owns the battle → victory → world music transition, so the
       // timeline can suppress this legacy SFX copy and avoid a doubled fanfare.
-      while (this.isNarrating || this.narrationQueue.length > 0) {
-        await new Promise(r => setTimeout(r, 200));
-      }
       if (!options.skipFanfare) {
         await this.playExact('victoryFanfare');
         await new Promise(r => setTimeout(r, 500));

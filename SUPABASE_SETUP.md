@@ -87,6 +87,14 @@ Run [`supabase/features_v16_game_hall.sql`](supabase/features_v16_game_hall.sql)
 
 Run [`supabase/features_v17_five_player_game_hall.sql`](supabase/features_v17_five_player_game_hall.sql) to expand existing online Game Hall sessions from four to five players. This migration is included in `apply_all_updates.sql`.
 
+## Five-minute chat expiration migration v18
+
+Run [`supabase/features_v18_five_minute_chat.sql`](supabase/features_v18_five_minute_chat.sql) to enforce immutable server-created five-minute message expiry, expiry-filtered RLS, indexes and trusted cleanup. Verify with [`supabase/verify_v18_chat.sql`](supabase/verify_v18_chat.sql).
+
+## Feedback moderation migration v19
+
+Run [`supabase/features_v19_feedback_moderation.sql`](supabase/features_v19_feedback_moderation.sql) to add the private moderator/developer role table, structured feedback inbox, protected submission/review RPCs, and server-side chat filtering. The migration intentionally assigns no account. A database administrator must select a known authenticated user in the Supabase Auth dashboard and insert that exact user UUID into `public.moderator_roles`; never guess or hardcode a username/email. Verify with [`supabase/verify_v19_moderation.sql`](supabase/verify_v19_moderation.sql).
+
 ## Optional: enable Google linking later
 
 Follow Supabase's official guide: https://supabase.com/docs/guides/auth/social-login/auth-google

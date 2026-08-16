@@ -274,15 +274,15 @@ const Game = {
         });
 
         // Social and guild controls
-        document.getElementById('btn-social-send').addEventListener('click', () => {
-            const name = document.getElementById('social-name').value.trim();
-            const message = document.getElementById('social-message').value.trim();
-            if (message && name) this.sendChat(name, message);
-            else if (message) this.addNarrative('Direct messages require a recipient hero name. Use Chat Rooms for public messages.', 'system');
-            else if (name) this.sendFriendRequest(name);
-            else this.addNarrative('Enter an exact hero name for a direct message or friend request.', 'system');
-            document.getElementById('social-message').value = '';
-            this.showSocial();
+        document.getElementById('btn-social-send').addEventListener('click', async event => {
+            const button=event.currentTarget,name=document.getElementById('social-name').value.trim(),message=document.getElementById('social-message').value.trim();
+            if(button.disabled)return;button.disabled=true;button.setAttribute('aria-busy','true');
+            try{
+                if(message&&name){await this.sendChat(name,message);document.getElementById('social-message').value='';}
+                else if(message)this.addNarrative('Direct messages require a recipient hero name. Use Chat Rooms for public messages.','system');
+                else if(name)await this.sendFriendRequest(name);
+                else this.addNarrative('Enter an exact hero name for a direct message or friend request.','system');
+            }finally{button.disabled=false;button.removeAttribute('aria-busy');document.getElementById('social-message').focus();}
         });
         document.getElementById('btn-create-guild').addEventListener('click', async () => {
             await this.createGuild('Dawn Guard');
@@ -313,6 +313,7 @@ const Game = {
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (this.state.screen !== 'game-screen') return;
+            if (e.target?.matches?.('input, textarea, select, [contenteditable="true"]')) return;
 
             const key = e.key.toLowerCase();
 
@@ -654,7 +655,7 @@ const Game = {
             return;
         }
 
-        const c = cmd.toLowerCase().trim();
+        let c = cmd.toLowerCase().trim();
 
         // Movement
         if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'northeast', 'ne', 'northwest', 'nw', 'southeast', 'se', 'southwest', 'sw', 'up', 'u', 'down', 'd'].includes(c)) {
@@ -839,7 +840,7 @@ const Game = {
         if (pack.length) {
             this.addNarrative(`🐾 Monsters lurking here: ${pack.join(', ')}. Type "foes" for remaining counts. Combat begins only when an enemy encounters you, a quest requires it, or an NPC initiates it.`, 'system');
         } else if (this.areaClearedInfo(this.state.location)) {
-            this.addNarrative('🕊️ Peace here — every monster in this area has been defeated.', 'system');
+            this.addNarrative('This area’s finite quest pack is complete. Roaming wilderness encounters may still occur.', 'system');
         }
     },
 
@@ -1261,9 +1262,13 @@ const Game = {
             if (enemyData.desc) this.addNarrative(enemyData.desc, 'system');
         }
 
-        document.getElementById('combat-panel').classList.remove('hidden');
-        document.getElementById('enemy-name').textContent = enemyName;
-        document.getElementById('enemy-desc').textContent = enemyData.desc || '';
+        // Combat is a logical state in the current world location. Legacy HUD
+        // nodes remain hidden only for compatibility with older extensions; no
+        // player-facing battle panel or screen is opened.
+        const legacyPanel=document.getElementById('combat-panel');
+        if(legacyPanel){legacyPanel.hidden=true;legacyPanel.classList.add('hidden');legacyPanel.setAttribute('aria-hidden','true');}
+        const enemyNameNode=document.getElementById('enemy-name');if(enemyNameNode)enemyNameNode.textContent=enemyName;
+        const enemyDescNode=document.getElementById('enemy-desc');if(enemyDescNode)enemyDescNode.textContent=enemyData.desc||'';
         this.updateEnemyHUD();
 
         MusicSystem.play('combat');
@@ -1483,13 +1488,19 @@ const Game = {
             const fleeChance = e.boss ? 0.2 : 0.5;
 
             if (Math.random() < fleeChance) {
-                this.addNarrative("You escaped!", 'system');
+                const text='You escaped the battle.';await(this.emitGameEvent?.(text,'system')||Promise.resolve(this.addNarrative(text,'system')));
                 this.state.inCombat = false;
+                this.state.combatTransition = false;
                 this.state.enemy = null;
-                document.getElementById('combat-panel').classList.add('hidden');
-                MusicSystem.play(this.getLocationMusic());
+                this.state.encounterTargets = [];
+                this.state.battleSummary = null;
+                if(this.state.sacred){this.state.sacred.enemyQueue=[];this.state.sacred.encounterNonce=(this.state.sacred.encounterNonce||0)+1;}
+                const panel=document.getElementById('combat-panel');if(panel){panel.hidden=true;panel.classList.add('hidden');}
+                this.finishCommandCombat?.();
+                await MusicSystem.endBattle({victory:false,worldContext:this.getLocationMusic()});
+                this.save();
             } else {
-                this.addNarrative("Failed to escape!", 'system');
+                const text='You fail to escape.';this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');
                 await this.enemyAttack();
             }
         });
@@ -1618,7 +1629,7 @@ const Game = {
         if (!name) return;
         if (window.OnlineSystem?.ready) {
             await OnlineSystem.sendFriendRequest(name);
-            this.showSocial();
+            await this.showSocial({background:true});
             return;
         }
         this.addNarrative('Online friends are unavailable. Open Settings to check the connection.', 'system');
@@ -1646,8 +1657,8 @@ const Game = {
         if (window.OnlineSystem?.ready) {
             const sent = await OnlineSystem.sendMessage(name || 'public', text);
             if (sent) this.addNarrative(`Message sent to ${name || 'Public'}.`, 'npc');
-            this.showSocial();
-            return;
+            await this.showSocial({background:true});
+            return sent;
         }
         this.addNarrative('Online chat is unavailable. Open Settings to check the connection.', 'system');
     },
@@ -1674,6 +1685,7 @@ const Game = {
      * and announces the new HP via the a11y layer.
      */
     quickHeal() {
+        if(window.GameSpellSystem)return window.GameSpellSystem.castHealing(this);
         const p = this.state.player;
         if (!p) {
             this.addNarrative("No active hero.", 'system');
@@ -1779,34 +1791,34 @@ const Game = {
         this.save();
     },
 
-    async showSocial() {
-        const panel = document.getElementById('social-panel');
-        const content = document.getElementById('social-content');
-        panel.classList.remove('hidden');
-        if (!OnlineSystem.ready) {
-            content.innerHTML = `<p>${this.escapeHTML(OnlineSystem.status)}</p><p>Online setup must finish before real requests and chat are available.</p>`;
-            return;
-        }
-        content.innerHTML = '<p>Loading secure online social data…</p>';
-        const [requests, messages, brotherhoodInvites, combatInvites] = await Promise.all([OnlineSystem.listFriendRequests(), OnlineSystem.listMessages(), OnlineSystem.listBrotherhoodInvites(), OnlineSystem.listCombatGroupInvites()]);
-        this._brotherhoodInvites=brotherhoodInvites; this._combatInvites=combatInvites;
-        const incoming = requests.filter(r => r.receiver_id === OnlineSystem.user.id && r.status === 'pending');
-        const outgoing = requests.filter(r => r.sender_id === OnlineSystem.user.id && r.status === 'pending');
-        const accepted = requests.filter(r => r.status === 'accepted').map(r => r.sender_id === OnlineSystem.user.id ? r.receiver : r.sender).filter(Boolean);
-        const companions = this.state.companions;
-        content.innerHTML = `
-            <p><strong>Public Hero Name:</strong> ${this.escapeHTML(this.state.player?.name || OnlineSystem.profile?.display_name || 'Hero')}</p>
-            <p>${OnlineSystem.linked ? '✅ Google linked — chat, friends, guilds and cloud identity unlocked.' : '💬 Guest mode — chat is available. Link Google for friend requests, guilds and cross-device identity.'}</p>
-            <h4>Incoming requests</h4>
-            <div class="social-list">${incoming.length ? incoming.map(r => `<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name || 'Hero')}</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join('') : '<p>None</p>'}</div>
-            <h4>Sent Requests</h4><p>${outgoing.length ? outgoing.map(r => this.escapeHTML(r.receiver?.display_name||'Hero')).join(', ') : 'None pending.'}</p>
-            <h4>Friends (${accepted.length})</h4><p>${accepted.length ? accepted.map(f => this.escapeHTML(f.display_name)).join(', ') : 'No accepted friends yet.'}</p>
-            <h4>Brotherhood Invitations</h4>${brotherhoodInvites.length?brotherhoodInvites.map((x,i)=>`<div class="social-row"><span>${this.escapeHTML(x.guild?.name||'Brotherhood')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondBrotherhoodInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
-            <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);Game.showSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
-            <h4>Combat companions (${companions.length}/3)</h4>
-            <div class="social-list">${companions.length ? companions.map(c => `<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}'); Game.showSocial()">Heal</button></div>`).join('') : '<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
-            <h4>Recent direct chat</h4><div class="chat-log">${messages.length ? messages.map(m => `<p>[${new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}] <span id="direct-msg-${m.id}"><strong>${this.escapeHTML(m.sender?.display_name || 'Hero')} says:</strong> ${this.escapeHTML(m.body)}</span> <button onclick="OnlineSystem.speakMessageById('${m.id}')">Listen</button></p>`).join('') : '<p>No messages yet.</p>'}</div>`;
-        window.TranslationService?.translateDirectLog?.(messages);
+    async showSocial({background=false}={}) {
+        const panel=document.getElementById('social-panel'),content=document.getElementById('social-content');if(background&&panel.classList.contains('hidden'))return false;panel.classList.remove('hidden');
+        if(!OnlineSystem.ready){content.innerHTML=`<p>${this.escapeHTML(OnlineSystem.status)}</p><p>Online setup must finish before real requests and chat are available.</p>`;return false;}
+        if(OnlineSystem.socialRefreshInFlight){OnlineSystem.socialRefreshQueued=true;return this._socialLoadPromise||false;}
+        OnlineSystem.socialRefreshInFlight=true;content.setAttribute('aria-busy','true');
+        if(!background&&!content.children.length)content.innerHTML='<p>Loading secure online social data…</p>';
+        const load=(async()=>{
+            try{
+                const [requests,messages,brotherhoodInvites,combatInvites]=await Promise.all([OnlineSystem.listFriendRequests(),OnlineSystem.listMessages(),OnlineSystem.listBrotherhoodInvites(),OnlineSystem.listCombatGroupInvites()]);
+                if(panel.classList.contains('hidden'))return false;
+                this._brotherhoodInvites=brotherhoodInvites;this._combatInvites=combatInvites;
+                const incoming=requests.filter(r=>r.receiver_id===OnlineSystem.user.id&&r.status==='pending'),outgoing=requests.filter(r=>r.sender_id===OnlineSystem.user.id&&r.status==='pending'),accepted=requests.filter(r=>r.status==='accepted').map(r=>r.sender_id===OnlineSystem.user.id?r.receiver:r.sender).filter(Boolean),companions=this.state.companions,visibleMessages=messages.slice(-20);
+                content.innerHTML=`
+                    <p><strong>Public Hero Name:</strong> ${this.escapeHTML(this.state.player?.name||OnlineSystem.profile?.display_name||'Hero')}</p>
+                    <p>${OnlineSystem.linked?'✅ Google linked — chat, friends, guilds and cloud identity unlocked.':'💬 Guest mode — chat is available. Link Google for friend requests, guilds and cross-device identity.'}</p>
+                    <h4>Incoming requests</h4><div class="social-list">${incoming.length?incoming.map(r=>`<div class="social-row"><span>${this.escapeHTML(r.sender?.display_name||'Hero')}</span><span><button onclick="OnlineSystem.respondToRequest('${r.id}','accepted')">Accept</button> <button onclick="OnlineSystem.respondToRequest('${r.id}','rejected')">Reject</button></span></div>`).join(''):'<p>None</p>'}</div>
+                    <h4>Sent Requests</h4><p>${outgoing.length?outgoing.map(r=>this.escapeHTML(r.receiver?.display_name||'Hero')).join(', '):'None pending.'}</p>
+                    <h4>Friends (${accepted.length})</h4><p>${accepted.length?accepted.map(f=>this.escapeHTML(f.display_name)).join(', '):'No accepted friends yet.'}</p>
+                    <h4>Brotherhood Invitations</h4>${brotherhoodInvites.length?brotherhoodInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.guild?.name||'Brotherhood')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondBrotherhoodInvite('${x.id}',true);OnlineSystem.refreshOpenSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
+                    <h4>Combat-Group Invitations</h4>${combatInvites.length?combatInvites.map(x=>`<div class="social-row"><span>${this.escapeHTML(x.group?.name||'Combat Group')} from ${this.escapeHTML(x.sender?.display_name||'Hero')}</span><button onclick="OnlineSystem.respondCombatGroupInvite('${x.id}',true);OnlineSystem.refreshOpenSocial()">Accept</button></div>`).join(''):'<p>None</p>'}
+                    <h4>Combat companions (${companions.length}/3)</h4><div class="social-list">${companions.length?companions.map(c=>`<div class="social-row"><span>${this.escapeHTML(c.name)} — ${c.hp}/${c.maxHp} HP</span><button onclick="Game.healAlly('${this.escapeHTML(this.escapeJS(c.name))}');OnlineSystem.refreshOpenSocial()">Heal</button></div>`).join(''):'<p>Invite a companion NPC in an expanded-realm village.</p>'}</div>
+                    <h4>Recent direct chat</h4><p class="settings-note">Showing the latest ${visibleMessages.length} unexpired message${visibleMessages.length===1?'':'s'}.</p><div class="chat-log" role="log" aria-live="off">${visibleMessages.length?visibleMessages.map(m=>`<p>[${new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}] <span id="direct-msg-${m.id}"><strong>${this.escapeHTML(m.sender?.display_name||'Hero')} says:</strong> ${this.escapeHTML(m.body)}</span> <button onclick="OnlineSystem.speakMessageById('${m.id}')" aria-label="Listen to message from ${this.escapeHTML(m.sender?.display_name||'Hero')}">Listen</button></p>`).join(''):'<p>No messages yet.</p>'}</div>`;
+                window.TranslationService?.translateDirectLog?.(visibleMessages);return true;
+            }catch(error){if(!background)content.innerHTML='<p>Social data could not finish loading. Your command input remains available; try again when the connection is stable.</p>';console.warn('Social refresh:',error?.message);return false;}
+            finally{content.removeAttribute('aria-busy');OnlineSystem.socialRefreshInFlight=false;}
+        })();this._socialLoadPromise=load;const result=await load;this._socialLoadPromise=null;
+        if(OnlineSystem.socialRefreshQueued&&!panel.classList.contains('hidden')){OnlineSystem.socialRefreshQueued=false;clearTimeout(OnlineSystem.socialRefreshTimer);OnlineSystem.socialRefreshTimer=setTimeout(()=>this.showSocial({background:true}),250);}
+        return result;
     },
 
     async showGuild() {
@@ -2052,7 +2064,7 @@ const Game = {
         this.addNarrative("inventory weapon/armor/potion/item/gold; buy/sell [quantity] [item]", 'system');
         this.addNarrative("list; status health/skills/magic/attributes/armor; read/press/use lever", 'system');
         this.addNarrative("online heroes; create/invite brotherhood; create/invite combat group", 'system');
-        this.addNarrative("mark map [note]; map notes; feedback [text]; report bug [text]", 'system');
+        this.addNarrative("mark map [note]; map notes; feedback [text]; report bug/accessibility/chat [text]", 'system');
         this.addNarrative("buy house; house status; pay house tax; storage (inside owned Storage Room)", 'system');
         this.addNarrative("shop; list shop; buy [quantity] [item]; examine/compare [item]", 'system');
         this.addNarrative("chat rooms; join room [name] - Public, French, personal, and custom rooms", 'system');
@@ -2064,7 +2076,8 @@ const Game = {
         this.addNarrative("spell field / practice [spell] - Spend 3 MP to improve mastery", 'system');
         this.addNarrative("cast shock - Strong single-target blue-flash damage and possible stun", 'system');
         this.addNarrative("cast light orbs - 3 MP per living monster; multi-target light damage", 'system');
-        this.addNarrative("attack [monster] / fairness status - Targeting and always-on Fair Mode", 'system');
+        this.addNarrative("heal / multiple strike / opening doors - Validated named spells with mana and cooldowns", 'system');
+        this.addNarrative("attack / attack [monster] / defend / flee - Command-only battle actions; attack outside battle is rejected", 'system');
         this.addNarrative("wayfinder / distance - Miles, steps and route to city, forest and cave entrances", 'system');
         this.addNarrative("exit forest / next exit step - Walk one calculated step toward the city", 'system');
         this.addNarrative("game hall / board games - Route to accessible Ludo, Snakes, Chess, Carrom and Blackjack", 'system');

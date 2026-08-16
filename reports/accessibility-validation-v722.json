@@ -1,0 +1,22 @@
+{
+  "version": "7.22.0",
+  "generatedAt": "2026-08-16T10:53:48.361Z",
+  "result": "PASS",
+  "checks": {
+    "uniqueIds": true,
+    "buttonsNamed": true,
+    "formControlsNamed": true,
+    "commandInputNamed": true,
+    "roomLogSemantics": true,
+    "legacyCombatInert": true,
+    "noPositiveTabindex": true
+  },
+  "details": {
+    "duplicateIds": [],
+    "unlabeledButtons": [],
+    "unlabeledControls": []
+  },
+  "limitations": [
+    "Static JSDOM plus automated interaction coverage; not physical Lenovo/Android/TalkBack verification."
+  ]
+}

@@ -785,6 +785,8 @@ kbd {
 .chat-log {
     max-height: 130px;
     overflow-y: auto;
+    overflow-anchor: auto;
+    contain: content;
     padding: 8px;
     background: var(--bg-dark);
     font-size: .82rem;
@@ -825,6 +827,13 @@ kbd {
 .hero-stable-id { overflow-wrap:anywhere; }
 .hero-stable-id code { color:var(--accent); user-select:all; }
 .enemy-group-summary { margin:0 0 8px; padding:8px; color:var(--accent); border-bottom:1px solid var(--secondary); }
+[data-legacy-combat-state] { display:none !important; }
+.inline-combat-status { margin:10px 0 0; padding:12px 14px; background:var(--bg-dark); border-left:4px solid var(--danger); border-radius:7px; }
+.inline-combat-status.hidden { display:none; }
+.inline-combat-status h3 { margin:0 0 6px; color:var(--accent); font-size:1rem; }
+.inline-combat-status p { margin:0; color:var(--text); line-height:1.5; }
+.moderator-feedback-card { padding:12px; margin:10px 0; background:var(--bg-dark); border:1px solid var(--secondary); border-radius:7px; overflow-wrap:anywhere; }
+.moderator-feedback-card h4 { color:var(--accent); }
 button, input, select, textarea { touch-action:manipulation; }
 :focus-visible { outline:3px solid #ffe066; outline-offset:3px; }
 

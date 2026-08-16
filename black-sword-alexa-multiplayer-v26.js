@@ -437,43 +437,20 @@
     }
   });
 
-  // 5. WILDERNESS RANDOM ENCOUNTERS ("sometimes, not always") + FLEE/ESCAPE WORKS
-  const oldEnter = window.Game?.enterLocation?.bind(window.Game);
-  if (oldEnter) {
-    window.Game.enterLocation = function(locationId) {
-      oldEnter(locationId);
-      const loc = WorldData.locations[locationId];
-      // Random encounter: only in unsafe wild areas, "sometimes (~30% chance)", NOT always!
-      if (loc && !loc.safe && loc.enemies && loc.enemies.length > 0) {
-        if (Math.random() < 0.32 && !this.state.combat) {
-          const enemyName = loc.enemies[Math.floor(Math.random() * loc.enemies.length)];
-          this.addNarrative(`⚠️ Random Encounter! A lurking ${enemyName} crosses your path!`, 'combat');
-          if (window.MusicSystem) window.MusicSystem.playSFX('monster-roar');
-          setTimeout(() => {
-            if (!this.state.combat) this.startCombat(enemyName);
-          }, 600);
-        }
-      }
-    };
-  }
+  // 5. Wilderness encounter scheduling is owned by sacred.js. Do not install a
+  // second random timer here; it bypassed cooldowns and could fire after a
+  // different battle had already completed.
 
-  // 6. UI ATTACK BUTTON (#btn-attack): Clicking Attack starts battle against location's enemy/boss!
+  // 6. Attack is an action inside an existing encounter. It never creates a
+  // second enemy or starts a hunt when no combat state exists.
   const oldAttackBtn = window.Game?.attack?.bind(window.Game);
   if (oldAttackBtn) {
-    window.Game.attack = function() {
-      if (this.state.combat) {
-        oldAttackBtn();
-        return;
+    window.Game.attack = function(target) {
+      if (this.state.inCombat) {
+        if(target&&this.attackNamedTarget)return this.attackNamedTarget(target);
+        return this.playerAttack();
       }
-      const loc = WorldData.locations[this.state.location];
-      if (loc && loc.enemies && loc.enemies.length > 0) {
-        const enemyName = loc.enemies[0];
-        this.addNarrative(`⚔️ You attack the ${enemyName}!`, 'combat');
-        if (window.MusicSystem) window.MusicSystem.playSFX('monster-roar');
-        this.startCombat(enemyName);
-        return;
-      }
-      this.addNarrative('There is no enemy to attack here. Explore wild forests, caves, or camps to fight!', 'system');
+      this.addNarrative('You are not in combat.','system');
       if (window.MusicSystem) window.MusicSystem.playSFX('board-error');
     };
   }

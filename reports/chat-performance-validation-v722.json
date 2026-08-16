@@ -1,0 +1,24 @@
+{
+  "version": "7.22.0",
+  "generatedAt": "2026-08-16T10:54:19.472Z",
+  "result": "PASS",
+  "checks": {
+    "translationOptIn": true,
+    "roomDomBounded": true,
+    "incrementalMessagePresent": true,
+    "focusPreserved": true,
+    "talkBackLogSemantics": true,
+    "socialRequestsCoalesced": true,
+    "socialComposerFocusPreserved": true
+  },
+  "design": {
+    "roomDomMessageCap": 50,
+    "translationBatchCap": 12,
+    "translationCacheCap": 200,
+    "socialRefreshDebounceMs": 250,
+    "roomInfoRefreshMs": 10000
+  },
+  "limitations": [
+    "JSDOM performance-state validation; physical device rendering, Android WebView, network quality, and TalkBack require real-device testing."
+  ]
+}

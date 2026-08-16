@@ -934,4 +934,4 @@ window.GAME_TTS_TEST = Object.freeze({
     snapshot: () => ({ supported: 'speechSynthesis' in window, enabled: AudioManager.voiceEnabled, speaking: AudioManager.speaking, queued: AudioManager.speechQueue.length, ducked: AudioManager.duckRequests.has('voice') }),
     run: () => AudioManager.playVoice('Game text to speech diagnostic. First queued sentence.', { force: true }).then(() => AudioManager.playVoice('Second queued sentence. The diagnostic is complete.', { force: true }))
 });
-console.log('AudioManager v7.21.1 loaded with licensed contextual playlists.');
+console.log('AudioManager v7.22.0 loaded with licensed contextual playlists.');

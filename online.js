@@ -9,6 +9,9 @@ const OnlineSystem = {
     subscription: null,
     messageCache: [],
     messageExpiryTimer: null,
+    socialRefreshTimer: null,
+    socialRefreshInFlight: false,
+    socialRefreshQueued: false,
     lastMessageAt: 0,
     activeCombatGroup: null,
     suggestionResults: {},
@@ -674,9 +677,20 @@ const OnlineSystem = {
         window.Game.showSocial();
     },
 
+    checkChatContent(body) {
+        const text=String(body||'').trim();
+        if(/https?:\/\/|www\.|javascript:|data:text\/html|\b[a-z0-9-]+\.(?:com|net|org|io|ru|xyz|gg|ly)\b/i.test(text))return'Links are not allowed in temporary chat.';
+        if(/(.)\1{7,}/i.test(text)||/\b(\w+)(?:\s+\1){3,}\b/i.test(text))return'Repeated spam is not allowed.';
+        if(/\b(?:kill|hurt|attack|find|rape)\s+(?:you|your family)\b|\b(?:kill yourself|go die)\b/i.test(text))return'Threatening messages are not allowed.';
+        if(/\byou(?:'re| are)\s+(?:an?\s+)?(?:idiot|stupid|worthless|trash|ugly|pathetic)\b/i.test(text))return'Harassing messages are not allowed.';
+        if(/\b(?:fuck|shit|bitch|cunt|nigger|faggot|retard|porn)\w*\b/i.test(text))return'Abusive, profane, or inappropriate messages are not allowed.';
+        return'';
+    },
+
     async sendMessage(targetQuery, body) {
         const text = body.trim().slice(0, 300);
         if (!text) return false;
+        const moderation=this.checkChatContent(text);if(moderation){window.Game.addNarrative(moderation,'system');return false;}
         if (!this.ready || !this.user) { window.Game.addNarrative('Chat is still connecting.', 'system'); return false; }
         if (Date.now() - this.lastMessageAt < 2000) { window.Game.addNarrative('Please wait two seconds between messages.', 'system'); return false; }
         try {
@@ -701,11 +715,25 @@ const OnlineSystem = {
         if(error){window.Game?.addNarrative?.(error.message,'system');return [];}return data||[];
     },
 
-    async sendFeedback(kind,message) {
-        if(!this.ready||!message?.trim())return false;
-        const {error}=await this.client.from('game_feedback').insert({user_id:this.user.id,kind:kind==='bug'?'bug':'feedback',message:message.trim().slice(0,1000)});
+    async sendFeedback(category,message) {
+        const clean=String(message||'').trim().slice(0,1000);if(!clean){window.Game?.addNarrative?.('Add a message after the feedback command.','system');return false;}
+        if(!this.ready||!this.user){window.Game?.addNarrative?.('Feedback is still connecting. Try again shortly.','system');return false;}
+        const allowed=['gameplay','bug','accessibility','moderation','suggestion','praise'],kind=allowed.includes(category)?category:'gameplay';
+        const {data,error}=await this.client.rpc('submit_game_feedback',{feedback_category:kind,feedback_message:clean});
         if(error){window.Game.addNarrative(`Feedback could not be stored: ${error.message}`,'system');return false;}
-        window.Game.addNarrative('Thank you. Your report was securely stored.','treasure');return true;
+        window.Game.addNarrative(`Thank you. Feedback ${data} was securely routed to the moderator/developer inbox.`,'treasure');return true;
+    },
+
+    async showModeratorInbox() {
+        if(!this.ready){window.Game?.addNarrative?.('Moderator inbox is still connecting.','system');return false;}
+        const {data,error}=await this.client.rpc('list_moderator_feedback',{row_limit:50});
+        if(error){window.Game?.addNarrative?.(/not authorized/i.test(error.message||'')?'This account is not assigned an active moderator or developer role.':error.message,'system');return false;}
+        const panel=document.getElementById('moderator-inbox-panel'),list=document.getElementById('moderator-inbox-list');if(!panel||!list)return false;list.replaceChildren();
+        for(const item of data||[]){const card=document.createElement('article');card.className='moderator-feedback-card';card.setAttribute('role','listitem');const heading=document.createElement('h4');heading.textContent=`${item.category} — ${item.status}`;const meta=document.createElement('p');meta.textContent=`Feedback ID ${item.feedback_id}; sender ${item.sender_id}; created ${new Date(item.created_at).toLocaleString()}; assigned ${item.assigned_to||'unassigned'}; expires ${item.expires_at||'not applicable'}.`;const body=document.createElement('p');body.textContent=item.message;const note=document.createElement('p');note.textContent=`Private resolution note: ${item.resolution_note||'none'}`;card.append(heading,meta,body,note);list.appendChild(card);}if(!data?.length)list.textContent='No feedback is waiting.';panel.classList.remove('hidden');window.Game?.addNarrative?.(`Moderator inbox opened with ${data?.length||0} item${data?.length===1?'':'s'}.`,'system');return true;
+    },
+
+    async moderateFeedback(id,status,note='') {
+        if(!this.ready)return false;const {error}=await this.client.rpc('moderate_game_feedback',{feedback_id:id,new_status:status,private_note:String(note||'').slice(0,1000)});if(error){window.Game?.addNarrative?.(error.message,'system');return false;}window.Game?.addNarrative?.(`Feedback ${id} updated to ${status}.`,'treasure');await this.showModeratorInbox();return true;
     },
 
     async myBrotherhood() {
@@ -806,7 +834,10 @@ const OnlineSystem = {
     },
 
     refreshOpenSocial() {
-        if (!document.getElementById('social-panel')?.classList.contains('hidden')) window.Game?.showSocial?.();
+        if(document.getElementById('social-panel')?.classList.contains('hidden'))return;
+        this.socialRefreshQueued=true;
+        clearTimeout(this.socialRefreshTimer);
+        this.socialRefreshTimer=setTimeout(()=>{this.socialRefreshQueued=false;window.Game?.showSocial?.({background:true});},250);
     },
 
     updateIndicators() {

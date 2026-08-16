@@ -69,7 +69,7 @@
 
     const defaults = () => ({
         god:GOD, favor:0, lastPrayer:0, lastDailyBlessing:0, createdAt:Date.now(),
-        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', movesSinceEncounter:3, lastRandomEncounterAt:0, pendingPalaceAdvancements:0, companionTrainingPoints:0,
+        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', movesSinceEncounter:3, lastRandomEncounterAt:0, encounterNonce:0, pendingPalaceAdvancements:0, companionTrainingPoints:0,
         unspentAttributePoints:0, storage:[], groundLoot:[], vitality:10, enemyQueue:[]
     });
     const ensure = game => {
@@ -302,6 +302,7 @@
     const oldStart=Game.startCombat.bind(Game);
     Game.startCombat=function(enemyName,queued=false){
         const s=ensure(this), loc=WorldData.locations[this.state.location];
+        if(!queued&&!this.state._startingRandomEncounter)s.encounterNonce=(s.encounterNonce||0)+1;
         const engaged=WorldData.enemies[enemyName];
         if(!queued && !this.state.arena?.active && !engaged?.boss && !engaged?.finalBoss && loc?.enemies?.length){
             const count=2+Math.floor(Math.random()*5); // two through six
@@ -340,13 +341,13 @@
             const previousSafe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=previousSafe;
             const eligibility=this.randomEncounterEligibility(id),chance=s.encounterMode==='full'?0.20:0.06;
             if(eligibility.eligible&&Math.random()<chance){
-                this.state.randomEncounterPending=true;
+                this.state.randomEncounterPending=true;const token=s.encounterNonce=(s.encounterNonce||0)+1;
                 setTimeout(()=>{
-                    if(this.state.location!==id||this.state.inCombat){this.state.randomEncounterPending=false;return;}
+                    if(token!==s.encounterNonce||this.state.location!==id||this.state.inCombat){this.state.randomEncounterPending=false;return;}
                     const current=this.randomEncounterEligibility(id);
                     if(!current.eligible){this.state.randomEncounterPending=false;return;}
-                    s.lastRandomEncounterAt=Date.now();s.movesSinceEncounter=0;
-                    this.startCombat(current.pool[Math.floor(Math.random()*current.pool.length)]);
+                    s.lastRandomEncounterAt=Date.now();s.movesSinceEncounter=0;this.state._startingRandomEncounter=true;
+                    try{this.startCombat(current.pool[Math.floor(Math.random()*current.pool.length)]);}finally{this.state._startingRandomEncounter=false;}
                 },900);
             }
         } else oldEnter(id);

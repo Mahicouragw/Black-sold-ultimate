@@ -1,0 +1,26 @@
+{
+  "version": "7.22.0",
+  "baselineSha": "f3c8b521b5ce54a76127e82ca48515311b24d937",
+  "result": "PASS",
+  "keys": {
+    "saveKey": {
+      "baseline": "black_sword_ultimate_save",
+      "current": "black_sword_ultimate_save"
+    },
+    "rosterKey": {
+      "baseline": "black_sword_hero_roster_v2",
+      "current": "black_sword_hero_roster_v2"
+    }
+  },
+  "continuityChecks": {
+    "saveKeyUnchanged": true,
+    "rosterKeyUnchanged": true,
+    "legacySaveStillRead": true,
+    "legacySaveStillWritten": true,
+    "rosterStillRead": true,
+    "rosterStillWritten": true,
+    "spellCooldownsPersisted": true,
+    "specialDoorsPersisted": true
+  },
+  "note": "Automated source/runtime save tests verify key and field continuity; production user data was not manually modified."
+}

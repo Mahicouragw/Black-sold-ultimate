@@ -8,12 +8,10 @@
  * and companions are never gone forever — they can always be revived.
  *
  * Currencies (fair economy — earnable in-game, no pay-to-win):
- *   🪙 gold coins   — common, from every battle; buys basic revives & arena rest
- *   🔴 rubies       — RARE battle drops (6% + guaranteed pity after 12 dry
- *                     kills); revive one companion to 60%
- *   🟡 gold rubies  — rare drops from strong enemies & arena milestones;
- *                     revive one companion to FULL health
- *   💎 diamonds     — epic drops from bosses/arena; revive ALL companions fully
+ *   🪙 gold coins   — common, settled once per victorious battle
+ *   🔴 rubies       — rare victory treasure with a 25-victory pity guard
+ *   🟡 gold rubies  — very rare elite/boss and arena-milestone treasure
+ *   💎 diamonds     — extremely rare boss/major-boss or wave-25 treasure
  *
  * Arena of Echoes — endless scaling battle mode with hard caps for fairness,
  * announced wave-by-wave, player-paced (never auto-chained), exit anytime
@@ -25,6 +23,17 @@
     if (!G()) return;
 
     /* ════════════════ 0. STATE GUARANTEES ════════════════ */
+    const REWARD_CONFIG = Object.freeze({
+        rubyPityVictories: 25,
+        tiers: Object.freeze({
+            common: Object.freeze({ ruby: 0.02, goldRuby: 0, diamond: 0 }),
+            elite: Object.freeze({ ruby: 0.08, goldRuby: 0.02, diamond: 0.002 }),
+            boss: Object.freeze({ ruby: 0.28, goldRuby: 0.08, diamond: 0.015 }),
+            majorBoss: Object.freeze({ ruby: 0.55, goldRuby: 0.20, diamond: 0.08 })
+        }),
+        arena: Object.freeze({ bonusGoldBase: 30, bonusGoldPerWave: 10, rubyEvery: 5, goldRubyEvery: 10, diamondEvery: 25 })
+    });
+
     function ensure() {
         const g = G(), p = g.state?.player;
         if (!p) return null;
@@ -35,15 +44,22 @@
             battlesSinceRuby: 0,
             lastDaily: '',
             dailyStreak: 0,
+            settledTransactions: {}
         }, g.state.economy || {});
+        g.state.economy.settledTransactions ||= {};
         return p;
     }
 
-    // Legacy/loaded heroes get wallets too (same hook pattern as v16/v17).
+    // Economy counters and idempotency records belong to each hero save. Wallet
+    // balances already live on player and remain backward compatible.
+    const oldGetSave = G().getSaveData.bind(G());
+    G().getSaveData = function () { ensure(); return { ...oldGetSave(), economy:this.state.economy }; };
     const oldContinue = G().continueGame?.bind(G());
     if (oldContinue) {
         G().continueGame = function () {
+            let data=null;try{const roster=this.getRoster();data=roster.heroes[roster.activeHeroId]||JSON.parse(localStorage.getItem(this.state.saveKey));}catch{}
             oldContinue();
+            this.state.economy=Object.assign({battlesSinceRuby:0,lastDaily:'',dailyStreak:0,settledTransactions:{}},data?.economy||{});
             ensure();
         };
     }
@@ -62,51 +78,58 @@
         this.addNarrative('💡 Rubies revive fallen companions (say "revive"). Diamonds are the rarest — they revive everyone. Earn more in battles and in the Arena.', 'system');
     };
 
-    /* ════════════════ 2. FAIR BATTLE REWARDS (drop hooks) ════════════════ */
-    const oldEnemyDefeated = G().enemyDefeated.bind(G());
-    G().enemyDefeated = function () {
-        const e = this.state.enemy;
-        const wasArena = !!this.state.arena?.active;
-        oldEnemyDefeated();
-        const g = this; // keep context across both systems
-        // Delay slightly so the core "enemy defeated" message lands first.
-        setTimeout(() => { if (wasArena) arenaVictory(g, e); else battleLoot(g, e); }, 60);
-    };
-
-    function grant(g, kind, amount, reason) {
+    /* ════════════════ 2. AUTHORITATIVE REWARD TRANSACTIONS ════════════════ */
+    function grant(g, kind, amount, reason, { announce=true, save=true } = {}) {
         const p = ensure();
-        if (!p) return;
+        if (!p || !amount) return;
         const table = {
-            gold:      { key: 'gold',       icon: '🪙', sfx: 'coin' },
-            ruby:      { key: 'rubies',     icon: '🔴', sfx: 'treasure' },
-            goldRuby:  { key: 'goldRubies', icon: '🟡', sfx: 'magic' },
-            diamond:   { key: 'diamonds',   icon: '💎', sfx: 'magic' },
+            gold:      { key: 'gold',       icon: '🪙', label:'gold coins', sfx: 'coin' },
+            xp:        { key: 'xp',         icon: '⭐', label:'experience', sfx: 'exp' },
+            ruby:      { key: 'rubies',     icon: '🔴', label:amount>1?'rubies':'ruby', sfx: 'treasure' },
+            goldRuby:  { key: 'goldRubies', icon: '🟡', label:amount>1?'gold rubies':'gold ruby', sfx: 'magic' },
+            diamond:   { key: 'diamonds',   icon: '💎', label:amount>1?'diamonds':'diamond', sfx: 'magic' }
         }[kind];
-        p[table.key] += amount;
-        window.MusicSystem?.playSFX?.(table.sfx);
-        g.addNarrative(`${table.icon} +${amount} ${table.key === 'gold' ? 'gold coins' : kind === 'ruby' ? (amount > 1 ? 'rubies' : 'ruby') : kind === 'goldRuby' ? 'gold ruby' : 'diamond'} (${reason}). Total: ${p[table.key]}.`, 'treasure');
-        g.save();
+        if (!table) return;
+        p[table.key]=(p[table.key]||0)+amount;
+        if(announce){window.MusicSystem?.playSFX?.(table.sfx);g.addNarrative(`${table.icon} +${amount} ${table.label} (${reason}). Total: ${p[table.key]}.`,'treasure');}
+        if(save)g.save();
     }
 
-    function battleLoot(g, e) {
-        const eco = g.state.economy || ensure() && g.state.economy;
-        if (!eco) return;
-        eco.battlesSinceRuby += 1;
-        const strong = (e?.xp || 0) >= 45 || e?.boss;
-        const elite = (e?.xp || 0) >= 60 || e?.boss;
+    const classify = records => {
+        if(records.some(e=>e.finalBoss||(e.xp||0)>=3000))return'majorBoss';
+        if(records.some(e=>e.boss))return'boss';
+        if(records.some(e=>e.elite||(e.xp||0)>=350))return'elite';
+        return'common';
+    };
+    const premiumText = premium => [premium.ruby&&`${premium.ruby} ruby`,premium.goldRuby&&`${premium.goldRuby} gold ruby`,premium.diamond&&`${premium.diamond} diamond`].filter(Boolean).join(', ');
 
-        // Ruby: 6% chance, with a guaranteed pity ruby after 12 dry battles — rare treasure, also sold for diamonds..
-        if (eco.battlesSinceRuby >= 12) {
-            grant(g, 'ruby', 1, 'persistence reward — the arena gods are fair');
-            eco.battlesSinceRuby = 0;
-        } else if (Math.random() < (strong ? 0.15 : 0.06)) {
-            grant(g, 'ruby', 1, 'loot');
-            eco.battlesSinceRuby = 0;
-        }
-        if (elite && Math.random() < 0.25) grant(g, 'ruby', 1, 'elite foe trophy');
-        if (strong && Math.random() < 0.12) grant(g, 'goldRuby', 1, 'rare drop');
-        if (elite && Math.random() < 0.25) grant(g, 'diamond', 1, 'very rare drop');
-    }
+    window.RewardEconomy=Object.freeze({
+        config:REWARD_CONFIG,
+        classify,
+        settleBattle(g,summary,random=Math.random){
+            const p=ensure(),eco=g.state.economy,id=summary?.id;if(!p||!summary||!id)return null;
+            if(eco.settledTransactions[id])return{...eco.settledTransactions[id],duplicate:true};
+            const records=summary.enemyRecords||[],tier=classify(records),odds=REWARD_CONFIG.tiers[tier],premium={ruby:0,goldRuby:0,diamond:0};
+            let gold=Math.max(0,Math.floor(summary.gold||0)),xp=Math.max(0,Math.floor(summary.xp||0));
+            eco.battlesSinceRuby=(eco.battlesSinceRuby||0)+1;
+            if(eco.battlesSinceRuby>=REWARD_CONFIG.rubyPityVictories||random()<odds.ruby){premium.ruby=1;eco.battlesSinceRuby=0;}
+            if(odds.goldRuby&&random()<odds.goldRuby)premium.goldRuby=1;
+            if(odds.diamond&&random()<odds.diamond)premium.diamond=1;
+            if(g.state.arena?.active&&records.some(e=>e.name==='arena foe')){
+                const a=g.state.arena,wave=a.wave||0;a.wins=(a.wins||0)+1;a.canRest=true;a.rested=false;
+                gold+=REWARD_CONFIG.arena.bonusGoldBase+wave*REWARD_CONFIG.arena.bonusGoldPerWave;
+                if(wave>0&&wave%REWARD_CONFIG.arena.rubyEvery===0)premium.ruby=Math.max(1,premium.ruby);
+                if(wave>0&&wave%REWARD_CONFIG.arena.goldRubyEvery===0)premium.goldRuby=Math.max(1,premium.goldRuby);
+                if(wave>0&&wave%REWARD_CONFIG.arena.diamondEvery===0)premium.diamond=Math.max(1,premium.diamond);
+            }
+            grant(g,'gold',gold,'battle reward',{announce:false,save:false});grant(g,'xp',xp,'battle reward',{announce:false,save:false});
+            grant(g,'ruby',premium.ruby,'battle reward',{announce:false,save:false});grant(g,'goldRuby',premium.goldRuby,'battle reward',{announce:false,save:false});grant(g,'diamond',premium.diamond,'battle reward',{announce:false,save:false});
+            const result={id,tier,gold,xp,premium,items:[...(summary.drops||[])],duplicate:false};eco.settledTransactions[id]=result;
+            const keys=Object.keys(eco.settledTransactions);for(const old of keys.slice(0,Math.max(0,keys.length-100)))delete eco.settledTransactions[old];
+            return result;
+        },
+        describe(result){const extra=premiumText(result?.premium||{});return`Rewards: ${result?.gold||0} gold and ${result?.xp||0} experience${extra?`; rare treasure: ${extra}`:''}.`;}
+    });
 
     /* ════════════════ 3. DAILY TREASURE (streak, fully offline) ════════════════ */
     G().claimDailyTreasure = function () {
@@ -267,29 +290,10 @@
         window.WorldData.enemies['arena foe'] = foe;
 
         const fallen = this.fallenCompanions().length;
-        this.addNarrative(`🌊 WAVE ${wave}${champion ? ' — CHAMPION BOUT' : ''}: ${foe.desc} approaches (${foe.hp} HP, ${foe.attack} attack). Fight with your usual commands!${fallen ? ` (${fallen} companion(s) fallen — revive after the battle.)` : ''}`, 'combat');
+        this.addNarrative(`🌊 Wave ${wave}${champion ? ' — champion bout' : ''}: ${foe.desc} approaches. Fight with your usual commands.${fallen ? ` ${fallen} companion${fallen===1?' is':'s are'} fallen; revive after the battle.` : ''}`, 'combat');
         this.startCombat('arena foe');
         this.save();
     };
-
-    function arenaVictory(g, e) {
-        const a = g.state.arena;
-        if (!a?.active) return;
-        if (e?.name !== 'arena foe') return;
-        a.wins += 1;
-        a.canRest = true;
-        a.rested = false;
-
-        const wave = a.wave;
-        grant(g, 'gold', 30 + wave * 10, `wave ${wave} purse`);
-        if (wave % 5 === 0) grant(g, 'ruby', 1, `wave ${wave} milestone`);
-        if (wave % 5 === 0) grant(g, 'goldRuby', 1, `champion of wave ${wave}`);
-        if (wave % 7 === 0) grant(g, 'diamond', 1, `legend of wave ${wave}`);
-        if (wave > 0 && wave % 10 === 0) grant(g, 'diamond', 1, 'arena glory');
-
-        g.addNarrative(`🏆 Crowd goes wild — ${a.wins} arena win${a.wins === 1 ? '' : 's'}! Say "next" for wave ${wave + 1}, "arena rest" to recover (50 gold, once per intermission), or "leave arena" with your spoils.`, 'combat');
-        g.save();
-    }
 
     G().arenaRest = function () {
         const p = ensure();
@@ -331,8 +335,7 @@
             this.state.inCombat = false;
             this.state.enemy = null;
             p.hp = Math.max(1, Math.floor(p.maxHp * 0.25));
-            grant(this, 'ruby', 1, 'healers\' consolation');
-            this.addNarrative(`🩹 The arena healers drag you to safety and restore you to ${p.hp} HP. Falling in the Arena costs nothing but pride — revive companions, rest, and return stronger. The Arena waits for no contract.`, 'magic');
+            this.addNarrative(`🩹 The arena healers drag you to safety and restore you to ${p.hp} HP. Defeat grants no premium currency; revive companions, rest, and return stronger.`, 'magic');
             const a = this.state.arena;
             this.addNarrative(`Your streak ended at ${a.wins} win${a.wins === 1 ? '' : 's'} on wave ${a.wave}.`, 'system');
             this.leaveArena(true);
