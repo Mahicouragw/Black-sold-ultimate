@@ -1,13 +1,12 @@
 // ============================================================
 // Black Sword Ultimate v19 — Fair Hunt & Area Clearing
 // ============================================================
-// Blind-first finite quest ledger. Kills are recorded per location
-// and saved with the hero, while ordinary random wilderness encounters
-// remain endless. A typed "attack" outside combat never spawns a foe:
-//   - monsters alive here   -> hunting one starts combat
-//   - area fully defeated   -> "You can attack only in combat."
-//   - safe place            -> "You are not in combat."
-// Arena of Echoes fights never consume a location's pack.
+// Blind-first kill ledger used for quests and achievements only.
+// Random wilderness encounters are UNLIMITED: an area's monster pool lists
+// the monster TYPES that can appear, never a remaining-kill quota. No text
+// about leftover or outstanding monsters is produced anywhere.
+// A typed "attack" outside combat never spawns a foe.
+// Arena of Echoes fights never touch the ledger.
 // ============================================================
 (function () {
     const apply = () => {
@@ -20,6 +19,9 @@
 
         // The authoritative battle settlement calls this once for each defeated
         // monster. This module no longer wraps enemyDefeated or awards rewards.
+        // The ledger records quest-relevant kills only. Random wilderness
+        // encounters are UNLIMITED: nothing is decremented, and no remaining
+        // monster count is ever narrated (v7.22.1).
         Game.recordDefeatedForArea = function (locId,name,isArena=false) {
             ensureState();
             if (!name || isArena) return;
@@ -27,15 +29,6 @@
             if (!loc?.enemies?.includes(name)) return;
             const book = this.state.slainEnemies[locId] || (this.state.slainEnemies[locId] = {});
             book[name] = (book[name] || 0) + 1;
-            const living = this.getLivingEnemies ? this.getLivingEnemies(locId) : [];
-            if (living.length === 0) {
-                this.addNarrative(`🕊️ ${loc.name || 'This area'} quest pack is complete. Ordinary wilderness encounters can still occur here.`, 'treasure');
-                MusicSystem.playSFX('levelup');
-            } else {
-                const left = Math.max(0, this.getEnemyQuota(locId, name) - book[name]);
-                const hint = left > 0 ? `${left} more ${name}${left === 1 ? '' : 's'} needed here` : `${name} objective complete here`;
-                this.addNarrative(`${hint}. Type "foes" for finite quest-pack progress.`, 'system');
-            }
         };
 
         // Loaded heroes get the clearing ledger restored / created.

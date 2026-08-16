@@ -549,7 +549,7 @@ class AudioManagerController {
                 this.specialResolver?.();
                 return;
             }
-            if (this.overlayMode === 'battle' && this.battleActive) {
+            if (this.overlayMode === 'battle' && this.battleActive && this.musicEnabled) {
                 const next = this.nextTrack(this.overlayContext || 'BATTLE_NORMAL');
                 if (next) this.startMusicLayer('overlay', next, { fadeMs: 350 });
             }
@@ -702,6 +702,26 @@ class AudioManagerController {
         if (persist) this.persistSettings();
     }
 
+    setMusicEnabled(value, persist = true) {
+        this.musicEnabled = Boolean(value);
+        if (this.musicEnabled) this.resumeWorldMusic(); else this.stopMusic();
+        if (persist) this.persistSettings();
+        return this.musicEnabled;
+    }
+
+    setSFXEnabled(value, persist = true) {
+        this.sfxEnabled = Boolean(value);
+        if (persist) this.persistSettings();
+        return this.sfxEnabled;
+    }
+
+    setVoiceEnabled(value, persist = true) {
+        this.voiceEnabled = Boolean(value);
+        if (!this.voiceEnabled) this.stopVoice();
+        if (persist) this.persistSettings();
+        return this.voiceEnabled;
+    }
+
     toggle() {
         this.musicEnabled = !this.musicEnabled;
         if (this.musicEnabled) this.resumeWorldMusic(); else this.stopMusic();
@@ -849,8 +869,11 @@ class AudioManagerController {
 
     /** Queue game/browser TTS. TalkBack remains an independent OS service:
      * semantic live regions are never disabled or used as proof of TTS output. */
-    playVoice(text, { voiceId = 'system:default', language = 'en-US', priority = false, force = false } = {}) {
-        if ((!this.voiceEnabled && !force) || !String(text || '').trim()) return Promise.resolve(false);
+    playVoice(text, { voiceId = 'system:default', language = 'en-US', priority = false } = {}) {
+        // Application TTS OFF is absolute: no SpeechSynthesis call is ever made,
+        // and nothing may force it back on. Android TalkBack is an independent
+        // OS service that this game neither controls nor disables.
+        if (!this.voiceEnabled || !String(text || '').trim()) return Promise.resolve(false);
         if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
         const critical = priority === 'critical';
         if (critical) this.interruptVoiceForCritical();
@@ -932,6 +955,13 @@ window.MusicSystem = MusicSystem;
 // testing the game's own speech queue.
 window.GAME_TTS_TEST = Object.freeze({
     snapshot: () => ({ supported: 'speechSynthesis' in window, enabled: AudioManager.voiceEnabled, speaking: AudioManager.speaking, queued: AudioManager.speechQueue.length, ducked: AudioManager.duckRequests.has('voice') }),
-    run: () => AudioManager.playVoice('Game text to speech diagnostic. First queued sentence.', { force: true }).then(() => AudioManager.playVoice('Second queued sentence. The diagnostic is complete.', { force: true }))
+    run: () => {
+        if (!AudioManager.voiceEnabled) {
+            window.Game?.addNarrative?.('Application text to speech is off. Turn on "Device voice and TTS" in Settings to run this diagnostic.', 'system');
+            return Promise.resolve(false);
+        }
+        return AudioManager.playVoice('Game text to speech diagnostic. First queued sentence.')
+            .then(() => AudioManager.playVoice('Second queued sentence. The diagnostic is complete.'));
+    }
 });
-console.log('AudioManager v7.22.0 loaded with licensed contextual playlists.');
+console.log('AudioManager v7.22.1 loaded with licensed contextual playlists.');

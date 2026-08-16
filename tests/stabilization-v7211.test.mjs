@@ -111,7 +111,7 @@ test('(19/33) defeated bosses remain finite even though ordinary wilderness mons
 });
 
 test('(20/33) movement and wall-clock cooldowns prevent encounter spam',()=>{
-    const {Game}=runtime.window;Game.state.location='forest';Game.state.sacred={...(Game.state.sacred||{}),encounterMode:'full',movesSinceEncounter:10,lastRandomEncounterAt:100000};assert.equal(Game.randomEncounterEligibility('forest',120000).eligible,false);assert.equal(Game.randomEncounterEligibility('forest',146000).eligible,true);Game.state.sacred.movesSinceEncounter=1;assert.equal(Game.randomEncounterEligibility('forest',200000).eligible,false);
+    const {Game,EncounterSettings}=runtime.window;EncounterSettings.set(true,{persist:false,announce:false});Game.state.location='forest';Game.state.sacred={...(Game.state.sacred||{}),movesSinceEncounter:10,lastRandomEncounterAt:100000};assert.equal(Game.randomEncounterEligibility('forest',120000).eligible,false);assert.equal(Game.randomEncounterEligibility('forest',146000).eligible,true);Game.state.sacred.movesSinceEncounter=1;assert.equal(Game.randomEncounterEligibility('forest',200000).eligible,false);EncounterSettings.set(false,{persist:false,announce:false});
 });
 
 test('(21/33) generated roaming groups stay within two to six and do not mutate quest kill counts',()=>{

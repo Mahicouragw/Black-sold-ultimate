@@ -1,0 +1,722 @@
+/**
+ * v7.22.1 regression suite.
+ *
+ * Every behaviour requested in the v7.22.x stabilization brief has a test here:
+ * inline COMBAT MODE, clean narration, unlimited random encounters, grouped
+ * announcements, the real encounter-frequency setting, settings that truly turn
+ * systems off, battle music selection, spell fairness, door magic, death and
+ * temple restoration, silent regeneration, economy integrity, inventory
+ * actions, hero privacy, non-repeating status, chat expiry/notice/moderation,
+ * and the visible feedback entry point.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { setTimeout as wait } from 'node:timers/promises';
+import { JSDOM } from 'jsdom';
+import { createRuntime } from '../scripts/load-world.mjs';
+
+const allAchievements = ['first-blood', 'hunter', 'slayer', 'peace-1', 'peace-5', 'peace-10', 'level-5', 'level-10', 'quest-3', 'quest-all', 'hoard', 'gem', 'arena-1', 'arena-5', 'explorer-20'];
+
+async function ready(t) {
+    const runtime = await createRuntime();
+    t.after(() => runtime.dom.window.close());
+    const { window } = runtime, { Game } = window;
+    window.OnlineSystem.saveGame = async () => true;
+    window.OnlineSystem.syncActiveHero = () => {};
+    window.OnlineSystem.dropWorldItem = async () => false;
+    window.OnlineSystem.recordGroupAttack = () => {};
+    Game.startNewHero();
+    window.document.getElementById('char-name').value = 'Stabilize 7221';
+    window.document.querySelector('.race-btn[data-race="human"]').classList.add('selected');
+    window.document.querySelector('.class-btn[data-class="warrior"]').classList.add('selected');
+    Game.createCharacter(false);
+    Game.state.quests = [];
+    Game.state.achievements = [...allAchievements];
+    Game.state.completedQuests = [];
+    window.InterfaceMode.apply('sighted');
+    window.ProfessionalAudioCombat = null;
+    window.AudioManager.endBattle = async () => { window.AudioManager.battleActive = false; window.AudioManager.overlayMode = null; };
+    window.Math.random = () => 0.99;
+    window.GameSpellSystem.random = () => 0.99;
+    window.EncounterSettings.set(false, { persist: false, announce: false });
+    return runtime;
+}
+const settle = async Game => { Game.enemyDefeated(); for (let i = 0; i < 30 && !Game.state.battleSummary?.settled; i++) await wait(20); await wait(20); };
+const narrative = window => window.document.getElementById('narrative').textContent;
+
+/* ── 1. Inline COMBAT MODE (no separate battle screen) ───────────────────── */
+
+test('(01) combat reveals inline combat actions without leaving the game screen', async t => {
+    const { window } = await ready(t), G = window.Game;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    const status = window.document.getElementById('combat-status');
+    assert.equal(G.state.screen, 'game-screen');
+    assert.equal(status.classList.contains('hidden'), false);
+    assert.equal(window.document.getElementById('combat-panel').hidden, true);
+    const commands = [...window.document.querySelectorAll('#combat-actions [data-combat-command]')].map(b => b.dataset.combatCommand);
+    for (const required of ['attack', 'healing spell', 'multiple strike', 'shock', 'inventory', 'flee']) assert.ok(commands.includes(required), required);
+});
+
+test('(02) the command input stays enabled and empty while combat is active', async t => {
+    const { window } = await ready(t), G = window.Game;
+    const input = window.document.getElementById('cmd-input');
+    input.value = 'attack';
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    assert.equal(input.disabled, false);
+    assert.equal(input.value, '');
+});
+
+test('(03) buttons and typed commands run the identical command engine', async t => {
+    const { window } = await ready(t), G = window.Game, seen = [];
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const previous = G.processCommand.bind(G);
+    G.processCommand = cmd => { seen.push(cmd); return previous(cmd); };
+    window.document.querySelector('#combat-actions [data-combat-command="attack"]').click();
+    assert.deepEqual(seen, ['attack']);
+});
+
+test('(04) combat-only controls disappear and focus returns when combat ends', async t => {
+    const { window } = await ready(t), G = window.Game;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const input = window.document.getElementById('cmd-input');
+    input.value = 'attack';
+    await settle(G);
+    assert.equal(window.document.getElementById('combat-status').classList.contains('hidden'), true);
+    assert.equal(input.value, '');
+    assert.equal(input.disabled, false);
+    for (const button of window.document.querySelectorAll('#combat-actions [data-combat-command]')) assert.equal(button.disabled, true);
+});
+
+test('(05) exactly one battle system exists: no module opens a battle screen', async () => {
+    const files = ['game.js', 'stabilization-v7211.js', 'battle-summary-cleantext-v12.js', 'sacred.js'];
+    for (const file of files) {
+        const source = await readFile(file, 'utf8');
+        assert.doesNotMatch(source, /showScreen\(\s*['"]battle/i, file);
+    }
+});
+
+/* ── 2. No combat-engine internals in narration ──────────────────────────── */
+
+test('(06) no player-facing string leaks accuracy, defense, penetration or efficiency', async () => {
+    const files = ['game.js', 'stabilization-v7211.js', 'cemetery-spellfield-combat-v11.js', 'expansive-forest-multitarget-v13.js', 'fair-group-combat-v14.js', 'spell-mastery-black-sword.js', 'battle-summary-cleantext-v12.js'];
+    const banned = /addNarrative\(`[^`]*(?:Accuracy \d|armor penetration|efficiency XP|efficiency damage|damage calculation|critical formula|experience multiplier)/i;
+    for (const file of files) assert.doesNotMatch(await readFile(file, 'utf8'), banned, file);
+});
+
+test('(07) an ordinary attack narrates natural language only', async t => {
+    const { window } = await ready(t), G = window.Game;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    window.document.getElementById('narrative').innerHTML = '';
+    window.Math.random = () => 0.5;
+    G.processCommand('attack');
+    await wait(0);
+    const text = narrative(window);
+    assert.doesNotMatch(text, /accuracy|penetration|efficiency|calculation/i);
+});
+
+/* ── 3–4. Unlimited random encounters, no finite kill quotas ─────────────── */
+
+test('(08) the area monster pool never shrinks after ordinary kills', async t => {
+    const { window } = await ready(t), G = window.Game;
+    const before = G.getAreaMonsterPool('forest');
+    G.state.slainEnemies.forest = Object.fromEntries(window.WorldData.locations.forest.enemies.map(name => [name, 999]));
+    assert.deepEqual(G.getAreaMonsterPool('forest'), before);
+    assert.ok(G.getRandomEncounterPool('forest').length);
+});
+
+test('(09) no remaining-count or "still hunted here" text exists in the codebase', async () => {
+    const files = ['game.js', 'hunt-clear-v19.js', 'hunt-wayfinder-v21.js', 'sacred.js', 'stabilization-v7211.js'];
+    const banned = [/monster types left/i, /still hunted here/i, /monsters remaining/i, /more \$\{name\}/i, /kills remaining/i, /monsters left/i];
+    for (const file of files) {
+        const source = await readFile(file, 'utf8');
+        for (const pattern of banned) assert.doesNotMatch(source, pattern, `${file} ${pattern}`);
+    }
+});
+
+test('(10) recording a defeat never narrates a quota or decrements the pool', async t => {
+    const { window } = await ready(t), G = window.Game;
+    window.document.getElementById('narrative').innerHTML = '';
+    const name = window.WorldData.locations.forest.enemies[0];
+    G.recordDefeatedForArea('forest', name, false);
+    G.recordDefeatedForArea('forest', name, false);
+    assert.equal(G.state.slainEnemies.forest[name], 2);
+    assert.doesNotMatch(narrative(window), /remaining|left|needed here|quest pack/i);
+    assert.ok(G.getRandomEncounterPool('forest').includes(name));
+});
+
+test('(11) the same region can produce encounters indefinitely', async t => {
+    const { window } = await ready(t), G = window.Game;
+    for (let i = 0; i < 50; i++) G.recordDefeatedForArea('forest', window.WorldData.locations.forest.enemies[0], false);
+    G.state.sacred.movesSinceEncounter = 99;
+    G.state.sacred.lastRandomEncounterAt = 0;
+    assert.equal(G.randomEncounterEligibility('forest', Date.now()).eligible, true);
+});
+
+/* ── 5. Grouped encounter announcements ──────────────────────────────────── */
+
+test('(12) identical monsters are grouped with correct singular/plural grammar', async t => {
+    const { window } = await ready(t), F = window.MonsterGroupFormatter;
+    assert.equal(F.format(['goblin']), 'one goblin');
+    assert.equal(F.format(['goblin', 'goblin']), 'two goblins');
+    assert.equal(F.format(['goblin witch', 'goblin witch', 'goblin witch']), 'three goblin witches');
+    assert.equal(F.format(['wild boar', 'wild boar', 'wild boar']), 'three wild boars');
+    assert.equal(F.format(['fern spider', 'stoneback cub']), 'one fern spider and one stoneback cub');
+    assert.equal(F.format(['wild boar', 'wild boar', 'wild boar', 'goblin witch', 'goblin witch']), 'three wild boars and two goblin witches');
+});
+
+test('(13) the log and the TTS announcement use one identical grouped description', async t => {
+    const { window } = await ready(t), G = window.Game, spoken = [];
+    window.AudioManager.playVoice = async text => (spoken.push(text), true);
+    window.document.getElementById('narrative').innerHTML = '';
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    await wait(0);
+    const announcement = spoken.find(text => /^You encountered /.test(text));
+    assert.ok(announcement);
+    assert.ok(narrative(window).includes(announcement));
+    assert.equal(spoken.filter(text => /^You encountered /.test(text)).length, 1);
+});
+
+/* ── 6. Encounter frequency is a real setting ────────────────────────────── */
+
+test('(14) the frequency setting changes real probability, cooldown and group size', async t => {
+    const { window } = await ready(t);
+    const S = window.EncounterSettings;
+    S.set(false, { persist: false, announce: false });
+    const normal = S.tuning();
+    S.set(true, { persist: false, announce: false });
+    const frequent = S.tuning();
+    assert.ok(frequent.chance > normal.chance);
+    assert.ok(frequent.cooldownMs < normal.cooldownMs);
+    assert.ok(frequent.threshold < normal.threshold);
+    assert.ok(frequent.maxGroup >= normal.maxGroup);
+    assert.ok(normal.cooldownMs > 0 && frequent.cooldownMs > 0, 'both modes keep a cooldown');
+    assert.ok(frequent.chance < 1, 'never triggers on every movement');
+    S.set(false, { persist: false, announce: false });
+});
+
+test('(15) the encounter scheduler actually consumes the selected profile', async t => {
+    const { window } = await ready(t), G = window.Game, S = window.EncounterSettings;
+    G.state.location = 'forest';
+    G.state.sacred.movesSinceEncounter = 4;
+    G.state.sacred.lastRandomEncounterAt = Date.now() - 60000;
+    S.set(false, { persist: false, announce: false });
+    assert.equal(G.randomEncounterEligibility('forest').eligible, false, 'OFF uses the slower profile');
+    S.set(true, { persist: false, announce: false });
+    G.state.sacred.movesSinceEncounter = 4;
+    G.state.sacred.lastRandomEncounterAt = Date.now() - 60000;
+    assert.equal(G.randomEncounterEligibility('forest').eligible, true, 'ON uses the faster profile');
+    S.set(false, { persist: false, announce: false });
+});
+
+test('(16) the setting persists and exposes an accessible control', async t => {
+    const { window } = await ready(t), S = window.EncounterSettings;
+    S.set(true);
+    assert.equal(window.localStorage.getItem(S.storageKey), 'true');
+    const box = window.document.getElementById('setting-frequent-encounters');
+    assert.ok(box);
+    assert.equal(box.checked, true);
+    assert.ok(window.document.querySelector('label[for="setting-frequent-encounters"]').textContent.trim().length);
+    S.set(false);
+    assert.equal(window.localStorage.getItem(S.storageKey), 'false');
+});
+
+/* ── 7. Settings genuinely turn systems off ──────────────────────────────── */
+
+async function audioFixture() {
+    const dom = new JSDOM('<!doctype html><body></body>', { url: 'https://example.test/', runScripts: 'outside-only', pretendToBeVisual: true });
+    const window = dom.window, played = [], spoken = [];
+    window.Audio = class {
+        constructor() { this.dataset = {}; this.paused = true; this.volume = 1; this.currentTime = 0; }
+        addEventListener() {} removeAttribute() {} setAttribute() {} load() {}
+        pause() { this.paused = true; }
+        play() { this.paused = false; played.push(this.src || this.dataset.trackKey || 'track'); return Promise.resolve(); }
+    };
+    window.AudioContext = class {
+        constructor() { this.state = 'running'; this.destination = {}; }
+        createGain() { return { gain: { value: 1 }, connect() {} }; }
+        createBufferSource() { return { buffer: null, playbackRate: { value: 1 }, connect() {}, disconnect() {}, addEventListener() {}, start() { played.push('sfx'); } }; }
+        decodeAudioData() { return Promise.resolve({ duration: 0.01 }); }
+        resume() { return Promise.resolve(); }
+    };
+    window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+    window.speechSynthesis = { getVoices: () => [{ name: 'Test', lang: 'en-US' }], addEventListener() {}, cancel() {}, speak(u) { spoken.push(u.text); queueMicrotask(() => { u.onstart?.(); u.onend?.(); }); } };
+    window.fetch = async () => ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0) });
+    window.eval(await readFile('music.js', 'utf8'));
+    return { dom, window, manager: window.AudioManager, played, spoken };
+}
+
+test('(17) TTS OFF makes no SpeechSynthesis call and cannot be forced back on', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    fixture.manager.setVoiceEnabled(false, false);
+    assert.equal(await fixture.manager.playVoice('should stay silent'), false);
+    assert.equal(await fixture.manager.playVoice('forced attempt', { force: true }), false);
+    assert.equal(await fixture.manager.speakCritical('critical attempt'), false);
+    assert.equal(fixture.spoken.length, 0);
+});
+
+test('(18) TTS ON still speaks, proving the OFF test is meaningful', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    fixture.manager.setVoiceEnabled(true, false);
+    await fixture.manager.playVoice('audible line');
+    assert.deepEqual(fixture.spoken, ['audible line']);
+});
+
+test('(19) Music OFF stops playback and blocks world, battle and victory music', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    const m = fixture.manager;
+    m.setMusicEnabled(false, false);
+    fixture.played.length = 0;
+    await m.play('EXPLORATION');
+    await m.beginBattle('BATTLE_NORMAL');
+    await m.resumeWorldMusic();
+    await m.playSpecial('BATTLE_VICTORY');
+    await m.startMusicLayer('world', m.nextTrack('EXPLORATION'));
+    assert.equal(fixture.played.length, 0);
+    assert.equal(m.musicEnabled, false);
+});
+
+test('(20) Sound effects OFF prevents every effect path', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    const m = fixture.manager;
+    m.setSFXEnabled(false, false);
+    fixture.played.length = 0;
+    for (const effect of ['attack', 'hit', 'magic', 'heal', 'explore', 'victory', 'door', 'button']) assert.equal(m.playSFX(effect), false, effect);
+    await m.playSFXAndWait('attack', 10);
+    assert.equal(fixture.played.length, 0);
+});
+
+test('(21) audio settings persist as OFF across a reload', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    const m = fixture.manager;
+    m.setMusicEnabled(false);
+    m.setSFXEnabled(false);
+    m.setVoiceEnabled(false);
+    const stored = JSON.parse(fixture.window.localStorage.getItem(m.storageKey));
+    assert.equal(stored.musicEnabled, false);
+    assert.equal(stored.sfxEnabled, false);
+    assert.equal(stored.voiceEnabled, false);
+});
+
+test('(22) application TTS is documented as separate from Android TalkBack', async () => {
+    const [music, html] = await Promise.all([readFile('music.js', 'utf8'), readFile('index.html', 'utf8')]);
+    assert.match(music, /TalkBack/);
+    assert.match(html, /never turns Android TalkBack/i);
+});
+
+/* ── 8. Music preservation and battle playlists ──────────────────────────── */
+
+test('(23) every existing music context and its tracks are preserved', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    const m = fixture.manager;
+    for (const context of ['EXPLORATION', 'CITY', 'FOREST', 'BATTLE_NORMAL', 'BATTLE_BOSS', 'BATTLE_FINAL_BOSS', 'BATTLE_VICTORY']) {
+        assert.ok((m.playlists[context] || []).length, context);
+    }
+    assert.ok(Object.keys(m.music).length > 10);
+});
+
+test('(24) battle playlists avoid an immediate repeat and keep rotating', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    const m = fixture.manager;
+    m.setMusicEnabled(true, false);
+    const pool = m.playlists.BATTLE_NORMAL;
+    if (pool.length > 1) {
+        const picks = Array.from({ length: 6 }, () => m.nextTrack('BATTLE_NORMAL'));
+        for (let i = 1; i < picks.length; i++) assert.notEqual(picks[i], picks[i - 1], 'no immediate repeat');
+        assert.ok(new Set(picks).size > 1, 'more than one battle track is used');
+    }
+});
+
+test('(25) battle music is chosen independently of the world context', async t => {
+    const fixture = await audioFixture();
+    t.after(() => fixture.dom.window.close());
+    const m = fixture.manager;
+    m.setMusicEnabled(true, false);
+    m.worldContext = 'FOREST';
+    await m.beginBattle('BATTLE_NORMAL');
+    assert.equal(m.battleActive, true);
+    assert.equal(m.worldContext, 'FOREST');
+    assert.ok(String(m.overlayContext).startsWith('BATTLE_'));
+    await m.endBattle({ worldContext: 'FOREST' });
+    assert.equal(m.battleActive, false);
+});
+
+/* ── 9–12. Spell fairness and synchronized results ───────────────────────── */
+
+test('(26) Shock has three fair outcomes and always pays its cost for a valid cast', async t => {
+    const { window } = await ready(t), G = window.Game, S = window.GameSpellSystem;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const p = G.state.player;
+    if (!p.spells.some(s => s.toLowerCase() === 'shock')) p.spells.push('Shock');
+    p.mp = 60; G.state.spellCooldowns = {};
+    G.state.enemy.hp = G.state.enemy.maxHp = 900;
+    window.document.getElementById('narrative').innerHTML = '';
+    S.random = () => 0.99;
+    assert.equal(S.castShock(G), true);
+    assert.equal(p.mp, 48);
+    assert.match(narrative(window), /shock spell hits/i);
+    G.state.spellCooldowns = {};
+    window.document.getElementById('narrative').innerHTML = '';
+    S.random = () => 0;
+    assert.equal(S.castShock(G), false);
+    assert.match(narrative(window), /shock spell failed/i);
+    assert.equal(p.mp, 36, 'a failed cast still pays');
+    S.random = () => 0.99;
+});
+
+test('(27) Shock outside battle is rejected without consuming mana', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    if (!p.spells.some(s => s.toLowerCase() === 'shock')) p.spells.push('Shock');
+    G.state.inCombat = false; G.state.enemy = null; p.mp = 60; G.state.spellCooldowns = {};
+    assert.equal(window.GameSpellSystem.castShock(G), false);
+    assert.equal(p.mp, 60);
+});
+
+test('(28) Multiple Strike narrates naturally on hit, block and failure', async t => {
+    const { window } = await ready(t), G = window.Game, S = window.GameSpellSystem, p = G.state.player;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    p.mp = 90; G.state.spellCooldowns = {};
+    G.state.enemy.hp = G.state.enemy.maxHp = 4000;
+    window.document.getElementById('narrative').innerHTML = '';
+    S.random = () => 0.99;
+    assert.equal(S.castMultipleStrike(G), true);
+    assert.match(narrative(window), /light from your hands/i);
+    assert.doesNotMatch(narrative(window), /efficiency|accuracy|experience multiplier/i);
+    G.state.spellCooldowns = {};
+    window.document.getElementById('narrative').innerHTML = '';
+    S.random = () => 0;
+    assert.equal(S.castMultipleStrike(G), false);
+    assert.match(narrative(window), /multiple strike failed/i);
+    S.random = () => 0.99;
+});
+
+test('(29) healing rejects a full-health cast with the exact required message', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    p.hp = p.maxHp; p.mp = 60; G.state.spellCooldowns = {};
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(window.GameSpellSystem.castHealing(G), false);
+    assert.equal(p.mp, 60, 'no mana is spent on an invalid cast');
+    assert.match(narrative(window), /your health is already full/i);
+});
+
+test('(30) each combat action emits its result announcement exactly once', async t => {
+    const { window } = await ready(t), G = window.Game, spoken = [];
+    window.AudioManager.playVoice = async text => (spoken.push(text), true);
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const p = G.state.player;
+    p.hp = 10; p.mp = 60; G.state.spellCooldowns = {};
+    spoken.length = 0;
+    window.GameSpellSystem.castHealing(G);
+    await wait(0);
+    assert.equal(spoken.filter(text => /restores/i.test(text)).length, 1);
+});
+
+/* ── 13. Door-opening magic ──────────────────────────────────────────────── */
+
+test('(31) Multiple Strike opens only a door configured for it, and only once', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    p.mp = 90;
+    G.state.location = 'kaliwasch';
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(window.GameSpellSystem.castMultipleStrike(G), false);
+    assert.equal(p.mp, 90, 'no door target costs nothing');
+    G.state.location = 'drakkar_keep_2';
+    G.state.spellCooldowns = {};
+    assert.equal(window.GameSpellSystem.castMultipleStrike(G), true);
+    const door = window.WorldData.locations.drakkar_keep_2.specialDoor;
+    assert.equal(G.state.specialDoors[door.id].open, true);
+    G.state.spellCooldowns = {};
+    const before = p.mp;
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(window.GameSpellSystem.castMultipleStrike(G), false);
+    assert.equal(p.mp, before, 'an already-open door consumes nothing');
+    assert.match(narrative(window), /already open/i);
+});
+
+/* ── 14–15. Death, temple restoration and quiet regeneration ─────────────── */
+
+test('(32) death narrates the required lines and no per-point restoration ticks', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    window.document.getElementById('narrative').innerHTML = '';
+    p.hp = 0;
+    G.performTempleRescue('defeat');
+    const text = narrative(window);
+    assert.match(text, /you have died/i);
+    assert.match(text, /you awaken in the temple/i);
+    assert.match(text, /the temple restores your health and magic/i);
+    assert.doesNotMatch(text, /\b\d+ HP restored\b/i);
+    assert.doesNotMatch(text, /\b1 MP restored\b/i);
+    assert.equal(p.hp, p.maxHp);
+    assert.equal(p.mp, p.maxMp);
+});
+
+test('(33) passive regeneration is silent, capped and never exceeds the maximum', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    p.hp = p.maxHp - 3; p.mp = p.maxMp - 3;
+    G.state.regeneration = { lastTick: Date.now() - 600000 };
+    window.document.getElementById('narrative').innerHTML = '';
+    G.applyTimedRegeneration(false);
+    assert.equal(p.hp, p.maxHp);
+    assert.equal(p.mp, p.maxMp);
+    assert.equal(narrative(window).trim(), '');
+    G.state.regeneration = { lastTick: Date.now() - 600000 };
+    G.applyTimedRegeneration(false);
+    assert.equal(p.hp, p.maxHp, 'cannot exceed the maximum');
+});
+
+/* ── 16. Economy integrity ───────────────────────────────────────────────── */
+
+test('(34) attacking never grants currency, no matter how many times it is sent', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = G.state.enemy.maxHp = 100000;
+    const before = { gold: p.gold, rubies: p.rubies, diamonds: p.diamonds };
+    for (let i = 0; i < 10; i++) G.processCommand('attack');
+    await wait(30);
+    assert.equal(p.rubies, before.rubies);
+    assert.equal(p.diamonds, before.diamonds);
+    assert.equal(p.gold, before.gold);
+});
+
+test('(35) a double-clicked button plus a typed command cannot double-settle', async t => {
+    const { window } = await ready(t), G = window.Game;
+    const summary = { id: 'race-condition-test', gold: 25, xp: 40, drops: [], enemyRecords: [{ name: 'root goblin', xp: 40 }] };
+    window.RewardEconomy.settleBattle(G, summary, () => 0.99);
+    const wallet = { gold: G.state.player.gold, xp: G.state.player.xp, r: G.state.player.rubies, d: G.state.player.diamonds };
+    for (let i = 0; i < 5; i++) assert.equal(window.RewardEconomy.settleBattle(G, summary, () => 0).duplicate, true);
+    assert.deepEqual({ gold: G.state.player.gold, xp: G.state.player.xp, r: G.state.player.rubies, d: G.state.player.diamonds }, wallet);
+});
+
+test('(36) a settled transaction survives a reload and is not replayed', async t => {
+    const { window } = await ready(t), G = window.Game;
+    const summary = { id: 'reload-test', gold: 11, xp: 12, drops: [], enemyRecords: [{ name: 'root goblin', xp: 12 }] };
+    window.RewardEconomy.settleBattle(G, summary, () => 0.99);
+    const saved = JSON.parse(JSON.stringify(G.getSaveData().economy));
+    assert.ok(saved.settledTransactions['reload-test']);
+    G.state.economy = saved;
+    const wallet = G.state.player.gold;
+    assert.equal(window.RewardEconomy.settleBattle(G, summary, () => 0).duplicate, true);
+    assert.equal(G.state.player.gold, wallet);
+});
+
+test('(37) premium currency is rare, explicit and never guaranteed by a common kill', async t => {
+    const { window } = await ready(t);
+    const tiers = window.RewardEconomy.config.tiers;
+    assert.ok(tiers.common.ruby > 0 && tiers.common.ruby < 0.05);
+    assert.equal(tiers.common.diamond, 0);
+    assert.ok(tiers.boss.diamond < tiers.boss.ruby);
+    assert.ok(window.RewardEconomy.config.rubyPityVictories >= 20);
+});
+
+/* ── 17. Inventory ───────────────────────────────────────────────────────── */
+
+test('(38) inventory items expose Use, Examine and Details', async t => {
+    const { window } = await ready(t), G = window.Game;
+    G.state.inventory = [{ ...window.WorldData.items['healing potion'], id: 'healing potion', quantity: 2 }];
+    G.showInventory();
+    const html = window.document.getElementById('inv-list').innerHTML;
+    assert.match(html, /Game\.useItem/);
+    assert.match(html, /Game\.examineInventoryItem/);
+    assert.match(html, /Game\.showInventoryItemDetails/);
+});
+
+test('(39) a healing item is refused at full health and is not consumed', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    G.state.inventory = [{ ...window.WorldData.items['healing potion'], id: 'healing potion', quantity: 2 }];
+    p.hp = p.maxHp;
+    window.document.getElementById('narrative').innerHTML = '';
+    G.useItem('healing potion');
+    assert.equal(G.state.inventory[0].quantity, 2);
+    assert.match(narrative(window), /already full/i);
+});
+
+test('(40) a valid item use restores HP without exceeding the maximum', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    G.state.inventory = [{ ...window.WorldData.items['healing potion'], id: 'healing potion', quantity: 1 }];
+    p.hp = 1;
+    G.useItem('healing potion');
+    assert.ok(p.hp > 1 && p.hp <= p.maxHp);
+    assert.equal(G.state.inventory.length, 0);
+});
+
+test('(41) examine and details describe an item without inventing state', async t => {
+    const { window } = await ready(t), G = window.Game;
+    G.state.inventory = [{ ...window.WorldData.items['healing potion'], id: 'healing potion', quantity: 3 }];
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.ok(G.examineInventoryItem('healing potion'));
+    assert.ok(G.showInventoryItemDetails('healing potion'));
+    assert.match(narrative(window), /quantity 3/i);
+    assert.equal(G.examineInventoryItem('nonexistent relic'), null);
+});
+
+/* ── 18. Hero privacy ────────────────────────────────────────────────────── */
+
+test('(42) the public hero projection exposes no private identifiers', async t => {
+    const { window } = await ready(t);
+    const projection = window.OnlineSystem.toPublicHero({
+        id: 'uuid-private', display_name: 'Raven Braveheart', level: 12, current_location: 'forest',
+        last_seen: '2026-08-16T00:00:00Z', email: 'secret@example.com', player_code: 'KND-AB12-CD34',
+        pin_hash: 'hash', access_token: 'token', secret_answer: 'blue', user_id: 'uuid-private'
+    });
+    for (const banned of ['id', 'email', 'player_code', 'pin_hash', 'access_token', 'secret_answer', 'user_id']) {
+        assert.equal(banned in projection, false, banned);
+    }
+    assert.equal(projection.display_name, 'Raven Braveheart');
+    assert.equal(projection.level, 12);
+});
+
+test('(43) the online hero list is projected before it reaches the UI', async t => {
+    const { window } = await ready(t);
+    window.OnlineSystem.ready = true;
+    window.OnlineSystem.client = {
+        from: () => ({ select: () => ({ gte: () => ({ order: () => ({ limit: async () => ({ data: [{ display_name: 'Hero', level: 3, id: 'uuid', email: 'x@y.z' }], error: null }) }) }) }) })
+    };
+    const heroes = await window.OnlineSystem.listOnlineHeroes();
+    assert.equal(heroes.length, 1);
+    assert.equal('id' in heroes[0], false);
+    assert.equal('email' in heroes[0], false);
+});
+
+/* ── 19. Repeated status announcements ───────────────────────────────────── */
+
+test('(44) an unchanged status never rewrites the live status area', async t => {
+    const { window } = await ready(t), O = window.OnlineSystem;
+    const el = window.document.getElementById('online-status');
+    O.status = 'Online — Google linked';
+    O.updateIndicators();
+    const first = el.textContent;
+    let writes = 0;
+    Object.defineProperty(el, 'textContent', {
+        configurable: true,
+        get: () => first,
+        set: () => { writes++; }
+    });
+    O.updateIndicators();
+    O.updateIndicators();
+    O.updateIndicators();
+    assert.equal(writes, 0, 'identical status is never re-announced');
+});
+
+test('(45) identical connection announcements are spoken only once', async t => {
+    const { window } = await ready(t), O = window.OnlineSystem, spoken = [];
+    window.localStorage.setItem('black_sword_auto_speak', 'true');
+    O.speakText = text => (spoken.push(text), Promise.resolve(true));
+    O._lastAnnouncement = null;
+    O.announceToPlayer('Connection restored.');
+    O.announceToPlayer('Connection restored.');
+    O.announceToPlayer('Connection restored.');
+    assert.equal(spoken.length, 1);
+    O.announceToPlayer('Hero switched.');
+    assert.equal(spoken.length, 2, 'a material change is still announced');
+});
+
+/* ── 20–22. Chat expiry, notice and moderation ───────────────────────────── */
+
+test('(46) the five-minute expiry is enforced by the database, not the client', async () => {
+    const sql = await readFile('supabase/features_v18_five_minute_chat.sql', 'utf8');
+    assert.match(sql, /new\.expires_at=new\.created_at\+interval '5 minutes'/);
+    assert.match(sql, /expires_at>now\(\)/);
+    assert.match(sql, /timestamps are immutable/i);
+});
+
+test('(47) the community notice is shown once per user and stored as an acknowledgment', async t => {
+    const { window } = await ready(t);
+    const notice = window.ChatCommunityNotice;
+    window.localStorage.clear();
+    assert.equal(notice.acknowledged(), false);
+    const pending = notice.require();
+    assert.equal(window.document.getElementById('chat-community-notice').classList.contains('hidden'), false);
+    window.document.getElementById('btn-accept-chat-notice').click();
+    assert.equal(await pending, true);
+    assert.equal(notice.acknowledged(), true);
+    assert.equal(window.document.getElementById('chat-community-notice').classList.contains('hidden'), true);
+    assert.equal(await notice.require(), true, 'never shown again');
+    assert.equal(window.document.getElementById('chat-community-notice').classList.contains('hidden'), true);
+});
+
+test('(48) the notice states expiry, prohibited content, consequences and feedback', async () => {
+    const html = await readFile('index.html', 'utf8');
+    const body = html.slice(html.indexOf('id="chat-notice-body"'), html.indexOf('btn-accept-chat-notice'));
+    assert.match(body, /expire after five minutes/i);
+    assert.match(body, /abusive, threatening, hateful/i);
+    assert.match(body, /links and unsafe content are restricted/i);
+    assert.match(body, /moderation action/i);
+    assert.match(body, /feedback/i);
+    assert.match(html, /id="chat-community-notice"[^>]*role="dialog"/);
+});
+
+test('(49) server-side moderation remains authoritative', async () => {
+    const sql = await readFile('supabase/features_v19_feedback_moderation.sql', 'utf8');
+    assert.match(sql, /moderator_roles/);
+    assert.match(sql, /is_game_moderator/);
+    const online = await readFile('online.js', 'utf8');
+    assert.match(online, /checkChatContent/);
+});
+
+/* ── 23. Feedback entry point ────────────────────────────────────────────── */
+
+test('(50) a visible Send Feedback control exists inside Chat Rooms', async t => {
+    const { window } = await ready(t);
+    const button = window.document.getElementById('btn-open-feedback');
+    assert.ok(button, 'feedback button exists');
+    assert.ok(button.closest('#chat-rooms-panel'), 'it lives inside the chat rooms panel');
+    assert.equal(button.closest('details'), null, 'it is not hidden inside a collapsed menu');
+    assert.ok(button.textContent.trim().length);
+});
+
+test('(51) feedback supports bug, player report, suggestion and general categories', async t => {
+    const { window } = await ready(t);
+    window.FeedbackCenter.open();
+    const options = [...window.document.getElementById('feedback-category').options].map(o => o.value);
+    for (const required of ['bug', 'moderation', 'suggestion', 'gameplay']) assert.ok(options.includes(required), required);
+    assert.equal(window.document.getElementById('feedback-panel').classList.contains('hidden'), false);
+});
+
+test('(52) submitting feedback routes through the protected RPC exactly once', async t => {
+    const { window } = await ready(t), calls = [];
+    window.OnlineSystem.ready = true;
+    window.OnlineSystem.user = { id: 'user' };
+    window.OnlineSystem.client = { rpc: async (name, args) => (calls.push({ name, args }), { data: 'feedback-uuid', error: null }) };
+    window.FeedbackCenter.open('bug');
+    window.document.getElementById('feedback-message').value = 'The shock spell narration repeats twice.';
+    assert.equal(await window.FeedbackCenter.submit(), true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].name, 'submit_game_feedback');
+    assert.equal(calls[0].args.feedback_category, 'bug');
+    assert.equal(window.document.getElementById('feedback-message').value, '');
+});
+
+test('(53) empty feedback is rejected client-side without an RPC call', async t => {
+    const { window } = await ready(t), calls = [];
+    window.OnlineSystem.ready = true;
+    window.OnlineSystem.user = { id: 'user' };
+    window.OnlineSystem.client = { rpc: async name => (calls.push(name), { data: null, error: null }) };
+    window.FeedbackCenter.open();
+    window.document.getElementById('feedback-message').value = '   ';
+    assert.equal(await window.FeedbackCenter.submit(), false);
+    assert.equal(calls.length, 0);
+});

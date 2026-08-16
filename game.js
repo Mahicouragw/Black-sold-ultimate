@@ -590,12 +590,6 @@ const Game = {
                 this.startCombat(enemyName);
             }, 1500);
         }
-        // Quest progress is finite, while ordinary roaming encounters remain
-        // possible. Do not claim the wilderness is permanently empty.
-        if (this.areaClearedInfo(locId)) {
-            this.addNarrative('This area’s quest pack is cleared. Roaming wilderness monsters may still return. 🕊️', 'system');
-        }
-
         this.updateHUD();
         this.checkQuests('visit', locId);
     },
@@ -835,12 +829,12 @@ const Game = {
             if(visible.length)this.addNarrative(`You see: ${visible.map(i => WorldData.items[i]?.name || i).join(', ')}`, 'item');
         }
 
-        // Report the local monster pack (blind-friendly scouting).
-        const pack = this.getLivingEnemies(this.state.location);
+        // Report the local monster pool (blind-friendly scouting). The pool is
+        // the set of monster TYPES that can appear here; it is never a finite
+        // remaining-kill count.
+        const pack = this.getAreaMonsterPool(this.state.location);
         if (pack.length) {
-            this.addNarrative(`🐾 Monsters lurking here: ${pack.join(', ')}. Type "foes" for remaining counts. Combat begins only when an enemy encounters you, a quest requires it, or an NPC initiates it.`, 'system');
-        } else if (this.areaClearedInfo(this.state.location)) {
-            this.addNarrative('This area’s finite quest pack is complete. Roaming wilderness encounters may still occur.', 'system');
+            this.addNarrative(`🐾 Monsters roam here: ${pack.join(', ')}. Combat begins when an enemy encounters you, a quest requires it, or an NPC initiates it.`, 'system');
         }
     },
 
@@ -889,6 +883,29 @@ const Game = {
             return;
         }
 
+        // Validate the item against the CURRENT state before consuming anything.
+        const player = this.state.player;
+        if (item.type === 'quest' || item.questItem) {
+            this.addNarrative(`${item.name} is a quest item and is not consumed here.`, 'system');
+            return;
+        }
+        if (item.effect === 'heal' && player.hp >= player.maxHp) {
+            this.addNarrative('Your health is already full.', 'system');
+            return;
+        }
+        if (item.effect === 'mana' && player.mp >= player.maxMp) {
+            this.addNarrative('Your magic is already full.', 'system');
+            return;
+        }
+        if (item.effect === 'both' && player.hp >= player.maxHp && player.mp >= player.maxMp) {
+            this.addNarrative('Your health and magic are already full.', 'system');
+            return;
+        }
+        if (item.combatOnly && !this.state.inCombat) {
+            this.addNarrative(`${item.name} can only be used during battle.`, 'system');
+            return;
+        }
+
         if (item.effect === 'heal') {
             const healAmount = item.value;
             this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
@@ -916,6 +933,29 @@ const Game = {
 
         this.updateHUD();
         this.save();
+    },
+
+    /** Human description of an inventory item (Examine). */
+    examineInventoryItem(query) {
+        const item = this.state.inventory.find(i => i.name.toLowerCase().includes(String(query || '').toLowerCase()));
+        if (!item) { this.addNarrative("You do not carry that item.", 'system'); return null; }
+        const description = item.desc || item.description || 'A useful traveller\'s possession.';
+        this.addNarrative(`${item.name}: ${description}`, 'item');
+        return item;
+    },
+
+    /** Mechanical summary of an inventory item (Details). */
+    showInventoryItemDetails(query) {
+        const item = this.state.inventory.find(i => i.name.toLowerCase().includes(String(query || '').toLowerCase()));
+        if (!item) { this.addNarrative("You do not carry that item.", 'system'); return null; }
+        const parts = [`${item.name}`, `type ${item.type || 'general'}`, `quantity ${item.quantity}`];
+        if (item.damage) parts.push(`damage ${item.damage}`);
+        if (item.defense) parts.push(`defense ${item.defense}`);
+        if (item.value && ['heal', 'mana', 'both'].includes(item.effect)) parts.push(`restores ${item.value}`);
+        else if (item.value) parts.push(`worth ${item.value} gold`);
+        if (item.ability) parts.push(item.ability);
+        this.addNarrative(`${parts.join('; ')}.`, 'item');
+        return item;
     },
 
     equipItem(itemName) {
@@ -972,12 +1012,8 @@ const Game = {
         if (isHunt) {
             const locId = this.state.location;
             const loc = WorldData.locations[locId];
-            const living = this.getLivingEnemies(locId);
-            if (loc && loc.enemies && loc.enemies.length > 0 && living.length === 0) {
-                this.addNarrative('This area is cleared. Travel onward for new foes, or fight on in the Arena of Echoes.', 'system');
-                MusicSystem.playSFX('button');
-                return;
-            }
+            // Hunting uses the unlimited area pool: monsters always return.
+            const living = this.getAreaMonsterPool(locId);
             if (living.length === 0) {
                 this.addNarrative("There are no monsters here to hunt.", 'system');
                 MusicSystem.playSFX('button');
@@ -988,7 +1024,7 @@ const Game = {
             if (query) {
                 enemyName = living.find(n => n.toLowerCase().includes(query)) || null;
                 if (!enemyName) {
-                    this.addNarrative(`No living "${huntTarget}" here. Monsters still roaming this area: ${living.join(', ')}.`, 'system');
+                    this.addNarrative(`No "${huntTarget}" roams here. Monsters in this area: ${living.join(', ')}.`, 'system');
                     return;
                 }
             } else {
@@ -1024,17 +1060,26 @@ const Game = {
         return loc.enemies.filter(name => (slain[name] || 0) < this.getEnemyQuota(locId, name));
     },
 
-    // Roaming wilderness encounters are intentionally independent from the
-    // finite quest ledger above. Ordinary monsters can return forever; a slain
-    // boss/final boss remains finite and is excluded after its quota is met.
+    // Roaming wilderness encounters are UNLIMITED and completely independent of
+    // the quest kill ledger. The area's configured monster list is a POOL of
+    // possible monster TYPES, never a stock of remaining monsters. Only a truly
+    // slain unique boss/final boss is excluded.
     getRandomEncounterPool(locId) {
         const loc = WorldData.locations[locId];
-        if (!loc || loc.safe || !Array.isArray(loc.enemies)) return [];
-        const questLiving = new Set(this.getLivingEnemies(locId));
+        if (!loc || loc.safe) return [];
+        return this.getAreaMonsterPool(locId);
+    },
+
+    // The public, unlimited monster pool for an area: the monster TYPES that can
+    // be encountered here. It never shrinks as monsters are defeated.
+    getAreaMonsterPool(locId) {
+        const loc = WorldData.locations[locId];
+        if (!loc || !Array.isArray(loc.enemies)) return [];
+        const slain = (this.state.slainEnemies && this.state.slainEnemies[locId]) || {};
         return [...new Set(loc.enemies.filter(name => {
-            const enemy = WorldData.enemies[name];
-            if (!enemy) return false;
-            return !(enemy.boss || enemy.finalBoss) || questLiving.has(name);
+            const data = WorldData.enemies[name] || {};
+            // Only unique bosses stay finite once they have truly fallen.
+            return !(data.boss || data.finalBoss) || !(slain[name] > 0);
         }))];
     },
 
@@ -1048,21 +1093,14 @@ const Game = {
     showLivingEnemies() {
         const locId = this.state.location;
         const loc = WorldData.locations[locId];
-        if (!loc || !loc.enemies || !loc.enemies.length) {
-            this.addNarrative("No monsters live in this area. You are not in combat.", 'system');
+        const pool = this.getAreaMonsterPool(locId);
+        if (!pool.length) {
+            this.addNarrative("No monsters roam this area. You are not in combat.", 'system');
             return;
         }
-        const slain = (this.state.slainEnemies && this.state.slainEnemies[locId]) || {};
-        const rows = loc.enemies.map(name => {
-            const left = Math.max(0, this.getEnemyQuota(locId, name) - (slain[name] || 0));
-            return `${name}: ${left > 0 ? left + ' remaining' : 'fully defeated'}`;
-        });
-        const living = this.getLivingEnemies(locId);
-        if (living.length) {
-            this.addNarrative(`🐾 Monsters in this area — ${rows.join('; ')}. Combat begins when an enemy encounters you, a quest requires it, or an NPC initiates it. Use "hunt" to start a fight manually.`, 'system');
-        } else {
-            this.addNarrative(`🕊️ This area’s finite quest pack is cleared — ${rows.join('; ')}. Ordinary roaming monsters can still return in unsafe wilderness.`, 'system');
-        }
+        // The monster pool describes which creatures CAN appear here. Encounters
+        // are unlimited, so no remaining/kill counts are ever reported.
+        this.addNarrative(`🐾 Monsters that roam ${loc?.name || 'this area'}: ${pool.join(', ')}. They can be encountered again at any time. Use "hunt" to seek a fight.`, 'system');
     },
 
     // v7.17.0 — smarter NPCs: talk to a named NPC, quest-aware hints, and role
@@ -1924,7 +1962,14 @@ const Game = {
                 div.className = 'inv-item';
                 const canEquip = ['weapon','armor','helmet','gloves','boots','accessory'].includes(item.type);
                 const canUse = ['heal','mana','both'].includes(item.effect);
-                div.innerHTML = `<span>${this.escapeHTML(item.name)} <small>${this.escapeHTML(item.type || '')}</small></span><span>x${item.quantity} ${canEquip ? `<button onclick="Game.equipItem('${this.escapeHTML(this.escapeJS(item.name))}')">Equip</button>` : canUse ? `<button onclick="Game.useItem('${this.escapeHTML(this.escapeJS(item.name))}')">Use</button>` : ''}</span>`;
+                const safeName = this.escapeHTML(this.escapeJS(item.name));
+                const primary = canEquip
+                    ? `<button onclick="Game.equipItem('${safeName}')">Equip</button>`
+                    : canUse ? `<button onclick="Game.useItem('${safeName}')">Use</button>` : '';
+                div.innerHTML = `<span>${this.escapeHTML(item.name)} <small>${this.escapeHTML(item.type || '')}</small></span>`
+                    + `<span>x${item.quantity} ${primary}`
+                    + `<button onclick="Game.examineInventoryItem('${safeName}')">Examine</button>`
+                    + `<button onclick="Game.showInventoryItemDetails('${safeName}')">Details</button></span>`;
                 list.appendChild(div);
             });
         }

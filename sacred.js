@@ -305,7 +305,8 @@
         if(!queued&&!this.state._startingRandomEncounter)s.encounterNonce=(s.encounterNonce||0)+1;
         const engaged=WorldData.enemies[enemyName];
         if(!queued && !this.state.arena?.active && !engaged?.boss && !engaged?.finalBoss && loc?.enemies?.length){
-            const count=2+Math.floor(Math.random()*5); // two through six
+            const t=tuning();
+            const count=t.minGroup+Math.floor(Math.random()*(t.maxGroup-t.minGroup+1));
             // Roaming groups use the endless wilderness pool. Sampling with
             // replacement intentionally permits repeated monsters alongside
             // mixed groups; quest counts remain a separate finite ledger.
@@ -325,11 +326,12 @@
         const queue=[...(s.enemyQueue||[])];s.enemyQueue=[];oldDefeated();
         if(queue.length && !this.state.inCombat){const next=queue.shift();s.enemyQueue=queue;setTimeout(()=>this.startCombat(next,true),500);}
     };
+    // Encounter tuning is owned by EncounterSettings (a real, persisted gameplay
+    // setting). Nothing here consults a finite kill quota: the pool is endless.
+    const tuning=()=>window.EncounterSettings?.tuning?.()||{threshold:5,cooldownMs:90000,chance:0.06,minGroup:1,maxGroup:3};
     Game.randomEncounterEligibility=function(id,now=Date.now()){
-        const s=ensure(this),loc=WorldData.locations[id],pool=this.getRandomEncounterPool(id);
-        const threshold=s.encounterMode==='full'?3:5;
-        const cooldownMs=s.encounterMode==='full'?45000:90000;
-        return {eligible:Boolean(loc&&!loc.safe&&pool.length&&s.movesSinceEncounter>=threshold&&now-(s.lastRandomEncounterAt||0)>=cooldownMs),pool,threshold,cooldownMs};
+        const s=ensure(this),loc=WorldData.locations[id],pool=this.getRandomEncounterPool(id),t=tuning();
+        return {eligible:Boolean(loc&&!loc.safe&&pool.length&&s.movesSinceEncounter>=t.threshold&&now-(s.lastRandomEncounterAt||0)>=t.cooldownMs),pool,threshold:t.threshold,cooldownMs:t.cooldownMs,chance:t.chance};
     };
     const oldEnter=Game.enterLocation.bind(Game);
     Game.enterLocation=function(id){
@@ -339,7 +341,7 @@
             // Suppress the core 50% fallback; use time + movement cooldowns and
             // a protected probability roll against the endless roaming pool.
             const previousSafe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=previousSafe;
-            const eligibility=this.randomEncounterEligibility(id),chance=s.encounterMode==='full'?0.20:0.06;
+            const eligibility=this.randomEncounterEligibility(id),chance=eligibility.chance;
             if(eligibility.eligible&&Math.random()<chance){
                 this.state.randomEncounterPending=true;const token=s.encounterNonce=(s.encounterNonce||0)+1;
                 setTimeout(()=>{
@@ -400,8 +402,8 @@
         if(c==='pray'||c.startsWith('pray ')){this.pray(c.slice(5).trim());return;}if(c==='palace ceremony'||c==='advance hero'){this.palaceCeremony();return;}if(c==='palace quest'||c==='receive quest'){this.palaceQuest();return;}
         if(c.startsWith('train companion ')){this.trainCompanionAtPalace(c.slice(16));return;}if(c.startsWith('increase ')){this.increaseAttribute(c.slice(9));return;}
         if(c==='card test'||c==='guild card test'){this.startCardTest();return;}if(c.startsWith('answer ')){this.answerCardTest(c.slice(7));return;}
-        if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'){ensure(this).encounterMode='full';this.addNarrative('Normal encounter frequency enabled. Fair mode remains active for every 2–6 monster group.','system');this.save();return;}
-        if(c==='encounters off'){ensure(this).encounterMode='reduced';this.addNarrative('Encounter frequency reduced. Battle fairness and 2–6 group rules do not change.','system');this.save();return;}
+        if(c==='learn guild spells'||c==='guild spells'){this.learnGuildSpells();return;}if(c==='encounters on'||c==='frequent encounters on'){window.EncounterSettings?.set(true);this.save();return;}
+        if(c==='encounters off'||c==='frequent encounters off'){window.EncounterSettings?.set(false);this.save();return;}
         if(c==='storage'||c==='loot'||c==='check loot'){this.showStorage();return;}if(c==='take all loot'){this.takeAllLoot();return;}if(c.startsWith('throw ')||c.startsWith('drop ')){this.throwItem(c.replace(/^(throw|drop) /,''));return;}if(c.startsWith('take loot ')){this.takeLoot(c.slice(10));return;}
         if(c==='mission'||c==='missions'){this.showQuests();return;}if(c==='hero management'||c==='manage heroes'){this.showHeroRoster();return;}
         if(c.startsWith('watch ')||c.startsWith('view ')||c.startsWith('examine ')){this.examineEntity(c.replace(/^(watch|view|examine) /,''));return;}

@@ -22,6 +22,20 @@
             <p>Keeps visual location art and the full visual layout. All controls still have accessible names and semantics.</p>
         </div>
     </section>
+    <section id="chat-community-notice" class="interface-mode-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="chat-notice-title" aria-describedby="chat-notice-body">
+        <div class="interface-mode-card">
+            <h2 id="chat-notice-title">Community chat rules</h2>
+            <div id="chat-notice-body">
+                <p>Chat messages expire after five minutes.</p>
+                <p>Do not send abusive, threatening, hateful, or inappropriate content.</p>
+                <p>Links and unsafe content are restricted.</p>
+                <p>Violations may result in moderation action.</p>
+                <p>Use Feedback to report problems or contact the development team.</p>
+            </div>
+            <button id="btn-accept-chat-notice" class="menu-btn big-btn primary" type="button">I understand — continue</button>
+            <button id="btn-cancel-chat-notice" class="menu-btn big-btn" type="button">Cancel</button>
+        </div>
+    </section>
     <div id="game-container" role="main" aria-label="The Black Sword Chronicles RPG">
 
         <!-- Title Screen -->
@@ -241,6 +255,16 @@
                 <section id="combat-status" class="inline-combat-status hidden" aria-labelledby="combat-status-heading">
                     <h3 id="combat-status-heading">Current encounter</h3>
                     <p id="combat-status-text"></p>
+                    <div id="combat-actions" class="inline-combat-actions" role="group" aria-label="Combat actions">
+                        <button type="button" class="combat-action-btn" data-combat-command="attack" accesskey="1">⚔️ Attack</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="healing spell" accesskey="2">✨ Healing Spell</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="multiple strike" accesskey="3">🌟 Multiple Strike</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="shock" accesskey="4">⚡ Shock Spell</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="inventory" accesskey="5">🎒 Items</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="defend" accesskey="6">🛡️ Defend</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="flee" accesskey="7">🏃 Flee</button>
+                    </div>
+                    <p id="combat-actions-help" class="settings-note">Use these buttons, the command input, the keyboard, TalkBack, or voice input. Every method runs the same combat command.</p>
                 </section>
             </div>
 
@@ -348,6 +372,7 @@
                     <input id="social-name" maxlength="40" placeholder="Recipient hero name for direct message" aria-label="Recipient hero name">
                     <input id="social-message" maxlength="300" placeholder="Message (leave empty to send friend request)" aria-label="Direct message" aria-describedby="direct-chat-expiry-notice">
                     <button id="btn-social-send" class="menu-btn">Send Message / Request</button>
+                <button id="btn-open-feedback-direct" class="menu-btn feedback-entry" type="button">📣 Send Feedback</button>
                 </div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
@@ -356,6 +381,7 @@
             <div id="chat-rooms-panel" class="panel hidden wide-panel" aria-label="Public and private chat rooms">
                 <h3>💬 Chat Rooms</h3>
                 <p id="room-chat-expiry-notice" class="settings-note">Chat messages automatically expire after five minutes. Server moderation rejects links, threats, harassment, abusive content, and spam.</p>
+                <button id="btn-open-feedback" class="menu-btn primary feedback-entry" type="button">📣 Send Feedback</button>
                 <div class="chat-room-layout">
                     <aside><button id="btn-refresh-rooms" class="menu-btn">Refresh Rooms</button><div id="chat-room-list"></div></aside>
                     <section>
@@ -372,6 +398,25 @@
                     <button id="btn-create-room" class="menu-btn primary">Create Room</button>
                 </details>
                 <div class="room-owner-actions"><input id="room-player-name" maxlength="40" placeholder="Exact hero name" aria-label="Hero name for room invitation or blacklist"><button id="btn-room-invite">Invite</button><button id="btn-room-blacklist">Blacklist</button><button id="btn-delete-room">Delete My Room</button></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Player feedback: bugs, reports, suggestions, general feedback -->
+            <div id="feedback-panel" class="panel hidden" aria-label="Send feedback to the development team">
+                <h3>📣 Send Feedback</h3>
+                <p class="settings-note">Feedback goes securely to the moderator and developer inbox. Do not include passwords, your Player ID or your recovery PIN.</p>
+                <label for="feedback-category">What is this about?</label>
+                <select id="feedback-category">
+                    <option value="bug">Report a bug</option>
+                    <option value="moderation">Report a player or message</option>
+                    <option value="suggestion">Suggest a feature</option>
+                    <option value="accessibility">Accessibility problem</option>
+                    <option value="gameplay">General feedback</option>
+                </select>
+                <label for="feedback-message">Your message</label>
+                <textarea id="feedback-message" maxlength="1000" rows="5" placeholder="Describe the problem, the player, or your idea." aria-describedby="feedback-status"></textarea>
+                <button id="btn-send-feedback" class="menu-btn primary" type="button">Send Feedback</button>
+                <p id="feedback-status" class="settings-note" role="status" aria-live="polite"></p>
                 <button class="menu-btn close-btn">Close</button>
             </div>
 
@@ -405,7 +450,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.22.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.22.1</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -441,6 +486,11 @@
                         <label for="setting-voice-volume">Device voice volume <output id="setting-voice-volume-value" for="setting-voice-volume">90%</output></label>
                         <input type="range" id="setting-voice-volume" min="0" max="100" step="1" value="90" aria-label="Device voice volume, 0 to 100 percent">
                         <p id="audio-settings-help" class="settings-note">Device speech is off by default to avoid duplicating TalkBack. Turn it on for spoken chat; music automatically ducks while speech plays.</p>
+                    </fieldset>
+                    <fieldset class="gameplay-settings" aria-describedby="encounter-frequency-help">
+                        <legend>Gameplay</legend>
+                        <label class="setting-toggle" for="setting-frequent-encounters"><input type="checkbox" id="setting-frequent-encounters"> More frequent monster encounters</label>
+                        <p id="encounter-frequency-help" class="settings-note">Random wilderness battles are unlimited. This setting changes how often they happen and how large groups can be. A cooldown always prevents combat spam. It persists across restarts.</p>
                     </fieldset>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>
@@ -543,6 +593,7 @@
     <script defer src="horse-racing-v22.js"></script>
     <script defer src="world-navigation-v27.js"></script>
     <script defer src="stabilization-v7211.js"></script>
+    <script defer src="chat-notice-feedback-v7221.js"></script>
     <script type="module" src="game-hall.js"></script>
     <script src="pwa.js"></script>
 </body>

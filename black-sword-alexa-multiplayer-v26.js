@@ -518,6 +518,8 @@
             <span style="display:flex;gap:4px;">
               <button onclick="Game.useItem('${jsEsc}')">Use</button>
               ${canEquip ? `<button onclick="Game.equipItem('${jsEsc}')">Equip</button>` : ''}
+              <button onclick="Game.examineInventoryItem('${jsEsc}')">Examine</button>
+              <button onclick="Game.showInventoryItemDetails('${jsEsc}')">Details</button>
               <button onclick="Game.throwItem('${jsEsc}')" style="background:#5a1e1e;">Throw</button>
             </span>`;
           list.appendChild(div);

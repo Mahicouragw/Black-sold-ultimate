@@ -148,12 +148,11 @@ const OnlineSystem = {
         return window.AudioManager.playVoice(String(text).slice(0, 600), {
             voiceId,
             language,
-            force: Boolean(options.force),
             priority: Boolean(options.priority)
         });
     },
 
-    testSelectedVoice() { const name=this.selectedVoice.startsWith('system:')?this.selectedVoice.slice(7):this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label;this.speakText(`This is ${name&&name!=='default'?name:'the default device voice'} in Black Sword chat.`,this.selectedVoice,'en-US',{force:true}); },
+    testSelectedVoice() { if(!window.AudioManager?.voiceEnabled){window.Game?.addNarrative?.('Application text to speech is off. Turn on "Device voice and TTS" in Settings to hear the voice test.','system');return;} const name=this.selectedVoice.startsWith('system:')?this.selectedVoice.slice(7):this.voiceProfiles.find(v=>v.id===this.selectedVoice)?.label;this.speakText(`This is ${name&&name!=='default'?name:'the default device voice'} in Black Sword chat.`,this.selectedVoice,'en-US'); },
     async speakMessageById(id) { const m=this.messageCache.find(x=>String(x.id)===String(id)); if(m){const text=await (window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body));this.speakText(`${m.sender?.display_name||'Hero'} says: ${text}`,m.voice_id||'system:default',window.TranslationService?.target||'en');} },
 
     setupHeroAutocomplete() {
@@ -441,6 +440,11 @@ const OnlineSystem = {
 
     // Speak + narrate so TalkBack players hear the welcome, sighted players see it.
     announceToPlayer(text) {
+        // Material connection/profile changes only. Repeated identical text is
+        // never re-announced, so gameplay is not interrupted on every render,
+        // movement, battle, chat refresh or state update.
+        if(this._lastAnnouncement===text)return;
+        this._lastAnnouncement=text;
         try{window.Game?.addNarrative?.(text,'npc');}catch{}
         try{if(localStorage.getItem('black_sword_auto_speak')==='true')this.speakText(text);}catch{}
         const titleStatus=document.getElementById('title-account-status');if(titleStatus)titleStatus.textContent=text;
@@ -708,11 +712,22 @@ const OnlineSystem = {
         } catch (error) { window.Game.addNarrative(error.message, 'system'); return false; }
     },
 
+    // Public hero projection. Only these fields may ever leave the server for
+    // another player: no account ids, emails, player codes, PINs, tokens,
+    // recovery answers or internal UUIDs.
+    PUBLIC_HERO_FIELDS: Object.freeze(['display_name','level','current_location','last_seen','hero_class','hero_race','titles','achievements']),
+    toPublicHero(row) {
+        const safe={};
+        for(const field of this.PUBLIC_HERO_FIELDS) if(row&&row[field]!==undefined) safe[field]=row[field];
+        return safe;
+    },
+
     async listOnlineHeroes() {
         if (!this.ready) return [];
         const since=new Date(Date.now()-10*60*1000).toISOString();
         const {data,error}=await this.client.from('profiles').select('display_name,level,current_location,last_seen').gte('last_seen',since).order('last_seen',{ascending:false}).limit(30);
-        if(error){window.Game?.addNarrative?.(error.message,'system');return [];}return data||[];
+        if(error){window.Game?.addNarrative?.(error.message,'system');return [];}
+        return (data||[]).map(row=>this.toPublicHero(row));
     },
 
     async sendFeedback(category,message) {
@@ -842,10 +857,13 @@ const OnlineSystem = {
 
     updateIndicators() {
         const activeName = window.Game?.state?.player?.name || this.profile?.display_name || 'No hero selected';
+        const line = `${activeName} • ${this.status}`;
+        // Static status area only. Writing identical text would re-fire the live
+        // region and interrupt TalkBack on every render, so it is skipped.
         const el = document.getElementById('online-status');
-        if (el) el.textContent = `${activeName} • ${this.status}`;
+        if (el && el.textContent !== line) el.textContent = line;
         const titleStatus = document.getElementById('title-account-status');
-        if (titleStatus) titleStatus.textContent = `${activeName} • ${this.status}`;
+        if (titleStatus && titleStatus.textContent !== line) titleStatus.textContent = line;
         const signIn = document.getElementById('btn-google-signin');
         if (signIn) {
             signIn.disabled=false;

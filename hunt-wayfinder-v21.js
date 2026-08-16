@@ -73,13 +73,13 @@
                     } else if (obj.type === 'kill') {
                         const targetName = obj.target === 'any' ? null : obj.target;
                         const area = nearestAreaWith((loc, id) => {
-                            const living = this.getLivingEnemies ? this.getLivingEnemies(id) : (loc.enemies || []);
+                            const living = this.getAreaMonsterPool ? this.getAreaMonsterPool(id) : (loc.enemies || []);
                             return targetName ? living.includes(targetName) : living.length > 0;
                         });
                         if (area) {
                             guide = `${targetName ? `The ${targetName} can be found at ${WorldData.locations[area.id]?.name || area.id}` : `Wild monsters wait at ${WorldData.locations[area.id]?.name || area.id}`} — ${dirText(area.path)}.`;
                         } else {
-                            guide = targetName ? `All ${targetName}s you could reach are already defeated — areas may clear permanently.` : 'All reachable wild areas are cleared — try the daily treasure or arena.';
+                            guide = targetName ? `No reachable area lists the ${targetName} in its monster pool. Travel further afield.` : 'No reachable wild area lists monsters. Travel further afield, or try the daily treasure or arena.';
                         }
                     } else if (obj.type === 'collect') {
                         const inv = (s.inventory || []).find(it => it.id === obj.target || it.name.toLowerCase() === obj.target);
@@ -109,15 +109,13 @@
                 return;
             }
             entries.sort((a, b) => b[1] - a[1]);
-            const clearedCount = Object.keys(book).filter(l => this.areaClearedInfo(l)).length;
-            this.addNarrative(`📖 Bestiary — ${entries.length} monster types slain, ${s.kills} total kills, ${clearedCount} areas fully cleared:\n` +
+            this.addNarrative(`📖 Bestiary — ${entries.length} monster types slain, ${s.kills} total kills:\n` +
                 entries.map(([n, c]) => `${n}: ${c}`).join('; '), 'treasure');
         };
 
         // ---- JOURNAL: spoken progress briefing ----
         Game.showJournal = function () {
             const s = this.state, p = s.player;
-            const cleared = Object.keys(s.slainEnemies || {}).filter(l => this.areaClearedInfo(l)).length;
             const achCount = (s.achievements || []).length;
             const arenaWins = s.achievementStats?.arenaWinsTotal || 0;
             const companions = (s.companions || []).map(c => `${c.name} (HP ${c.hp}/${c.maxHp})`).join(', ') || 'none yet';
@@ -127,7 +125,7 @@
                 `📓 Journal of ${p.name}: level ${p.level} ${p.race||''} ${p.class||''}. ` +
                 `HP ${Math.max(0, p.hp)}/${p.maxHp}, MP ${p.mp}/${p.maxMp}, XP ${Math.floor(p.xp)}. ` +
                 `Treasure: ${p.gold} gold, ${p.rubies||0} rubies, ${p.goldRubies||0} gold rubies, ${p.diamonds||0} diamonds. ` +
-                `${s.kills} monsters slain, ${cleared} areas fully cleared, ${arenaWins} arena waves won, ` +
+                `${s.kills} monsters slain, ${arenaWins} arena waves won, ` +
                 `${achCount} achievements unlocked. ${questLine} ` +
                 `Completed quests: ${(s.completedQuests || []).length}. Companions with you: ${companions}. ` +
                 `Location: ${WorldData.locations[s.location]?.name || s.location}.`,
