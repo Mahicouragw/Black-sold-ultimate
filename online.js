@@ -8,6 +8,7 @@ const OnlineSystem = {
     status: 'Connecting…',
     subscription: null,
     messageCache: [],
+    messageExpiryTimer: null,
     lastMessageAt: 0,
     activeCombatGroup: null,
     suggestionResults: {},
@@ -777,14 +778,17 @@ const OnlineSystem = {
     },
 
     normalizeLanguageMessage(message) { const match=String(message.body||'').match(/^\[\[lang:([a-z-]{2,12})\]\](.*)$/s);if(match){message.source_language=match[1];message.body=match[2];}message.source_language||='en';return message; },
+    isFreshMessage(message,now=Date.now()){const expires=message?.expires_at?new Date(message.expires_at).getTime():new Date(message?.created_at||0).getTime()+300000;return Number.isFinite(expires)&&expires>now;},
+    scheduleMessageExpiry(){clearTimeout(this.messageExpiryTimer);const expiries=this.messageCache.map(m=>new Date(m.expires_at||new Date(m.created_at).getTime()+300000).getTime()).filter(Number.isFinite);if(!expiries.length)return;const next=Math.min(...expiries);this.messageExpiryTimer=setTimeout(()=>{this.messageCache=this.messageCache.filter(m=>this.isFreshMessage(m));this.refreshOpenSocial();this.scheduleMessageExpiry();},Math.max(0,next-Date.now()+30));},
 
     async listMessages() {
         if (!this.ready) return [];
         const { data, error } = await this.client.from('messages')
             .select('*,sender:profiles!messages_sender_id_fkey(display_name)')
+            .gt('expires_at',new Date().toISOString())
             .order('created_at', { ascending: false }).limit(30);
         if (error) { console.warn(error.message); return []; }
-        this.messageCache=(data || []).reverse().map(m=>this.normalizeLanguageMessage(m)); return this.messageCache;
+        this.messageCache=(data || []).filter(m=>this.isFreshMessage(m)).reverse().map(m=>this.normalizeLanguageMessage(m));this.scheduleMessageExpiry();return this.messageCache;
     },
 
     async subscribe() {
@@ -792,7 +796,7 @@ const OnlineSystem = {
         const membershipResult=await this.client.from('combat_group_members').select('group_id').eq('user_id',this.user.id).limit(1).maybeSingle();
         const hasV6=!membershipResult.error;this.activeCombatGroup=membershipResult.data?.group_id||null;
         let channel=this.client.channel('black-sword-social')
-            .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},payload=>{this.refreshOpenSocial();const m=this.normalizeLanguageMessage(payload.new);if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')==='true'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>this.speakText(text,m.voice_id||'system:default',window.TranslationService?.target||'en'));}})
+            .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{if(payload.eventType==='DELETE'){this.messageCache=this.messageCache.filter(m=>String(m.id)!==String(payload.old?.id));this.refreshOpenSocial();return;}const raw=payload.new;if(payload.eventType!=='INSERT'||!this.isFreshMessage(raw))return;const authorized=raw.receiver_id===null||raw.sender_id===this.user?.id||raw.receiver_id===this.user?.id;if(!authorized)return;this.refreshOpenSocial();const m=this.normalizeLanguageMessage(raw);if(m.sender_id!==this.user?.id&&localStorage.getItem('black_sword_auto_speak')==='true'){const task=window.TranslationService?.translate?.(m.body,m.source_language||'en')||Promise.resolve(m.body);task.then(text=>{if(this.isFreshMessage(m))this.speakText(text,m.voice_id||'system:default',window.TranslationService?.target||'en');});}})
             .on('postgres_changes',{event:'*',schema:'public',table:'friend_requests'},()=>this.refreshOpenSocial());
         if(hasV6) channel=channel
             .on('postgres_changes',{event:'INSERT',schema:'public',table:'group_battle_actions'},payload=>{const a=payload.new,g=window.Game;if(a.group_id!==this.activeCombatGroup||a.user_id===this.user?.id||!g?.state?.inCombat||!g.state.enemy)return;if(g.state.enemy.name.toLowerCase()!==String(a.monster_name).toLowerCase())return;g.applyEnemyDamage(a.damage,null);g.updateEnemyHUD();if(g.state.enemy.hp<=0)g.enemyDefeated();})

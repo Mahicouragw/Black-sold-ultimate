@@ -1,0 +1,581 @@
+{
+  "schemaVersion": 1,
+  "phase": "before",
+  "generatedAt": "2026-08-16T02:18:48.931Z",
+  "generatedFor": "Black Sword Ultimate 7.21.0",
+  "totals": {
+    "files": 14,
+    "bytes": 44510024,
+    "manifestRecords": 14,
+    "registryTracks": 14,
+    "playlists": 42,
+    "creditEntries": 14
+  },
+  "hashes": {
+    "audioManifestSha256": "3c20db405e2a613514e9e633302253dabb951bb7830b6b6017ad317abbaf1dc7",
+    "audioCreditsSha256": "4a0bd3a73fe37ddc6a59d9a291f0c17e5106fbd236e4a4d2dad1bd04475ecabd",
+    "musicSourceSha256": "8890a9074f6a970e72fe24d135a14c0703e085a19a0a896ada71a9c4dd4f3c23"
+  },
+  "files": [
+    {
+      "path": "assets/audio/music/Fantasy-Choir-1.mp3",
+      "bytes": 5676580,
+      "sha256": "721f6859d76b808fa261dd1d0ab3e40c0e9a6730354b2e7a4bf78973598bc438"
+    },
+    {
+      "path": "assets/audio/music/Fantasy-Choir-2.mp3",
+      "bytes": 1246744,
+      "sha256": "96b6bbb4d1e3a790b00166c0dafc98e1b62052322fe8c5e4408f1dbe753967d7"
+    },
+    {
+      "path": "assets/audio/music/Fantasy-Choir-3.mp3",
+      "bytes": 3200566,
+      "sha256": "7d41d7e110be5bff1184317c2cc490eeb7667a2ba2d144379b164d98960ae582"
+    },
+    {
+      "path": "assets/audio/music/adventure-intro.wav",
+      "bytes": 6525122,
+      "sha256": "50f903ed8ee144000a66700495746178d9c9c441d092dccd3407bba5be40f259"
+    },
+    {
+      "path": "assets/audio/music/battle-fast.mp3",
+      "bytes": 2678448,
+      "sha256": "a1d9ed4ea9084a6712a49179bb9cb2e85af24ad5af7f212016d96d527b070687"
+    },
+    {
+      "path": "assets/audio/music/battle.ogg",
+      "bytes": 192755,
+      "sha256": "cf956ab013d8d9ee74d16f2bfd8c5ccf7c6c967dca0cb5958dd9f00eeeeb115e"
+    },
+    {
+      "path": "assets/audio/music/boss.mp3",
+      "bytes": 7014778,
+      "sha256": "1b2f2f3063ab3836057323dba8bb3d8f481d701fe17b8258c94aab7521f1bdf9"
+    },
+    {
+      "path": "assets/audio/music/dark-forest.mp3",
+      "bytes": 2740811,
+      "sha256": "191fad9c2333eee006213d84e8c5f4e978ffb181500e9c386669d9bf0875b0d9"
+    },
+    {
+      "path": "assets/audio/music/determined-pursuit.mp3",
+      "bytes": 4192173,
+      "sha256": "9241a5e30f1c0779ce81482df88f93f43ee73060516c766e1d900f8a08678e45"
+    },
+    {
+      "path": "assets/audio/music/dungeon.ogg",
+      "bytes": 2483838,
+      "sha256": "4de987c17d0767babb91ee40e73354d029a22e0f88ed69ee26e7821cb22f7fa2"
+    },
+    {
+      "path": "assets/audio/music/exploration.mp3",
+      "bytes": 2770131,
+      "sha256": "b38c10170fcab2e63e885b30c9eaaf3369f8d764e02afe4bb79362ca205cb752"
+    },
+    {
+      "path": "assets/audio/music/inn.mp3",
+      "bytes": 667334,
+      "sha256": "5d8587f11932b5b6b87ccd24ca9de1c57bbef9a401f8d86ccc1182bec8a8cc81"
+    },
+    {
+      "path": "assets/audio/music/town.mp3",
+      "bytes": 5042333,
+      "sha256": "acb98fa18870e6b2b5a37e7dd21450103517d7c1c7c26b1c98174764c3377101"
+    },
+    {
+      "path": "assets/audio/music/victory.mp3",
+      "bytes": 78411,
+      "sha256": "1ceed59dc7df8159b78e68429e799e1f32cbce173a7c84d4601b5638f533d127"
+    }
+  ],
+  "registry": [
+    {
+      "key": "town",
+      "path": "assets/audio/music/town.mp3",
+      "title": "Fantasy Music - Night Town"
+    },
+    {
+      "key": "inn",
+      "path": "assets/audio/music/inn.mp3",
+      "title": "The Old Tower Inn"
+    },
+    {
+      "key": "exploration",
+      "path": "assets/audio/music/exploration.mp3",
+      "title": "Epic Departure"
+    },
+    {
+      "key": "darkForest",
+      "path": "assets/audio/music/dark-forest.mp3",
+      "title": "Cathedral in the Forest"
+    },
+    {
+      "key": "temple",
+      "path": "assets/audio/music/Fantasy-Choir-1.mp3",
+      "title": "A Winter Tale"
+    },
+    {
+      "key": "palace",
+      "path": "assets/audio/music/Fantasy-Choir-2.mp3",
+      "title": "A New Town"
+    },
+    {
+      "key": "epicExplore",
+      "path": "assets/audio/music/Fantasy-Choir-3.mp3",
+      "title": "Beyond the Frozen Veil"
+    },
+    {
+      "key": "intro",
+      "path": "assets/audio/music/adventure-intro.wav",
+      "title": "Adventure Intro Title"
+    },
+    {
+      "key": "dungeon",
+      "path": "assets/audio/music/dungeon.ogg",
+      "title": "RPG Ambience - Dungeon"
+    },
+    {
+      "key": "battle",
+      "path": "assets/audio/music/battle.ogg",
+      "title": "Battle March"
+    },
+    {
+      "key": "battleFast",
+      "path": "assets/audio/music/battle-fast.mp3",
+      "title": "Battle in the Stratosphere"
+    },
+    {
+      "key": "battleCinematic",
+      "path": "assets/audio/music/determined-pursuit.mp3",
+      "title": "Determined Pursuit"
+    },
+    {
+      "key": "boss",
+      "path": "assets/audio/music/boss.mp3",
+      "title": "A Slave To No One"
+    },
+    {
+      "key": "victory",
+      "path": "assets/audio/music/victory.mp3",
+      "title": "Victory"
+    }
+  ],
+  "playlists": {
+    "CITY": [
+      "town",
+      "palace",
+      "inn"
+    ],
+    "CITY_MARKET": [
+      "town",
+      "inn",
+      "palace"
+    ],
+    "MARKET": [
+      "inn",
+      "town",
+      "palace"
+    ],
+    "VILLAGE": [
+      "inn",
+      "town",
+      "palace"
+    ],
+    "FOREST": [
+      "darkForest",
+      "exploration",
+      "epicExplore"
+    ],
+    "PASTURE": [
+      "exploration",
+      "palace",
+      "town"
+    ],
+    "ISLAND": [
+      "exploration",
+      "epicExplore",
+      "darkForest"
+    ],
+    "MOUNTAIN": [
+      "epicExplore",
+      "exploration",
+      "temple"
+    ],
+    "CAVE": [
+      "dungeon",
+      "darkForest",
+      "temple"
+    ],
+    "DUNGEON": [
+      "dungeon",
+      "darkForest",
+      "temple"
+    ],
+    "TEMPLE": [
+      "temple",
+      "palace",
+      "epicExplore"
+    ],
+    "PALACE": [
+      "palace",
+      "temple",
+      "epicExplore"
+    ],
+    "CEMETERY": [
+      "darkForest",
+      "dungeon",
+      "temple"
+    ],
+    "MYSTERIOUS": [
+      "darkForest",
+      "dungeon",
+      "temple"
+    ],
+    "EXPLORATION": [
+      "exploration",
+      "epicExplore",
+      "darkForest"
+    ],
+    "TRAVEL": [
+      "exploration",
+      "town",
+      "epicExplore"
+    ],
+    "DISCOVERY": [
+      "palace",
+      "exploration",
+      "epicExplore"
+    ],
+    "JOURNEY": [
+      "exploration",
+      "epicExplore",
+      "town"
+    ],
+    "WONDER": [
+      "epicExplore",
+      "temple",
+      "palace"
+    ],
+    "INSPIRATIONAL": [
+      "temple",
+      "palace",
+      "epicExplore"
+    ],
+    "MOTIVATIONAL": [
+      "epicExplore",
+      "intro",
+      "palace"
+    ],
+    "HEROIC_INSPIRATION": [
+      "intro",
+      "epicExplore",
+      "temple"
+    ],
+    "EMOTIONAL_INSPIRATION": [
+      "temple",
+      "darkForest",
+      "palace"
+    ],
+    "VICTORY_INSPIRATION": [
+      "victory",
+      "intro",
+      "epicExplore"
+    ],
+    "EPIC_ADVENTURE": [
+      "epicExplore",
+      "intro",
+      "exploration"
+    ],
+    "EPIC_FANTASY": [
+      "epicExplore",
+      "temple",
+      "palace"
+    ],
+    "HEROIC": [
+      "intro",
+      "epicExplore",
+      "battleCinematic"
+    ],
+    "POWERFUL": [
+      "battleCinematic",
+      "boss",
+      "epicExplore"
+    ],
+    "CINEMATIC_FANTASY": [
+      "intro",
+      "epicExplore",
+      "temple"
+    ],
+    "BATTLE_NORMAL": [
+      "battle",
+      "battleFast",
+      "battleCinematic"
+    ],
+    "BATTLE_INTENSE": [
+      "battleFast",
+      "battleCinematic",
+      "battle"
+    ],
+    "BATTLE_BOSS": [
+      "boss",
+      "battleCinematic",
+      "battleFast"
+    ],
+    "BATTLE_FINAL_BOSS": [
+      "boss",
+      "battleCinematic",
+      "battle"
+    ],
+    "DANGER": [
+      "battleCinematic",
+      "darkForest",
+      "dungeon"
+    ],
+    "BATTLE_VICTORY": [
+      "victory",
+      "intro"
+    ],
+    "SPECIAL_QUEST_COMPLETE": [
+      "victory",
+      "palace"
+    ],
+    "SPECIAL_LEVEL_UP": [
+      "victory",
+      "intro"
+    ],
+    "SPECIAL_DEATH": [
+      "darkForest",
+      "dungeon"
+    ],
+    "SPECIAL_REVIVAL": [
+      "temple",
+      "palace"
+    ],
+    "SPECIAL_CEREMONY": [
+      "temple",
+      "palace"
+    ],
+    "SPECIAL_TREASURE": [
+      "victory",
+      "inn"
+    ],
+    "SPECIAL_RARE_DISCOVERY": [
+      "intro",
+      "epicExplore"
+    ]
+  },
+  "manifestRecords": [
+    {
+      "path": "assets/audio/music/Fantasy-Choir-1.mp3",
+      "kind": "music",
+      "title": "A Winter Tale",
+      "creator": "Johan Brodd (jobromedia)",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/a-winter-tale",
+      "license": "CC BY-SA 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "licenseRequirements": "Credit Johan Brodd, link the licence, indicate this format conversion, and distribute the adapted audio under CC BY-SA 3.0.",
+      "attributionRequirements": "Required; see attribution. The local transcoded copy remains CC BY-SA 3.0.",
+      "attribution": "“A Winter Tale” by Johan Brodd, used and locally transcoded under CC BY-SA 3.0. Local adapted audio is offered under CC BY-SA 3.0.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/Fantasy-Choir-2.mp3",
+      "kind": "music",
+      "title": "A New Town (RPG Theme)",
+      "creator": "The Cynic Project / cynicmusic",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/a-new-town-rpg-theme",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit requested by creator: The Cynic Project / pixelsphere.org / cynicmusic.com.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/Fantasy-Choir-3.mp3",
+      "kind": "music",
+      "title": "Beyond the Frozen Veil",
+      "creator": "Synth-thetic",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/beyond-the-frozen-veil",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit: “Beyond the Frozen Veil” by Synth-thetic.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/adventure-intro.wav",
+      "kind": "music",
+      "title": "Adventure Intro Title [Cinematic, Epic]",
+      "creator": "nene",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/adventure-intro-title-cinematic-epic",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit: “Adventure Intro Title” by nene.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/battle-fast.mp3",
+      "kind": "music",
+      "title": "Battle in the Stratosphere",
+      "creator": "Scott Elliott (Scrabbit)",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/battle-in-the-stratosphere",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“Battle in the Stratosphere” by Scott Elliott, used under CC BY 4.0; converted to the bundled MP3.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/battle.ogg",
+      "kind": "music",
+      "title": "Battle March - Epic Orchestral Music Loop",
+      "creator": "PlayOnLoop",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/battle-march-epic-orchestral-music-loop",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“Battle March” by PlayOnLoop, used under CC BY 3.0; converted to the bundled OGG. Credit link: PlayOnLoop.com.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/boss.mp3",
+      "kind": "music",
+      "title": "A Slave To No One",
+      "creator": "Jonathan Shaw (InspectorJ)",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/a-slave-to-no-one-rpg-orchestral-essentials",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“A Slave To No One” composed by Jonathan Shaw (www.jshaw.co.uk), used under CC BY 3.0; converted to the bundled MP3.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/dark-forest.mp3",
+      "kind": "music",
+      "title": "Cathedral in the Forest (ambient loop)",
+      "creator": "congusbongus",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/cathedral-in-the-forest-ambient-loop",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit: “Cathedral in the Forest” by congusbongus.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/determined-pursuit.mp3",
+      "kind": "music",
+      "title": "Determined Pursuit (epic orchestra loop)",
+      "creator": "Emma_MA",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/determined-pursuit-epic-orchestra-loop",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit: “Determined Pursuit” by Emma_MA.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/dungeon.ogg",
+      "kind": "music",
+      "title": "RPG Ambience - Dungeon",
+      "creator": "HitCtrl",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/rpg-ambience-dungeon",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“RPG Ambience - Dungeon” by HitCtrl, used under CC BY 3.0; converted to the bundled OGG.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/exploration.mp3",
+      "kind": "music",
+      "title": "Epic Departure [v2]",
+      "creator": "Of Far Different Nature",
+      "source": "itch.io (creator page)",
+      "sourcePage": "https://fardifferent.itch.io/loops",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“Epic Departure [v2]” by Of Far Different Nature, from Loop Box #3, used under CC BY 4.0; converted to the bundled MP3.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/inn.mp3",
+      "kind": "music",
+      "title": "Medieval: The Old Tower Inn",
+      "creator": "RandomMind",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/medieval-the-old-tower-inn",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit: “Medieval: The Old Tower Inn” by RandomMind.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/town.mp3",
+      "kind": "music",
+      "title": "Fantasy Music - Night Town",
+      "creator": "Angus Macnaughton",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/fantasy-music-night-town",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“Fantasy Music - Night Town” © Angus Macnaughton 2014, used under CC BY 4.0; converted to the bundled MP3.",
+      "dateAccessed": "2026-08-15"
+    },
+    {
+      "path": "assets/audio/music/victory.mp3",
+      "kind": "music",
+      "title": "Victory",
+      "creator": "celestialghost8",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/victory",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required.",
+      "attribution": "Courtesy credit: “Victory” by celestialghost8.",
+      "dateAccessed": "2026-08-15"
+    }
+  ],
+  "creditEntries": [
+    "| `assets/audio/music/Fantasy-Choir-1.mp3` | A Winter Tale | Johan Brodd (jobromedia) | [OpenGameArt](https://opengameart.org/content/a-winter-tale) | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) | Credit Johan Brodd, link the licence, indicate this format conversion, and distribute the adapted audio under CC BY-SA 3.0. “A Winter Tale” by Johan Brodd, used and locally transcoded under CC BY-SA 3.0. Local adapted audio is offered under CC BY-SA 3.0. | 2026-08-15 |",
+    "| `assets/audio/music/Fantasy-Choir-2.mp3` | A New Town (RPG Theme) | The Cynic Project / cynicmusic | [OpenGameArt](https://opengameart.org/content/a-new-town-rpg-theme) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit requested by creator: The Cynic Project / pixelsphere.org / cynicmusic.com. | 2026-08-15 |",
+    "| `assets/audio/music/Fantasy-Choir-3.mp3` | Beyond the Frozen Veil | Synth-thetic | [OpenGameArt](https://opengameart.org/content/beyond-the-frozen-veil) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Beyond the Frozen Veil” by Synth-thetic. | 2026-08-15 |",
+    "| `assets/audio/music/adventure-intro.wav` | Adventure Intro Title [Cinematic, Epic] | nene | [OpenGameArt](https://opengameart.org/content/adventure-intro-title-cinematic-epic) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Adventure Intro Title” by nene. | 2026-08-15 |",
+    "| `assets/audio/music/battle-fast.mp3` | Battle in the Stratosphere | Scott Elliott (Scrabbit) | [OpenGameArt](https://opengameart.org/content/battle-in-the-stratosphere) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Battle in the Stratosphere” by Scott Elliott, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |",
+    "| `assets/audio/music/battle.ogg` | Battle March - Epic Orchestral Music Loop | PlayOnLoop | [OpenGameArt](https://opengameart.org/content/battle-march-epic-orchestral-music-loop) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Battle March” by PlayOnLoop, used under CC BY 3.0; converted to the bundled OGG. Credit link: PlayOnLoop.com. | 2026-08-15 |",
+    "| `assets/audio/music/boss.mp3` | A Slave To No One | Jonathan Shaw (InspectorJ) | [OpenGameArt](https://opengameart.org/content/a-slave-to-no-one-rpg-orchestral-essentials) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “A Slave To No One” composed by Jonathan Shaw (www.jshaw.co.uk), used under CC BY 3.0; converted to the bundled MP3. | 2026-08-15 |",
+    "| `assets/audio/music/dark-forest.mp3` | Cathedral in the Forest (ambient loop) | congusbongus | [OpenGameArt](https://opengameart.org/content/cathedral-in-the-forest-ambient-loop) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Cathedral in the Forest” by congusbongus. | 2026-08-15 |",
+    "| `assets/audio/music/determined-pursuit.mp3` | Determined Pursuit (epic orchestra loop) | Emma_MA | [OpenGameArt](https://opengameart.org/content/determined-pursuit-epic-orchestra-loop) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Determined Pursuit” by Emma_MA. | 2026-08-15 |",
+    "| `assets/audio/music/dungeon.ogg` | RPG Ambience - Dungeon | HitCtrl | [OpenGameArt](https://opengameart.org/content/rpg-ambience-dungeon) | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) | Credit the creator, link the licence, and indicate this local format conversion. “RPG Ambience - Dungeon” by HitCtrl, used under CC BY 3.0; converted to the bundled OGG. | 2026-08-15 |",
+    "| `assets/audio/music/exploration.mp3` | Epic Departure [v2] | Of Far Different Nature | [itch.io (creator page)](https://fardifferent.itch.io/loops) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Epic Departure [v2]” by Of Far Different Nature, from Loop Box #3, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |",
+    "| `assets/audio/music/inn.mp3` | Medieval: The Old Tower Inn | RandomMind | [OpenGameArt](https://opengameart.org/content/medieval-the-old-tower-inn) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Medieval: The Old Tower Inn” by RandomMind. | 2026-08-15 |",
+    "| `assets/audio/music/town.mp3` | Fantasy Music - Night Town | Angus Macnaughton | [OpenGameArt](https://opengameart.org/content/fantasy-music-night-town) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Fantasy Music - Night Town” © Angus Macnaughton 2014, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |",
+    "| `assets/audio/music/victory.mp3` | Victory | celestialghost8 | [OpenGameArt](https://opengameart.org/content/victory) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Victory” by celestialghost8. | 2026-08-15 |"
+  ]
+}

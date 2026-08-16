@@ -814,6 +814,30 @@ kbd {
     font-size: .86rem;
 }
 #settings-player-code { color: var(--accent); user-select: all; }
+.interface-settings { display:grid; gap:9px; margin:8px 0; padding:14px; border:1px solid var(--secondary); border-radius:8px; }
+.interface-settings legend { padding:0 7px; color:var(--accent); font-weight:bold; }
+.interface-settings select { min-height:44px; color:var(--text); background:var(--bg-dark); border:1px solid var(--secondary); border-radius:6px; padding:8px; }
+.interface-mode-dialog { position:fixed; inset:0; z-index:10000; display:grid; place-items:center; overflow:auto; padding:18px; background:rgba(0,0,0,.94); }
+.interface-mode-dialog.hidden { display:none; }
+.interface-mode-card { width:min(680px,100%); padding:24px; background:var(--bg-medium); border:2px solid var(--accent); border-radius:12px; box-shadow:0 0 30px rgba(201,162,39,.22); }
+.interface-mode-card h1 { color:var(--accent); }
+.interface-mode-card p { color:var(--text-dim); margin:8px 0 16px; }
+.hero-stable-id { overflow-wrap:anywhere; }
+.hero-stable-id code { color:var(--accent); user-select:all; }
+.enemy-group-summary { margin:0 0 8px; padding:8px; color:var(--accent); border-bottom:1px solid var(--secondary); }
+button, input, select, textarea { touch-action:manipulation; }
+:focus-visible { outline:3px solid #ffe066; outline-offset:3px; }
+
+/* Blind/TalkBack-first is a layout preference only. It never suppresses DOM
+   semantics, aria-live status, labels, or platform accessibility services. */
+html[data-interface-mode="blind"] .title-banner pre,
+html[data-interface-mode="blind"] #location-art { display:none !important; }
+html[data-interface-mode="blind"] .narrative { min-height:42vh; font-size:1rem; line-height:1.65; }
+html[data-interface-mode="blind"] .menu-btn,
+html[data-interface-mode="blind"] .action-btn,
+html[data-interface-mode="blind"] .dir-btn { min-height:48px; }
+html[data-interface-mode="blind"] .shake,
+html[data-interface-mode="blind"] .pulse { animation:none; }
 
 /* Map Display */
 .map-display {
@@ -916,4 +940,18 @@ kbd {
 
 .pulse {
     animation: pulse 1s infinite;
+}
+
+/* Android Chrome/PWA: both orientations remain usable without locked sizing. */
+@media (orientation: landscape) and (max-height: 520px) {
+    .panel { max-height:92dvh; overflow:auto; }
+    .interface-mode-dialog { align-items:start; }
+    .interface-mode-card { padding:16px; }
+    html[data-interface-mode="blind"] .narrative { min-height:48dvh; }
+}
+@media (max-width: 600px) {
+    .interface-mode-dialog { padding:10px; }
+    .interface-mode-card { padding:18px; }
+    .hero-roster { grid-template-columns:1fr; }
+    button, .menu-btn, .action-btn, .dir-btn { min-height:44px; }
 }

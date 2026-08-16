@@ -10,6 +10,9 @@ if (!new URL(manifest.start_url, pagesBase).pathname.startsWith('/Black-sold-ult
 const html = await readFile('index.html', 'utf8');
 if (!html.includes('manifest.webmanifest') || !html.includes('pwa.js')) throw Error('PWA not linked');
 if (!html.includes('world-navigation-v27.js')) throw Error('Final world graph normalizer is not deployed');
+if (!html.includes('stabilization-v7211.js')) throw Error('v7.21.1 stabilization module is not deployed');
+const version = await readFile('version.js', 'utf8');
+if (!version.includes("APP_VERSION = '7.21.1'")) throw Error('Application version is stale');
 const registration = await readFile('pwa.js', 'utf8');
 if (registration.includes("register('/") || !registration.includes("new URL('sw.js',document.baseURI)")) throw Error('Service worker registration is not base-path safe');
 
@@ -23,8 +26,9 @@ for (const swFile of ['sw.js', 'service-worker.js']) {
         if (path.startsWith('/')) throw Error(`${swFile} escapes deployment base: ${path}`);
         if (path) await access(path);
     }
-    for (const required of ['world-navigation-v27.js', 'assets/audio/audio-manifest.json', 'AUDIO_CREDITS.md', 'music.js']) {
+    for (const required of ['world-navigation-v27.js', 'stabilization-v7211.js', 'assets/audio/audio-manifest.json', 'AUDIO_CREDITS.md', 'music.js', 'assets/audio/music/town-theme-rpg.mp3', 'assets/audio/music/natural-forest-theme.mp3', 'assets/audio/music/battle-theme-a.mp3', 'assets/audio/music/boss-battle-theme.mp3', 'assets/audio/music/final-boss-theme.ogg']) {
         if (!paths.includes(required)) throw Error(`${swFile} does not precache ${required}`);
     }
+    if (!content.includes("black-sword-v7.21.1")) throw Error(`${swFile} cache version is stale`);
 }
 console.log('PWA manifest, relative GitHub Pages base, Vercel root, icons, precache assets, registration and service workers: PASS');

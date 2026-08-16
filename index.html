@@ -12,7 +12,17 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="game-container" role="application" aria-label="The Black Sword Chronicles RPG">
+    <section id="interface-mode-dialog" class="interface-mode-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="interface-mode-title" aria-describedby="interface-mode-description">
+        <div class="interface-mode-card">
+            <h1 id="interface-mode-title">Choose your game interface</h1>
+            <p id="interface-mode-description">This changes the game layout only. It never turns Android TalkBack or other device accessibility services on or off. You can switch immediately in Settings.</p>
+            <button id="choose-interface-blind" class="menu-btn big-btn primary">Blind / TalkBack-first interface</button>
+            <p>Prioritizes text, spoken-game controls, stable focus order, and hides decorative ASCII art.</p>
+            <button id="choose-interface-sighted" class="menu-btn big-btn">Sighted visual interface</button>
+            <p>Keeps visual location art and the full visual layout. All controls still have accessible names and semantics.</p>
+        </div>
+    </section>
+    <div id="game-container" role="main" aria-label="The Black Sword Chronicles RPG">
 
         <!-- Title Screen -->
         <div id="title-screen" class="screen active">
@@ -131,7 +141,7 @@
         <!-- Account Hero Roster -->
         <div id="heroes-screen" class="screen">
             <h2>🧙 My Heroes</h2>
-            <p class="tagline">Create up to six heroes. Every hero keeps separate race, class, attributes, equipment, inventory, quests and location.</p>
+            <p class="tagline">Create and manage your heroes. Every hero keeps separate race, class, attributes, equipment, inventory, quests, stable hero ID, and location.</p>
             <div id="hero-roster" class="hero-roster"></div>
             <button id="btn-create-another-hero" class="menu-btn big-btn primary">➕ Create Another Hero</button>
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
@@ -381,7 +391,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.21.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.21.1</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -395,6 +405,15 @@
                     <input id="settings-login-pin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="6-digit PIN" aria-label="PIN for Player ID sign in">
                     <button id="btn-login-pin" class="menu-btn">🔑 Sign in with Player ID + PIN</button>
                     <p id="settings-pin-status" class="settings-note" aria-live="polite"></p>
+                    <fieldset class="interface-settings" aria-describedby="interface-mode-help">
+                        <legend>Game interface</legend>
+                        <label for="setting-interface-mode">Interface mode</label>
+                        <select id="setting-interface-mode">
+                            <option value="blind">Blind / TalkBack-first</option>
+                            <option value="sighted">Sighted visual</option>
+                        </select>
+                        <p id="interface-mode-help" class="settings-note">Switches immediately and persists across reloads, sign-in/out, and PWA restarts. This preference never disables platform accessibility.</p>
+                    </fieldset>
                     <fieldset class="audio-settings" aria-describedby="audio-settings-help">
                         <legend>Audio and device speech</legend>
                         <label class="setting-toggle" for="setting-music-enabled"><input type="checkbox" id="setting-music-enabled"> Music on</label>
@@ -509,6 +528,7 @@
     <script defer src="hunt-wayfinder-v21.js"></script>
     <script defer src="horse-racing-v22.js"></script>
     <script defer src="world-navigation-v27.js"></script>
+    <script defer src="stabilization-v7211.js"></script>
     <script type="module" src="game-hall.js"></script>
     <script src="pwa.js"></script>
 </body>

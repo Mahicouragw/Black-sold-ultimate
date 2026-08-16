@@ -1,10 +1,10 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-08-15T17:00:16.107Z",
-  "manifestAssets": 58,
-  "actualAssets": 58,
-  "referencedAssets": 58,
-  "musicAssets": 14,
+  "generatedAt": "2026-08-16T03:45:38.199Z",
+  "manifestAssets": 63,
+  "actualAssets": 63,
+  "referencedAssets": 63,
+  "musicAssets": 19,
   "sfxAssets": 44,
   "issues": []
 }

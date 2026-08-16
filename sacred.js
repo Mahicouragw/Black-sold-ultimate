@@ -69,7 +69,7 @@
 
     const defaults = () => ({
         god:GOD, favor:0, lastPrayer:0, lastDailyBlessing:0, createdAt:Date.now(),
-        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', movesSinceEncounter:3, pendingPalaceAdvancements:0, companionTrainingPoints:0,
+        guildTraining:false, cardTestPassed:false, cardTestQuestion:null, encounterMode:'full', movesSinceEncounter:3, lastRandomEncounterAt:0, pendingPalaceAdvancements:0, companionTrainingPoints:0,
         unspentAttributePoints:0, storage:[], groundLoot:[], vitality:10, enemyQueue:[]
     });
     const ensure = game => {
@@ -302,27 +302,19 @@
     const oldStart=Game.startCombat.bind(Game);
     Game.startCombat=function(enemyName,queued=false){
         const s=ensure(this), loc=WorldData.locations[this.state.location];
-        if(!queued && !this.state.arena?.active && loc?.enemies?.length){
-            const maximum=6;
-            const count=2+Math.floor(Math.random()*5);
-            // Ambush group members are drawn only from monsters still alive here,
-            // capped by each foe's remaining quota — defeated monsters never reappear.
-            const pool=[];
-            (this.getLivingEnemies(this.state.location)||[]).forEach(n=>{
-                const slainN=(this.state.slainEnemies&&this.state.slainEnemies[this.state.location])||{};
-                const left=Math.max(0,this.getEnemyQuota(this.state.location,n)-(slainN[n]||0));
-                for(let i=0;i<left;i++)pool.push(n);
-            });
-            // The monster that just engaged is one of those remaining lives — remove its instance
-            // so a hunt can never exceed the quota (no phantom re-spawns after the last kill).
-            const engagedIdx=pool.indexOf(enemyName);
-            if(engagedIdx>=0)pool.splice(engagedIdx,1);
-            s.enemyQueue=Array.from({length:count-1},()=>pool.length?pool.splice(Math.floor(Math.random()*pool.length),1)[0]:null).filter(Boolean);
+        const engaged=WorldData.enemies[enemyName];
+        if(!queued && !this.state.arena?.active && !engaged?.boss && !engaged?.finalBoss && loc?.enemies?.length){
+            const count=2+Math.floor(Math.random()*5); // two through six
+            // Roaming groups use the endless wilderness pool. Sampling with
+            // replacement intentionally permits repeated monsters alongside
+            // mixed groups; quest counts remain a separate finite ledger.
+            const pool=this.getRandomEncounterPool(this.state.location)||[];
+            s.enemyQueue=Array.from({length:count-1},()=>pool.length?pool[Math.floor(Math.random()*pool.length)]:null).filter(Boolean);
             s.movesSinceEncounter=0;
             const groupSize=1+s.enemyQueue.length;
             if(groupSize>1)this.addNarrative(`A group of ${groupSize} monsters surrounds you!`,'combat');
         }
-        oldStart(enemyName);
+        oldStart(enemyName,queued);
     };
     const oldDefeated=Game.enemyDefeated.bind(Game);
     Game.enemyDefeated=function(){
@@ -332,25 +324,30 @@
         const queue=[...(s.enemyQueue||[])];s.enemyQueue=[];oldDefeated();
         if(queue.length && !this.state.inCombat){const next=queue.shift();s.enemyQueue=queue;setTimeout(()=>this.startCombat(next,true),500);}
     };
+    Game.randomEncounterEligibility=function(id,now=Date.now()){
+        const s=ensure(this),loc=WorldData.locations[id],pool=this.getRandomEncounterPool(id);
+        const threshold=s.encounterMode==='full'?3:5;
+        const cooldownMs=s.encounterMode==='full'?45000:90000;
+        return {eligible:Boolean(loc&&!loc.safe&&pool.length&&s.movesSinceEncounter>=threshold&&now-(s.lastRandomEncounterAt||0)>=cooldownMs),pool,threshold,cooldownMs};
+    };
     const oldEnter=Game.enterLocation.bind(Game);
     Game.enterLocation=function(id){
         const s=ensure(this),loc=WorldData.locations[id];
         s.movesSinceEncounter=(s.movesSinceEncounter||0)+1;
         if(loc&&!loc.safe&&loc.enemies?.length){
-            // Suppress the old 50% roll; use a cooldown plus a much lower custom chance.
+            // Suppress the core 50% fallback; use time + movement cooldowns and
+            // a protected probability roll against the endless roaming pool.
             const previousSafe=loc.safe;loc.safe=true;oldEnter(id);loc.safe=previousSafe;
-            const threshold=s.encounterMode==='full'?3:5, chance=s.encounterMode==='full'?0.20:0.06;
-            if(s.movesSinceEncounter>=threshold&&Math.random()<chance){
-                const roamers=this.getLivingEnemies(id);
-                if(roamers.length){
-                    this.state.randomEncounterPending=true;
-                    setTimeout(()=>{
-                        if(this.state.location!==id||this.state.inCombat){this.state.randomEncounterPending=false;return;}
-                        const stillHere=this.getLivingEnemies(id);
-                        if(!stillHere.length){this.state.randomEncounterPending=false;return;}
-                        this.startCombat(stillHere[Math.floor(Math.random()*stillHere.length)]);
-                    },900);
-                }
+            const eligibility=this.randomEncounterEligibility(id),chance=s.encounterMode==='full'?0.20:0.06;
+            if(eligibility.eligible&&Math.random()<chance){
+                this.state.randomEncounterPending=true;
+                setTimeout(()=>{
+                    if(this.state.location!==id||this.state.inCombat){this.state.randomEncounterPending=false;return;}
+                    const current=this.randomEncounterEligibility(id);
+                    if(!current.eligible){this.state.randomEncounterPending=false;return;}
+                    s.lastRandomEncounterAt=Date.now();s.movesSinceEncounter=0;
+                    this.startCombat(current.pool[Math.floor(Math.random()*current.pool.length)]);
+                },900);
             }
         } else oldEnter(id);
         if(['grand_temple','royal_palace','arcane_enchantery'].includes(id))this.showSacredActions();

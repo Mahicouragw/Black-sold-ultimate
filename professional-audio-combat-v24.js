@@ -209,10 +209,9 @@
             window.MusicSystem.playSFX(sound.src.split('/').pop().replace('.wav','').replace('.mp3','').replace('.ogg',''));
           }
         } else {
-          // Fallback
-          const audio = new Audio(sound.src);
-          audio.volume = options.volume || sound.defaultVolume;
-          audio.play().catch(() => {});
+          // AudioManager is the only audio engine. A missing manager is a safe
+          // no-op rather than an unbounded competing HTMLAudioElement.
+          console.warn(`AudioManager unavailable for ${id}`);
         }
 
         // Return duration for timing next narration
@@ -255,13 +254,14 @@
         // Announce via TalkBack live region - important, don't interrupt
         this.announceToTalkBack(item.text, item.priority);
 
-        // Wait for TTS to finish before next narration (if TTS enabled)
-        // Estimate: ~150 words per minute, ~5 chars per word average
-        const wordCount = item.text.split(' ').length;
-        const estimatedDuration = Math.max(1000, (wordCount / 2.5) * 1000); // 2.5 words per second
-        
-        // Wait for narration to be spoken
-        await new Promise(r => setTimeout(r, Math.min(estimatedDuration, 4000)));
+        // Actual game speech is owned and serialized by AudioManager. TalkBack
+        // live-region output above is separate and remains available when game
+        // TTS is off. Critical combat items cancel stale game speech.
+        if (window.AudioManager) {
+          await window.AudioManager.playVoice(item.text, {
+            priority: item.priority === 'assertive' ? 'critical' : false
+          });
+        }
         
       } catch (e) {
         console.log('Narration error:', e);

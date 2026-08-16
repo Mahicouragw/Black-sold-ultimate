@@ -41,6 +41,12 @@ class AudioManagerController {
         this.speechQueue = [];
         this.speaking = false;
         this.currentUtterance = null;
+        this.currentSpeechItem = null;
+        // One authoritative state machine: world -> transition -> battle ->
+        // victory -> restore -> world. This is diagnostic state, not a second
+        // playback engine.
+        this.audioState = 'idle';
+        this.visibilityResume = null;
 
         this.audioCtx = null;
         this.sfxGain = null;
@@ -63,17 +69,22 @@ class AudioManagerController {
             battleFast: { src: 'assets/audio/music/battle-fast.mp3', title: 'Battle in the Stratosphere' },
             battleCinematic: { src: 'assets/audio/music/determined-pursuit.mp3', title: 'Determined Pursuit' },
             boss: { src: 'assets/audio/music/boss.mp3', title: 'A Slave To No One' },
+            townThemeRpg: { src: 'assets/audio/music/town-theme-rpg.mp3', title: 'Town Theme RPG' },
+            naturalForest: { src: 'assets/audio/music/natural-forest-theme.mp3', title: 'Natural Forest Fantasy Music' },
+            battleThemeA: { src: 'assets/audio/music/battle-theme-a.mp3', title: 'Battle Theme A' },
+            bossBattleTheme: { src: 'assets/audio/music/boss-battle-theme.mp3', title: 'Battle RPG Theme' },
+            finalBossTheme: { src: 'assets/audio/music/final-boss-theme.ogg', title: 'Battle RPG Theme Variation' },
             victory: { src: 'assets/audio/music/victory.mp3', title: 'Victory' }
         };
 
         // Every requested category has at least two context-compatible real tracks.
         // Tracks may intentionally serve more than one related category.
         this.playlists = {
-            CITY: ['town', 'palace', 'inn'],
-            CITY_MARKET: ['town', 'inn', 'palace'],
-            MARKET: ['inn', 'town', 'palace'],
-            VILLAGE: ['inn', 'town', 'palace'],
-            FOREST: ['darkForest', 'exploration', 'epicExplore'],
+            CITY: ['town', 'townThemeRpg', 'palace', 'inn'],
+            CITY_MARKET: ['townThemeRpg', 'town', 'inn', 'palace'],
+            MARKET: ['townThemeRpg', 'inn', 'town', 'palace'],
+            VILLAGE: ['inn', 'townThemeRpg', 'town', 'palace'],
+            FOREST: ['naturalForest', 'darkForest', 'exploration', 'epicExplore'],
             PASTURE: ['exploration', 'palace', 'town'],
             ISLAND: ['exploration', 'epicExplore', 'darkForest'],
             MOUNTAIN: ['epicExplore', 'exploration', 'temple'],
@@ -98,10 +109,12 @@ class AudioManagerController {
             HEROIC: ['intro', 'epicExplore', 'battleCinematic'],
             POWERFUL: ['battleCinematic', 'boss', 'epicExplore'],
             CINEMATIC_FANTASY: ['intro', 'epicExplore', 'temple'],
-            BATTLE_NORMAL: ['battle', 'battleFast', 'battleCinematic'],
-            BATTLE_INTENSE: ['battleFast', 'battleCinematic', 'battle'],
-            BATTLE_BOSS: ['boss', 'battleCinematic', 'battleFast'],
-            BATTLE_FINAL_BOSS: ['boss', 'battleCinematic', 'battle'],
+            // Combat pools have separate identities. World tracks never enter
+            // these pools and normal battle music cannot leak into final bosses.
+            BATTLE_NORMAL: ['battle', 'battleFast', 'battleThemeA'],
+            BATTLE_INTENSE: ['battleFast', 'battleThemeA', 'battleCinematic'],
+            BATTLE_BOSS: ['bossBattleTheme', 'boss', 'battleCinematic'],
+            BATTLE_FINAL_BOSS: ['finalBossTheme', 'boss', 'battleCinematic'],
             DANGER: ['battleCinematic', 'darkForest', 'dungeon'],
             BATTLE_VICTORY: ['victory', 'intro'],
             SPECIAL_QUEST_COMPLETE: ['victory', 'palace'],
@@ -230,6 +243,25 @@ class AudioManagerController {
         };
         document.addEventListener('pointerdown', unlock, { passive: true });
         document.addEventListener('keydown', unlock);
+        // Android Chrome/PWA can freeze media while backgrounded. Pause the two
+        // bounded music elements and resume the exact prior layer when the page
+        // returns; autoplay rejection falls back to the normal gesture unlock.
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.visibilityResume = {
+                    world: Boolean(this.worldAudio && !this.worldAudio.paused),
+                    overlay: Boolean(this.overlayAudio && !this.overlayAudio.paused)
+                };
+                this.worldAudio?.pause();
+                this.overlayAudio?.pause();
+                return;
+            }
+            const prior = this.visibilityResume;
+            this.visibilityResume = null;
+            if (!this.musicEnabled || !prior) return;
+            const audio = prior.overlay && this.battleActive ? this.overlayAudio : prior.world ? this.worldAudio : null;
+            if (audio) audio.play().catch(() => { this.pendingPlayback = { audio, layer: audio === this.overlayAudio ? 'overlay' : 'world' }; });
+        });
         this.bindSettingsUI();
         this.preloadSFX();
         this.syncSettingsUI();
@@ -329,7 +361,10 @@ class AudioManagerController {
         this.worldContext = normalized;
         this.currentContext = normalized;
         this.directTrack = false;
-        if (!this.battleActive && !this.overlayMode) this.transitionWorldPlaylist(normalized);
+        if (!this.battleActive && !this.overlayMode) {
+            this.audioState = 'transition';
+            this.transitionWorldPlaylist(normalized);
+        }
         return normalized;
     }
 
@@ -381,7 +416,10 @@ class AudioManagerController {
             audio.currentTime = 0;
             audio.load();
         }
-        audio.loop = false;
+        // Exploration music is stable: it loops until the world context changes.
+        // Battle/special overlays end naturally so their smart-shuffled playlist
+        // can advance without ever layering a second engine.
+        audio.loop = layer === 'world' && !this.directTrack && this.worldContext !== 'DIRECT';
         audio.volume = 0;
         this.currentTrack = audio;
         this.currentKey = trackKey;
@@ -389,6 +427,8 @@ class AudioManagerController {
             await audio.play();
             this.pendingPlayback = null;
             await this.fadeIn(audio, fadeMs);
+            if (layer === 'world') this.audioState = 'world';
+            else if (this.overlayMode === 'battle') this.audioState = 'battle';
             return true;
         } catch (error) {
             if (error?.name !== 'AbortError') this.pendingPlayback = { audio, trackKey, layer };
@@ -398,9 +438,11 @@ class AudioManagerController {
 
     async beginBattle(requestedContext = 'BATTLE_NORMAL') {
         this.init();
+        this.audioState = 'transition';
         if (!this.musicEnabled) {
             this.battleActive = true;
             this.overlayContext = this.battleContextFromGame(requestedContext);
+            this.audioState = 'battle';
             return;
         }
         const context = this.battleContextFromGame(requestedContext);
@@ -435,6 +477,7 @@ class AudioManagerController {
         if (this.overlayAudio && !this.overlayAudio.paused) await this.fadeOut(this.overlayAudio, 350, { pause: true, clear: false });
 
         if (victory && this.musicEnabled) {
+            this.audioState = 'victory';
             this.overlayMode = 'special';
             this.overlayContext = 'BATTLE_VICTORY';
             const trackKey = this.nextTrack('BATTLE_VICTORY');
@@ -450,12 +493,15 @@ class AudioManagerController {
         }
         this.overlayMode = null;
         this.overlayContext = null;
+        this.audioState = 'restore';
         if (this.musicEnabled && (hadBattle || worldContext)) await this.resumeWorldMusic();
+        else this.audioState = this.musicEnabled ? 'world' : 'idle';
     }
 
     async resumeWorldMusic() {
-        if (!this.musicEnabled) return;
+        if (!this.musicEnabled) { this.audioState = 'idle'; return; }
         this.init();
+        this.audioState = 'restore';
         const context = this.worldContext && this.worldContext !== 'DIRECT' ? this.worldContext : this.normalizeContext(window.Game?.getLocationMusic?.() || 'CITY');
         this.worldContext = context;
         if (!this.worldAudio.dataset.trackKey || !this.music[this.worldAudio.dataset.trackKey]) {
@@ -468,6 +514,7 @@ class AudioManagerController {
         try {
             await this.worldAudio.play();
             await this.fadeIn(this.worldAudio, 550);
+            this.audioState = 'world';
         } catch { this.pendingPlayback = { audio: this.worldAudio, layer: 'world' }; }
     }
 
@@ -800,22 +847,41 @@ class AudioManagerController {
         } finally { this.restoreMusic('sfx-wait'); }
     }
 
-    /** Queue real device/browser TTS. It is opt-in so TalkBack does not hear a
-     * duplicate of the same aria-live announcement. */
+    /** Queue game/browser TTS. TalkBack remains an independent OS service:
+     * semantic live regions are never disabled or used as proof of TTS output. */
     playVoice(text, { voiceId = 'system:default', language = 'en-US', priority = false, force = false } = {}) {
         if ((!this.voiceEnabled && !force) || !String(text || '').trim()) return Promise.resolve(false);
         if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
+        const critical = priority === 'critical';
+        if (critical) this.interruptVoiceForCritical();
         return new Promise(resolve => {
-            if (priority) this.speechQueue.unshift({ text: String(text).slice(0, 600), voiceId, language, resolve });
-            else this.speechQueue.push({ text: String(text).slice(0, 600), voiceId, language, resolve });
+            const item = { text: String(text).slice(0, 600), voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal', resolve };
+            if (priority) this.speechQueue.unshift(item);
+            else this.speechQueue.push(item);
             this.processVoiceQueue();
         });
+    }
+
+    speakCritical(text, options = {}) {
+        return this.playVoice(text, { ...options, priority: 'critical' });
+    }
+
+    interruptVoiceForCritical() {
+        this.speechQueue.splice(0).forEach(item => item.resolve(false));
+        const active = this.currentSpeechItem;
+        this.currentSpeechItem = null;
+        this.currentUtterance = null;
+        this.speaking = false;
+        if (active) active.resolve(false);
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        this.restoreMusic('voice');
     }
 
     async processVoiceQueue() {
         if (this.speaking || !this.speechQueue.length) return;
         const item = this.speechQueue.shift();
         this.speaking = true;
+        this.currentSpeechItem = item;
         const utterance = new SpeechSynthesisUtterance(item.text);
         utterance.lang = item.language || 'en-US';
         utterance.volume = this.voiceVolume;
@@ -826,14 +892,18 @@ class AudioManagerController {
         const base = voices.filter(voice => voice.lang?.toLowerCase().startsWith(language.slice(0, 2)));
         utterance.voice = (requestedName && requestedName !== 'default' ? voices.find(voice => voice.name === requestedName) : null) || exact[0] || base[0] || voices[0] || null;
         const finish = success => {
-            if (!this.speaking) return;
+            // A cancelled utterance can report an asynchronous error after a
+            // critical replacement has already started. Never let it finish the
+            // replacement item or restore ducking early.
+            if (this.currentSpeechItem !== item) return;
             this.restoreMusic('voice');
             this.speaking = false;
             this.currentUtterance = null;
+            this.currentSpeechItem = null;
             item.resolve(success);
             setTimeout(() => this.processVoiceQueue(), 60);
         };
-        utterance.onstart = () => this.duckMusic(0.2, 'voice');
+        utterance.onstart = () => { if (this.currentSpeechItem === item) this.duckMusic(0.2, 'voice'); };
         utterance.onend = () => finish(true);
         utterance.onerror = () => finish(false);
         this.currentUtterance = utterance;
@@ -842,6 +912,9 @@ class AudioManagerController {
 
     stopVoice() {
         this.speechQueue.splice(0).forEach(item => item.resolve(false));
+        const active = this.currentSpeechItem;
+        this.currentSpeechItem = null;
+        if (active) active.resolve(false);
         if ('speechSynthesis' in window) speechSynthesis.cancel();
         this.speaking = false;
         this.currentUtterance = null;
@@ -854,4 +927,11 @@ const AudioManager = new AudioManagerController();
 const MusicSystem = AudioManager;
 window.AudioManager = AudioManager;
 window.MusicSystem = MusicSystem;
-console.log('AudioManager v7.21 loaded with licensed contextual playlists.');
+// Hidden developer diagnostic: no button, no automatic speech, no TalkBack
+// assumptions. Run GAME_TTS_TEST.run() from developer tools when explicitly
+// testing the game's own speech queue.
+window.GAME_TTS_TEST = Object.freeze({
+    snapshot: () => ({ supported: 'speechSynthesis' in window, enabled: AudioManager.voiceEnabled, speaking: AudioManager.speaking, queued: AudioManager.speechQueue.length, ducked: AudioManager.duckRequests.has('voice') }),
+    run: () => AudioManager.playVoice('Game text to speech diagnostic. First queued sentence.', { force: true }).then(() => AudioManager.playVoice('Second queued sentence. The diagnostic is complete.', { force: true }))
+});
+console.log('AudioManager v7.21.1 loaded with licensed contextual playlists.');

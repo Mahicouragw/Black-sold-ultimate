@@ -9,8 +9,13 @@
         const newSW=reg.installing;
         if(newSW)newSW.addEventListener('statechange',()=>{
           if(newSW.state==='installed'&&navigator.serviceWorker.controller){
-            console.log('New version available, updating...');
-            window.location.reload();
+            // Never force-reload an active battle or discard in-memory UI state.
+            // The activated worker serves the new cache on the next normal app
+            // launch/navigation; localStorage/IndexedDB saves are untouched.
+            console.log('New version cached. It will be used on the next normal app restart.');
+            const status=document.getElementById('online-status');
+            if(status)status.textContent='Game update ready — restart the app when convenient';
+            window.dispatchEvent(new CustomEvent('black-sword-update-ready'));
           }
         });
       });

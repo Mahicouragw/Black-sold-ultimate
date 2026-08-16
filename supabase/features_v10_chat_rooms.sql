@@ -49,8 +49,8 @@ create policy invites_receiver_update on public.chat_room_invites for update to 
 create policy blacklist_visible on public.chat_room_blacklist for select to authenticated using(blocked_user_id=auth.uid() or exists(select 1 from public.chat_rooms r where r.id=room_id and r.owner_id=auth.uid()));
 create policy blacklist_owner_add on public.chat_room_blacklist for insert to authenticated with check(blocked_by=auth.uid() and exists(select 1 from public.chat_rooms r where r.id=room_id and r.owner_id=auth.uid()));
 create policy blacklist_owner_remove on public.chat_room_blacklist for delete to authenticated using(exists(select 1 from public.chat_rooms r where r.id=room_id and r.owner_id=auth.uid()));
-create policy room_messages_visible on public.chat_room_messages for select to authenticated using(exists(select 1 from public.chat_room_members m where m.room_id=room_id and m.user_id=auth.uid()));
-create policy room_messages_send on public.chat_room_messages for insert to authenticated with check(sender_id=auth.uid() and exists(select 1 from public.chat_room_members m where m.room_id=room_id and m.user_id=auth.uid()) and not exists(select 1 from public.chat_room_blacklist b where b.room_id=room_id and b.blocked_user_id=auth.uid()));
+create policy room_messages_visible on public.chat_room_messages for select to authenticated using(exists(select 1 from public.chat_room_members m where m.room_id=chat_room_messages.room_id and m.user_id=auth.uid()));
+create policy room_messages_send on public.chat_room_messages for insert to authenticated with check(sender_id=auth.uid() and exists(select 1 from public.chat_room_members m where m.room_id=chat_room_messages.room_id and m.user_id=auth.uid()) and not exists(select 1 from public.chat_room_blacklist b where b.room_id=chat_room_messages.room_id and b.blocked_user_id=auth.uid()));
 
 grant select,update,delete on public.chat_rooms to authenticated;grant select,delete on public.chat_room_members to authenticated;
 grant select,insert,update on public.chat_room_invites to authenticated;grant select,insert,delete on public.chat_room_blacklist to authenticated;

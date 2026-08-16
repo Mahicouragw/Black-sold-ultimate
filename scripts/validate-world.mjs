@@ -116,6 +116,32 @@ while (queue.length) {
         if (locations[destination] && !reachable.has(destination)) { reachable.add(destination); queue.push(destination); }
     }
 }
+// Explicit live-graph audit for player-facing entrances, major exits, island
+// travel, and region transitions. These are the same exits movement and
+// Wayfinder consume; no separate or invented route table is accepted.
+const routeFromHub = target => {
+    const pending=[['kaliwasch',[]]],seen=new Set(['kaliwasch']);
+    while(pending.length){const [id,path]=pending.shift();if(id===target)return path;for(const [direction,next] of Object.entries(locations[id]?.exits||{})){if(!seen.has(next)){seen.add(next);pending.push([next,[...path,direction]]);}}}
+    return null;
+};
+const requiredLandmarks = [
+    'forest','great_forest_north_gate','great_forest_south_gate','great_forest_east_gate','great_forest_west_gate',
+    'expansive_forest_1','dungeon_entrance','mountains','seabreeze_ferry','storm_island_central_dock','city_cemetery_1'
+];
+const landmarkRoutes={};
+for(const target of requiredLandmarks){
+    if(!locations[target]){addIssue('missing-required-entrance',target,'required live-world landmark');continue;}
+    const path=routeFromHub(target);landmarkRoutes[target]=path;
+    if(!path)addIssue('unreachable-required-entrance',target,locations[target].name);
+}
+for(const [from,direction,to] of [
+    ['seabreeze_ferry','northeast','storm_island_central_dock'],
+    ['storm_island_central_dock','southwest','seabreeze_ferry'],
+    ['great_forest_south_gate','up','expansive_forest_10'],
+    ['great_forest_west_gate','southwest','deep_forest_branch_1'],
+    ['mountains','northwest','endless_cave_1']
+]) if(locations[from]?.exits?.[direction]!==to)addIssue('broken-major-transition',from,`${direction} must reach ${to}`);
+
 const conditionalLocked = new Set();
 const unexpectedUnreachable = new Set();
 for (const [id, location] of Object.entries(locations)) {
@@ -158,6 +184,7 @@ const report = {
     longestChains,
     loopClassification: { INTENTIONAL_LOOP: intentionalLoops, VALID_ROUTE: validRoutes, ACCIDENTAL_LOOP: accidentalLoops + accidentalOscillations.length },
     runtimeRepairs: graphReport.repairs?.length || 0,
+    requiredLandmarkRoutes: landmarkRoutes,
     issues,
     warnings
 };

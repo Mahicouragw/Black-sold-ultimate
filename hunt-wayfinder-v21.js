@@ -58,7 +58,7 @@
             const s = this.state;
             const quest = (s.quests || [])[0];
             if (!quest) {
-                this.addNarrative('🧭 No active quest right now. Explore, hunt in uncleared wild areas (type "foes" to scout), or brave the Arena of Echoes for rewards!', 'system');
+                this.addNarrative('🧭 No active quest right now. Explore for recurring wilderness encounters, type “foes” for finite area progress, or brave the Arena of Echoes for rewards!', 'system');
                 return;
             }
             const lines = [`🧭 Current quest: ${quest.name} — ${quest.description || ''}`];

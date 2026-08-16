@@ -38,7 +38,9 @@ create table if not exists public.messages (
   sender_id uuid not null references public.profiles(id) on delete cascade,
   receiver_id uuid references public.profiles(id) on delete cascade,
   body text not null check (char_length(body) between 1 and 300),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default(now()+interval '5 minutes'),
+  constraint messages_five_minute_expiration check(expires_at=created_at+interval '5 minutes')
 );
 create index if not exists messages_created_idx on public.messages(created_at desc);
 create index if not exists messages_receiver_idx on public.messages(receiver_id, created_at desc);
@@ -160,7 +162,7 @@ create policy requests_receiver_update on public.friend_requests for update to a
 
 -- receiver_id NULL means public chat. Guests can read but linked users alone can send.
 create policy messages_visible on public.messages for select to authenticated using (
-  receiver_id is null or sender_id = auth.uid() or receiver_id = auth.uid()
+  expires_at > now() and (receiver_id is null or sender_id = auth.uid() or receiver_id = auth.uid())
 );
 create policy messages_linked_send on public.messages for insert to authenticated
   with check (sender_id = auth.uid() and public.has_linked_identity());

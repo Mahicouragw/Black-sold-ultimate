@@ -87,12 +87,9 @@ const Game = {
     },
 
     startNewHero() {
-        const roster = this.getRoster();
-        if (Object.keys(roster.heroes).length >= 6) {
-            alert('Each account can have up to six heroes.');
-            return;
-        }
-        this.state.pendingHeroId = `hero_${Date.now().toString(36)}`;
+        // No application/UI roster cap. The backend still owns authentication,
+        // payload, rate, and resource protections for cloud saves and names.
+        this.state.pendingHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
         document.getElementById('char-name').value = '';
         OnlineSystem.heroNameAvailable=null;const nameStatus=document.getElementById('hero-name-status');if(nameStatus){nameStatus.textContent='Enter at least two characters.';nameStatus.className='name-status';}
         document.querySelectorAll('.race-btn,.class-btn').forEach(b => b.classList.remove('selected'));
@@ -104,22 +101,31 @@ const Game = {
     showHeroRoster() {
         const roster = this.getRoster();
         const container = document.getElementById('hero-roster');
-        const entries = Object.entries(roster.heroes);
-        container.innerHTML = entries.length ? entries.map(([id, data]) => {
-            const p = data.player || {};
-            const loc = WorldData.locations[data.location]?.name || data.location || 'Unknown';
-            return `<article class="hero-card ${id === roster.activeHeroId ? 'active' : ''}">
-                <h3>${this.escapeHTML(p.name || 'Unnamed Hero')}</h3>
-                <p>${this.escapeHTML(p.race || 'Unknown')} ${this.escapeHTML(p.class || 'Adventurer')} • Level ${p.level || 1}</p>
-                <p>Mode: ${p.mode === 'archo' ? 'Archo / Permanent Hero' : p.mode === 'hardcore' ? 'Hardcore / Temple Revival' : 'Standard / Temple Revival'}${p.pendingTempleRevival ? ' • Spirit awaiting Auralis' : ''}</p>
-                <p>❤️ ${p.hp || 0}/${p.maxHp || 0} • ✨ ${p.mp || 0}/${p.maxMp || 0}</p>
-                <p>STR ${p.str || 0} • DEX ${p.dex || 0} • INT ${p.int || 0} • WIS ${p.wis || 0}</p>
-                <p>📍 ${this.escapeHTML(loc)}</p>
-                <button class="menu-btn" onclick="Game.playHero('${id}')">${p.pendingTempleRevival || p.permadead ? 'Walk Spirit to Temple' : id === roster.activeHeroId ? 'Continue' : 'Play This Hero'}</button>
-                <button class="menu-btn danger-btn" onclick="Game.deleteHero('${id}')">Delete Hero</button>
-            </article>`;
-        }).join('') : '<p class="system">No heroes yet. Create your first hero.</p>';
-        document.getElementById('btn-create-another-hero').disabled = entries.length >= 6;
+        const entries = Object.entries(roster.heroes).sort(([idA,a],[idB,b]) => {
+            if (idA === roster.activeHeroId) return -1;
+            if (idB === roster.activeHeroId) return 1;
+            return String(a.player?.name || idA).localeCompare(String(b.player?.name || idB));
+        });
+        container.replaceChildren();
+        container.setAttribute('role', 'list');
+        container.setAttribute('aria-label', `${entries.length} saved ${entries.length === 1 ? 'hero' : 'heroes'}`);
+        if (!entries.length) {
+            const empty=document.createElement('p');empty.className='system';empty.textContent='No heroes yet. Create your first hero.';container.appendChild(empty);
+        }
+        entries.forEach(([id,data]) => {
+            const p=data.player||{},loc=WorldData.locations[data.location]?.name||data.location||'Unknown',name=p.name||'Unnamed Hero';
+            const card=document.createElement('article');card.className=`hero-card ${id===roster.activeHeroId?'active':''}`;card.setAttribute('role','listitem');card.setAttribute('aria-label',`${name}, level ${p.level||1}, ${loc}, hero ID ${id}`);
+            card.innerHTML=`<h3>${this.escapeHTML(name)}</h3>
+                <p>${this.escapeHTML(p.race||'Unknown')} ${this.escapeHTML(p.class||'Adventurer')} • Level ${p.level||1}</p>
+                <p>Mode: ${p.mode==='archo'?'Archo / Permanent Hero':p.mode==='hardcore'?'Hardcore / Temple Revival':'Standard / Temple Revival'}${p.pendingTempleRevival?' • Spirit awaiting Auralis':''}</p>
+                <p>Health ${p.hp||0}/${p.maxHp||0} • Magic ${p.mp||0}/${p.maxMp||0}</p>
+                <p>STR ${p.str||0} • DEX ${p.dex||0} • INT ${p.int||0} • WIS ${p.wis||0}</p>
+                <p>Location: ${this.escapeHTML(loc)}</p><p class="hero-stable-id">Hero ID: <code>${this.escapeHTML(id)}</code></p>`;
+            const play=document.createElement('button');play.className='menu-btn';play.textContent=p.pendingTempleRevival||p.permadead?'Walk Spirit to Temple':id===roster.activeHeroId?'Continue':'Play This Hero';play.setAttribute('aria-label',`${play.textContent}: ${name}, hero ID ${id}`);play.addEventListener('click',()=>this.playHero(id));
+            const remove=document.createElement('button');remove.className='menu-btn danger-btn';remove.textContent='Delete Hero';remove.setAttribute('aria-label',`Permanently delete ${name}, hero ID ${id}`);remove.addEventListener('click',()=>this.deleteHero(id));
+            card.append(play,remove);container.appendChild(card);
+        });
+        document.getElementById('btn-create-another-hero').disabled = false;
         this.showScreen('heroes-screen');
     },
 
@@ -146,7 +152,7 @@ const Game = {
         const roster=this.getRoster(),hero=roster.heroes[id];
         if(!hero)return;
         const name=hero.player?.name||'this hero';
-        if(!confirm(`Permanently delete ${name}? This cannot be undone.`))return;
+        if(!confirm(`Permanently delete ${name} (hero ID ${id})? This cannot be undone.`))return;
         delete roster.heroes[id];window.OnlineSystem?.releaseHeroName(id);
         if(roster.activeHeroId===id)roster.activeHeroId=Object.keys(roster.heroes)[0]||null;
         this.storeRoster(roster);this.state.activeHeroId=roster.activeHeroId;
@@ -569,21 +575,24 @@ const Game = {
         const localNpcs = WorldData.npcs[locId] || [];
         if (localNpcs.length) this.addNarrative(`Nearby: ${localNpcs.map(n => n.name).join(', ')}. Type "talk" or "invite [name]".`, 'npc');
 
-        // Check for random encounter — only monsters still alive in this area can appear.
-        const livingPack = this.getLivingEnemies(locId);
+        // Core fallback roll. The sacred encounter controller loaded below wraps
+        // this with movement/time cooldowns; both use the independent roaming
+        // pool rather than quest kill counts.
+        const livingPack = this.getRandomEncounterPool(locId);
         if (!loc.safe && livingPack.length > 0 && Math.random() > 0.5) {
             setTimeout(() => {
                 // Re-verify before striking: the hero may have moved away or a fight may already be running.
                 if (this.state.location !== locId || this.state.inCombat) return;
-                const stillHere = this.getLivingEnemies(locId);
+                const stillHere = this.getRandomEncounterPool(locId);
                 if (!stillHere.length) return;
                 const enemyName = stillHere[Math.floor(Math.random() * stillHere.length)];
                 this.startCombat(enemyName);
             }, 1500);
         }
-        // Peaceful, screen-reader friendly note once an area's pack is fully defeated.
+        // Quest progress is finite, while ordinary roaming encounters remain
+        // possible. Do not claim the wilderness is permanently empty.
         if (this.areaClearedInfo(locId)) {
-            this.addNarrative('This area is peaceful — you have already defeated every monster here. 🕊️', 'system');
+            this.addNarrative('This area’s quest pack is cleared. Roaming wilderness monsters may still return. 🕊️', 'system');
         }
 
         this.updateHUD();
@@ -1006,12 +1015,26 @@ const Game = {
         return quota;
     },
 
-    // Monsters of an area that this hero has not yet fully defeated.
+    // Monsters still needed for finite quest/area-clear progression.
     getLivingEnemies(locId) {
         const loc = WorldData.locations[locId];
         if (!loc || !Array.isArray(loc.enemies)) return [];
         const slain = (this.state.slainEnemies && this.state.slainEnemies[locId]) || {};
         return loc.enemies.filter(name => (slain[name] || 0) < this.getEnemyQuota(locId, name));
+    },
+
+    // Roaming wilderness encounters are intentionally independent from the
+    // finite quest ledger above. Ordinary monsters can return forever; a slain
+    // boss/final boss remains finite and is excluded after its quota is met.
+    getRandomEncounterPool(locId) {
+        const loc = WorldData.locations[locId];
+        if (!loc || loc.safe || !Array.isArray(loc.enemies)) return [];
+        const questLiving = new Set(this.getLivingEnemies(locId));
+        return [...new Set(loc.enemies.filter(name => {
+            const enemy = WorldData.enemies[name];
+            if (!enemy) return false;
+            return !(enemy.boss || enemy.finalBoss) || questLiving.has(name);
+        }))];
     },
 
     // true only for areas that once had monsters and are now fully cleared.
@@ -1037,7 +1060,7 @@ const Game = {
         if (living.length) {
             this.addNarrative(`🐾 Monsters in this area — ${rows.join('; ')}. Combat begins when an enemy encounters you, a quest requires it, or an NPC initiates it. Use "hunt" to start a fight manually.`, 'system');
         } else {
-            this.addNarrative(`🕊️ This area is fully cleared — ${rows.join('; ')}.`, 'system');
+            this.addNarrative(`🕊️ This area’s finite quest pack is cleared — ${rows.join('; ')}. Ordinary roaming monsters can still return in unsafe wilderness.`, 'system');
         }
     },
 
@@ -1999,8 +2022,8 @@ const Game = {
         this.addNarrative("use/eat [food or potion] - Restore HP or MP", 'system');
         this.addNarrative("equip [weapon/armor] - Equip swords, blunt weapons, armor or accessories", 'system');
         this.addNarrative("cast [spell] - Cast magic; Mass Heal restores the full battle group", 'system');
-        this.addNarrative("attack [name] - Hunt a living monster in this area (defeated areas stay peaceful)", 'system');
-        this.addNarrative("foes - List the monsters still alive in this area", 'system');
+        this.addNarrative("attack [name] - Hunt a monster still needed for this area’s finite quest pack", 'system');
+        this.addNarrative("foes - List finite quest-pack progress; random wilderness encounters can continue afterward", 'system');
         this.addNarrative("inventory/i - View inventory", 'system');
         this.addNarrative("stats - View character stats", 'system');
         this.addNarrative("map/m - View world map", 'system');

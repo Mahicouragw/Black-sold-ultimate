@@ -1,4 +1,5 @@
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { extname, join } from 'node:path';
 
 const manifest = JSON.parse(await readFile('assets/audio/audio-manifest.json', 'utf8'));
@@ -32,6 +33,11 @@ for (const asset of assets) {
         const info = await stat(asset.path);
         if (!info.isFile() || info.size < 128) issues.push({ check: 'empty-or-invalid-file', path: asset.path, detail: `${info.size} bytes` });
         if (!(await signatureValid(asset.path))) issues.push({ check: 'invalid-file-signature', path: asset.path });
+        if (asset.kind === 'music') {
+            const bytes = await readFile(asset.path), digest = createHash('sha256').update(bytes).digest('hex');
+            if (asset.bytes !== bytes.length) issues.push({ check: 'music-byte-count-mismatch', path: asset.path, detail: `${asset.bytes} != ${bytes.length}` });
+            if (!/^[a-f0-9]{64}$/.test(asset.sha256 || '') || asset.sha256 !== digest) issues.push({ check: 'music-checksum-mismatch', path: asset.path, detail: digest });
+        }
     } catch { issues.push({ check: 'missing-file', path: asset.path }); }
     if (!credits.includes(`\`${asset.path}\``)) issues.push({ check: 'missing-credit-entry', path: asset.path });
     if (!/^https:\/\//.test(asset.sourcePage || '') || !/^https:\/\//.test(asset.licenseUrl || '')) issues.push({ check: 'invalid-source-or-license-url', path: asset.path });

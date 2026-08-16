@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-08-15T17:00:16.882Z",
+  "generatedAt": "2026-08-16T03:45:39.354Z",
   "finite": true,
   "locations": 1145,
   "regions": 98,
@@ -132,6 +132,113 @@
     "ACCIDENTAL_LOOP": 0
   },
   "runtimeRepairs": 91,
+  "requiredLandmarkRoutes": {
+    "forest": [
+      "west",
+      "south",
+      "west",
+      "west"
+    ],
+    "great_forest_north_gate": [
+      "west",
+      "south",
+      "west",
+      "west",
+      "north"
+    ],
+    "great_forest_south_gate": [
+      "west",
+      "south",
+      "west",
+      "west",
+      "south"
+    ],
+    "great_forest_east_gate": [
+      "west",
+      "south",
+      "west"
+    ],
+    "great_forest_west_gate": [
+      "west",
+      "south",
+      "west",
+      "west",
+      "west"
+    ],
+    "expansive_forest_1": [
+      "west",
+      "south",
+      "west",
+      "up",
+      "north",
+      "north",
+      "north",
+      "north"
+    ],
+    "dungeon_entrance": [
+      "south",
+      "east",
+      "east",
+      "east",
+      "south",
+      "south"
+    ],
+    "mountains": [
+      "north",
+      "west",
+      "west",
+      "northeast"
+    ],
+    "seabreeze_ferry": [
+      "south",
+      "east",
+      "east",
+      "east",
+      "northeast",
+      "east"
+    ],
+    "storm_island_central_dock": [
+      "south",
+      "east",
+      "east",
+      "east",
+      "northeast",
+      "east",
+      "northeast"
+    ],
+    "city_cemetery_1": [
+      "west",
+      "south",
+      "west",
+      "west",
+      "south",
+      "south",
+      "east",
+      "east",
+      "east",
+      "south",
+      "south",
+      "east",
+      "east",
+      "east",
+      "south",
+      "east",
+      "east",
+      "southeast",
+      "east",
+      "east",
+      "east",
+      "east",
+      "south",
+      "east",
+      "south",
+      "east",
+      "east",
+      "east",
+      "east",
+      "east"
+    ]
+  },
   "issues": [],
   "warnings": []
 }

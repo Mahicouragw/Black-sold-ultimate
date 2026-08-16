@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedFor": "Black Sword Ultimate 7.21.0",
-  "dateVerified": "2026-08-15",
+  "generatedFor": "Black Sword Ultimate 7.21.1",
+  "dateVerified": "2026-08-16",
   "assets": [
     {
       "path": "assets/audio/music/Fantasy-Choir-1.mp3",
@@ -15,7 +15,9 @@
       "licenseRequirements": "Credit Johan Brodd, link the licence, indicate this format conversion, and distribute the adapted audio under CC BY-SA 3.0.",
       "attributionRequirements": "Required; see attribution. The local transcoded copy remains CC BY-SA 3.0.",
       "attribution": "“A Winter Tale” by Johan Brodd, used and locally transcoded under CC BY-SA 3.0. Local adapted audio is offered under CC BY-SA 3.0.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 5676580,
+      "sha256": "721f6859d76b808fa261dd1d0ab3e40c0e9a6730354b2e7a4bf78973598bc438"
     },
     {
       "path": "assets/audio/music/Fantasy-Choir-2.mp3",
@@ -29,7 +31,9 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit requested by creator: The Cynic Project / pixelsphere.org / cynicmusic.com.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 1246744,
+      "sha256": "96b6bbb4d1e3a790b00166c0dafc98e1b62052322fe8c5e4408f1dbe753967d7"
     },
     {
       "path": "assets/audio/music/Fantasy-Choir-3.mp3",
@@ -43,7 +47,9 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit: “Beyond the Frozen Veil” by Synth-thetic.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 3200566,
+      "sha256": "7d41d7e110be5bff1184317c2cc490eeb7667a2ba2d144379b164d98960ae582"
     },
     {
       "path": "assets/audio/music/adventure-intro.wav",
@@ -57,7 +63,9 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit: “Adventure Intro Title” by nene.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 6525122,
+      "sha256": "50f903ed8ee144000a66700495746178d9c9c441d092dccd3407bba5be40f259"
     },
     {
       "path": "assets/audio/music/battle-fast.mp3",
@@ -71,7 +79,9 @@
       "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
       "attributionRequirements": "Required; see attribution.",
       "attribution": "“Battle in the Stratosphere” by Scott Elliott, used under CC BY 4.0; converted to the bundled MP3.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 2678448,
+      "sha256": "a1d9ed4ea9084a6712a49179bb9cb2e85af24ad5af7f212016d96d527b070687"
     },
     {
       "path": "assets/audio/music/battle.ogg",
@@ -85,7 +95,9 @@
       "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
       "attributionRequirements": "Required; see attribution.",
       "attribution": "“Battle March” by PlayOnLoop, used under CC BY 3.0; converted to the bundled OGG. Credit link: PlayOnLoop.com.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 192755,
+      "sha256": "cf956ab013d8d9ee74d16f2bfd8c5ccf7c6c967dca0cb5958dd9f00eeeeb115e"
     },
     {
       "path": "assets/audio/music/boss.mp3",
@@ -99,7 +111,9 @@
       "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
       "attributionRequirements": "Required; see attribution.",
       "attribution": "“A Slave To No One” composed by Jonathan Shaw (www.jshaw.co.uk), used under CC BY 3.0; converted to the bundled MP3.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 7014778,
+      "sha256": "1b2f2f3063ab3836057323dba8bb3d8f481d701fe17b8258c94aab7521f1bdf9"
     },
     {
       "path": "assets/audio/music/dark-forest.mp3",
@@ -113,7 +127,9 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit: “Cathedral in the Forest” by congusbongus.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 2740811,
+      "sha256": "191fad9c2333eee006213d84e8c5f4e978ffb181500e9c386669d9bf0875b0d9"
     },
     {
       "path": "assets/audio/music/determined-pursuit.mp3",
@@ -127,7 +143,9 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit: “Determined Pursuit” by Emma_MA.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 4192173,
+      "sha256": "9241a5e30f1c0779ce81482df88f93f43ee73060516c766e1d900f8a08678e45"
     },
     {
       "path": "assets/audio/music/dungeon.ogg",
@@ -141,7 +159,9 @@
       "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
       "attributionRequirements": "Required; see attribution.",
       "attribution": "“RPG Ambience - Dungeon” by HitCtrl, used under CC BY 3.0; converted to the bundled OGG.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 2483838,
+      "sha256": "4de987c17d0767babb91ee40e73354d029a22e0f88ed69ee26e7821cb22f7fa2"
     },
     {
       "path": "assets/audio/music/exploration.mp3",
@@ -155,7 +175,9 @@
       "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
       "attributionRequirements": "Required; see attribution.",
       "attribution": "“Epic Departure [v2]” by Of Far Different Nature, from Loop Box #3, used under CC BY 4.0; converted to the bundled MP3.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 2770131,
+      "sha256": "b38c10170fcab2e63e885b30c9eaaf3369f8d764e02afe4bb79362ca205cb752"
     },
     {
       "path": "assets/audio/music/inn.mp3",
@@ -169,7 +191,9 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit: “Medieval: The Old Tower Inn” by RandomMind.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 667334,
+      "sha256": "5d8587f11932b5b6b87ccd24ca9de1c57bbef9a401f8d86ccc1182bec8a8cc81"
     },
     {
       "path": "assets/audio/music/town.mp3",
@@ -183,7 +207,9 @@
       "licenseRequirements": "Credit the creator, link the licence, and indicate this local format conversion.",
       "attributionRequirements": "Required; see attribution.",
       "attribution": "“Fantasy Music - Night Town” © Angus Macnaughton 2014, used under CC BY 4.0; converted to the bundled MP3.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 5042333,
+      "sha256": "acb98fa18870e6b2b5a37e7dd21450103517d7c1c7c26b1c98174764c3377101"
     },
     {
       "path": "assets/audio/music/victory.mp3",
@@ -197,7 +223,94 @@
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
       "attribution": "Courtesy credit: “Victory” by celestialghost8.",
-      "dateAccessed": "2026-08-15"
+      "dateAccessed": "2026-08-15",
+      "bytes": 78411,
+      "sha256": "1ceed59dc7df8159b78e68429e799e1f32cbce173a7c84d4601b5638f533d127"
+    },
+    {
+      "path": "assets/audio/music/town-theme-rpg.mp3",
+      "kind": "music",
+      "title": "Town Theme RPG",
+      "creator": "cynicmusic",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/town-theme-rpg",
+      "originalUrl": "https://opengameart.org/sites/default/files/TownTheme.mp3",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution, modification, game use, and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required; creator supplied courtesy-credit instructions.",
+      "attribution": "Courtesy credit: “Town Theme RPG” by cynicmusic — cynicmusic.com / pixelsphere.org.",
+      "dateAccessed": "2026-08-16",
+      "bytes": 1316581,
+      "sha256": "2657861d5107d4a3c01ef81cb6a4d61ddd5e7a054b6da57e658373d79d0c3466"
+    },
+    {
+      "path": "assets/audio/music/battle-theme-a.mp3",
+      "kind": "music",
+      "title": "Battle Theme A",
+      "creator": "cynicmusic",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/battle-theme-a",
+      "originalUrl": "https://opengameart.org/sites/default/files/battleThemeA.mp3",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution, modification, game use, and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required; creator supplied courtesy-credit instructions.",
+      "attribution": "Courtesy credit: “Battle Theme A” by cynicmusic — cynicmusic.com / pixelsphere.org.",
+      "dateAccessed": "2026-08-16",
+      "bytes": 3289143,
+      "sha256": "6042399782e581d753d616bc703e66483d5eccb5fb687a20c9a552d68c49e620"
+    },
+    {
+      "path": "assets/audio/music/natural-forest-theme.mp3",
+      "kind": "music",
+      "title": "Natural Forest Fantasy Music",
+      "creator": "Thalon",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/natural-forest-fantasy-music",
+      "originalUrl": "https://opengameart.org/sites/default/files/Fantasy%20Menu%20Theme_0.mp3",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "licenseRequirements": "Credit Thalon, link the licence, and indicate whether changes were made. Bundled original MP3 is unmodified.",
+      "attributionRequirements": "Required; see attribution.",
+      "attribution": "“Natural Forest Fantasy Music” by Thalon, used unmodified under CC BY 4.0.",
+      "dateAccessed": "2026-08-16",
+      "bytes": 912905,
+      "sha256": "efa8137d09c21dc9469b403367ed9f1523af282a75b1fbc44e6b558c0a9fdf60"
+    },
+    {
+      "path": "assets/audio/music/boss-battle-theme.mp3",
+      "kind": "music",
+      "title": "Battle RPG Theme",
+      "creator": "Cleyton Kauffman (CleytonKauffman)",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/boss-battle-theme",
+      "originalUrl": "https://opengameart.org/sites/default/files/CleytonRX%20-%20Battle%20RPG%20Theme_1.mp3",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution, modification, game use, and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required; creator supplied a courtesy-credit notice.",
+      "attribution": "Courtesy credit: Music by Cleyton Kauffman — https://soundcloud.com/cleytonkauffman.",
+      "dateAccessed": "2026-08-16",
+      "bytes": 6859825,
+      "sha256": "207453cb5b4926c6b3e94a1627002b747e1001792e751c6eff473e210cc6cae4"
+    },
+    {
+      "path": "assets/audio/music/final-boss-theme.ogg",
+      "kind": "music",
+      "title": "Battle RPG Theme Variation",
+      "creator": "Cleyton Kauffman (CleytonKauffman)",
+      "source": "OpenGameArt",
+      "sourcePage": "https://opengameart.org/content/boss-battle-theme",
+      "originalUrl": "https://opengameart.org/sites/default/files/CleytonRX%20-%20Battle%20RPG%20Theme%20Var_0.ogg",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "licenseRequirements": "Redistribution, modification, game use, and commercial use permitted; no attribution required.",
+      "attributionRequirements": "None legally required; creator supplied a courtesy-credit notice.",
+      "attribution": "Courtesy credit: Music by Cleyton Kauffman — https://soundcloud.com/cleytonkauffman.",
+      "dateAccessed": "2026-08-16",
+      "bytes": 4630302,
+      "sha256": "9a63f74305f5cbce8374a72a027a645c07c97663255aba0b817bc1f70c432ed5"
     },
     {
       "path": "assets/audio/sfx/attack-fast.wav",

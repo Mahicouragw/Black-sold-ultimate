@@ -1,6 +1,6 @@
 # Audio Credits and Licences
 
-Verified: **2026-08-15**. The machine-readable source of truth is [`assets/audio/audio-manifest.json`](assets/audio/audio-manifest.json). Every bundled audio file has one manifest record; validation fails for missing files, missing licence fields, duplicate paths, unsupported/empty files, or orphaned assets.
+Verified: **2026-08-16**. The machine-readable source of truth is [`assets/audio/audio-manifest.json`](assets/audio/audio-manifest.json). Every bundled audio file has one manifest record; validation fails for missing files, missing licence fields, duplicate paths, unsupported/empty files, or orphaned assets.
 
 “Royalty-free” is not treated as a licence. The exact licence for each work is recorded below. CC BY and CC BY-SA requirements apply to the identified files; the remaining identified works are CC0. No commercial recordings, YouTube/Spotify rips, or undocumented placeholder music are bundled.
 
@@ -22,6 +22,12 @@ Verified: **2026-08-15**. The machine-readable source of truth is [`assets/audio
 | `assets/audio/music/inn.mp3` | Medieval: The Old Tower Inn | RandomMind | [OpenGameArt](https://opengameart.org/content/medieval-the-old-tower-inn) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Medieval: The Old Tower Inn” by RandomMind. | 2026-08-15 |
 | `assets/audio/music/town.mp3` | Fantasy Music - Night Town | Angus Macnaughton | [OpenGameArt](https://opengameart.org/content/fantasy-music-night-town) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | Credit the creator, link the licence, and indicate this local format conversion. “Fantasy Music - Night Town” © Angus Macnaughton 2014, used under CC BY 4.0; converted to the bundled MP3. | 2026-08-15 |
 | `assets/audio/music/victory.mp3` | Victory | celestialghost8 | [OpenGameArt](https://opengameart.org/content/victory) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and commercial use permitted; no attribution required. Courtesy credit: “Victory” by celestialghost8. | 2026-08-15 |
+
+| `assets/audio/music/town-theme-rpg.mp3` | Town Theme RPG | cynicmusic | [OpenGameArt](https://opengameart.org/content/town-theme-rpg) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and game use permitted; no attribution required. Courtesy credit: cynicmusic.com / pixelsphere.org. Original file SHA-256 `2657861d5107d4a3c01ef81cb6a4d61ddd5e7a054b6da57e658373d79d0c3466`. | 2026-08-16 |
+| `assets/audio/music/battle-theme-a.mp3` | Battle Theme A | cynicmusic | [OpenGameArt](https://opengameart.org/content/battle-theme-a) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and game use permitted; no attribution required. Courtesy credit: cynicmusic.com / pixelsphere.org. Original file SHA-256 `6042399782e581d753d616bc703e66483d5eccb5fb687a20c9a552d68c49e620`. | 2026-08-16 |
+| `assets/audio/music/natural-forest-theme.mp3` | Natural Forest Fantasy Music | Thalon | [OpenGameArt](https://opengameart.org/content/natural-forest-fantasy-music) | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | “Natural Forest Fantasy Music” by Thalon, used unmodified under CC BY 4.0. Original file SHA-256 `efa8137d09c21dc9469b403367ed9f1523af282a75b1fbc44e6b558c0a9fdf60`. | 2026-08-16 |
+| `assets/audio/music/boss-battle-theme.mp3` | Battle RPG Theme | Cleyton Kauffman | [OpenGameArt](https://opengameart.org/content/boss-battle-theme) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and game use permitted; no attribution required. Courtesy credit: Music by Cleyton Kauffman. Original file SHA-256 `207453cb5b4926c6b3e94a1627002b747e1001792e751c6eff473e210cc6cae4`. | 2026-08-16 |
+| `assets/audio/music/final-boss-theme.ogg` | Battle RPG Theme Variation | Cleyton Kauffman | [OpenGameArt](https://opengameart.org/content/boss-battle-theme) | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) | Redistribution and game use permitted; no attribution required. Courtesy credit: Music by Cleyton Kauffman. Original file SHA-256 `9a63f74305f5cbce8374a72a027a645c07c97663255aba0b817bc1f70c432ed5`. | 2026-08-16 |
 
 ## Sound effects
 
@@ -84,6 +90,7 @@ The following notice must remain with redistributed copies of the game:
 - “Battle in the Stratosphere” by Scott Elliott — CC BY 4.0.
 - “A Slave To No One” composed by Jonathan Shaw (https://www.jshaw.co.uk/) — CC BY 3.0.
 - “Goblin Cackle” by spookymodem / Joseph Krebs — CC BY 3.0.
+- “Natural Forest Fantasy Music” by Thalon — CC BY 4.0; bundled original is unmodified.
 
 Format conversion, trimming, or resampling is disclosed in the per-file entries. CC0 courtesy credits are retained to thank the creators even where attribution is not legally required.
 
