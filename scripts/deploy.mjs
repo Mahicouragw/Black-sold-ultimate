@@ -123,6 +123,27 @@ async function checkTokenScope(token) {
 
 /* ── preflight ───────────────────────────────────────────────────────────── */
 
+/**
+ * Workspace snapshots exclude node_modules/ and .git/, so a resumed session can
+ * come back with source intact but tooling or repo metadata missing. Repair both
+ * automatically instead of failing with a confusing error.
+ */
+async function selfHeal() {
+    if (!(await access('.git').then(() => true).catch(() => false))) {
+        step('Repairing git metadata (dropped by workspace snapshot)');
+        await git(['init', '-q']);
+        await git(['remote', 'add', 'origin', `https://github.com/${REPO_SLUG}.git`], { allowFail: true });
+        await git(['fetch', '-q', '--depth=1', 'origin', BRANCH]);
+        await git(['reset', '-q', '--soft', 'FETCH_HEAD']);
+        log('✅', 'Git repository restored from origin');
+    }
+    if (!(await access('node_modules/jsdom').then(() => true).catch(() => false))) {
+        step('Installing dependencies (node_modules excluded from snapshots)');
+        await run('npm', ['install', '--no-audit', '--no-fund'], { cwd: process.cwd(), maxBuffer: 32 * 1024 * 1024 });
+        log('✅', 'Dependencies installed');
+    }
+}
+
 async function preflight() {
     step('Preflight verification');
     if (SKIP_TESTS) { log('⚠️', 'Tests skipped by --skip-tests (emergency mode)'); return; }
@@ -307,6 +328,7 @@ async function main() {
     const repo = await checkTokenScope(SECRET);
     log('✅', `Write access confirmed on ${repo.full_name}`);
 
+    await selfHeal();
     await preflight();
 
     const message = option('message') || `Release v${version}`;

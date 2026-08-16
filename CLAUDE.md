@@ -13,6 +13,32 @@ Runs preflight (131 tests, audio, world, PWA, security, build) → commits →
 pushes → watches GitHub Actions → polls both public sites until they serve the
 new version → deletes `www/`. Exits non-zero if the sites did not really update.
 
+## If the user is on a phone (no terminal)
+
+They cannot run commands. Two paths, both already built:
+
+1. **Best:** run `npm run auth` yourself and give them the printed link. They tap
+   it, approve on github.com, done. Nothing for them to type or paste.
+2. **Backup:** tell them *"paste your token into `TOKEN-HERE.txt` and save."*
+   `npm run token` and `npm run deploy` both harvest it automatically, move it to
+   a private store, and blank the file. Never ask for a token in chat.
+
+## Session resumed and things look broken?
+
+`node_modules/` and `.git/` are excluded from workspace snapshots, so a resumed
+session may have source files but no dependencies or repo metadata. Symptoms:
+`Cannot find package 'jsdom'` or `not a git repository`.
+
+`npm run deploy` now self-heals both automatically. To fix manually:
+
+```bash
+npm install                                   # restores node_modules
+git init && git remote add origin https://github.com/Mahicouragw/Black-sold-ultimate.git
+git fetch --depth=1 origin main && git reset --soft FETCH_HEAD
+```
+
+Never conclude the code is broken before checking these two.
+
 ## If a credential seems missing
 
 ```bash
