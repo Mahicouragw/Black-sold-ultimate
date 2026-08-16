@@ -307,8 +307,20 @@ const Game = {
         document.querySelectorAll('.close-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+                this.restoreGameplayControls();
             });
         });
+
+        // Some panels (chat, storage, directory, wayfinder) close via inline
+        // onclick handlers that bypass the listener above. A single delegated
+        // capture-phase listener guarantees EVERY close path restores gameplay
+        // state, so movement can never be left permanently disabled.
+        document.addEventListener('click', event => {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            if (!target.closest('.close-btn, [data-close-panel]')) return;
+            setTimeout(() => this.restoreGameplayControls(), 0);
+        }, true);
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -2143,8 +2155,37 @@ const Game = {
         this.addNarrative("open/close door; rest in tavern; examine combat", 'system');
     },
 
-    closePanels() {
+    /**
+     * Restore interactive gameplay state after any overlay/panel closes.
+     * Idempotent and safe to call at any time. During combat the direction
+     * buttons stay disabled by design; out of combat they are re-enabled from
+     * the authoritative world graph rather than from stale DOM state.
+     */
+    restoreGameplayControls() {
+        // A genuinely open modal dialog (e.g. the first-launch interface chooser
+        // or the chat community notice) must keep its focus trap. Only clear the
+        // trap when no modal is actually showing.
+        const modalOpen = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')]
+            .some(dialog => !dialog.classList.contains('hidden'));
+        const container = document.getElementById('game-container');
+        if (container && !modalOpen) { container.inert = false; container.removeAttribute('aria-hidden'); }
+        if (modalOpen) return;
+
+        const input = document.getElementById('cmd-input');
+        if (input) { input.disabled = false; input.removeAttribute('aria-busy'); }
+
+        if (this.state.inCombat && this.state.enemy) {
+            this.updateCombatActionAvailability?.();
+            return;
+        }
+        const exits = WorldData.locations[this.state.location]?.exits || {};
+        this.updateDirectionButtons(exits);
+        this.updateCombatActionAvailability?.();
+    },
+
+    closePanels({ restore = true } = {}) {
         document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+        if (restore) this.restoreGameplayControls();
     },
 
     // ============================================

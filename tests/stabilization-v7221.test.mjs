@@ -759,3 +759,77 @@ test('(57) hero slots are unique and unbounded, so heroes never collide', async 
     assert.equal(Object.keys(loaded.heroes).length, 25, '25 heroes persist independently');
     assert.equal(loaded.heroes.hero_a_10.name, 'Hero 10', 'each hero keeps its own data');
 });
+
+/* ── §2/§26 Chat and panel closing must never break gameplay controls ────── */
+
+async function liveGame(t) {
+    const runtime = await createRuntime();
+    t.after(() => runtime.dom.window.close());
+    const { window } = runtime, { Game } = window;
+    window.OnlineSystem.saveGame = async () => true;
+    window.OnlineSystem.syncActiveHero = () => {};
+    window.OnlineSystem.dropWorldItem = async () => false;
+    window.OnlineSystem.init = () => {};
+    Game.init();                       // real page lifecycle binds close handlers
+    Game.startNewHero();
+    window.document.getElementById('char-name').value = 'Panel Audit';
+    window.document.querySelector('.race-btn[data-race="human"]').classList.add('selected');
+    window.document.querySelector('.class-btn[data-class="warrior"]').classList.add('selected');
+    Game.createCharacter(false);
+    Game.state.quests = [];
+    window.InterfaceMode.apply('sighted');
+    window.AudioManager.endBattle = async () => {};
+    Game.state.location = 'forest';
+    Game.enterLocation('forest');
+    return runtime;
+}
+const dirBtn = (window, dir) => window.document.querySelector(`.dir-btn[data-cmd="${dir}"]`);
+
+test('(58) A: closing a panel after combat restores every valid direction', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    assert.equal(dirBtn(window, 'north').disabled, true, 'combat disables movement by design');
+    G.state.inCombat = false; G.state.enemy = null;
+    window.document.querySelectorAll('.close-btn')[0].click();
+    await wait(30);
+    for (const dir of Object.keys(window.WorldData.locations.forest.exits)) {
+        assert.equal(dirBtn(window, dir).disabled, false, `${dir} must work again`);
+    }
+});
+
+test('(59) AE: no stale overlay, inert or focus trap survives a panel close', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    const container = window.document.getElementById('game-container');
+    const priorInert = container.inert;
+    const priorHidden = container.getAttribute('aria-hidden');
+    try {
+        container.inert = true;
+        container.setAttribute('aria-hidden', 'true');
+        G.restoreGameplayControls();
+        assert.equal(container.inert, false);
+        assert.equal(container.hasAttribute('aria-hidden'), false);
+        assert.equal(window.document.getElementById('cmd-input').disabled, false);
+    } finally {
+        // Never leak DOM state into other suites sharing this runtime.
+        container.inert = priorInert;
+        if (priorHidden === null) container.removeAttribute('aria-hidden');
+        else container.setAttribute('aria-hidden', priorHidden);
+    }
+});
+
+test('(60) restoreGameplayControls keeps movement disabled while combat is live', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.restoreGameplayControls();
+    assert.equal(dirBtn(window, 'north').disabled, true, 'must not re-enable mid-battle');
+    assert.equal(G.state.inCombat, true);
+});
+
+test('(61) C: a battle can still start normally after a panel was opened and closed', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    window.document.querySelectorAll('.close-btn')[0].click();
+    await wait(30);
+    G.startCombat('root goblin');
+    assert.equal(G.state.inCombat, true);
+    assert.equal(window.document.getElementById('combat-status').classList.contains('hidden'), false);
+});
