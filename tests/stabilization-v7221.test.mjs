@@ -825,6 +825,25 @@ test('(60) restoreGameplayControls keeps movement disabled while combat is live'
     assert.equal(G.state.inCombat, true);
 });
 
+test('(61b) movement is restored even while a modal dialog is on screen', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.inCombat = false; G.state.enemy = null;
+    // Simulate the first-launch/chat-notice modal being visible.
+    const dialog = window.document.getElementById('interface-mode-dialog');
+    const container = window.document.getElementById('game-container');
+    dialog.classList.remove('hidden');
+    container.inert = true;                       // trap set by the modal itself
+    try {
+        G.restoreGameplayControls();
+        assert.equal(dirBtn(window, 'north').disabled, false, 'movement must recover regardless of modals');
+        assert.equal(container.inert, true, 'an open modal keeps its existing focus trap');
+    } finally {
+        dialog.classList.add('hidden');
+        window.document.getElementById('game-container').inert = false;
+    }
+});
+
 test('(61) C: a battle can still start normally after a panel was opened and closed', async t => {
     const { window } = await liveGame(t), G = window.Game;
     window.document.querySelectorAll('.close-btn')[0].click();

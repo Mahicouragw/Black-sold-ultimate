@@ -2168,8 +2168,10 @@ const Game = {
         const modalOpen = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')]
             .some(dialog => !dialog.classList.contains('hidden'));
         const container = document.getElementById('game-container');
+        // Keep a real modal's focus trap intact, but ALWAYS restore the movement
+        // controls themselves: a stale disabled direction button is the bug we
+        // are fixing and it must never survive, modal or not.
         if (container && !modalOpen) { container.inert = false; container.removeAttribute('aria-hidden'); }
-        if (modalOpen) return;
 
         const input = document.getElementById('cmd-input');
         if (input) { input.disabled = false; input.removeAttribute('aria-busy'); }
