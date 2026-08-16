@@ -874,6 +874,14 @@ const Game = {
     },
 
     useItem(itemName) {
+        // §14 double-tap guard: a second activation within 400 ms of the same
+        // item is ignored so a screen-reader double tap cannot consume twice.
+        const guardKey = String(itemName || '').toLowerCase();
+        const now = Date.now();
+        this._itemUseGuard = this._itemUseGuard || {};
+        if (this._itemUseGuard[guardKey] && now - this._itemUseGuard[guardKey] < 400) return;
+        this._itemUseGuard[guardKey] = now;
+
         const item = this.state.inventory.find(i =>
             i.name.toLowerCase().includes(itemName.toLowerCase())
         );

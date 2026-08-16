@@ -124,7 +124,7 @@
         },
         castOpeningDoors(game){
             const p=game.state.player,spell=p?.spells?.find(s=>s.toLowerCase()==='alohomora');if(!spell){game.addNarrative('You do not know the Opening Doors spell, Alohomora.','system');return false;}
-            const door=WorldData.locations[game.state.location]?.specialDoor;if(!door?.magical){game.addNarrative('There is no magical door here that this spell can open.','system');return false;}
+            const door=WorldData.locations[game.state.location]?.specialDoor;if(!door?.magical){game.addNarrative('The spell has no effect here. There is no compatible door.','system');return false;}
             if(door.open||game.state.specialDoors?.[door.id]?.open){game.addNarrative('The door is already open.','system');return false;}
             const wait=remaining(game,'openingDoors');if(wait){game.addNarrative('Opening Doors is still recovering.','system');return false;}const cost=this.config.openingDoors.cost;if(p.mp<cost){game.addNarrative('You do not have enough mana.','system');return false;}
             p.mp-=cost;setCooldown(game,'openingDoors',this.config.openingDoors.cooldownMs);game.state.specialDoors[door.id]={open:true,method:'alohomora'};applyDoorState(game);recordMastery(game,spell,{mp:cost});MusicSystem.playSFX('magic');MusicSystem.playSFX('door');event(game,'The magical door has opened.','green-light',{eventId:`door:${door.id}`});game.updateDirectionButtons(WorldData.locations[game.state.location].exits);game.updateHUD();game.save();return true;

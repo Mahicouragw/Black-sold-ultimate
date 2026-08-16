@@ -720,3 +720,42 @@ test('(53) empty feedback is rejected client-side without an RPC call', async t 
     assert.equal(await window.FeedbackCenter.submit(), false);
     assert.equal(calls.length, 0);
 });
+
+/* ── Master-prompt additions: §7 wording, §14 double-tap, §16 unlimited heroes ── */
+
+test('(54) Open Door on a location with no compatible door says it has no effect', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    G.state.location = 'kaliwasch';
+    p.mp = 50;
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(window.GameSpellSystem.castOpeningDoors(G), false);
+    assert.equal(p.mp, 50, 'an invalid target consumes no mana');
+    assert.match(narrative(window), /no effect here/i);
+});
+
+test('(55) a double tap cannot consume the same item twice', async t => {
+    const { window } = await ready(t), G = window.Game, p = G.state.player;
+    G.state.inventory = [{ ...window.WorldData.items['healing potion'], id: 'healing potion', quantity: 2 }];
+    p.hp = 1;
+    G.useItem('healing potion');
+    G.useItem('healing potion');   // immediate second tap
+    assert.equal(G.state.inventory[0].quantity, 1, 'only one potion consumed');
+});
+
+test('(56) no hard-coded hero limit exists anywhere', async () => {
+    for (const file of ['game.js', 'online.js', 'sacred.js']) {
+        const source = await readFile(file, 'utf8');
+        assert.doesNotMatch(source, /(?:max|limit)(?:Heroes|_heroes|HeroSlots)/i, file);
+        assert.doesNotMatch(source, /heroes\)\.length\s*>=?\s*[3-9]\b/, `${file} caps hero count`);
+    }
+});
+
+test('(57) hero slots are unique and unbounded, so heroes never collide', async t => {
+    const { window } = await ready(t), G = window.Game;
+    const roster = { version: 2, activeHeroId: null, heroes: {} };
+    for (let i = 0; i < 25; i++) roster.heroes[`hero_${i.toString(36)}_${i}`] = { name: `Hero ${i}`, level: i + 1 };
+    G.storeRoster(roster);
+    const loaded = G.getRoster();
+    assert.equal(Object.keys(loaded.heroes).length, 25, '25 heroes persist independently');
+    assert.equal(loaded.heroes.hero_a_10.name, 'Hero 10', 'each hero keeps its own data');
+});
