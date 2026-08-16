@@ -204,7 +204,9 @@ async function waitForWorkflow(token, sha) {
             const runs = (await response.json()).workflow_runs || [];
             if (runs.length) {
                 const pending = runs.filter(r => r.status !== 'completed');
-                const failed = runs.filter(r => r.conclusion && r.conclusion !== 'success' && r.conclusion !== 'skipped');
+                // 'cancelled' means GitHub superseded this run with a newer one for the
+            // same concurrency group. That is normal, not a release failure.
+            const failed = runs.filter(r => r.conclusion && !['success', 'skipped', 'cancelled', 'neutral'].includes(r.conclusion));
                 const state = `${runs.length} run(s): ${runs.map(r => `${r.name}=${r.conclusion || r.status}`).join(', ')}`;
                 if (state !== reported) { log('⏳', state); reported = state; }
                 if (failed.length) fail(`Workflow failed: ${failed.map(r => `${r.name} (${r.html_url})`).join(', ')}`);
