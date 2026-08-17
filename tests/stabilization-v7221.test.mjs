@@ -1302,7 +1302,10 @@ test('(91) the trade migration re-verifies ownership at settlement', async () =>
 
 test('(92) trade listings expose only public hero names', async () => {
     const sql = await readFile('supabase/features_v20_player_trading.sql', 'utf8');
-    const list = sql.slice(sql.indexOf('function public.list_trade_offers'), sql.indexOf('purge_expired_trades'));
+    // Slice from the list function to the end of its body, independent of where
+    // other helpers sit in the file.
+    const from = sql.indexOf('function public.list_trade_offers');
+    const list = sql.slice(from, sql.indexOf('$list$;', from));
     assert.match(list, /p\.display_name/, 'returns the public hero name');
     assert.doesNotMatch(list, /email|player_code|pin_hash|auth\.users/i, 'never returns private fields');
 });

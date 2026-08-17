@@ -135,78 +135,6 @@ begin
 end;
 $create$;
 
--- ── accept an offer: the atomic exchange ───────────────────────────────────
-
-create or replace function public.accept_trade_offer(offer_id uuid)
-returns jsonb language plpgsql security definer set search_path=public as $accept$
-declare
-  t record;
-  entry jsonb;
-  sender_inv jsonb;
-  receiver_inv jsonb;
-  sender_gold integer;
-  receiver_gold integer;
-begin
-  if auth.uid() is null then raise exception 'Authentication required'; end if;
-
-  select * into t from trade_offers where id = offer_id for update;
-  if not found then raise exception 'Trade offer not found'; end if;
-  if t.receiver_id <> auth.uid() then raise exception 'Only the recipient can accept this trade'; end if;
-  if t.status <> 'pending' then raise exception 'This trade is no longer pending'; end if;
-  if t.expires_at <= now() then
-    update trade_offers set status = 'expired' where id = offer_id;
-    raise exception 'This trade offer has expired';
-  end if;
-
-  -- Re-verify BOTH sides at settlement time. Ownership can change between the
-  -- offer and the acceptance, and this is what makes duplication impossible.
-  for entry in select * from jsonb_array_elements(t.offer_items) loop
-    if trade_item_count(t.sender_id, entry->>'id') < (entry->>'quantity')::int then
-      raise exception 'The other hero no longer has %', coalesce(entry->>'name', entry->>'id');
-    end if;
-  end loop;
-  for entry in select * from jsonb_array_elements(t.request_items) loop
-    if trade_item_count(t.receiver_id, entry->>'id') < (entry->>'quantity')::int then
-      raise exception 'You no longer have %', coalesce(entry->>'name', entry->>'id');
-    end if;
-  end loop;
-
-  sender_gold   := trade_gold(t.sender_id);
-  receiver_gold := trade_gold(t.receiver_id);
-  if sender_gold < t.offer_gold then raise exception 'The other hero does not have enough gold'; end if;
-  if receiver_gold < t.request_gold then raise exception 'You do not have enough gold'; end if;
-
-  -- Move items. remove_items/add_items rewrite the jsonb inventories.
-  select save_data->'inventory' into sender_inv   from game_saves where user_id = t.sender_id;
-  select save_data->'inventory' into receiver_inv from game_saves where user_id = t.receiver_id;
-
-  sender_inv   := trade_remove_items(coalesce(sender_inv,'[]'::jsonb),   t.offer_items);
-  sender_inv   := trade_add_items(sender_inv,   t.request_items);
-  receiver_inv := trade_remove_items(coalesce(receiver_inv,'[]'::jsonb), t.request_items);
-  receiver_inv := trade_add_items(receiver_inv, t.offer_items);
-
-  update game_saves set
-    save_data = jsonb_set(
-      jsonb_set(save_data, '{inventory}', sender_inv, true),
-      '{player,gold}', to_jsonb(sender_gold - t.offer_gold + t.request_gold), true),
-    updated_at = now()
-  where user_id = t.sender_id;
-
-  update game_saves set
-    save_data = jsonb_set(
-      jsonb_set(save_data, '{inventory}', receiver_inv, true),
-      '{player,gold}', to_jsonb(receiver_gold - t.request_gold + t.offer_gold), true),
-    updated_at = now()
-  where user_id = t.receiver_id;
-
-  update trade_offers
-     set status = 'accepted', settled_at = now()
-   where id = offer_id;
-
-  return jsonb_build_object('ok', true, 'trade', offer_id);
-end;
-$accept$;
-
 -- Remove a list of {id,quantity} from an inventory array.
 create or replace function public.trade_remove_items(inventory jsonb, items jsonb)
 returns jsonb language plpgsql immutable set search_path=public as $remove$
@@ -267,6 +195,79 @@ begin
   return result;
 end;
 $add$;
+
+-- ── accept an offer: the atomic exchange ───────────────────────────────────
+
+create or replace function public.accept_trade_offer(offer_id uuid)
+returns jsonb language plpgsql security definer set search_path=public as $accept$
+declare
+  t record;
+  entry jsonb;
+  sender_inv jsonb;
+  receiver_inv jsonb;
+  sender_gold integer;
+  receiver_gold integer;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+
+  select * into t from trade_offers where id = offer_id for update;
+  if not found then raise exception 'Trade offer not found'; end if;
+  if t.receiver_id <> auth.uid() then raise exception 'Only the recipient can accept this trade'; end if;
+  if t.status <> 'pending' then raise exception 'This trade is no longer pending'; end if;
+  if t.expires_at <= now() then
+    -- Do not UPDATE here: the RAISE below rolls the transaction back, so the
+    -- mark would be lost anyway. purge_expired_trades() does the marking.
+    raise exception 'This trade offer has expired';
+  end if;
+
+  -- Re-verify BOTH sides at settlement time. Ownership can change between the
+  -- offer and the acceptance, and this is what makes duplication impossible.
+  for entry in select * from jsonb_array_elements(t.offer_items) loop
+    if trade_item_count(t.sender_id, entry->>'id') < (entry->>'quantity')::int then
+      raise exception 'The other hero no longer has %', coalesce(entry->>'name', entry->>'id');
+    end if;
+  end loop;
+  for entry in select * from jsonb_array_elements(t.request_items) loop
+    if trade_item_count(t.receiver_id, entry->>'id') < (entry->>'quantity')::int then
+      raise exception 'You no longer have %', coalesce(entry->>'name', entry->>'id');
+    end if;
+  end loop;
+
+  sender_gold   := trade_gold(t.sender_id);
+  receiver_gold := trade_gold(t.receiver_id);
+  if sender_gold < t.offer_gold then raise exception 'The other hero does not have enough gold'; end if;
+  if receiver_gold < t.request_gold then raise exception 'You do not have enough gold'; end if;
+
+  -- Move items. remove_items/add_items rewrite the jsonb inventories.
+  select save_data->'inventory' into sender_inv   from game_saves where user_id = t.sender_id;
+  select save_data->'inventory' into receiver_inv from game_saves where user_id = t.receiver_id;
+
+  sender_inv   := trade_remove_items(coalesce(sender_inv,'[]'::jsonb),   t.offer_items);
+  sender_inv   := trade_add_items(sender_inv,   t.request_items);
+  receiver_inv := trade_remove_items(coalesce(receiver_inv,'[]'::jsonb), t.request_items);
+  receiver_inv := trade_add_items(receiver_inv, t.offer_items);
+
+  update game_saves set
+    save_data = jsonb_set(
+      jsonb_set(save_data, '{inventory}', sender_inv, true),
+      '{player,gold}', to_jsonb(sender_gold - t.offer_gold + t.request_gold), true),
+    updated_at = now()
+  where user_id = t.sender_id;
+
+  update game_saves set
+    save_data = jsonb_set(
+      jsonb_set(save_data, '{inventory}', receiver_inv, true),
+      '{player,gold}', to_jsonb(receiver_gold - t.request_gold + t.offer_gold), true),
+    updated_at = now()
+  where user_id = t.receiver_id;
+
+  update trade_offers
+     set status = 'accepted', settled_at = now()
+   where id = offer_id;
+
+  return jsonb_build_object('ok', true, 'trade', offer_id);
+end;
+$accept$;
 
 -- ── decline / cancel / list ────────────────────────────────────────────────
 
