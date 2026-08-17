@@ -86,6 +86,20 @@ The user is on a screen-reader/small display. Long dumps make the transcript
 unusable. Pipe through `| tail -5`, never cat whole files, never paste large
 blocks. Prefer one command with a short summary.
 
+## Verified backend state (v7.22.4)
+
+* Supabase migration **v20 player trading is APPLIED** and verified against the
+  live project: `trade_offers` exists, RLS returns nothing to anonymous callers,
+  direct INSERT is refused (401), and all four RPCs
+  (`create_trade_offer`, `accept_trade_offer`, `respond_trade_offer`,
+  `list_trade_offers`) respond 401 to anonymous callers, meaning they exist and
+  are correctly permissioned. Do not re-apply or "fix" this migration.
+* PostgREST matches RPCs by argument signature. Calling one with `{}` returns
+  404 `PGRST202` even when it exists — that is not a missing function.
+* **Outstanding:** `OPENROUTER_API_KEY` is not set in Vercel, so `/api/npc`
+  answers with scripted offline replies (`provider: offline`). Everything works;
+  it simply is not a live LLM until the owner adds that env var and redeploys.
+
 ## Project facts
 
 - Repo: `Mahicouragw/Black-sold-ultimate`, branch `main`, path `/home/user/bsu`
