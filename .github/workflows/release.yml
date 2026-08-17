@@ -82,10 +82,16 @@ jobs:
               fi
               echo "... $URL -> $LIVE (attempt $ATTEMPT, retrying)"
               if [ "$ATTEMPT" = "8" ]; then
-                echo "FAIL $URL never reached $EXPECTED"
-                exit 1
+                echo "::warning::$URL never reached $EXPECTED within the wait window"
+                echo "If GitHub Pages updated but Vercel did not, check the Vercel"
+                echo "dashboard for a failed, paused or disconnected deployment."
+                FAILED=1
               fi
               sleep 30
             done
           done
+          if [ "${FAILED:-0}" = "1" ]; then
+            echo "At least one public site is still serving an older build."
+            exit 1
+          fi
           echo "Both public sites serve $EXPECTED."

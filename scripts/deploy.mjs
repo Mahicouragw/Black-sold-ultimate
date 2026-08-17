@@ -273,6 +273,14 @@ async function verifyLive(expected) {
     for (const [name, site] of pending) {
         const last = await fetchLiveVersion(site.url);
         log('❌', `${name} did NOT reach ${expected} (currently ${last.ok ? last.version : last.detail})`);
+        if (name === 'Vercel' && last.ok) {
+            // A stale Vercel while Pages updated means the host is not building
+            // new commits. That is a dashboard problem, not a code problem, so
+            // say exactly that instead of leaving a confusing failure.
+            log('ℹ️', 'Vercel is serving an older build than the pushed commit.');
+            log('ℹ️', 'Check Vercel -> Project -> Deployments for a failed or paused build,');
+            log('ℹ️', 'and confirm the Git integration is still connected to this repository.');
+        }
         results.push({ name, url: site.url, version: last.ok ? last.version : null, ok: false });
     }
     return results;
