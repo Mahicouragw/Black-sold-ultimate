@@ -364,9 +364,33 @@ const OnlineSystem = {
      * logs that to the console, which a blind player can never see, so we
      * explain it in the interface instead.
      */
+    /**
+     * True for a throwaway Vercel preview deployment. Preview addresses change
+     * on every push, so they can never be registered as a Google origin.
+     */
+    isPreviewHost(hostname) {
+        const host = String(hostname || '');
+        if (host === 'black-sold-ultimate.vercel.app') return false;
+        if (host === 'mahicouragw.github.io') return false;
+        return /-git-/.test(host) || /\.vercel\.app$/.test(host);
+    },
+
     checkGoogleOriginAllowed() {
         if (this._originCheckDone) return;
         this._originCheckDone = true;
+        // A Vercel PREVIEW deployment (contains "-git-" or a team suffix) can
+        // never be an authorized Google origin, because its address changes on
+        // every push. Send the player to the stable production address instead
+        // of leaving them stuck on origin_mismatch.
+        if (this.isPreviewHost(location.hostname)) {
+            const message = 'This is a temporary preview address, so Google sign-in cannot work here. '
+                + 'Open the main game at https://black-sold-ultimate.vercel.app and sign in there. '
+                + 'Your heroes are safe.';
+            const status = document.getElementById('google-signin-status');
+            if (status) status.textContent = message;
+            window.Game?.addNarrative?.(message, 'system');
+            return;
+        }
         setTimeout(() => {
             const rendered = document.getElementById('google-signin-render');
             const status = document.getElementById('google-signin-status');

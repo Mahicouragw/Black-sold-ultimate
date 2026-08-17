@@ -1343,3 +1343,15 @@ test('(94) a blocked Google origin is explained to the player, not just the cons
     assert.match(status.textContent, /Authorized JavaScript origins/i, 'explains the real cause');
     assert.match(status.textContent, /Player ID/i, 'offers a working alternative');
 });
+
+test('(95) a Vercel preview address tells the player to use the production URL', async t => {
+    const { window } = await liveGame(t);
+    const online = window.OnlineSystem;
+
+    // Preview deployments must be recognised; real addresses must not be.
+    assert.equal(online.isPreviewHost('black-sold-ultimate-git-ae6cd6-numbersareplaying-1136s-projects.vercel.app'), true);
+    assert.equal(online.isPreviewHost('black-sold-ultimate-abc123-someteam.vercel.app'), true);
+    assert.equal(online.isPreviewHost('black-sold-ultimate.vercel.app'), false, 'production is allowed');
+    assert.equal(online.isPreviewHost('mahicouragw.github.io'), false, 'GitHub Pages is allowed');
+    assert.equal(online.isPreviewHost('localhost'), false, 'local development is allowed');
+});
