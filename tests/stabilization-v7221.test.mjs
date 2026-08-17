@@ -1089,29 +1089,30 @@ test('(79) weapon progression still allows genuinely strong late-game weapons', 
     assert.ok(Math.max(...damages) > 100, 'powerful weapons still exist');
 });
 
-test('(80) the monster turn deals damage to the hero', async t => {
+test('(80) the monster turn runs and can damage the hero', async t => {
     const { window } = await liveGame(t), G = window.Game;
     G.startCombat('root goblin');
     G.state.sacred.enemyQueue = [];
     G.state.enemy.hp = G.state.enemy.maxHp = 99999;   // survives to act
-    // Make the monster strong enough that its hit cannot be reduced to nothing,
-    // and sweep the whole roll space so the accuracy branch always connects on
-    // at least one attempt. This removes all randomness from the assertion.
     G.state.enemy.attack = 40;
+
+    // A monster may fairly miss, brace, or heal an ally on any single turn, so
+    // asserting "damage every time" is wrong. What must be true is that the
+    // monster turn RUNS and that damage lands across repeated turns. Anything
+    // else means monsters are not acting at all - the bug this guards.
     const before = G.state.player.hp;
-    // A monster may legitimately brace or miss on any given turn, so retry the
-    // whole roll space several times. Damage must land eventually; if it never
-    // does, the monster turn is genuinely broken.
-    for (let attempt = 0; attempt < 40 && G.state.player.hp >= before; attempt++) {
-        const fixed = 0.05 + (attempt % 9) * 0.1;
-        window.Math.random = () => fixed;
-        G.state.enemy.braceTurns = 0;      // clear a defensive stance
-        G.state.enemy.hp = G.state.enemy.maxHp;   // healthy, so it will not brace
+    let narrated = 0;
+    for (let i = 0; i < 60 && G.state.player.hp >= before; i++) {
+        window.document.getElementById('narrative').innerHTML = '';
+        G.state.enemy.braceTurns = 0;
+        G.state.enemy.hp = G.state.enemy.maxHp;
         G.enemyGroupTurn();
         await wait(20);
+        if (/hits you|misses you|blocks|casts/i.test(narrative(window))) narrated++;
     }
+    assert.ok(narrated > 0, 'the monster turn must actually execute and narrate');
     assert.ok(G.state.player.hp < before,
-        `the monster turn must deal damage (hp ${before} -> ${G.state.player.hp})`);
+        `damage must land within 60 monster turns (hp ${before} -> ${G.state.player.hp})`);
 });
 
 test('(80b) a level 1 monster survives the first hit, so it gets a turn', async t => {
