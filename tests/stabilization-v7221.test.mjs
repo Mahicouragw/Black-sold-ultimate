@@ -1188,3 +1188,121 @@ test('(84) legal pages explain server-side saves, identity checks and conduct', 
     assert.match(terms, /Game rules/i);
     assert.match(terms, /blind players and sighted players/i);
 });
+
+/* ── §Trading: player-to-player item exchange ────────────────────────────── */
+
+/** Give the runtime a fake Supabase client that records RPC calls. */
+function stubTradeClient(window, responses = {}) {
+    const calls = [];
+    window.OnlineSystem.ready = true;
+    window.OnlineSystem.user = { id: 'me' };
+    window.OnlineSystem.loadGame = async () => true;
+    window.OnlineSystem.client = {
+        rpc: async (name, args) => {
+            calls.push({ name, args });
+            return responses[name] ?? { data: 'trade-uuid', error: null };
+        }
+    };
+    return calls;
+}
+
+test('(85) a trade draft cannot offer more of an item than the hero owns', async t => {
+    const { window } = await liveGame(t), G = window.Game, T = window.Trading;
+    stubTradeClient(window);
+    G.state.inventory = [{ id: 'bread', name: 'Bread', quantity: 2 }];
+    T.open('Raven');
+    assert.equal(T.addItem('Bread x2'), true, 'offering what you own is allowed');
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(T.addItem('Bread x1'), false, 'over-offering is refused');
+    assert.match(narrative(window), /only have 2 bread/i);
+    const total = T.draft.items.reduce((sum, i) => sum + i.quantity, 0);
+    assert.equal(total, 2, 'the draft never exceeds the real stack');
+});
+
+test('(86) a trade draft cannot offer gold the hero does not have', async t => {
+    const { window } = await liveGame(t), G = window.Game, T = window.Trading;
+    stubTradeClient(window);
+    G.state.player.gold = 40;
+    T.open('Raven');
+    assert.equal(T.addGold(100), false, 'over-offering gold is refused');
+    assert.equal(T.addGold(30), true);
+    assert.equal(T.draft.gold, 30);
+});
+
+test('(87) sending a trade goes through the server RPC, never a direct write', async t => {
+    const { window } = await liveGame(t), G = window.Game, T = window.Trading;
+    const calls = stubTradeClient(window);
+    G.state.inventory = [{ id: 'bread', name: 'Bread', quantity: 3 }];
+    G.state.player.gold = 100;
+    T.open('Raven');
+    T.addItem('Bread x2');
+    T.addGold(25);
+    assert.equal(await T.send(), true);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].name, 'create_trade_offer');
+    assert.equal(calls[0].args.target_hero, 'Raven');
+    assert.equal(calls[0].args.gold_offered, 25);
+    assert.equal(calls[0].args.offered[0].quantity, 2);
+    assert.equal(T.draft, null, 'the draft clears after sending');
+});
+
+test('(88) accepting a trade settles once and reloads authoritative state', async t => {
+    const { window } = await liveGame(t), T = window.Trading;
+    const calls = stubTradeClient(window, {
+        list_trade_offers: { data: [{ id: 'o1', direction: 'incoming', other_hero: 'Raven',
+            offer_items: [{ id: 'bread', name: 'Bread', quantity: 1 }], request_items: [],
+            offer_gold: 0, request_gold: 0, status: 'pending' }], error: null },
+        accept_trade_offer: { data: { ok: true }, error: null }
+    });
+    await T.list();
+    assert.equal(await T.accept(1), true);
+    assert.equal(calls.filter(c => c.name === 'accept_trade_offer').length, 1, 'settles exactly once');
+});
+
+test('(89) a player cannot accept a trade they themselves sent', async t => {
+    const { window } = await liveGame(t), T = window.Trading;
+    stubTradeClient(window, {
+        list_trade_offers: { data: [{ id: 'o2', direction: 'outgoing', other_hero: 'Raven',
+            offer_items: [], request_items: [], offer_gold: 5, request_gold: 0, status: 'pending' }], error: null }
+    });
+    await T.list();
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(await T.accept(1), false);
+    assert.match(narrative(window), /only accept a trade someone sent/i);
+});
+
+test('(90) trade errors are explained without leaking database internals', async t => {
+    const { window } = await liveGame(t), G = window.Game, T = window.Trading;
+    stubTradeClient(window, {
+        create_trade_offer: { data: null, error: { message: 'ERROR: relation "trade_offers" violates row-level security policy PGRST301' } }
+    });
+    G.state.inventory = [{ id: 'bread', name: 'Bread', quantity: 1 }];
+    T.open('Ghost');
+    T.addItem('Bread');
+    window.document.getElementById('narrative').innerHTML = '';
+    assert.equal(await T.send(), false);
+    const shown = narrative(window);
+    assert.doesNotMatch(shown, /PGRST|row-level security|relation "/i, 'no database internals shown');
+    assert.match(shown, /could not be completed|not available/i);
+});
+
+test('(91) the trade migration re-verifies ownership at settlement', async () => {
+    const sql = await readFile('supabase/features_v20_player_trading.sql', 'utf8');
+    // The duplication guard: ownership is checked again inside accept, not only
+    // when the offer was created.
+    const accept = sql.slice(sql.indexOf('function public.accept_trade_offer'));
+    assert.match(accept, /trade_item_count\(t\.sender_id/, 'sender ownership re-checked');
+    assert.match(accept, /trade_item_count\(t\.receiver_id/, 'receiver ownership re-checked');
+    assert.match(accept, /for update/, 'row is locked during settlement');
+    assert.match(accept, /status = 'accepted'/, 'offer is marked settled');
+    assert.match(sql, /security definer/, 'writes happen server-side');
+    assert.match(sql, /revoke insert, update, delete on public\.trade_offers/, 'no direct client writes');
+    assert.match(sql, /enable row level security/, 'RLS is on');
+});
+
+test('(92) trade listings expose only public hero names', async () => {
+    const sql = await readFile('supabase/features_v20_player_trading.sql', 'utf8');
+    const list = sql.slice(sql.indexOf('function public.list_trade_offers'), sql.indexOf('purge_expired_trades'));
+    assert.match(list, /p\.display_name/, 'returns the public hero name');
+    assert.doesNotMatch(list, /email|player_code|pin_hash|auth\.users/i, 'never returns private fields');
+});

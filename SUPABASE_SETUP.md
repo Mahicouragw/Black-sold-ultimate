@@ -108,3 +108,24 @@ Add this redirect URL:
 `https://black-sold-ultimate.vercel.app/**`
 
 The Google OAuth secret belongs only in the Supabase dashboard and must never be committed to GitHub.
+
+## v20 — Player trading (v7.22.4)
+
+Apply `supabase/features_v20_player_trading.sql` in the Supabase SQL editor.
+
+It creates `trade_offers` plus the RPCs `create_trade_offer`,
+`accept_trade_offer`, `respond_trade_offer` and `list_trade_offers`.
+
+Security model:
+
+* Row-level security limits visibility to the two heroes in the trade.
+* Direct `insert/update/delete` is revoked; all writes go through
+  `security definer` functions.
+* `accept_trade_offer` locks the row (`for update`) and **re-verifies ownership
+  of every item and all gold at settlement time**, so an item cannot be
+  duplicated by replaying a request or by trading the same item twice.
+* Offers expire after ten minutes.
+* Only public hero display names are ever returned.
+
+Until this migration is applied the in-game trade commands will report that the
+trade could not be completed; no other feature is affected.
