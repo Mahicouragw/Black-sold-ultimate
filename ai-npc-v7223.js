@@ -93,7 +93,7 @@
                         npcRole: npc.role || 'a villager of Kandor',
                         history
                     }),
-                    signal: AbortSignal.timeout(15000)
+                    signal: AbortSignal.timeout(28000)
                 });
                 const data = await response.json();
                 reply = String(data?.reply || '').trim();

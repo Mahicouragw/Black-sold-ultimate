@@ -69,7 +69,7 @@ async function callOpenAI(key, npc, message, history) {
             temperature: 0.8,
             messages: [{ role: 'system', content: systemPrompt(npc) }, ...history, { role: 'user', content: message }]
         }),
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(25000)
     });
     if (!response.ok) throw new Error(`openai ${response.status}`);
     const data = await response.json();
@@ -88,24 +88,35 @@ async function callGemini(key, npc, message, history) {
             contents: [...turns, { role: 'user', parts: [{ text: message }] }],
             generationConfig: { maxOutputTokens: 220, temperature: 0.8 }
         }),
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(25000)
     });
     if (!response.ok) throw new Error(`gemini ${response.status}`);
     const data = await response.json();
     return data.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim();
 }
 
+// Zero-cost models first. A ":free" model never spends credits, so the game
+// keeps working on an unfunded account. OpenRouter falls through this list
+// automatically if a model is rate limited or unavailable.
+const OPENROUTER_FREE_MODELS = [
+    'google/gemma-4-26b-a4b-it:free',
+    'nvidia/nemotron-3.5-lightning:free',
+    'google/gemma-4-31b-it:free'
+];
+
 async function callOpenRouter(key, npc, message, history) {
+    const primary = process.env.NPC_MODEL || OPENROUTER_FREE_MODELS[0];
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: process.env.NPC_MODEL || 'meta-llama/llama-3.1-8b-instruct',
+            model: primary,
+            models: [...new Set([primary, ...OPENROUTER_FREE_MODELS])],
             max_tokens: 220,
             temperature: 0.8,
             messages: [{ role: 'system', content: systemPrompt(npc) }, ...history, { role: 'user', content: message }]
         }),
-        signal: AbortSignal.timeout(12000)
+        signal: AbortSignal.timeout(25000)
     });
     if (!response.ok) throw new Error(`openrouter ${response.status}`);
     const data = await response.json();
