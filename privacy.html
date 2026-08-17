@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Black Sword Ultimate</title>
+<style>
+  body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.65;
+       max-width:52rem;margin:0 auto;padding:1.25rem;background:#12100e;color:#f2e8da}
+  h1,h2{color:#ffd479;line-height:1.25}
+  h1{font-size:1.6rem;border-bottom:2px solid #6b4a2a;padding-bottom:.5rem}
+  h2{font-size:1.15rem;margin-top:2rem}
+  a{color:#9fd4ff}
+  code{background:#241d16;padding:.1rem .35rem;border-radius:.25rem}
+  .note{background:#1d1710;border-left:4px solid #ffd479;padding:.75rem 1rem;border-radius:.3rem}
+  table{border-collapse:collapse;width:100%;margin:1rem 0}
+  th,td{border:1px solid #4a3925;padding:.5rem;text-align:left;vertical-align:top}
+  th{background:#241d16;color:#ffd479}
+  footer{margin-top:2.5rem;border-top:1px solid #4a3925;padding-top:1rem;font-size:.95rem}
+</style>
+</head>
+<body>
+<main>
+<h1>Privacy Policy</h1>
+<p><strong>Application:</strong> Black Sword Ultimate — an accessible fantasy role-playing game.<br>
+<strong>Effective date:</strong> 17 August 2026 · <strong>Version:</strong> 7.22.2</p>
+
+<div class="note">
+<p>This policy describes only what the game <strong>actually</strong> collects. We do not use
+advertising networks, and the application contains <strong>no analytics or tracking scripts</strong>.
+We do not sell or rent your data.</p>
+</div>
+
+<h2>1. Who we are</h2>
+<p>Black Sword Ultimate is an independent, community-oriented game project. Contact us through the
+in-game <strong>Send Feedback</strong> feature in Chat Rooms, or through the project repository at
+<a href="https://github.com/Mahicouragw/Black-sold-ultimate">github.com/Mahicouragw/Black-sold-ultimate</a>.</p>
+
+<h2>2. What we collect</h2>
+<table>
+<tr><th>Data</th><th>Why</th><th>Where it is stored</th></tr>
+<tr><td>Account identifier (a random UUID)</td><td>To link your heroes to your account</td><td>Supabase database</td></tr>
+<tr><td>Google Sign-In identity, if you choose it</td><td>Authentication and progress recovery across devices</td><td>Supabase authentication</td></tr>
+<tr><td>Player Code and recovery PIN (stored hashed)</td><td>Alternative sign-in and progress recovery</td><td>Supabase database</td></tr>
+<tr><td>Hero name, level, class, current location, last-seen time</td><td>Gameplay, and showing other players your public hero</td><td>Supabase database</td></tr>
+<tr><td>Game save data (stats, inventory, quests, currency, settings)</td><td>To save and restore your progress</td><td>Supabase database and your device</td></tr>
+<tr><td>Chat messages</td><td>To deliver multiplayer chat</td><td>Supabase database, <strong>automatically deleted after five minutes</strong></td></tr>
+<tr><td>Feedback and moderation reports</td><td>To fix bugs and enforce chat rules</td><td>Supabase database</td></tr>
+<tr><td>Preferences (audio, text-to-speech, interface mode, encounter frequency)</td><td>To remember your settings</td><td>Your device (<code>localStorage</code>)</td></tr>
+<tr><td>Offline game files (PWA cache)</td><td>To let the game work offline</td><td>Your device (service worker cache)</td></tr>
+</table>
+
+<h2>3. What we do NOT collect</h2>
+<ul>
+<li>No advertising identifiers and no ad networks.</li>
+<li>No analytics, telemetry, heat-maps, or session recording.</li>
+<li>No precise location or GPS data.</li>
+<li>No contacts, photos, camera, or microphone recordings. Optional voice commands are processed by your own browser/device speech service and are not recorded or uploaded by us.</li>
+<li>No payment or card data. The game has no purchases; all in-game currency is fictional and earned through play.</li>
+</ul>
+
+<h2>4. Third-party services we rely on</h2>
+<ul>
+<li><strong>Supabase</strong> — database, authentication and storage.</li>
+<li><strong>Google Sign-In</strong> — only if you choose to sign in with Google.</li>
+<li><strong>GitHub Pages</strong> and <strong>Vercel</strong> — website hosting. Like virtually all web hosts, they may process connection information such as IP address in their own server logs for security and abuse prevention. We do not receive or store those logs.</li>
+</ul>
+<p>These providers process data under their own privacy policies.</p>
+
+<h2>5. How long we keep data</h2>
+<ul>
+<li><strong>Chat messages: about five minutes.</strong> Expiry is enforced by the database, not merely hidden in the app.</li>
+<li>Hero and save data: until you delete the hero or ask us to delete your account.</li>
+<li>Feedback and moderation records: kept while needed to resolve the report and to prevent repeat abuse.</li>
+<li>Device preferences and offline cache: until you clear your browser storage or uninstall the app.</li>
+</ul>
+
+<h2>6. Your rights</h2>
+<p>You can request access to, correction of, or deletion of your data, and you can withdraw consent
+by deleting your account. Send the request through <strong>Send Feedback</strong> in Chat Rooms.
+You may also clear all locally stored data at any time from your browser settings.</p>
+<p>Depending on where you live, you may have additional rights under laws such as India's
+Digital Personal Data Protection Act, 2023, the EU/UK GDPR, or similar regional legislation.
+We aim to honour access and deletion requests regardless of your location.</p>
+
+<h2>7. Children and young players</h2>
+<p>The game is intended for a general audience. If you are under the age of digital consent in your
+country, please use the game with the involvement of a parent or guardian. Chat is a public,
+moderated space — do not share personal details such as your real name, address, school,
+phone number or email in chat. If we learn that a child's personal data has been collected
+without appropriate consent, we will delete it.</p>
+
+<h2>8. Security</h2>
+<p>Authentication is handled by Supabase. Recovery PINs are stored hashed, never in plain text.
+Database access is restricted with row-level security so players cannot read one another's private
+records. Your Player ID and PIN are private credentials — never share them in chat. No online
+service can promise perfect security, so please use a unique PIN.</p>
+
+<h2>9. Public versus private information</h2>
+<p>Other players can see only your <strong>public hero profile</strong>: hero name, title, class,
+level, public stats and public achievements. Your email address, account identifiers, Player Code,
+PIN and internal database IDs are never shown to other players.</p>
+
+<h2>10. Changes to this policy</h2>
+<p>If we change what we collect or how we use it, we will update this page and its effective date.
+Continuing to play after a change means you accept the updated policy.</p>
+
+<div class="note">
+<p><strong>Honest disclaimer:</strong> this policy describes our actual practices in plain language.
+It is not legal advice and has not been reviewed by a lawyer. We do not claim compliance with every
+law in every country.</p>
+</div>
+
+<footer>
+<p><a href="./index.html">← Back to the game</a> · <a href="./terms.html">Terms &amp; Conditions</a></p>
+</footer>
+</main>
+</body>
+</html>

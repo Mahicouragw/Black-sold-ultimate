@@ -1265,10 +1265,30 @@ const Game = {
     // player → companions → enemy → (defeat → loot → XP → victory).
     _combatChain: Promise.resolve(),
 
+    /**
+     * Serialize combat steps so audio, narration and state stay ordered.
+     *
+     * Re-entrancy fix: a step already running inside the chain (for example
+     * playerAttack awaiting the monster turn) must NOT queue behind itself, or
+     * it deadlocks and the monsters never act. A nested call runs inline while
+     * only top-level calls are queued.
+     */
     combatSequence(fn) {
+        if (this._combatChainRunning) {
+            try {
+                return Promise.resolve(fn()).catch(err => console.warn('combat sequence error:', err));
+            } catch (err) {
+                console.warn('combat sequence error:', err);
+                return Promise.resolve();
+            }
+        }
         this._combatChain = (this._combatChain || Promise.resolve())
-            .then(() => fn())
-            .catch(err => console.warn('combat sequence error:', err));
+            .then(async () => {
+                this._combatChainRunning = true;
+                try { return await fn(); }
+                finally { this._combatChainRunning = false; }
+            })
+            .catch(err => { this._combatChainRunning = false; console.warn('combat sequence error:', err); });
         return this._combatChain;
     },
 

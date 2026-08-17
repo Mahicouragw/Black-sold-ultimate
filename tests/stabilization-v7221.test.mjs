@@ -852,3 +852,142 @@ test('(61) C: a battle can still start normally after a panel was opened and clo
     assert.equal(G.state.inCombat, true);
     assert.equal(window.document.getElementById('combat-status').classList.contains('hidden'), false);
 });
+
+/* ── §3/§5 Monster combat AI and healer monsters ─────────────────────────── */
+
+test('(62) a monster attacks back after the player attacks', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = G.state.enemy.maxHp = 99999;   // survive to retaliate
+    window.Math.random = () => 0.5;                   // mid roll: monster connects
+    const before = G.state.player.hp;
+    G.processCommand('attack');
+    await wait(300);
+    assert.ok(G.state.player.hp < before, 'monster must deal damage back');
+});
+
+test('(63) one player action grants exactly one monster turn', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = G.state.enemy.maxHp = 99999;
+    let turns = 0;
+    const original = G.enemyGroupTurn.bind(G);
+    G.enemyGroupTurn = function () { turns++; return original(); };
+    G.processCommand('attack');
+    await wait(300);
+    assert.equal(turns, 1, 'no double monster turns');
+});
+
+test('(64) combat ends and the hero is restored when HP reaches zero', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = G.state.enemy.maxHp = 99999;
+    G.state.player.hp = 1;
+    G.processCommand('attack');
+    await wait(500);
+    assert.equal(G.state.inCombat, false, 'combat must end on death');
+    assert.equal(G.state.player.hp, G.state.player.maxHp, 'HP fully restored');
+    assert.equal(G.state.player.mp, G.state.player.maxMp, 'MP fully restored');
+});
+
+test('(65) a healer monster heals the weakest wounded ally and spends MP', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const healer = { name: 'healer goblin', active: false, defeated: false, hp: 60, maxHp: 60, damage: 0, mp: 50 };
+    const hurt = { name: 'goblin warrior', active: false, defeated: false, hp: 10, maxHp: 100, damage: 90 };
+    window.WorldData.enemies['healer goblin'] = { hp: 60, attack: 5, spells: [{ name: 'Mend', type: 'heal', power: 30, cost: 10 }] };
+    window.WorldData.enemies['goblin warrior'] = window.WorldData.enemies['goblin warrior'] || { hp: 100, attack: 8 };
+    G.state.encounterTargets = [healer, hurt];
+    G.aliveEncounterTargets = () => [healer, hurt];
+    window.Math.random = () => 0.99;                  // avoid the failure roll
+    const healed = G.resolveHealerMonsterTurn();
+    assert.equal(healed, true, 'healer acted');
+    assert.ok(hurt.damage < 90, 'the weakest ally was healed');
+    assert.equal(healer.mp, 40, 'healing consumed MP');
+});
+
+test('(66) a healer with insufficient MP fails instead of healing', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const healer = { name: 'healer goblin', active: false, defeated: false, hp: 60, maxHp: 60, damage: 0, mp: 2 };
+    const hurt = { name: 'goblin warrior', active: false, defeated: false, hp: 10, maxHp: 100, damage: 90 };
+    window.WorldData.enemies['healer goblin'] = { hp: 60, attack: 5, spells: [{ name: 'Mend', type: 'heal', power: 30, cost: 10 }] };
+    G.state.encounterTargets = [healer, hurt];
+    G.aliveEncounterTargets = () => [healer, hurt];
+    window.document.getElementById('narrative').innerHTML = '';
+    G.resolveHealerMonsterTurn();
+    assert.equal(hurt.damage, 90, 'no healing occurred');
+    assert.match(narrative(window), /healing spell failed/i);
+});
+
+test('(67) a healer never heals a defeated monster', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    const healer = { name: 'healer goblin', active: false, defeated: false, hp: 60, maxHp: 60, damage: 0, mp: 50 };
+    const dead = { name: 'goblin warrior', active: false, defeated: true, hp: 0, maxHp: 100, damage: 100 };
+    window.WorldData.enemies['healer goblin'] = { hp: 60, attack: 5, spells: [{ name: 'Mend', type: 'heal', power: 30, cost: 10 }] };
+    G.state.encounterTargets = [healer, dead];
+    G.aliveEncounterTargets = () => [healer, dead];
+    window.Math.random = () => 0.99;
+    G.resolveHealerMonsterTurn();
+    assert.equal(dead.damage, 100, 'a defeated monster is never healed');
+});
+
+test('(68) monster narration never leaks internal combat statistics', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = G.state.enemy.maxHp = 99999;
+    window.document.getElementById('narrative').innerHTML = '';
+    G.processCommand('attack');
+    await wait(300);
+    assert.doesNotMatch(narrative(window), /accuracy \d|armor penetration|efficiency \d|defense \d+%/i);
+});
+
+/* ── §27/§28/§29 Legal pages ─────────────────────────────────────────────── */
+
+test('(69) Privacy Policy and Terms pages exist and are accessible documents', async () => {
+    for (const [file, heading] of [['privacy.html', /Privacy Policy/], ['terms.html', /Terms/]]) {
+        const html = await readFile(file, 'utf8');
+        assert.match(html, /<html lang="en">/, `${file} declares a language`);
+        assert.match(html, /<title>[^<]+<\/title>/, `${file} has a title`);
+        assert.match(html, heading, `${file} has its heading`);
+        assert.match(html, /viewport/, `${file} is mobile friendly`);
+        assert.match(html, /href="\.\/index\.html"/, `${file} links back to the game`);
+    }
+});
+
+test('(70) the Privacy Policy states only what the app truly does', async () => {
+    const html = await readFile('privacy.html', 'utf8');
+    assert.match(html, /five minutes/i, 'documents the 5-minute chat expiry');
+    assert.match(html, /no analytics|no advertising/i, 'states there is no tracking');
+    assert.doesNotMatch(html, /compliant with (every|all) (government )?law/i, 'makes no false compliance claim');
+    // The claim of "no trackers" must remain true in the shipped code.
+    const [index, game] = await Promise.all([readFile('index.html', 'utf8'), readFile('game.js', 'utf8')]);
+    for (const source of [index, game]) {
+        assert.doesNotMatch(source, /googletagmanager|google-analytics|gtag\(/i, 'no analytics may be added');
+    }
+});
+
+test('(71) legal links are reachable from Settings in both interface modes', async () => {
+    const html = await readFile('index.html', 'utf8');
+    const settings = html.slice(html.indexOf('id="settings-panel"'), html.indexOf('id="settings-panel"') + 9000);
+    assert.match(settings, /href="privacy\.html"/, 'Privacy link in Settings');
+    assert.match(settings, /href="terms\.html"/, 'Terms link in Settings');
+    // Settings is shared by both modes, so no mode-specific hiding is allowed.
+    assert.doesNotMatch(settings, /legal-links[^>]*hidden/, 'legal links are never hidden');
+});
+
+test('(72) legal pages are precached so they work offline in the PWA', async () => {
+    for (const worker of ['sw.js', 'service-worker.js']) {
+        const source = await readFile(worker, 'utf8');
+        assert.match(source, /'privacy\.html'/, `${worker} precaches privacy.html`);
+        assert.match(source, /'terms\.html'/, `${worker} precaches terms.html`);
+    }
+});
