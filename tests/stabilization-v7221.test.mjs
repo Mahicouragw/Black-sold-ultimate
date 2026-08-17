@@ -994,3 +994,61 @@ test('(72) legal pages are precached so they work offline in the PWA', async () 
         assert.match(source, /'terms\.html'/, `${worker} precaches terms.html`);
     }
 });
+
+/* ── §3/§21 Surviving monsters act, and navigation returns after victory ── */
+
+test('(73) surviving group members attack after one monster is defeated', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    window.Math.random = () => 0.5;
+    G.startCombat('root goblin');                       // real 2-6 monster group
+    const groupSize = 1 + G.state.sacred.enemyQueue.length;
+    if (groupSize < 2) { assert.ok(true, 'single-monster roll: nothing to assert'); return; }
+    G.state.enemy.hp = 1;                               // dies to one hit
+    const before = G.state.player.hp;
+    G.processCommand('attack');
+    for (let i = 0; i < 160 && G.state.player.hp >= before; i++) await wait(25);
+    assert.ok(G.state.player.hp < before, 'a surviving monster must take its turn');
+});
+
+test('(74) enemyDefeated wrappers preserve the async chain', async () => {
+    // Dropping the promise here is what stopped survivors from acting.
+    const files = ['hunt-achievements-v20.js', 'wayfinder-battle-actions-v15.js',
+                   'expansive-forest-multitarget-v13.js', 'housing-world-v5.js',
+                   'island-tunnel-fishing.js'];
+    for (const file of files) {
+        const source = await readFile(file, 'utf8');
+        const wrapper = source.slice(source.indexOf('Game.enemyDefeated'));
+        assert.match(wrapper, /return (oldDefeated\(\)|r|settled)|Promise\.resolve\(oldDefeated\(\)\)/,
+            `${file} must return or await oldDefeated()`);
+    }
+});
+
+test('(75) navigation is fully restored once the last monster falls', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    window.Math.random = () => 0.5;
+    G.startCombat('root goblin');
+    for (let n = 0; n < 12 && G.state.inCombat; n++) {
+        if (G.state.enemy) G.state.enemy.hp = 1;
+        G.processCommand('attack');
+        await wait(300);
+    }
+    assert.equal(G.state.inCombat, false, 'combat must end');
+    for (const dir of Object.keys(window.WorldData.locations[G.state.location].exits || {})) {
+        const button = window.document.querySelector(`.dir-btn[data-cmd="${dir}"]`);
+        if (button) assert.equal(button.disabled, false, `${dir} must be usable after victory`);
+    }
+});
+
+test('(76) a defeated monster never acts and combat cannot continue after victory', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    window.Math.random = () => 0.5;
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = 1;
+    G.processCommand('attack');
+    for (let i = 0; i < 120 && G.state.inCombat; i++) await wait(25);
+    assert.equal(G.state.inCombat, false);
+    const hpAfter = G.state.player.hp;
+    await wait(200);
+    assert.equal(G.state.player.hp, hpAfter, 'no monster may act after combat ends');
+});

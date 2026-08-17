@@ -66,8 +66,12 @@
             if (this.state.arena?.active && this.state.enemy?.name === 'arena foe') {
                 this.state.achievementStats.arenaWinsTotal++;
             }
-            oldDefeated();
-            setTimeout(evaluate, 60);
+            // enemyDefeated is async (it settles rewards and promotes the next
+            // monster). Returning its promise keeps callers correctly awaited;
+            // dropping it broke the surviving-monster turn.
+            const settled = Promise.resolve(oldDefeated());
+            settled.finally(() => setTimeout(evaluate, 60));
+            return settled;
         };
 
         // Movement covers explorer/progress checks.

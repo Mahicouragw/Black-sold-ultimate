@@ -964,4 +964,4 @@ window.GAME_TTS_TEST = Object.freeze({
             .then(() => AudioManager.playVoice('Second queued sentence. The diagnostic is complete.'));
     }
 });
-console.log('AudioManager v7.22.1 loaded with licensed contextual playlists.');
+console.log('AudioManager v7.22.2 loaded with licensed contextual playlists.');

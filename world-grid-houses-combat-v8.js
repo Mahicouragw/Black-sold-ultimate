@@ -48,7 +48,10 @@
         const critical=Math.random()*100<critChance;let damage=Math.max(1,(p.weaponDamage||8)+Math.floor((p.str+bonusStr)/2)+variance-Math.floor(effectiveDefense/3));if(critical)damage=Math.floor(damage*1.75);
         e.hp=Math.max(0,e.hp-damage);const text=critical?`You deal a critical hit to ${e.name} for ${damage} damage.`:`You strike ${e.name} for ${damage} damage.`;
         this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');MusicSystem.playSFX('hit');this.updateEnemyHUD();OnlineSystem.recordGroupAttack(e.name,damage);
-        if(e.hp<=0)this.enemyDefeated();else{this.companionTurn();if(this.state.inCombat&&this.state.enemy?.hp>0)this.enemyAttack();}
+        // A defeated monster must not end the round: surviving group members
+        // still each get exactly one turn (v7.22.2 fix).
+        if(e.hp<=0){Promise.resolve(this.enemyDefeated()).then(()=>this.resolveSurvivorTurn?.());}
+        else{this.companionTurn();if(this.state.inCombat&&this.state.enemy?.hp>0)this.enemyAttack();}
     };
     Game.explainCombat=function(){const e=this.state.enemy;this.addNarrative(`Combat is command-driven. Attack, defend, flee, use an item, or cast a known spell.${e?` You are fighting ${e.name}, which has ${Math.max(0,e.hp)} health remaining.`:''}`,'system');};
     const oldCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='open door'){this.openPhysicalDoor();return;}if(c==='close door'){this.closePhysicalDoor();return;}if(c==='where is temple'||c==='temple directions'){this.templeDirections();return;}if(c==='examine combat'||c==='combat system'){this.explainCombat();return;}oldCommand(cmd);};

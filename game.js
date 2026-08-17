@@ -1424,10 +1424,58 @@ const Game = {
                 if (!isMiss) this.applyEnemyDamage(damage, null);
             }
 
-            if (e.hp <= 0) { await this.enemyDefeated(); return; }
+            if (e.hp <= 0) {
+                // A defeated monster must NOT end the round. Surviving members of
+                // the group still get exactly one turn each. enemyDefeated()
+                // promotes the next monster into the active slot; once that
+                // transition settles, the survivors act.
+                await this.enemyDefeated();
+                await this.resolveSurvivorTurn();
+                return;
+            }
             await this.companionTurn();
             if (this.state.inCombat && this.state.enemy && this.state.enemy.hp > 0) await this.enemyAttack();
         });
+    },
+
+    /**
+     * Give the surviving monsters their turn after one of them was defeated.
+     *
+     * enemyDefeated() promotes the next queued monster asynchronously (there is
+     * a short transition delay), so this waits for the promotion to land before
+     * running exactly one monster turn. Returns silently when the whole group is
+     * dead, when combat already ended, or when the player has fallen.
+     */
+    async resolveSurvivorTurn() {
+        // Guard: if the active slot still holds a corpse and nothing is queued,
+        // finish the battle instead of spinning on a 0 HP enemy.
+        if (this.state.inCombat && this.state.enemy && this.state.enemy.hp <= 0
+            && !this.state.combatTransition
+            && !(this.state.sacred?.enemyQueue || []).length) {
+            // The slot holds a corpse with nothing queued. Settle the battle
+            // rather than spinning. Already-settled corpses are cleared so the
+            // combat state cannot get stuck.
+            if (!this.state.enemy._defeatProcessed) await this.enemyDefeated();
+            else { this.state.inCombat = false; this.state.enemy = null; this.finishCommandCombat?.(); }
+            return;
+        }
+        // The next monster is promoted after a short scripted delay via
+        // combatTransition. Wait for that handoff, but bind the wait to this
+        // encounter so it stops instantly if combat ends or the page unloads.
+        const alive = () => { try { return typeof document !== 'undefined' && !!document.getElementById; } catch { return false; } };
+        const token = this._survivorWait = (this._survivorWait || 0) + 1;
+        for (let i = 0; i < 80; i++) {
+            if (token !== this._survivorWait) return;         // superseded
+            if (!this.state.inCombat) return;                 // combat finished
+            if (this.state.player?.hp <= 0) return;           // player died
+            if (!alive()) return;                             // page/document gone
+            if (!this.state.combatTransition && this.state.enemy && this.state.enemy.hp > 0) break;
+            await new Promise(resolve => setTimeout(resolve, 25));
+        }
+        if (token !== this._survivorWait || !alive()) return;
+        if (!this.state.inCombat || !this.state.enemy) return;
+        if (this.state.enemy.hp <= 0 || this.state.player?.hp <= 0) return;
+        await this.enemyAttack();
     },
 
     companionTurn() {
@@ -2181,6 +2229,9 @@ const Game = {
      * buttons stay disabled by design; out of combat they are re-enabled from
      * the authoritative world graph rather than from stale DOM state.
      */
+    /** Invalidate any in-flight survivor-turn wait (combat ended or reset). */
+    cancelSurvivorWait() { this.state.encounterNonceLocal = (this.state.encounterNonceLocal || 0) + 1; },
+
     restoreGameplayControls() {
         // A genuinely open modal dialog (e.g. the first-launch interface chooser
         // or the chat community notice) must keep its focus trap. Only clear the

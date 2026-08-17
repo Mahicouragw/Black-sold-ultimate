@@ -38,7 +38,7 @@
     const oldExamine=Game.examineEntity.bind(Game);Game.examineEntity=function(query){const e=this.state.enemy;if(e&&e.name.toLowerCase().includes(query.toLowerCase())){this.addNarrative(`${e.name}: HP ${e.hp}/${e.maxHp}; attack ${e.attack}; STR ${e.str||0}; DEX ${e.dex||0}; magic ${e.magic||0}; defense ${e.defense||0}; weapon damage ${e.weaponDamage||0}; spells ${e.spells?.map(s=>`${s.name} (${s.type} ${s.power})`).join(', ')||'none'}. ${e.desc||''}`,'combat');return;}oldExamine(query);};
 
     Game.restoreMonsterDebuffs=function(){const p=this.state.player;if(p?._monsterStrDebuff){p.str+=p._monsterStrDebuff;p._monsterStrDebuff=0;}};
-    const oldDefeated=Game.enemyDefeated.bind(Game);Game.enemyDefeated=function(){this.restoreMonsterDebuffs();oldDefeated();};
+    const oldDefeated=Game.enemyDefeated.bind(Game);Game.enemyDefeated=function(){this.restoreMonsterDebuffs();return oldDefeated();};
     const oldFlee=Game.tryFlee.bind(Game);Game.tryFlee=function(){oldFlee();if(!this.state.inCombat)this.restoreMonsterDebuffs();};
     const oldGameOver=Game.gameOver.bind(Game);Game.gameOver=function(){this.restoreMonsterDebuffs();oldGameOver();};
     const fishingDefaults=()=>({skill:1,catches:0,lastAttempt:0});const ensureFishing=()=>Game.state.fishing=Object.assign(fishingDefaults(),Game.state.fishing||{});

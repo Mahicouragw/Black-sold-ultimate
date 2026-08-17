@@ -6,7 +6,10 @@ import { createRuntime, loadWorld } from '../scripts/load-world.mjs';
 
 const allAchievements=['first-blood','hunter','slayer','peace-1','peace-5','peace-10','level-5','level-10','quest-3','quest-all','hoard','gem','arena-1','arena-5','explorer-20'];
 async function ready(t){
-    const runtime=await createRuntime();t.after(()=>runtime.dom.window.close());const{window}=runtime,{Game}=window;
+    const runtime=await createRuntime();
+    // Stop any in-flight combat wait before tearing down the DOM, otherwise a
+    // pending monster turn resolves against a closed window.
+    t.after(()=>{try{const G=runtime.window.Game;G.state.inCombat=false;G.state.enemy=null;G._survivorWait=(G._survivorWait||0)+1;}catch{}runtime.dom.window.close();});const{window}=runtime,{Game}=window;
     window.OnlineSystem.saveGame=async()=>true;window.OnlineSystem.syncActiveHero=()=>{};window.OnlineSystem.dropWorldItem=async()=>false;window.OnlineSystem.recordGroupAttack=()=>{};
     Game.startNewHero();window.document.getElementById('char-name').value='Fair Audit';window.document.querySelector('.race-btn[data-race="human"]').classList.add('selected');window.document.querySelector('.class-btn[data-class="warrior"]').classList.add('selected');Game.createCharacter(false);
     Game.state.quests=[];Game.state.achievements=[...allAchievements];Game.state.completedQuests=[];window.InterfaceMode.apply('sighted');window.ProfessionalAudioCombat=null;window.AudioManager.endBattle=async()=>{window.AudioManager.battleActive=false;window.AudioManager.overlayMode=null;};window.Math.random=()=>.99;window.GameSpellSystem.random=()=>.99;
@@ -24,7 +27,9 @@ test('(06/37) centralized rarity makes Ruby uncommon and Diamond substantially r
 
 // Combat 7–12
 test('(07/37) combat is world state and never opens a separate battle panel or screen',async t=>{const{window}=await ready(t),G=window.Game;G.state.location='forest';G.startCombat('root goblin');assert.equal(G.state.inCombat,true);assert.equal(G.state.screen,'game-screen');assert.equal(window.document.getElementById('combat-panel').hidden,true);assert.equal(window.document.getElementById('combat-status').classList.contains('hidden'),false);});
-test('(08/37) attack works through command input during combat',async t=>{const{window}=await ready(t),G=window.Game;G.state.location='forest';G.startCombat('root goblin');G.state.sacred.enemyQueue=[];window.Math.random=()=>.5;const enemy=G.state.enemy,hp=enemy.hp;G.processCommand('attack');assert.ok(enemy.hp<hp);});
+test('(08/37) attack works through command input during combat',async t=>{const{window}=await ready(t),G=window.Game;G.state.location='forest';G.startCombat('root goblin');G.state.sacred.enemyQueue=[];window.Math.random=()=>.5;const enemy=G.state.enemy,hp=enemy.hp;G.processCommand('attack');assert.ok(enemy.hp<hp);
+    // Let the monster turn finish inside the test rather than after teardown.
+    G.state.inCombat=false;G.state.enemy=null;G._survivorWait=(G._survivorWait||0)+1;await wait(60);});
 test('(09/37) attack outside combat is rejected',async t=>{const{window}=await ready(t),G=window.Game;G.state.inCombat=false;window.document.getElementById('narrative').innerHTML='';G.processCommand('attack');assert.equal(G.state.enemy,null);assert.match(window.document.getElementById('narrative').textContent,/not in combat/i);});
 test('(10/37) attack outside combat never creates a second enemy',async t=>{const{window}=await ready(t),G=window.Game;G.state.location='forest';G.processCommand('attack root goblin');assert.equal(G.state.inCombat,false);assert.equal(G.state.enemy,null);});
 test('(11/37) repeated and mixed encounter members are aggregated',async t=>{const{window}=await ready(t);assert.equal(window.MonsterGroupFormatter.format(['wild boar','wild boar','goblin witch']),'two wild boars and one goblin witch');});
