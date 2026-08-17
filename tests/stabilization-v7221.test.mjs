@@ -1153,6 +1153,19 @@ test('(82) the AI NPC endpoint answers game, general and Telugu questions', asyn
     assert.ok(greeting.reply.length > 10 && greeting.provider, 'always replies, never silent');
 });
 
+test('(82b) the NPC endpoint uses a real LLM when a key is configured', async t => {
+    const { createRequire } = await import('node:module');
+    const handler = createRequire(import.meta.url)('../api/npc.js');
+    const hasKey = Boolean(process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
+    if (!hasKey) { t.skip('no API key configured in this environment'); return; }
+    const res = { statusCode: 200, body: '', setHeader() {}, end(b) { this.body = b; } };
+    await handler({ method: 'POST', headers: {}, socket: { remoteAddress: '8.8.8.8' },
+                    body: { message: 'hello', npcName: 'Elder Rowan' } }, res);
+    const data = JSON.parse(res.body);
+    assert.equal(data.ai, true, 'a configured key must produce a live AI reply');
+    assert.ok(['openai', 'gemini', 'openrouter'].includes(data.provider), `unexpected provider ${data.provider}`);
+});
+
 test('(83) the NPC endpoint never leaks an API key to the client', async () => {
     const source = await readFile('api/npc.js', 'utf8');
     assert.match(source, /process\.env\.OPENAI_API_KEY/, 'reads the key server-side only');

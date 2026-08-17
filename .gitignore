@@ -15,3 +15,8 @@ ios/App/DerivedData/
 .deploy-token
 *.deploy-token
 TOKEN-HERE.txt
+
+# Local API keys — never commit
+.env
+.env.local
+.env.*.local
