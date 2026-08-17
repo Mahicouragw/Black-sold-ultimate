@@ -863,7 +863,9 @@ test('(62) a monster attacks back after the player attacks', async t => {
     window.Math.random = () => 0.5;                   // mid roll: monster connects
     const before = G.state.player.hp;
     G.processCommand('attack');
-    await wait(300);
+    // Poll instead of a fixed sleep: slower CI runners need more than one tick,
+    // and a hard wait made this test flaky.
+    for (let i = 0; i < 60 && G.state.player.hp >= before; i++) await wait(25);
     assert.ok(G.state.player.hp < before, 'monster must deal damage back');
 });
 
@@ -876,7 +878,8 @@ test('(63) one player action grants exactly one monster turn', async t => {
     const original = G.enemyGroupTurn.bind(G);
     G.enemyGroupTurn = function () { turns++; return original(); };
     G.processCommand('attack');
-    await wait(300);
+    for (let i = 0; i < 60 && turns === 0; i++) await wait(25);
+    await wait(50);                                   // allow any stray extra turn to surface
     assert.equal(turns, 1, 'no double monster turns');
 });
 
@@ -887,7 +890,7 @@ test('(64) combat ends and the hero is restored when HP reaches zero', async t =
     G.state.enemy.hp = G.state.enemy.maxHp = 99999;
     G.state.player.hp = 1;
     G.processCommand('attack');
-    await wait(500);
+    for (let i = 0; i < 80 && G.state.inCombat; i++) await wait(25);
     assert.equal(G.state.inCombat, false, 'combat must end on death');
     assert.equal(G.state.player.hp, G.state.player.maxHp, 'HP fully restored');
     assert.equal(G.state.player.mp, G.state.player.maxMp, 'MP fully restored');
@@ -946,7 +949,7 @@ test('(68) monster narration never leaks internal combat statistics', async t =>
     G.state.enemy.hp = G.state.enemy.maxHp = 99999;
     window.document.getElementById('narrative').innerHTML = '';
     G.processCommand('attack');
-    await wait(300);
+    for (let i = 0; i < 60 && !/damage|block|miss/i.test(narrative(window)); i++) await wait(25);
     assert.doesNotMatch(narrative(window), /accuracy \d|armor penetration|efficiency \d|defense \d+%/i);
 });
 
