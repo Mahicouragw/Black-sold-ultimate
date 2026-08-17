@@ -328,6 +328,9 @@ const OnlineSystem = {
         }catch(err){
             if(status)status.textContent=`Google sign-in could not start in this browser (${err.message}). Open https://black-sold-ultimate.vercel.app in Chrome and try there — guest heroes are kept.`;
         }
+        // Google reports origin problems asynchronously to the console, not to
+        // this catch block, so surface a readable explanation for the player.
+        this.checkGoogleOriginAllowed();
     },
 
     async startGoogleRedirect(merge) {
@@ -353,6 +356,30 @@ const OnlineSystem = {
             localStorage.removeItem('black_sword_merge_requested');
             if(status)status.textContent=`Could not open Google sign-in: ${e.message||'network error'}. Tap the button to try again — guest progress is safe.`;
         }
+    },
+
+    /**
+     * Detect the most common Google sign-in failure: this exact origin is not
+     * listed in the OAuth client's Authorized JavaScript origins. Google only
+     * logs that to the console, which a blind player can never see, so we
+     * explain it in the interface instead.
+     */
+    checkGoogleOriginAllowed() {
+        if (this._originCheckDone) return;
+        this._originCheckDone = true;
+        setTimeout(() => {
+            const rendered = document.getElementById('google-signin-render');
+            const status = document.getElementById('google-signin-status');
+            // A blocked origin renders no button at all.
+            if (!rendered || rendered.children.length > 0) return;
+            const message = `Google sign-in is blocked for this address (${location.origin}). `
+                + 'The site owner must add this exact address to the Authorized JavaScript origins '
+                + 'of the OAuth client in Google Cloud Console. You can still play as a guest, '
+                + 'or sign in with your Player ID and PIN.';
+            if (status) status.textContent = message;
+            window.Game?.addNarrative?.(message, 'system');
+            console.warn('Google origin not authorized:', location.origin);
+        }, 2500);
     },
 
     async handleGoogleCredential(response) {

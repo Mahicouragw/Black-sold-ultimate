@@ -1309,3 +1309,37 @@ test('(92) trade listings expose only public hero names', async () => {
     assert.match(list, /p\.display_name/, 'returns the public hero name');
     assert.doesNotMatch(list, /email|player_code|pin_hash|auth\.users/i, 'never returns private fields');
 });
+
+/* ── Google sign-in: origin and header requirements ─────────────────────── */
+
+test('(93) security headers do not block the Google sign-in iframe', async () => {
+    const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+    const headers = config.headers.flatMap(block => block.headers);
+    const names = headers.map(h => h.key);
+    // X-Frame-Options: DENY breaks Google Identity Services.
+    assert.equal(names.includes('X-Frame-Options'), false, 'X-Frame-Options must not be DENY');
+    // Clickjacking protection is kept via CSP instead.
+    const csp = headers.find(h => h.key === 'Content-Security-Policy');
+    assert.ok(csp && /frame-ancestors 'self'/.test(csp.value), 'frame-ancestors still protects the app');
+    // GSI requires a referrer to be sent.
+    const referrer = headers.find(h => h.key === 'Referrer-Policy');
+    assert.ok(referrer && !/no-referrer$/.test(referrer.value), 'Referrer-Policy must not be no-referrer');
+});
+
+test('(94) a blocked Google origin is explained to the player, not just the console', async t => {
+    const { window } = await liveGame(t);
+    const online = window.OnlineSystem;
+    assert.equal(typeof online.checkGoogleOriginAllowed, 'function');
+    online._originCheckDone = false;
+    const status = window.document.getElementById('google-signin-status')
+        || Object.assign(window.document.createElement('p'), { id: 'google-signin-status' });
+    if (!status.isConnected) window.document.body.appendChild(status);
+    const target = window.document.getElementById('google-signin-render')
+        || Object.assign(window.document.createElement('div'), { id: 'google-signin-render' });
+    if (!target.isConnected) window.document.body.appendChild(target);
+    target.innerHTML = '';                    // simulate Google refusing to render
+    online.checkGoogleOriginAllowed();
+    await wait(2700);
+    assert.match(status.textContent, /Authorized JavaScript origins/i, 'explains the real cause');
+    assert.match(status.textContent, /Player ID/i, 'offers a working alternative');
+});
