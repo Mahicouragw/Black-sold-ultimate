@@ -39,6 +39,14 @@ git fetch --depth=1 origin main && git reset --soft FETCH_HEAD
 
 Never conclude the code is broken before checking these two.
 
+## AI NPC key (OpenRouter)
+
+The NPC brain lives in `api/npc.js` and reads `OPENROUTER_API_KEY` (or
+`OPENAI_API_KEY` / `GEMINI_API_KEY`) **server-side only**. It defaults to
+zero-cost `:free` models with automatic fallback, so it never spends the
+owner's credits. With no key it returns scripted offline replies, so NPCs are
+never silent. Full guidance for handling any secret is in `SECRETS.md`.
+
 ## If a credential seems missing
 
 ```bash
