@@ -43,10 +43,21 @@
     });
     WorldData.locations.forest.enemies = FOREST_MONSTERS.map(m => m[0]);
 
-    // Every weapon carries a broad 50–300 attribute profile as requested.
+    // Weapon progression (v7.22.3). A flat 50-300 floor made the level-1 Iron
+    // Sword hit for 50 and one-shot every early monster, so monsters died before
+    // they could ever take a turn. Weapons now keep their authored damage and
+    // are only scaled into a tier band, so starter gear is genuinely weak and
+    // late-game gear is genuinely strong.
     Object.values(WorldData.items).filter(i => i.type === 'weapon').forEach((item, i) => {
         const seed = Math.min(250, 50 + i * 7);
-        item.damage = Math.max(50, Math.min(300, item.damage || seed));
+        const authored = item.damage || 0;
+        if (authored) {
+            // Preserve the designed value; never inflate a starter weapon.
+            item.damage = Math.max(4, Math.min(300, authored));
+        } else {
+            // Unauthored weapons get a mid-tier value rather than a 50 floor.
+            item.damage = Math.max(8, Math.min(300, seed));
+        }
         item.str = item.str || Math.min(300, seed + 10);
         item.dex = item.dex || Math.min(300, seed + 5);
         item.int = item.int || Math.min(300, seed);

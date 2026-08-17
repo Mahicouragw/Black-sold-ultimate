@@ -576,10 +576,18 @@
       }
     });
     if (revived > 0) {
-      this.addNarrative(`✨ The Guild Master revives ${revived} fallen companion(s) to full health!`, 'green-light');
+      this.addNarrative(`✨ The Guild Master revives ${revived} fallen companion${revived === 1 ? '' : 's'} to full health!`, 'green-light');
       if (window.MusicSystem) window.MusicSystem.playSFX('heal-chain');
     } else {
-      this.addNarrative('All of your companions are already at full health.', 'system');
+      // Be explicit and accessible: say WHY nothing happened.
+      const total = (this.state.companions || []).length;
+      const message = total === 0
+        ? 'You have no companions to revive yet.'
+        : total === 1
+          ? 'Your companion already has full health points. No revival is needed.'
+          : 'All of your companions already have full health points. No revival is needed.';
+      this.emitGameEvent?.(message, 'system') || this.addNarrative(message, 'system');
+      if (window.MusicSystem) window.MusicSystem.playSFX('board-error');
     }
     this.updateHUD();
     this.save();
@@ -611,6 +619,11 @@
       btnRevive.className = 'action-btn';
       btnRevive.textContent = '✨ Revive Companions';
       btnRevive.onclick = () => window.Game.reviveCompanions();
+      // Reflect real state so screen readers announce it correctly.
+      const fallenCount = (window.Game.state.companions || []).filter(c => c.hp <= 0).length;
+      btnRevive.setAttribute('aria-label', fallenCount
+        ? `Revive ${fallenCount} fallen companion${fallenCount === 1 ? '' : 's'}`
+        : 'Revive companions. All companions currently have full health.');
       actionBtns.appendChild(btnRevive);
     }
 

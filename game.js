@@ -804,6 +804,17 @@ const Game = {
         const loc = WorldData.locations[this.state.location];
         const dest = loc?.exits?.[direction];
 
+        // In combat, movement is refused with a spoken explanation rather than a
+        // dead control. Blind players get the reason and the way out.
+        if (this.state.inCombat && this.state.enemy) {
+            const message = dest
+                ? `You are in combat. You cannot move ${direction} until the battle ends. Type flee to escape, or keep fighting.`
+                : `You are in combat, and there is no path ${direction} from here. Type flee to escape, or keep fighting.`;
+            this.emitGameEvent?.(message, 'system') || this.addNarrative(message, 'system');
+            MusicSystem.playSFX('board-error');
+            return;
+        }
+
         if (!dest || !WorldData.locations[dest]) {
             this.addNarrative(`You cannot move ${direction} from here.`, 'system');
             MusicSystem.playSFX('explore');

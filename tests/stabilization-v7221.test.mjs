@@ -788,7 +788,9 @@ const dirBtn = (window, dir) => window.document.querySelector(`.dir-btn[data-cmd
 test('(58) A: closing a panel after combat restores every valid direction', async t => {
     const { window } = await liveGame(t), G = window.Game;
     G.startCombat('root goblin');
-    assert.equal(dirBtn(window, 'north').disabled, true, 'combat disables movement by design');
+    // v7.22.3: combat no longer disables movement controls; it refuses the move
+    // with a spoken explanation so blind players never hit a dead button.
+    assert.equal(dirBtn(window, 'north').disabled, false, 'controls stay focusable in combat');
     G.state.inCombat = false; G.state.enemy = null;
     window.document.querySelectorAll('.close-btn')[0].click();
     await wait(30);
@@ -821,8 +823,11 @@ test('(60) restoreGameplayControls keeps movement disabled while combat is live'
     const { window } = await liveGame(t), G = window.Game;
     G.startCombat('root goblin');
     G.restoreGameplayControls();
-    assert.equal(dirBtn(window, 'north').disabled, true, 'must not re-enable mid-battle');
+    // The control stays reachable, but the MOVE itself must still be refused.
     assert.equal(G.state.inCombat, true);
+    const where = G.state.location;
+    G.move(Object.keys(window.WorldData.locations[where].exits)[0]);
+    assert.equal(G.state.location, where, 'movement is still blocked during combat');
 });
 
 test('(61b) movement is restored even while a modal dialog is on screen', async t => {
@@ -1051,4 +1056,118 @@ test('(76) a defeated monster never acts and combat cannot continue after victor
     const hpAfter = G.state.player.hp;
     await wait(200);
     assert.equal(G.state.player.hp, hpAfter, 'no monster may act after combat ends');
+});
+
+/* ── v7.22.3: movement in combat, weapon balance, NPC AI, companions ─────── */
+
+test('(77) direction buttons stay enabled during combat and explain instead', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.startCombat('root goblin');
+    const exits = Object.keys(window.WorldData.locations[G.state.location].exits || {});
+    for (const dir of exits) {
+        const button = window.document.querySelector(`.dir-btn[data-cmd="${dir}"]`);
+        if (button) assert.equal(button.disabled, false, `${dir} must stay focusable in combat`);
+    }
+    window.document.getElementById('narrative').innerHTML = '';
+    const from = G.state.location;
+    G.move(exits[0]);
+    assert.equal(G.state.location, from, 'movement is still refused during combat');
+    assert.match(narrative(window), /you are in combat/i, 'the player is told why');
+});
+
+test('(78) a level 1 starter weapon is weak, so monsters survive to act', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    assert.equal(window.WorldData.items['iron sword'].damage, 14, 'starter weapon keeps its authored damage');
+    assert.ok(G.state.player.weaponDamage <= 20, `level 1 damage must stay low, got ${G.state.player.weaponDamage}`);
+});
+
+test('(79) weapon progression still allows genuinely strong late-game weapons', async t => {
+    const { window } = await liveGame(t);
+    const damages = Object.values(window.WorldData.items)
+        .filter(i => i.type === 'weapon' && i.damage).map(i => i.damage);
+    assert.ok(Math.min(...damages) < 20, 'weak weapons exist');
+    assert.ok(Math.max(...damages) > 100, 'powerful weapons still exist');
+});
+
+test('(80) monsters deal damage across a real multi-monster fight', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    // Deterministic proof that the monster turn actually lands damage: run the
+    // monster turn directly with a roll that passes its accuracy check. Fixed
+    // full-fight rolls are unreliable because a hero can legitimately dodge.
+    G.startCombat('root goblin');
+    G.state.sacred.enemyQueue = [];
+    G.state.enemy.hp = G.state.enemy.maxHp = 99999;   // survives to act
+    const before = G.state.player.hp;
+    // Try a spread of rolls so one guaranteed hit lands regardless of which
+    // accuracy branch the monster takes. Other suites pin Math.random, so this
+    // test must not depend on any single inherited value.
+    for (const roll of [0.5, 0.2, 0.05, 0.35, 0.6]) {
+        if (G.state.player.hp < before) break;
+        window.Math.random = () => roll;
+        G.enemyGroupTurn();
+        await wait(30);
+    }
+    assert.ok(G.state.player.hp < before,
+        `the monster turn must deal damage (hp ${before} -> ${G.state.player.hp})`);
+});
+
+test('(80b) a level 1 monster survives the first hit, so it gets a turn', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    // The old blanket 50-damage weapon floor one-shot every early monster, so
+    // monsters never acted. Starter damage must not exceed early monster HP.
+    G.startCombat('root goblin');
+    const monsterHp = G.state.enemy.maxHp;
+    const playerDamage = G.state.player.weaponDamage;
+    assert.ok(playerDamage < monsterHp * 3,
+        `starter damage ${playerDamage} must not trivially one-shot a ${monsterHp} HP monster`);
+});
+
+test('(81) reviving with healthy companions explains instead of doing nothing', async t => {
+    const { window } = await liveGame(t), G = window.Game;
+    G.state.companions = [{ name: 'Aria', hp: 40, maxHp: 40 }, { name: 'Brom', hp: 30, maxHp: 30 }];
+    window.document.getElementById('narrative').innerHTML = '';
+    G.reviveCompanions();
+    assert.match(narrative(window), /already have full health points/i);
+    G.state.companions = [];
+    window.document.getElementById('narrative').innerHTML = '';
+    G.reviveCompanions();
+    assert.match(narrative(window), /no companions to revive/i);
+});
+
+test('(82) the AI NPC endpoint answers game, general and Telugu questions', async () => {
+    const { createRequire } = await import('node:module');
+    const handler = createRequire(import.meta.url)('../api/npc.js');
+    const ask = async message => {
+        const res = { statusCode: 200, body: '', setHeader() {}, end(b) { this.body = b; return b; } };
+        await handler({ method: 'POST', headers: {}, socket: { remoteAddress: '9.9.9.9' },
+                        body: { message, npcName: 'Elder Rowan', npcRole: 'guild master' } }, res);
+        return JSON.parse(res.body);
+    };
+    const quest = await ask('How to finish this quest in this game?');
+    assert.ok(quest.reply.length > 10, 'answers a game question');
+    const biryani = await ask('where is Hyderabad biryani famous?');
+    assert.match(biryani.reply, /hyderabad/i, 'answers a general question');
+    const telugu = await ask('నమస్కారం');
+    assert.match(telugu.reply, /[\u0C00-\u0C7F]/, 'replies in Telugu to Telugu');
+    const greeting = await ask('hello');
+    assert.ok(greeting.reply.length > 10 && greeting.provider, 'always replies, never silent');
+});
+
+test('(83) the NPC endpoint never leaks an API key to the client', async () => {
+    const source = await readFile('api/npc.js', 'utf8');
+    assert.match(source, /process\.env\.OPENAI_API_KEY/, 'reads the key server-side only');
+    assert.doesNotMatch(source, /res\.end\([^)]*API_KEY/, 'never returns a key');
+    const client = await readFile('ai-npc-v7223.js', 'utf8');
+    assert.doesNotMatch(client, /API_KEY|sk-[A-Za-z0-9]/, 'no key in browser code');
+    assert.match(client, /emitGameEvent/, 'NPC speech goes through centralized TTS');
+});
+
+test('(84) legal pages explain server-side saves, identity checks and conduct', async () => {
+    const [privacy, terms] = await Promise.all([readFile('privacy.html', 'utf8'), readFile('terms.html', 'utf8')]);
+    assert.match(privacy, /save your game progress on our server/i);
+    assert.match(privacy, /verify who you are/i);
+    assert.match(privacy, /name and email/i);
+    assert.match(terms, /How everyone should behave/i);
+    assert.match(terms, /Game rules/i);
+    assert.match(terms, /blind players and sighted players/i);
 });

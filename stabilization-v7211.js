@@ -162,7 +162,11 @@
             const status=document.getElementById('combat-status'),text=document.getElementById('combat-status-text');
             if(status)status.classList.remove('hidden');
             if(text)text.textContent=`Encounter: ${description}. Choose a combat action, or type attack, attack [target], defend, flee, healing spell, multiple strike, or shock.`;
-            document.querySelectorAll('.dir-btn').forEach(button=>{button.disabled=true;button.setAttribute('aria-disabled','true');});
+            // Accessibility: never silently disable movement. A blind player
+            // must be able to focus the control and be TOLD why it did not work,
+            // instead of landing on a dead button. The move handler explains and
+            // offers "flee" while combat is active.
+            document.querySelectorAll('.dir-btn').forEach(button=>{button.disabled=false;button.removeAttribute('aria-disabled');button.dataset.combatBlocked='true';});
             this.bindCombatActionButtons();this.updateCombatActionAvailability();
             const input=document.getElementById('cmd-input');
             // The command input stays usable: combat must never force the player
@@ -174,6 +178,7 @@
             this.updateCombatActionAvailability();
             const input=document.getElementById('cmd-input');
             if(input){input.disabled=false;input.removeAttribute('aria-busy');input.value='';setTimeout(()=>input.focus(),0);}
+            document.querySelectorAll('.dir-btn').forEach(button=>{delete button.dataset.combatBlocked;});
             this.updateDirectionButtons?.(WorldData.locations[this.state.location]?.exits||{});
             this.emitGameEvent?.('The battle is over. You return to exploring.','system',{eventId:`combat-end:${Date.now()}`});
         };

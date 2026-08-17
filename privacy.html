@@ -36,16 +36,35 @@ We do not sell or rent your data.</p>
 in-game <strong>Send Feedback</strong> feature in Chat Rooms, or through the project repository at
 <a href="https://github.com/Mahicouragw/Black-sold-ultimate">github.com/Mahicouragw/Black-sold-ultimate</a>.</p>
 
-<h2>2. What we collect</h2>
+<h2>2. Why we ask for your details</h2>
+<p>We ask for a small amount of personal information for two specific reasons, and
+nothing else:</p>
+<ul>
+<li><strong>To save your game progress on our server, not only on your device.</strong>
+Your heroes, levels, inventory, quests and currency are stored in our database so
+that you can lose your phone, reinstall the app, or sign in on a different device
+and still find your adventure exactly as you left it. Local-only storage would be
+erased whenever you clear your browser data.</li>
+<li><strong>To verify who you are, so nobody else can take your heroes.</strong>
+Your name and email (through Google Sign-In) or your Player ID and PIN act as the
+key to your account. Without a verified identity we could not tell you apart from
+someone trying to claim your progress, and we could not restore your account if
+you were locked out.</li>
+</ul>
+<p>We also use your hero name to show you to other players in chat and on the
+online hero list, and we keep moderation records so that abusive behaviour can be
+acted on. We do not use any of this for advertising or profiling.</p>
+
+<h2>11. What we collect</h2>
 <table>
 <tr><th>Data</th><th>Why</th><th>Where it is stored</th></tr>
 <tr><td>Account identifier (a random UUID)</td><td>To link your heroes to your account</td><td>Supabase database</td></tr>
-<tr><td>Google Sign-In identity, if you choose it</td><td>Authentication and progress recovery across devices</td><td>Supabase authentication</td></tr>
+<tr><td>Name and email address from Google Sign-In, if you choose it</td><td>To verify your identity and recover your account and progress on any device</td><td>Supabase authentication</td></tr>
 <tr><td>Player Code and recovery PIN (stored hashed)</td><td>Alternative sign-in and progress recovery</td><td>Supabase database</td></tr>
 <tr><td>Hero name, level, class, current location, last-seen time</td><td>Gameplay, and showing other players your public hero</td><td>Supabase database</td></tr>
-<tr><td>Game save data (stats, inventory, quests, currency, settings)</td><td>To save and restore your progress</td><td>Supabase database and your device</td></tr>
+<tr><td>Game save data (stats, inventory, quests, currency, settings)</td><td>To save your progress on our server so it survives device loss or reinstalling</td><td>Supabase database and your device</td></tr>
 <tr><td>Chat messages</td><td>To deliver multiplayer chat</td><td>Supabase database, <strong>automatically deleted after five minutes</strong></td></tr>
-<tr><td>Feedback and moderation reports</td><td>To fix bugs and enforce chat rules</td><td>Supabase database</td></tr>
+<tr><td>Feedback, moderation reports, and AI NPC questions you send</td><td>To fix bugs, enforce chat rules, and generate NPC replies</td><td>Supabase database</td></tr>
 <tr><td>Preferences (audio, text-to-speech, interface mode, encounter frequency)</td><td>To remember your settings</td><td>Your device (<code>localStorage</code>)</td></tr>
 <tr><td>Offline game files (PWA cache)</td><td>To let the game work offline</td><td>Your device (service worker cache)</td></tr>
 </table>
@@ -62,7 +81,8 @@ in-game <strong>Send Feedback</strong> feature in Chat Rooms, or through the pro
 <h2>4. Third-party services we rely on</h2>
 <ul>
 <li><strong>Supabase</strong> — database, authentication and storage.</li>
-<li><strong>Google Sign-In</strong> — only if you choose to sign in with Google.</li>
+<li><strong>Google Sign-In</strong> — only if you choose to sign in with Google. It gives us your name and email so we can verify your account.</li>
+<li><strong>AI language provider</strong> — when you talk to an AI NPC, the text of your question is sent to a language-model provider to generate the reply. Do not type personal information into NPC conversations.</li>
 <li><strong>GitHub Pages</strong> and <strong>Vercel</strong> — website hosting. Like virtually all web hosts, they may process connection information such as IP address in their own server logs for security and abuse prevention. We do not receive or store those logs.</li>
 </ul>
 <p>These providers process data under their own privacy policies.</p>
