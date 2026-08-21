@@ -52,6 +52,33 @@
             return message.replace(pattern, '').trim() || message.trim();
         },
 
+        /**
+         * Defense in depth: even though the server sanitizes, clean anything
+         * that still looks like leaked chain-of-thought or markdown so a blind
+         * player never hears it. Returns '' when nothing usable remains.
+         */
+        sanitizeReply(raw) {
+            let text = String(raw || '')
+                .replace(/```[\s\S]*?```/g, ' ')
+                .replace(/`([^`]*)`/g, '$1')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '$1')
+                .replace(/^#{1,6}\s*/gm, '')
+                .replace(/^\s*[-*+]\s+/gm, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (/thinking process|chain[- ]of[- ]thought|reasoning|step[- ]by[- ]step|let me think|stay in character|never discuss|never repeat|system prompt|analy[sz]e user input/i.test(text)) {
+                // Try to salvage a real answer after a common marker.
+                const marker = text.match(/final (?:answer|reply)\s*:?\s*/i);
+                if (marker && marker.index !== undefined) {
+                    const candidate = text.slice(marker.index + marker[0].length).trim();
+                    if (candidate && candidate.length > 3) return candidate;
+                }
+                return '';
+            }
+            return text;
+        },
+
         async ask(rawMessage) {
             const game = window.Game;
             const message = String(rawMessage || '').trim();
@@ -96,7 +123,7 @@
                     signal: AbortSignal.timeout(28000)
                 });
                 const data = await response.json();
-                reply = String(data?.reply || '').trim();
+                reply = this.sanitizeReply(data?.reply || '');
                 ai = Boolean(data?.ai);
             } catch {
                 reply = '';

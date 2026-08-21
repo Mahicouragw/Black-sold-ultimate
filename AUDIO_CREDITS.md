@@ -94,6 +94,36 @@ The following notice must remain with redistributed copies of the game:
 
 Format conversion, trimming, or resampling is disclosed in the per-file entries. CC0 courtesy credits are retained to thank the creators even where attribution is not legally required.
 
+## Car Racing District — synthesized audio (no external files)
+
+The Car Racing District (`car-racing-v28.js`) generates its vehicle audio at
+runtime with the Web Audio API. No recorded files are bundled, downloaded, or
+required, so there is no third-party licence to record for these sounds. All of
+the following are original, procedurally synthesized waveforms authored for
+this project and released by the project under CC0 1.0 (no attribution
+required; redistribution and commercial use permitted):
+
+- **Engine loop** — layered sawtooth + sub-square oscillators through a
+  low-pass filter, pitch/timbre mapped to simulated RPM, gear and throttle.
+- **Ignition sequence** — ignition "click" blip → rising starter-motor tone +
+  filtered noise → settled idle loop.
+- **Engine shutdown** — RPM ramp-down and gain fade to silence.
+- **Horn** — dual square-wave (420 Hz / 530 Hz) tone.
+- **Brake squeal** — band-passed white-noise loop.
+- **Reverse beeper** — pulsed 1 kHz square wave.
+- **Tyre skid** — band-passed white-noise loop.
+- **Collision / crash** — low-passed noise burst + low sine "thump" scaled by
+  impact intensity.
+- **Checkpoint chime**, **countdown beeps**, **race-start "GO"**, **win/lose
+  jingles** — short sine envelopes.
+- **Terrain rolling** — looping white-noise through a low-pass filter whose
+  cutoff follows the surface (asphalt, dirt, grass, gravel, mud).
+
+The district also reuses already-credited bundled effects (e.g. `door.wav` for
+entry, `coin.wav` for rewards, `victory.mp3` and `levelup.wav` for results),
+whose licences are listed in the tables above. Music ducking during
+announcements uses the existing `MusicSystem.duckMusic` mechanism.
+
 ## Licence links
 
 - CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/

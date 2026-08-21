@@ -2320,7 +2320,8 @@ const Game = {
             slainEnemies: this.state.slainEnemies || {},
             companions: this.state.companions,
             guild: this.state.guild,
-            combatGroup: this.state.combatGroup
+            combatGroup: this.state.combatGroup,
+            racing: this.state.racing || null
         };
     },
 
@@ -2369,6 +2370,7 @@ const Game = {
             this.state.messages = data.messages || [];
             this.state.guild = data.guild || null;
             this.state.combatGroup = data.combatGroup || [];
+            this.state.racing = data.racing || null;
             this.state.player.armor ||= 'Traveler Clothes';
             this.state.player.defense ||= 1;
             this.state.player.spells ||= ['Minor Heal'];
