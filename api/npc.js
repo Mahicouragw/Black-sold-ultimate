@@ -408,10 +408,44 @@ async function newsSearch(query, count) {
 }
 
 /**
+ * Google News RSS — a real, keyless, free news search. No API key, no
+ * subscription, no credit card. Returns current headlines with source + date.
+ * NOTE: Google's feed is published for personal, non-commercial feed readers;
+ * if the game is ever monetized or scaled commercially, swap in a paid news
+ * key (Brave/NewsAPI) later — the fallback order below already supports that.
+ */
+async function googleNewsSearch(query, count) {
+    try {
+        const r = await fetch(`https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-IN&gl=IN&ceid=IN:en`, { signal: AbortSignal.timeout(7000) });
+        if (!r.ok) return null;
+        const xml = await r.text();
+        const items = xml.match(/<item>[\s\S]*?<\/item>/g) || [];
+        if (!items.length) return null;
+        return items.slice(0, count).map(block => {
+            const title = (block.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+            const link = (block.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '';
+            const pubDate = (block.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '';
+            // Titles arrive as "Headline - Source". Split off the source cleanly.
+            const dash = title.lastIndexOf(' - ');
+            const headline = dash > 0 ? stripHtml(title.slice(0, dash)) : stripHtml(title);
+            const source = dash > 0 ? stripHtml(title.slice(dash + 3)).slice(0, 60) : '';
+            return {
+                title: headline,
+                url: stripHtml(link),
+                domain: source || domainOf(stripHtml(link)) || 'news.google.com',
+                snippet: '',
+                date: pubDate ? new Date(pubDate).toISOString().slice(0, 10) : ''
+            };
+        }).filter(x => x.title && x.url);
+    } catch { return null; }
+}
+
+/**
  * Common contract. Performs a REAL search and returns structured results plus
- * the provider that served them. Prefers NewsAPI for news-style questions,
- * then Brave, then the always-available Wikipedia. Results are cached briefly
- * and rate-limited so one player cannot drive unbounded search cost.
+ * the provider that served them. News uses the keyless Google News RSS first
+ * (free, no key), then optional keyed providers, then Wikipedia. General web
+ * search uses Brave (if keyed) then Wikipedia. Results are cached briefly and
+ * rate-limited so one player cannot drive unbounded search cost.
  */
 async function searchCurrentInfo(message) {
     const query = refineSearchQuery(message);
@@ -422,8 +456,10 @@ async function searchCurrentInfo(message) {
 
     let results = null, provider = null;
     if (isNews) {
-        results = await newsSearch(query, 5);
-        provider = 'newsapi';
+        // Keyless, free, real headlines — no key or subscription required.
+        results = await googleNewsSearch(query, 5);
+        provider = 'googlenews';
+        if (!results) { results = await newsSearch(query, 5); provider = 'newsapi'; } // optional keyed
     }
     if (!results) {
         results = await braveSearch(query, 5);

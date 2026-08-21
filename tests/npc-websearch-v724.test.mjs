@@ -130,6 +130,32 @@ test('(205) Brave results are parsed into the common contract', async () => {
     restoreFetch(saved);
 });
 
+test('(206b) news intent uses the keyless Google News RSS first, no key required', async () => {
+    const saved = global.fetch;
+    // No search keys configured at all — the keyless Google News RSS must win.
+    const savedBrave = process.env.BRAVE_SEARCH_API_KEY, savedNews = process.env.NEWS_API_KEY;
+    delete process.env.BRAVE_SEARCH_API_KEY; delete process.env.NEWS_API_KEY;
+    global.fetch = async (url) => {
+        const u = String(url);
+        if (u.includes('news.google.com/rss')) {
+            return { ok: true, text: async () => `<rss><channel><item><title>Real headline one - The Hindu</title><link>https://news.google.com/rss/articles/1</link><pubDate>Fri, 21 Aug 2026 10:00:00 GMT</pubDate></item><item><title>Real headline two - BBC</title><link>https://news.google.com/rss/articles/2</link><pubDate>Fri, 21 Aug 2026 09:00:00 GMT</pubDate></item></channel></rss>` };
+        }
+        return { ok: false, status: 404, json: async () => ({}), text: async () => '' };
+    };
+    try {
+        const data = await ask('what is the latest news');
+        assert.equal(data.searchProvider, 'googlenews', 'keyless Google News RSS is the news provider');
+        assert.equal(data.searched, true);
+        assert.equal(data.sources[0].title, 'Real headline one', 'title split from source');
+        assert.equal(data.sources[0].domain, 'The Hindu', 'source is extracted from the RSS title');
+        assert.equal(data.sources[1].domain, 'BBC');
+    } finally {
+        global.fetch = saved;
+        if (savedBrave === undefined) delete process.env.BRAVE_SEARCH_API_KEY; else process.env.BRAVE_SEARCH_API_KEY = savedBrave;
+        if (savedNews === undefined) delete process.env.NEWS_API_KEY; else process.env.NEWS_API_KEY = savedNews;
+    }
+});
+
 test('(206) NewsAPI results are parsed into the common contract for news intent', async () => {
     const saved = global.fetch;
     const savedKey = process.env.NEWS_API_KEY;
