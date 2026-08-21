@@ -26,6 +26,33 @@
         histories: new Map(),          // npc name -> recent turns
         lastNpc: null,
         pending: false,
+        lastSpoken: '',                // duplicate-response guard
+        lastSpokenAt: 0,
+
+        /**
+         * A small, sanitized snapshot of the player's real game state sent to
+         * the server so player-specific questions ("how much gold do I have?")
+         * are answered from actual data, never hallucinated. No credentials,
+         * tokens, emails or identifiers ever leave the device in this payload.
+         */
+        buildGameSnapshot() {
+            const G = window.Game;
+            const p = G?.state?.player;
+            if (!p) return null;
+            const loc = window.WorldData?.locations?.[G.state.location];
+            return {
+                gold: Number(p.gold) || 0,
+                hp: Number(p.hp) || 0, maxHp: Number(p.maxHp) || 0,
+                mp: Number(p.mp) || 0, maxMp: Number(p.maxMp) || 0,
+                level: Number(p.level) || 1,
+                location: loc?.name || G.state.location || '',
+                weapon: p.weapon || '',
+                spells: Array.isArray(p.spells) ? p.spells : [],
+                quests: (G.state.quests || []).map(q => (typeof q === 'string' ? q : q?.name)).filter(Boolean),
+                companions: (G.state.companions || []).map(c => c?.name).filter(Boolean),
+                inventory: (G.state.inventory || []).map(i => ({ name: i?.name || i?.id, qty: Number(i?.quantity) || 1 }))
+            };
+        },
 
         /** NPCs standing in the player's current location. */
         localNpcs() {
@@ -118,7 +145,8 @@
                         message: question,
                         npcName: npc.name,
                         npcRole: npc.role || 'a villager of Kandor',
-                        history
+                        history,
+                        game: this.buildGameSnapshot()
                     }),
                     signal: AbortSignal.timeout(28000)
                 });
@@ -132,7 +160,7 @@
             }
 
             if (!reply) {
-                reply = `${npc.name} shrugs. "The winds carry no answer for that right now. Ask me again shortly."`;
+                reply = `${npc.name} says: "I cannot answer that right now. Please try again shortly."`;
             }
 
             // Remember the exchange so the conversation has continuity.
@@ -140,9 +168,18 @@
             this.histories.set(npc.name, updated.slice(-MAX_HISTORY));
 
             const spoken = `${npc.name} says: ${reply}`;
+            // Duplicate-response guard: if the exact same reply was spoken a
+            // moment ago, do not log or speak it a second time.
+            const nowMs = Date.now();
+            if (spoken === this.lastSpoken && nowMs - this.lastSpokenAt < 2500) {
+                this.aiAvailable = ai;
+                return true;
+            }
+            this.lastSpoken = spoken;
+            this.lastSpokenAt = nowMs;
             // emitGameEvent writes the log AND routes through centralized TTS,
             // so the TTS OFF setting is honoured automatically.
-            game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${Date.now()}` })
+            game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${nowMs}` })
                 || game.addNarrative(spoken, 'npc');
             window.MusicSystem?.playSFX?.('coin');
             this.aiAvailable = ai;
