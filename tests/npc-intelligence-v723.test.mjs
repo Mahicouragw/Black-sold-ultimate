@@ -86,12 +86,25 @@ test('(106) a game-state question without a snapshot never hallucinates a number
 
 /* ── Current events are answered honestly, never fabricated ──────────────── */
 
-test('(107) current news/weather/scores without a live source are refused honestly', async () => {
+test('(107) current news questions perform a real search (keyless fallback) with sources', async t => {
+    // v7.24 upgraded this path: instead of refusing, the NPC performs a real
+    // server-side search. With no NewsAPI/Brave key, the keyless Wikipedia
+    // fallback still returns real results. The search is mocked here for
+    // determinism.
     const h = NPC_HANDLER;
-    for (const q of ['what is the latest news in india today', 'what is the weather now', 'who won the cricket match today']) {
-        const reply = (await ask(h, q)).reply;
-        assert.match(reply, /cannot verify/i, q);
-    }
+    const savedFetch = global.fetch;
+    t.after(() => { global.fetch = savedFetch; });
+    global.fetch = async (url) => {
+        if (String(url).includes('wikipedia.org/w/api.php')) {
+            return { ok: true, json: async () => ({ query: { search: [{ title: '2026 in India', snippet: 'events', timestamp: '2026-08-20T00:00:00Z' }] } }) };
+        }
+        return { ok: false, status: 404, json: async () => ({}) };
+    };
+    const data = await ask(h, 'what is the latest news in india today');
+    assert.equal(data.searched, true, 'a real search is performed');
+    assert.equal(data.searchProvider, 'wikipedia');
+    assert.ok(Array.isArray(data.sources) && data.sources.length, 'sources are returned');
+    assert.match(data.reply, /2026 in India/i, 'relates the real retrieved results');
 });
 
 /* ── LLM / network failure never crashes or fabricates ───────────────────── */

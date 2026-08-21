@@ -106,6 +106,37 @@
             return text;
         },
 
+        /**
+         * Render web-derived sources as real, keyboard- and TalkBack-accessible
+         * links below the answer. Raw URLs are never spoken or dumped into the
+         * dialogue; each link is a labelled, tap-safe target.
+         */
+        renderSources(sources) {
+            if (!Array.isArray(sources) || !sources.length) return;
+            const narrative = window.document.getElementById('narrative');
+            if (!narrative) return;
+            const wrap = window.document.createElement('p');
+            wrap.className = 'npc-sources';
+            wrap.setAttribute('aria-label', 'Sources');
+            const label = window.document.createElement('span');
+            label.textContent = 'Sources: ';
+            label.setAttribute('role', 'text');
+            wrap.appendChild(label);
+            sources.forEach((s, i) => {
+                if (!s || !s.url) return;
+                const a = window.document.createElement('a');
+                a.href = s.url;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.textContent = `${i + 1}. ${s.title || 'Untitled'}`;
+                a.setAttribute('aria-label', `Source ${i + 1}: ${s.title || 'Untitled'}${s.domain ? ' from ' + s.domain : ''}`);
+                wrap.appendChild(a);
+                if (i < sources.length - 1) wrap.appendChild(window.document.createTextNode(' · '));
+            });
+            narrative.appendChild(wrap);
+            narrative.scrollTop = narrative.scrollHeight;
+        },
+
         async ask(rawMessage) {
             const game = window.Game;
             const message = String(rawMessage || '').trim();
@@ -137,6 +168,7 @@
 
             let reply = '';
             let ai = false;
+            let sources = [];
             try {
                 const response = await fetch(ENDPOINT, {
                     method: 'POST',
@@ -153,6 +185,7 @@
                 const data = await response.json();
                 reply = this.sanitizeReply(data?.reply || '');
                 ai = Boolean(data?.ai);
+                sources = Array.isArray(data?.sources) ? data.sources : [];
             } catch {
                 reply = '';
             } finally {
@@ -178,9 +211,11 @@
             this.lastSpoken = spoken;
             this.lastSpokenAt = nowMs;
             // emitGameEvent writes the log AND routes through centralized TTS,
-            // so the TTS OFF setting is honoured automatically.
+            // so the TTS OFF setting is honoured automatically. TTS speaks the
+            // final answer exactly once; sources are visual/touch targets only.
             game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${nowMs}` })
                 || game.addNarrative(spoken, 'npc');
+            if (sources.length) this.renderSources(sources);
             window.MusicSystem?.playSFX?.('coin');
             this.aiAvailable = ai;
             return true;

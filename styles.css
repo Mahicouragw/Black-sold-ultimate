@@ -995,3 +995,9 @@ html[data-interface-mode="blind"] .pulse { animation:none; }
 .legal-links{border:1px solid #6b4a2a;border-radius:.5rem;padding:.6rem .8rem;margin:.75rem 0}
 .legal-links h4{margin:.1rem 0 .5rem;color:#ffd479}
 .legal-links a.menu-btn{display:block;text-align:center;text-decoration:none;margin:.35rem 0}
+
+/* v7.24.0 — accessible NPC web-search sources */
+.npc-sources{font-size:.95rem;line-height:1.6;color:#cfe3ff;margin:.4rem 0;display:flex;flex-wrap:wrap;gap:.4rem .6rem;align-items:center}
+.npc-sources span{font-weight:600;color:#ffd479}
+.npc-sources a{color:#8fd3ff;text-decoration:underline;padding:.15rem .35rem;border-radius:.3rem}
+.npc-sources a:focus-visible{outline:3px solid #ffd479;outline-offset:2px}

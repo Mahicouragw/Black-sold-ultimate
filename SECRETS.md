@@ -89,9 +89,19 @@ Delete the old key first, then create a new one and supply it with Method 1–4.
 | Secret | Purpose | Where it belongs |
 |---|---|---|
 | GitHub token | Push and deploy | `npm run auth`, or `.deploy-token` |
-| `OPENROUTER_API_KEY` | AI NPC replies | Vercel env var (production), `.env.local` (local) |
+| `OPENROUTER_API_KEY` | AI NPC conversation (live LLM) | Vercel env var (production), `.env.local` (local) |
+| `OPENAI_API_KEY` | AI NPC conversation (OpenAI provider) | Vercel env var (production), `.env.local` (local) |
+| `GEMINI_API_KEY` | AI NPC conversation (Google Gemini) | Vercel env var (production), `.env.local` (local) |
+| `BRAVE_SEARCH_API_KEY` | NPC web search (Brave Search) | Vercel env var (production), `.env.local` (local) |
+| `NEWS_API_KEY` | NPC current news (NewsAPI) | Vercel env var (production), `.env.local` (local) |
 
-**Never** commit either. `.gitignore` already excludes `.deploy-token`,
+All of the above are optional. With none configured, NPCs still answer:
+- time/date/math/game-state questions are computed server-side (no key), and
+- current-information questions fall back to a **keyless Wikipedia search**, so
+  real web retrieval always works. The keyed providers only add broader web
+  search (Brave) and live headlines (NewsAPI).
+
+**Never** commit any of them. `.gitignore` already excludes `.deploy-token`,
 `TOKEN-HERE.txt`, `.env` and `.env.local`. Verify any time with:
 
 ```bash
