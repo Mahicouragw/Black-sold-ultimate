@@ -295,12 +295,24 @@
     }
 
     const COMMANDS = [
-        'north', 'south', 'east', 'west', 'look', 'inventory', 'stats', 'map', 'quests',
+        'north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest',
+        'up', 'down', 'look', 'inventory', 'stats', 'map', 'quests',
         'attack', 'hunt', 'heal', 'help', 'talk', 'shop', 'settings', 'tutorial',
         'opening doors', 'alohomora', 'heal party', 'racing', 'drive', 'race',
         'accelerate', 'brake', 'boost', 'status', 'position', 'pause', 'resume',
-        'shoot', 'eat', 'equip', 'hunger'
+        'shoot', 'eat', 'equip', 'hunger', 'examine', 'search', 'take', 'use', 'cast',
+        'flee', 'defend', 'items', 'pit', 'quit'
     ];
+    const EXACT_TOKENS = new Set([
+        'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw', 'u', 'd',
+        'north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest',
+        'up', 'down', 'look', 'l', 'inventory', 'i', 'items', 'stats', 'status',
+        'map', 'm', 'quests', 'q', 'attack', 'fight', 'a', 'hunt', 'heal', 'help',
+        'talk', 'shop', 'settings', 'tutorial', 'alohomora', 'racing', 'drive', 'race',
+        'accelerate', 'brake', 'boost', 'position', 'pause', 'resume', 'shoot', 'eat',
+        'equip', 'hunger', 'examine', 'search', 'take', 'get', 'use', 'cast', 'spell',
+        'flee', 'defend', 'pit', 'quit', 'left', 'right', 'forward'
+    ]);
 
     function levenshtein(a, b) {
         const m = [];
@@ -319,13 +331,17 @@
     function guessCommand(raw) {
         const c = String(raw || '').toLowerCase().trim();
         if (!c || c.includes(' ')) return null;
-        let best = null, score = 3;
+        if (EXACT_TOKENS.has(c)) return c;
+        if (c.length <= 3) return null;
+        const maxDist = c.length <= 5 ? 1 : 2;
+        let best = null, score = maxDist + 1;
         for (const cmd of COMMANDS) {
             if (cmd.includes(' ')) continue;
+            if (Math.abs(cmd.length - c.length) > maxDist) continue;
             const d = levenshtein(c, cmd);
-            if (d < score) { score = d; best = cmd; }
+            if (d > 0 && d < score) { score = d; best = cmd; }
         }
-        return score <= 2 ? best : null;
+        return score <= maxDist ? best : null;
     }
 
     function shootArrow(game) {

@@ -32,6 +32,44 @@ test('thorium spear and silver arrow exist with unique real descriptions', async
     assert.equal(new Set(descs).size, descs.length, 'duplicate new item descriptions');
 });
 
+test('exact movement commands are never rewritten to map or anything else', async t => {
+    const { window, dom } = await createRuntime();
+    t.after(() => dom.window.close());
+    const g = window.ItemHunger.guessCommand;
+    assert.equal(g('up'), 'up');
+    assert.equal(g('down'), 'down');
+    assert.equal(g('u'), 'u');
+    assert.equal(g('n'), 'n');
+    assert.equal(g('map'), 'map');
+    assert.equal(g('examine'), 'examine');
+    assert.equal(g('loook'), 'look');
+    assert.equal(g('nort'), 'north');
+    assert.equal(g('xyzzy'), null);
+});
+
+test('typed up moves up instead of opening the map', async t => {
+    const { window, dom } = await createRuntime();
+    t.after(() => dom.window.close());
+    const G = window.Game;
+    const seen = [];
+    const prev = G.processCommand.bind(G);
+    G.processCommand = function (raw) {
+        seen.push(String(raw));
+        return prev(raw);
+    };
+    window.ItemHunger; // ensure bound
+    // Re-enter through the live engine (already wrapped).
+    G.processCommand = prev;
+    const lines = [];
+    const add = G.addNarrative.bind(G);
+    G.addNarrative = (m, t) => { lines.push(String(m)); return add(m, t); };
+    G.state.location = 'kaliwasch';
+    G.state.inCombat = false;
+    G.processCommand('up');
+    assert.equal(lines.some(l => /treating that as/i.test(l)), false);
+    assert.equal(lines.some(l => /world map|text map/i.test(l)), false);
+});
+
 test('fuzzy command maps loook to look', async t => {
     const { window, dom } = await createRuntime();
     t.after(() => dom.window.close());
