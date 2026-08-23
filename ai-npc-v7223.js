@@ -94,6 +94,9 @@
                 .replace(/^\s*[-*+]\s+/gm, '')
                 .replace(/\s{2,}/g, ' ')
                 .trim();
+            if (/i am (an? )?(ai )?(language|large language) model|language model developed by|i (was |am )?(developed|created|trained) by (nvidia|openai|google|anthropic)/i.test(text)) {
+                return 'I am the Black Soul Ultimate AI, the AI assistant and NPC intelligence system built for this game.';
+            }
             if (/thinking process|chain[- ]of[- ]thought|reasoning|step[- ]by[- ]step|let me think|stay in character|never discuss|never repeat|system prompt|analy[sz]e user input/i.test(text)) {
                 // Try to salvage a real answer after a common marker.
                 const marker = text.match(/final (?:answer|reply)\s*:?\s*/i);
