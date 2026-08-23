@@ -252,7 +252,8 @@
       bestTimes: {},
       results: [],
       achievements: {},
-      settings: { voiceGuidance: true, speedAnnounce: 'normal', assistSteering: true, announceOpponents: true },
+      settings: { voiceGuidance: true, speedAnnounce: 'normal', assistSteering: true, announceOpponents: true, rubberBand: false },
+      tutorialSeen: false,
       xp: 0,
       level: 1
     };
@@ -553,6 +554,7 @@
       this.heading = Math.atan2(this.track.points[1].y - this.track.points[0].y, this.track.points[1].x - this.track.points[0].x);
       this.speed = 0; // m/s along heading (signed: + forward, - reverse)
       this.steer = 0; this.throttle = 0; this.brakeOn = false; this.clutch = false; this.handbrake = false;
+      this.boostOn = false; this.boostFuel = 1;
       this.gear = 1;
       this.rpm = 0;
       this.engineOn = false;
@@ -702,7 +704,14 @@
       }
       if (this.handbrake) { this.speed = Math.max(0, this.speed - p.braking * 1.4 * dt); }
 
-      if (accelInput > 0) this.speed = Math.min(p.maxSpeed, this.speed + p.accel * accelInput * dt);
+      if (this.boostOn && this.boostFuel > 0 && accelInput > 0) {
+        this.boostFuel = Math.max(0, this.boostFuel - dt * 0.28);
+        if (this.boostFuel <= 0) { this.boostOn = false; say('Boost empty.'); }
+      } else if (!this.boostOn && this.boostFuel < 1) {
+        this.boostFuel = Math.min(1, this.boostFuel + dt * 0.08);
+      }
+      const boostMul = (this.boostOn && this.boostFuel > 0) ? 1.35 : 1;
+      if (accelInput > 0) this.speed = Math.min(p.maxSpeed * (this.boostOn ? 1.18 : 1), this.speed + p.accel * accelInput * boostMul * dt);
       else if (accelInput < 0) this.speed = Math.max(-p.reverseMax, this.speed - p.accel * 0.6 * dt);
       else {
         // coast with drag
@@ -836,7 +845,12 @@
         const ahead1 = this._pointAhead(a.px, a.py, look);
         const curvature = Math.abs(Math.atan2(ahead2.y - ahead1.y, ahead2.x - ahead1.x) - Math.atan2(ahead1.y - a.py, ahead1.x - a.px));
         const slowFactor = Math.max(0.5, 1 - curvature * 1.6);
-        const targetSpeed = a.maxSpeed * slowFactor;
+        let targetSpeed = a.maxSpeed * slowFactor;
+        const rsBand = ensureState();
+        if (rsBand.settings && rsBand.settings.rubberBand && !this.finished) {
+          const gap = this.progress - a.progress;
+          if (gap > 80) targetSpeed *= 1.12;
+        }
         a.speed += (targetSpeed - a.speed) * Math.min(1, dt * (a.skill * 1.4));
         a.px += Math.cos(a.heading) * a.speed * dt;
         a.py += Math.sin(a.heading) * a.speed * dt;
@@ -1012,6 +1026,49 @@
       }
     }
 
+    mapReport() {
+      const sections = 12;
+      const total = this.track.total || 1;
+      const wrapped = ((this.lastProgress % total) + total) % total;
+      const section = Math.min(sections, Math.floor((wrapped / total) * sections) + 1);
+      const look = 40 + Math.abs(this.speed) * 1.1;
+      const cur = this._pointAhead(this.px, this.py, 8);
+      const ahead = this._pointAhead(this.px, this.py, look);
+      const far = this._pointAhead(this.px, this.py, look + 25);
+      let dh = Math.atan2(far.y - ahead.y, far.x - ahead.x) - Math.atan2(ahead.y - cur.y, ahead.x - cur.x);
+      while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
+      const deg = dh * 180 / Math.PI;
+      let next = 'straight';
+      if (Math.abs(deg) >= 10 && Math.abs(deg) < 22) next = 'slight ' + (deg > 0 ? 'left' : 'right');
+      else if (Math.abs(deg) < 50) next = deg > 0 ? 'left turn' : 'right turn';
+      else if (Math.abs(deg) < 90) next = 'sharp ' + (deg > 0 ? 'left' : 'right') + ' turn';
+      else if (Math.abs(deg) >= 90) next = 'hairpin';
+      const surface = this.track.cfg.surface || 'asphalt';
+      const hazard = surface === 'dirt' || surface === 'gravel' ? 'loose surface' : surface === 'asphalt' ? 'none' : surface;
+      let opp = 'none nearby';
+      let best = Infinity;
+      for (const a of this.ai) {
+        if (a.finished) continue;
+        const d = Math.hypot(a.px - this.px, a.py - this.py);
+        if (d < best) { best = d; opp = a.progress > this.progress ? `opponent ahead, ${Math.round(d)} meters` : `opponent behind, ${Math.round(d)} meters`; }
+      }
+      say(`Track: ${this.track.cfg.name || 'circuit'}. You are on section ${section} of ${sections}. Next: ${next}. Hazard: ${hazard}. ${opp}.`);
+    }
+
+    positionReport() {
+      say(`You are in ${this.position}${this.position === 1 ? 'st' : this.position === 2 ? 'nd' : this.position === 3 ? 'rd' : 'th'} place. Lap ${Math.min(this.lap + 1, this.lapsTotal)} of ${this.lapsTotal}.`);
+    }
+
+    enterPit() {
+      if (this.mode !== 'race') { say('Pit is only available during a race.'); return; }
+      this.speed = Math.min(this.speed, 4);
+      this.condition = Math.min(100, this.condition + 18);
+      this.boostFuel = 1;
+      this.stats.condition = this.condition;
+      this.physics = physicsFrom({ ...this.stats, condition: this.condition });
+      say('Pit stop. Condition restored a little. Boost refilled. You lost some time.');
+    }
+
     statusReport() {
       const kmh = Math.round(this.speed * 3.6);
       if (this.mode === 'race') {
@@ -1143,7 +1200,10 @@
           <button class="bsu-car-btn" id="bsu-car-brake" aria-label="Brake (Space)">Brake</button>
           <button class="bsu-car-btn" id="bsu-car-horn" aria-label="Horn">Horn</button>
           <button class="bsu-car-btn ghost" id="bsu-car-engine" aria-label="Toggle engine (E)">Engine</button>
+          <button class="bsu-car-btn" id="bsu-car-boost" aria-label="Boost">Boost</button>
           <button class="bsu-car-btn ghost" id="bsu-car-status" aria-label="Race status (I)">Status</button>
+          <button class="bsu-car-btn ghost" id="bsu-car-map" aria-label="Track map">Map</button>
+          <button class="bsu-car-btn ghost" id="bsu-car-pit" aria-label="Pit stop">Pit</button>
           <button class="bsu-car-btn ghost" id="bsu-car-restart" aria-label="Restart (R)">Restart</button>
         </div>
         <div class="bsu-car-sr" id="bsu-car-announcer" role="status" aria-live="assertive"></div>
@@ -1172,7 +1232,10 @@
       document.getElementById('bsu-car-horn').addEventListener('pointerdown', () => CarRacing.activeSim && CarRacing.activeSim.audio.horn(true));
       document.getElementById('bsu-car-horn').addEventListener('pointerup', () => CarRacing.activeSim && CarRacing.activeSim.audio.horn(false));
       document.getElementById('bsu-car-engine').addEventListener('click', () => CarRacing.toggleEngine());
+      document.getElementById('bsu-car-boost').addEventListener('click', () => CarRacing.handleCommand('boost'));
       document.getElementById('bsu-car-status').addEventListener('click', () => CarRacing.activeSim && CarRacing.activeSim.statusReport());
+      document.getElementById('bsu-car-map').addEventListener('click', () => CarRacing.handleCommand('map'));
+      document.getElementById('bsu-car-pit').addEventListener('click', () => CarRacing.handleCommand('pit'));
       document.getElementById('bsu-car-restart').addEventListener('click', () => CarRacing.restartSim());
       document.getElementById('bsu-car-exit').addEventListener('click', () => CarRacing.exitDriving());
     },
@@ -1228,8 +1291,9 @@
       UI._panel('Car Racing District', `
         <p>Welcome to the Car Racing District. Current car: <strong>${UI.esc(car.name)}</strong> (condition ${Math.round(car.condition)}%).</p>
         <button id="bsu-race-practice">Practice Driving</button>
-        <button id="bsu-race-race">Race</button>
-        <button id="bsu-race-garage">Garage</button>
+        <button id="bsu-race-race">New Race</button>
+        <button id="bsu-race-continue">Continue Race</button>
+        <button id="bsu-race-garage">Choose Car / Garage</button>
         <button id="bsu-race-dealership">Car Dealership</button>
         <button id="bsu-race-upgrades">Upgrades</button>
         <button id="bsu-race-results">Race Results</button>
@@ -1239,6 +1303,10 @@
         const bind = (id, fn) => document.getElementById(id).addEventListener('click', fn);
         bind('bsu-race-practice', () => { UI.closePanel(); this.startDriving('practice'); });
         bind('bsu-race-race', () => this.openRaceSelect());
+        bind('bsu-race-continue', () => {
+          if (this.activeSim && !this.activeSim.finished) { UI.closePanel(); UI.showOverlay(); say('Race resumed.'); this.activeSim._paused = false; }
+          else say('No race in progress. Choose New Race.');
+        });
         bind('bsu-race-garage', () => this.openGarage());
         bind('bsu-race-dealership', () => this.openDealership());
         bind('bsu-race-upgrades', () => this.openUpgrades());
@@ -1410,6 +1478,7 @@
         <label><input type="checkbox" id="bsu-set-voice" ${s.voiceGuidance ? 'checked' : ''}> Voice guidance (turns, speed, direction)</label>
         <label><input type="checkbox" id="bsu-set-assist" ${s.assistSteering ? 'checked' : ''}> Steering assist (keeps you near the track)</label>
         <label><input type="checkbox" id="bsu-set-opp" ${s.announceOpponents ? 'checked' : ''}> Announce nearby opponents</label>
+        <label><input type="checkbox" id="bsu-set-rubber" ${s.rubberBand ? 'checked' : ''}> Rubber-banding (optional: opponents catch up if far ahead)</label>
         <label for="bsu-set-speed">Speed announcements</label>
         <select id="bsu-set-speed">
           <option value="off" ${s.speedAnnounce === 'off' ? 'selected' : ''}>Off</option>
@@ -1421,6 +1490,7 @@
           s.voiceGuidance = document.getElementById('bsu-set-voice').checked;
           s.assistSteering = document.getElementById('bsu-set-assist').checked;
           s.announceOpponents = document.getElementById('bsu-set-opp').checked;
+          s.rubberBand = document.getElementById('bsu-set-rubber').checked;
           s.speedAnnounce = document.getElementById('bsu-set-speed').value;
           persist();
         };
@@ -1428,9 +1498,48 @@
       }});
     },
 
+    playTutorial() {
+      say('Welcome to racing. Commands: accelerate, brake, left, right, boost, status, position, map, pause, quit race. You can also use the buttons. Type tutorial any time to hear this again.', { critical: true });
+    },
+
+    handleCommand(raw) {
+      const c = String(raw || '').trim().toLowerCase();
+      const sim = this.activeSim;
+      const pulse = (key, ms = 420) => {
+        if (!sim) return false;
+        if (!sim.engineOn && (key === 'forward' || key === 'boost')) this.toggleEngine();
+        sim.setInput(key, true);
+        setTimeout(() => { if (this.activeSim) this.activeSim.setInput(key, false); }, ms);
+        return true;
+      };
+      if (c === 'tutorial' || c === 'racing tutorial') { this.playTutorial(); return true; }
+      if (c === 'help' || c === 'racing help' || c === 'race rules' || c === 'controls') { this.openHelp(); return true; }
+      if (c === 'quit race' || c === 'exit race' || c === 'leave race') { if (sim) this.exitDriving(); else say('You are not in a race.'); return true; }
+      if (!sim) return false;
+      if (c === 'accelerate' || c === 'gas' || c === 'throttle') { pulse('forward', 900); say('Accelerating.'); return true; }
+      if (c === 'brake') { pulse('brake', 700); say('Braking.'); return true; }
+      if (c === 'left') { pulse('left', 500); say('Steering left.'); return true; }
+      if (c === 'right') { pulse('right', 500); say('Steering right.'); return true; }
+      if (c === 'boost') {
+        if (sim.boostFuel <= 0.05) { say('Boost not ready.'); return true; }
+        sim.boostOn = !sim.boostOn;
+        say(sim.boostOn ? 'Boost on.' : 'Boost off.');
+        return true;
+      }
+      if (c === 'status') { sim.statusReport(); return true; }
+      if (c === 'position') { sim.positionReport(); return true; }
+      if (c === 'map') { sim.mapReport(); return true; }
+      if (c === 'pit') { sim.enterPit(); return true; }
+      if (c === 'pause') { sim._paused = true; say('Paused.'); return true; }
+      if (c === 'resume') { sim._paused = false; say('Resumed.'); return true; }
+      return false;
+    },
+
     openHelp() {
       UI._panel('How to Drive', `
-        <h3>Controls</h3>
+        <h3>TalkBack and text commands</h3>
+        <p>accelerate · brake · left · right · boost · status · position · map · pit · pause · resume · quit race · tutorial</p>
+        <h3>Keyboard</h3>
         <p>W / Up = Forward · S / Down = Reverse · A / Left = steer left · D / Right = steer right</p>
         <p>Space = Brake · C = Clutch · H = Handbrake · E = Engine on/off · R = Restart · P = Pause · I = Race status · Escape = Exit</p>
         <h3>Getting started</h3>
@@ -1468,7 +1577,14 @@
     _startCountdown(trackId, difficulty) {
       const sim = this.activeSim;
       if (!sim) return;
-      say(`Race: ${TRACK_CONFIGS[trackId].name}. Difficulty ${DIFFICULTY[difficulty].label}. Three laps... get ready.`);
+      const laps = TRACK_CONFIGS[trackId]?.laps || this.activeSim?.lapsTotal || 2;
+      say(`Race starting. ${TRACK_CONFIGS[trackId].name}. Difficulty ${DIFFICULTY[difficulty].label}. ${laps} laps. Get ready.`);
+      const rsTut = ensureState();
+      if (!rsTut.tutorialSeen) {
+        rsTut.tutorialSeen = true;
+        persist();
+        this.playTutorial();
+      }
       let n = 3;
       const step = () => {
         if (!this.activeSim) return;
@@ -1510,11 +1626,10 @@
       const sim = this.activeSim;
       if (sim) {
         sim.stop();
-        // persist condition of the car used
         const rs = ensureState();
         if (rs.ownedCars[sim.carId]) rs.ownedCars[sim.carId].condition = Math.max(0, Math.round(sim.condition));
         persist();
-        sim.audio.doorSequence(); // door close as the player steps out
+        sim.audio.doorSequence();
       }
       this.activeSim = null;
       if (this._countdownTimer) clearTimeout(this._countdownTimer);
@@ -1624,7 +1739,11 @@
       const dealerWords = ['dealership', 'car dealership', 'car dealer', 'buy a car', 'buy car'];
       const upgradeWords = ['upgrade', 'upgrades', 'upgrade car'];
 
+      if (R.activeSim && R.handleCommand(c)) return;
+      if (c === 'tutorial' || c === 'racing tutorial') { R.playTutorial(); return; }
       if (c === 'race' && inDistrict) { R.openRaceSelect(); return; }
+      if (c === 'new race') { R.openRaceSelect(); return; }
+      if (c === 'continue race') { if (R.activeSim) { R.activeSim._paused = false; say('Race resumed.'); } else say('No race in progress.'); return; }
       if (driveWords.includes(c)) { if (inDistrict) R.startDriving('practice'); else R.openMenu(); return; }
       if (menuWords.includes(c)) { R.openMenu(); return; }
       if (garageWords.includes(c)) { R.openGarage(); return; }

@@ -388,6 +388,76 @@ async function braveSearch(query, count) {
     } catch { return null; }
 }
 
+/**
+ * Validate one search hit. Reject javascript:/data:/file: URLs, private hosts,
+ * malformed URLs, and oversized or HTML-laden titles. Web text is untrusted.
+ */
+function sanitizeSearchHit(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const title = stripHtml(String(raw.title || '')).slice(0, 200);
+    let url = String(raw.url || '').trim();
+    if (!title || !url) return null;
+    if (/[\u0000-\u001F]/.test(url)) return null;
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        if (isBlockedHost(parsed.hostname)) return null;
+        url = parsed.href;
+    } catch { return null; }
+    const snippet = stripHtml(String(raw.snippet || '')).slice(0, 400)
+        .replace(/ignore (all )?(previous|prior|above) (instructions|prompts)/gi, '[redacted]');
+    return {
+        title,
+        url,
+        domain: String(raw.domain || domainOf(url)).slice(0, 80),
+        snippet,
+        date: String(raw.date || '').slice(0, 32)
+    };
+}
+
+function sanitizeSearchList(list) {
+    return (Array.isArray(list) ? list : []).map(sanitizeSearchHit).filter(Boolean).slice(0, 5);
+}
+
+/**
+ * SearXNG — optional, configured only via SEARXNG_URL (never a hard-coded public instance).
+ * GET {SEARXNG_URL}/search?q=...&format=json
+ */
+async function searxngSearch(query, { count = 5, category = '', language = '', timeRange = '' } = {}) {
+    const base = String(process.env.SEARXNG_URL || '').trim();
+    if (!base) return null;
+    let origin;
+    try {
+        origin = new URL(base);
+        if (origin.protocol !== 'http:' && origin.protocol !== 'https:') return null;
+        if (isBlockedHost(origin.hostname)) return null;
+    } catch { return null; }
+    try {
+        const url = new URL('search', origin.href.endsWith('/') ? origin.href : origin.href + '/');
+        url.searchParams.set('q', query);
+        url.searchParams.set('format', 'json');
+        if (category) url.searchParams.set('categories', category);
+        if (language) url.searchParams.set('language', language);
+        if (timeRange) url.searchParams.set('time_range', timeRange);
+        url.searchParams.set('pageno', '1');
+        const r = await fetch(url.toString(), {
+            signal: AbortSignal.timeout(7000),
+            headers: { Accept: 'application/json', 'User-Agent': 'BlackSwordUltimate/7.25' }
+        });
+        if (!r.ok) return null;
+        const data = await r.json();
+        const results = data?.results || [];
+        if (!results.length) return null;
+        return sanitizeSearchList(results.slice(0, count).map(item => ({
+            title: item.title,
+            url: item.url,
+            domain: domainOf(item.url),
+            snippet: item.content || item.snippet || '',
+            date: item.publishedDate || item.pubdate || ''
+        })));
+    } catch { return null; }
+}
+
 /** Optional current news via NewsAPI (server-side key only). */
 async function newsSearch(query, count) {
     if (!process.env.NEWS_API_KEY) return null;
@@ -454,19 +524,41 @@ async function searchCurrentInfo(message) {
     const cached = cacheGet(cacheKey);
     if (cached) return cached;
 
+    const preferSearx = Boolean(String(process.env.SEARXNG_URL || '').trim())
+        && String(process.env.SEARCH_PROVIDER || 'searxng').toLowerCase() !== 'off';
+    const lang = String(process.env.SEARCH_LANGUAGE || '').trim();
+    const timeRange = isNews ? (process.env.SEARCH_TIME_RANGE || 'day') : '';
+
     let results = null, provider = null;
-    if (isNews) {
-        // Keyless, free, real headlines — no key or subscription required.
-        results = await googleNewsSearch(query, 5);
-        provider = 'googlenews';
-        if (!results) { results = await newsSearch(query, 5); provider = 'newsapi'; } // optional keyed
+
+    if (preferSearx) {
+        results = await searxngSearch(query, {
+            count: 5,
+            category: isNews ? 'news' : '',
+            language: lang,
+            timeRange
+        });
+        provider = 'searxng';
+        if ((!results || !results.length) && isNews) {
+            results = await searxngSearch(query, { count: 5, category: 'general', language: lang, timeRange });
+            provider = 'searxng';
+        }
     }
-    if (!results) {
-        results = await braveSearch(query, 5);
+
+    if ((!results || !results.length) && isNews) {
+        results = sanitizeSearchList(await googleNewsSearch(query, 5));
+        provider = 'googlenews';
+        if (!results.length) {
+            results = sanitizeSearchList(await newsSearch(query, 5));
+            provider = 'newsapi';
+        }
+    }
+    if (!results || !results.length) {
+        results = sanitizeSearchList(await braveSearch(query, 5));
         provider = 'brave';
     }
-    if (!results) {
-        results = await wikipediaSearch(query, 5);
+    if (!results || !results.length) {
+        results = sanitizeSearchList(await wikipediaSearch(query, 5));
         provider = 'wikipedia';
     }
     if (!results || !results.length) return null;

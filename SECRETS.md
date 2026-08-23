@@ -94,6 +94,8 @@ Delete the old key first, then create a new one and supply it with Method 1–4.
 | `GEMINI_API_KEY` | AI NPC conversation (Google Gemini) | Vercel env var (production), `.env.local` (local) |
 | `BRAVE_SEARCH_API_KEY` | NPC web search (Brave Search) — OPTIONAL | Vercel env var (production), `.env.local` (local) |
 | `NEWS_API_KEY` | NPC current news (NewsAPI) — OPTIONAL | Vercel env var (production), `.env.local` (local) |
+| `SEARXNG_URL` | Optional self-hosted or private SearXNG instance (JSON search). Never hard-code a public instance. | Vercel env var / `.env.local` |
+| `SEARCH_PROVIDER` | `searxng` (default when URL set) or `off` to skip SearXNG | Vercel env var / `.env.local` |
 
 **All of the above are optional.** With none configured, NPCs still answer:
 - time/date/math/game-state questions are computed server-side (no key),

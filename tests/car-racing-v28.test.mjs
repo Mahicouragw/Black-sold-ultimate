@@ -165,3 +165,28 @@ test('racing state persists across save and reload', async t => {
   assert.equal(Game.state.racing.bestTimes['car_track_1:easy'], 42);
   assert.equal(Game.state.racing.unlockedTracks.car_track_2, true);
 });
+
+test('accessible racing commands: accelerate, map, boost, pause, tutorial', async t => {
+  const { window, dom } = await createRuntime();
+  t.after(() => dom.window.close());
+  const { Game, CarRacing } = window;
+  try { window.HTMLCanvasElement.prototype.getContext = function () { return null; }; } catch {}
+  Game.state.player = fakePlayer(500);
+  Game.state.racing = defaultRacing();
+  Game.state.location = 'car_racing_pit';
+  CarRacing.startDriving('race', 'car_track_1', 'easy');
+  const sim = CarRacing.activeSim;
+  sim.stop(); sim.engineOn = true; sim._raceStarted = true;
+  assert.equal(CarRacing.handleCommand('accelerate'), true);
+  assert.equal(sim.input.forward, true);
+  assert.equal(CarRacing.handleCommand('map'), true);
+  assert.equal(CarRacing.handleCommand('boost'), true);
+  assert.equal(sim.boostOn, true);
+  assert.equal(CarRacing.handleCommand('position'), true);
+  assert.equal(CarRacing.handleCommand('pause'), true);
+  assert.equal(sim._paused, true);
+  assert.equal(CarRacing.handleCommand('resume'), true);
+  assert.equal(sim._paused, false);
+  assert.equal(CarRacing.handleCommand('tutorial'), true);
+  CarRacing.exitDriving();
+});

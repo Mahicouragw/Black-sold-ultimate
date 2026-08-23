@@ -161,8 +161,26 @@ test('(30/33) a large roster renders every stable ID with TalkBack-safe named ac
     const {Game,document}=runtime.window;Game.showHeroRoster();assert.equal(document.querySelectorAll('#hero-roster .hero-card').length,8);assert.equal(document.getElementById('btn-create-another-hero').disabled,false);for(const card of document.querySelectorAll('.hero-card')){assert.ok(card.querySelector('.hero-stable-id code'));for(const button of card.querySelectorAll('button'))assert.ok(button.getAttribute('aria-label'));}
 });
 
-test('(31/33) deletion is confirmation-protected and targets the stable hero ID, not list index',()=>{
-    const {Game,localStorage}=runtime.window;let prompt='';runtime.window.confirm=text=>(prompt=text,true);Game.deleteHero('stable_3');const roster=JSON.parse(localStorage.getItem(Game.state.rosterKey));assert.equal(Boolean(roster.heroes.stable_3),false);assert.ok(roster.heroes.stable_4);assert.match(prompt,/stable_3/);
+test('(31/33) deletion is confirmation-protected and targets the stable hero ID, not list index',async()=>{
+    const {Game,document,localStorage}=runtime.window;
+    const dialog=document.getElementById('confirm-dialog');
+    assert.ok(dialog);
+    assert.equal(dialog.getAttribute('role'),'dialog');
+    assert.ok(dialog.getAttribute('aria-labelledby'));
+    const pending=Game.deleteHero('stable_3');
+    assert.equal(dialog.classList.contains('hidden'),false,'accessible confirm dialog must open');
+    assert.match(document.getElementById('confirm-dialog-body').textContent,/stable_3/);
+    assert.match(document.getElementById('confirm-dialog-title').textContent,/delete hero/i);
+    document.getElementById('confirm-dialog-no').click();
+    await pending;
+    let roster=JSON.parse(localStorage.getItem(Game.state.rosterKey));
+    assert.ok(roster.heroes.stable_3,'cancel must not delete');
+    const pendingYes=Game.deleteHero('stable_3');
+    document.getElementById('confirm-dialog-yes').click();
+    await pendingYes;
+    roster=JSON.parse(localStorage.getItem(Game.state.rosterKey));
+    assert.equal(Boolean(roster.heroes.stable_3),false);
+    assert.ok(roster.heroes.stable_4);
 });
 
 // Server-enforced ephemeral chat (32–33)

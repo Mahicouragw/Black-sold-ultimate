@@ -151,7 +151,7 @@
             document.querySelectorAll('#combat-actions [data-combat-command]').forEach(button=>{
                 const command=button.dataset.combatCommand;
                 let usable=inCombat;
-                if(command==='healing spell')usable=inCombat&&Boolean(p?.spells?.some(spell=>HEALING_NAMES.includes(spell.toLowerCase())));
+                if(command==='healing spell'||command==='heal party')usable=Boolean(p?.spells?.some(spell=>HEALING_NAMES.includes(spell.toLowerCase())||/heal|mend/i.test(spell)));
                 if(command==='multiple strike')usable=inCombat&&Boolean(p?.spells?.some(spell=>spell.toLowerCase()==='multi strike'));
                 if(command==='shock')usable=inCombat&&Boolean(p?.spells?.some(spell=>spell.toLowerCase()==='shock'));
                 button.disabled=!usable;button.setAttribute('aria-disabled',String(!usable));

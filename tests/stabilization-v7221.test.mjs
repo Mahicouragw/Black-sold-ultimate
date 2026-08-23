@@ -91,7 +91,16 @@ test('(04) combat-only controls disappear and focus returns when combat ends', a
     assert.equal(window.document.getElementById('combat-status').classList.contains('hidden'), true);
     assert.equal(input.value, '');
     assert.equal(input.disabled, false);
-    for (const button of window.document.querySelectorAll('#combat-actions [data-combat-command]')) assert.equal(button.disabled, true);
+    const stillCombatOnly = ['attack', 'multiple strike', 'shock', 'inventory', 'defend', 'flee'];
+    for (const command of stillCombatOnly) {
+        const button = window.document.querySelector(`#combat-actions [data-combat-command="${command}"]`);
+        if (!button) continue;
+        assert.equal(button.disabled, true, `${command} is combat-only and must be unavailable after battle`);
+        assert.equal(button.getAttribute('aria-disabled'), 'true');
+    }
+    const heal = window.document.querySelector('#combat-actions [data-combat-command="healing spell"]');
+    assert.ok(heal);
+    assert.equal(heal.disabled, false, 'Healing Spell stays available out of combat');
 });
 
 test('(05) exactly one battle system exists: no module opens a battle screen', async () => {

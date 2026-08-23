@@ -185,7 +185,7 @@ const WorldData = {
         "stolen gold": { name: "Stolen Gold", type: "treasure", value: 50, desc: "Gold coins stolen by goblins" },
 
         // Consumables
-        "bread": { name: "Bread", type: "food", effect: "heal", value: 10, desc: "Fresh bakery bread" },
+        "bread": { name: "Bread", type: "food", effect: "hunger", satiety: 24, value: 4, desc: "A brown wheat roll from a city baker. Fills hunger and returns strength. Does not restore health or magic." },
         "mountain flower": { name: "Mountain Flower", type: "herb", effect: "heal", value: 25, desc: "A rare flower from high peaks" },
         "herbs": { name: "Healing Herbs", type: "herb", effect: "heal", value: 20, desc: "Common healing herbs" },
         "swamp herb": { name: "Swamp Herb", type: "herb", effect: "heal", value: 15, desc: "A medicinal herb from the swamp" },
@@ -193,7 +193,7 @@ const WorldData = {
         "mana potion": { name: "Mana Potion", type: "potion", effect: "mana", value: 40, desc: "Restores 40 MP" },
         "cheese wheel": { name: "Cheese Wheel", type: "food", effect: "heal", value: 22, desc: "Restores 22 HP" },
         "roast boar": { name: "Roast Boar", type: "food", effect: "heal", value: 45, desc: "A hearty meal restoring 45 HP" },
-        "honey cake": { name: "Honey Cake", type: "food", effect: "both", value: 25, desc: "Restores 25 HP and MP" },
+        "honey cake": { name: "Honey Cake", type: "food", effect: "hunger", satiety: 20, value: 6, desc: "A small honey cake. Fills hunger only." },
         "mystic stew": { name: "Mystic Stew", type: "food", effect: "both", value: 50, desc: "Restores 50 HP and MP" },
 
         // Weapons

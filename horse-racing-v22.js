@@ -30,7 +30,7 @@
   }
 
   function rules() {
-    say('Horse racing: four horses, pick one, bet 5 to 500 gold. If your horse wins you receive bet times its odds. Every race reshuffles the odds. All luck, all fair.', 'system');
+    say('Welcome to horse racing. Four horses parade. Type race to hear names and odds. Type race 2 50 to put 50 gold on horse number 2. Bets are 5 to 500 gold. The race is spoken: start, stretch, finish. If your horse wins you receive bet times odds. Type race rules any time. This is separate from car racing in the Car Racing District.', 'system');
   }
 
   function ordinal(n) { return `${n}${['th', 'st', 'nd', 'rd'][Math.min(n, 4) === 0 ? 0 : Math.min(n, 4)] || 'th'}`; }
@@ -118,7 +118,7 @@
     game.processCommand = function (raw) {
       const c = String(raw || '').trim().toLowerCase();
       if (c === 'race' || c === 'horse race' || c === 'races' || c === 'stables') { listRace(); return; }
-      if (c === 'race rules') { rules(); return; }
+      if (c === 'race rules' || c === 'horse racing tutorial' || c === 'racing tutorial') { rules(); return; }
       const m = c.match(/^race\s+([1-4])\s+(\d+)$/);
       if (m) { startRace(parseInt(m[1], 10), parseInt(m[2], 10)); return; }
       if (c === 'buy ruby' || c === 'buy a ruby' || c === 'buy gold ruby' || c === 'buy a gold ruby' || c === 'exchange diamonds') { exchangeDiamonds(c); return; }

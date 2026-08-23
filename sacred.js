@@ -254,10 +254,12 @@
     };
     Game.increaseAttribute = function(choice) {
         if (this.state.location!=='royal_palace') { this.addNarrative('Choose the bonus attribute in the Palace.', 'system'); return; }
-        const s=ensure(this), map={strength:'str',dexterity:'dex',intelligence:'int',wisdom:'wis',vitality:'vit',health:'health'}; const k=map[choice.toLowerCase()];
-        if (!k) { this.addNarrative('Choose strength, dexterity, intelligence, wisdom, vitality, or health.', 'system'); return; }
+        const s=ensure(this), map={strength:'str',dexterity:'dex',intelligence:'int',wisdom:'wis',vitality:'vit',health:'health',initiative:'initiative'}; const k=map[choice.toLowerCase()];
+        if (!k) { this.addNarrative('Choose strength, dexterity, intelligence, wisdom, vitality, health, or initiative.', 'system'); return; }
         if (s.unspentAttributePoints<1) { this.addNarrative('No Palace attribute points are available. Level up first.', 'system'); return; }
-        if(k==='health'){this.state.player.maxHp+=5;this.state.player.hp+=5;}else this.state.player[k]=(this.state.player[k]||0)+1;
+        if(k==='health'){this.state.player.maxHp+=5;this.state.player.hp+=5;}
+        else if(k==='initiative'){const p=this.state.player;p.baseInitiative=(p.baseInitiative||p.initiative||10)+2;p.initiative=(p.initiative||10)+2;}
+        else this.state.player[k]=(this.state.player[k]||0)+1;
         s.unspentAttributePoints--; this.addNarrative(`Palace bonus applied to ${choice}.`, 'treasure'); this.save();
     };
     const CLASS_GUILD_SPELLS={

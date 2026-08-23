@@ -62,6 +62,7 @@
                 <button id="btn-heroes" class="menu-btn">🧙 My Heroes</button>
                 <button id="btn-multi" class="menu-btn">👥 Multiplayer</button>
                 <button id="btn-google-signin" class="menu-btn google-btn"><span class="google-mark" aria-hidden="true">G</span> Continue with Google</button>
+                <button id="btn-tutorial" class="menu-btn">🎓 Game Tutorial</button>
                 <button id="btn-help" class="menu-btn">📖 How to Play</button>
                 <button id="btn-install-app" class="menu-btn" hidden>Install App</button>
                 <p id="title-account-status" class="account-hint" aria-live="polite">Guest account is being prepared…</p>
@@ -190,6 +191,27 @@
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
         </div>
 
+        <!-- Full game tutorial (before play) -->
+        <div id="tutorial-screen" class="screen" aria-labelledby="tutorial-title">
+            <h2 id="tutorial-title">🎓 Game Tutorial</h2>
+            <p class="tagline">Learn the game before you start. Every step works with TalkBack and with the visual layout.</p>
+            <nav class="help-content" aria-label="Tutorial chapters">
+                <button type="button" class="menu-btn" data-tutorial="create">How to create a hero</button>
+                <button type="button" class="menu-btn" data-tutorial="where">Where to go</button>
+                <button type="button" class="menu-btn" data-tutorial="do">What to do</button>
+                <button type="button" class="menu-btn" data-tutorial="fight">How to fight</button>
+                <button type="button" class="menu-btn" data-tutorial="heal">How healing works</button>
+                <button type="button" class="menu-btn" data-tutorial="doors">Opening doors with magic</button>
+                <button type="button" class="menu-btn" data-tutorial="racing">Car racing and horse racing</button>
+                <button type="button" class="menu-btn" data-tutorial="delete">How to delete a hero or account</button>
+            </nav>
+            <div id="tutorial-body" class="help-content" role="region" aria-live="polite" tabindex="-1">
+                <p>Choose a chapter. You can replay any chapter any time from the title screen or by typing tutorial.</p>
+            </div>
+            <button id="btn-tutorial-start" class="menu-btn big-btn primary">Create a hero and begin</button>
+            <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
+        </div>
+
         <!-- Help Screen -->
         <div id="help-screen" class="screen">
             <h2>📖 How to Play</h2>
@@ -258,6 +280,7 @@
                     <div id="combat-actions" class="inline-combat-actions" role="group" aria-label="Combat actions">
                         <button type="button" class="combat-action-btn" data-combat-command="attack" accesskey="1">⚔️ Attack</button>
                         <button type="button" class="combat-action-btn" data-combat-command="healing spell" accesskey="2">✨ Healing Spell</button>
+                        <button type="button" class="combat-action-btn" data-combat-command="heal party" accesskey="8">💚 Heal Battle Party</button>
                         <button type="button" class="combat-action-btn" data-combat-command="multiple strike" accesskey="3">🌟 Multiple Strike</button>
                         <button type="button" class="combat-action-btn" data-combat-command="shock" accesskey="4">⚡ Shock Spell</button>
                         <button type="button" class="combat-action-btn" data-combat-command="inventory" accesskey="5">🎒 Items</button>
@@ -302,6 +325,9 @@
                     <button class="action-btn" data-cmd="guild">🏰 Guild</button>
                     <button class="action-btn" data-cmd="shop">🛒 Shop</button>
                     <button class="action-btn" data-cmd="settings">⚙️ Settings</button>
+                    <button id="btn-opening-doors" class="action-btn" type="button" data-cmd="opening doors" aria-label="Opening door spell">🚪 Opening Door Spell</button>
+                    <button id="btn-world-heal" class="action-btn" type="button" aria-label="Healing spell">✨ Healing Spell</button>
+                    <button id="btn-black-search" class="action-btn" type="button" aria-label="Black Search: find places, items, and people">🔎 Search</button>
                 </div>
             </div>
 
@@ -450,7 +476,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.24.2</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.25.2</span></div>
                     <p class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name. Link Google to recover progress elsewhere.</p>
                     <button id="btn-copy-player-id" class="menu-btn">📋 Copy Player ID</button>
                     <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
@@ -523,6 +549,33 @@
                 <button class="menu-btn close-btn">Close</button>
             </div>
         </div>
+
+            <div id="heal-target-panel" class="panel hidden" role="dialog" aria-modal="true" aria-labelledby="heal-target-title">
+                <h3 id="heal-target-title">✨ Healing Spell</h3>
+                <p class="settings-note">Choose who to heal. This works in battle and out of battle.</p>
+                <div id="heal-target-list"></div>
+                <button class="menu-btn close-btn" type="button">Close</button>
+            </div>
+
+            <div id="black-search-dialog" class="interface-mode-dialog hidden" role="dialog" aria-modal="true" aria-labelledby="black-search-title" aria-describedby="black-search-help">
+                <div class="interface-mode-card">
+                    <h2 id="black-search-title">Black Search</h2>
+                    <p id="black-search-help">Search the world for a place, item, person, or set. Results are spoken in the game log.</p>
+                    <label for="black-search-input">What do you seek?</label>
+                    <input id="black-search-input" type="search" maxlength="80" autocomplete="off" aria-label="Black Search query">
+                    <button id="black-search-submit" class="menu-btn big-btn primary" type="button">Search</button>
+                    <button id="black-search-cancel" class="menu-btn big-btn" type="button">Cancel</button>
+                    <p id="black-search-status" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+            <div id="confirm-dialog" class="interface-mode-dialog hidden" role="dialog" aria-modal="true" tabindex="-1" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-body">
+                <div class="interface-mode-card">
+                    <h2 id="confirm-dialog-title">Please confirm</h2>
+                    <p id="confirm-dialog-body"></p>
+                    <button id="confirm-dialog-yes" class="menu-btn big-btn danger-btn" type="button">Yes, delete</button>
+                    <button id="confirm-dialog-no" class="menu-btn big-btn" type="button">Cancel</button>
+                </div>
+            </div>
 
         <!-- Game Over -->
         <div id="gameover-screen" class="screen">
@@ -604,6 +657,9 @@
     <script defer src="ai-npc-v7223.js"></script>
     <script defer src="trading-v7224.js"></script>
     <script defer src="car-racing-v28.js"></script>
+    <script defer src="game-tutorials-v29.js"></script>
+    <script defer src="items-hunger-v30.js"></script>
+    <script defer src="black-sword-features-v31.js"></script>
     <script type="module" src="game-hall.js"></script>
     <script src="pwa.js"></script>
 </body>
