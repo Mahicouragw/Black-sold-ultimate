@@ -258,6 +258,24 @@
         }
     }
 
+    function itemMatches(item, query) {
+        const q = String(query || '').toLowerCase().trim();
+        if (!q || !item) return false;
+        const name = String(item.name || '').toLowerCase();
+        const id = String(item.id || '').toLowerCase();
+        return name === q || id === q || name.includes(q) || id.includes(q) || q.includes(name) || q.includes(id);
+    }
+
+    function findCarriedItem(game, query) {
+        const bags = [];
+        if (Array.isArray(game?.state?.inventory)) bags.push(...game.state.inventory);
+        if (Array.isArray(game?.state?.player?.inventory)) bags.push(...game.state.player.inventory);
+        const q = String(query || '').toLowerCase().trim();
+        return bags.find(i => itemMatches(i, q))
+            || bags.find(i => (i.type === 'food' || i.effect === 'hunger') && itemMatches(i, q.replace(/^the\s+/, '')))
+            || null;
+    }
+
     function eatFood(game, item) {
         const p = hungerState(game);
         const gain = Number(item.satiety || item.value || 15);
@@ -269,8 +287,8 @@
         applyHungerPenalty(game);
         item.quantity--;
         if (item.quantity <= 0) game.state.inventory = game.state.inventory.filter(i => i !== item);
-        game.addNarrative(`You eat ${item.name}. Hunger eases. Strength returns with the meal. Health and magic are unchanged. Satiety ${Math.round(p.satiety)} of 100.`, 'item');
-        window.MusicSystem?.playSFX?.('heal');
+        game.addNarrative(`You eat ${item.name}. Hunger eases. Strength returns with the meal. Health and magic are unchanged.`, 'item');
+        window.MusicSystem?.playSFX?.('eat');
         game.updateHUD?.();
         game.save?.();
         return true;
@@ -430,7 +448,8 @@
             const c = String(raw || '').trim().toLowerCase();
             if (c === 'hunger' || c === 'satiety') {
                 const p = hungerState(this);
-                this.addNarrative(`Satiety ${Math.round(p.satiety)} of 100. Strength penalty from hunger: ${p.hungerStrPenalty}. Eat meals to restore strength.`, 'system');
+                const full = p.satiety >= 80 ? 'You are full.' : p.satiety >= 45 ? 'You are not hungry.' : p.satiety >= 20 ? 'You are getting hungry.' : 'You are hungry. Eat food to restore strength.';
+                this.addNarrative(full, 'system');
                 return;
             }
             if (c === 'shoot' || c.startsWith('shoot ') || c === 'fire arrow' || c === 'loose arrow') {
@@ -447,7 +466,7 @@
 
         setInterval(() => { if (G.state?.player && G.state.screen === 'game-screen') hungerTick(G, 1); }, 45000);
 
-        window.ItemHunger = { describeItem, guessCommand, hungerTick, eatFood, NEW_ITEMS, SLOTS };
+        window.ItemHunger = { describeItem, guessCommand, hungerTick, eatFood, findCarriedItem, NEW_ITEMS, SLOTS };
         console.log('v30 hunger, real gear slots, thorium spear, silver arrows, fuzzy commands');
         return true;
     }

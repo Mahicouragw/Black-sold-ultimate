@@ -77,6 +77,26 @@ test('fuzzy command maps loook to look', async t => {
     assert.equal(window.ItemHunger.guessCommand('attak'), 'attack');
 });
 
+test('eat bread finds carried bread and does not report satiety as magic', async t => {
+    const { window, dom } = await createRuntime();
+    t.after(() => dom.window.close());
+    const { Game, WorldData, ItemHunger, MusicSystem } = window;
+    const heard = [];
+    MusicSystem.playSFX = (k) => { heard.push(k); return true; };
+    const lines = [];
+    Game.addNarrative = (m) => lines.push(String(m));
+    Game.state.player = { name: 'Hero', hp: 40, maxHp: 100, mp: 10, maxMp: 50, str: 10, satiety: 20, hungerStrPenalty: 4, spells: [] };
+    Game.state.inventory = [{ ...WorldData.items.bread, id: 'bread', name: 'Bread', quantity: 2, type: 'food', effect: 'hunger', satiety: 24 }];
+    Game.useItem('bread');
+    assert.equal(Game.state.player.hp, 40);
+    assert.equal(Game.state.player.mp, 10);
+    assert.ok(lines.some(l => /you eat bread/i.test(l)));
+    assert.equal(lines.some(l => /satiety \d+ of 100/i.test(l)), false);
+    assert.ok(heard.includes('eat'));
+    assert.equal(heard.includes('heal'), false);
+    assert.ok(ItemHunger.findCarriedItem(Game, 'bread'));
+});
+
 test('hunger announcement when satiety is low', async t => {
     const { window, dom } = await createRuntime();
     t.after(() => dom.window.close());

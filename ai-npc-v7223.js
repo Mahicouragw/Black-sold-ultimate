@@ -219,7 +219,6 @@
             game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${nowMs}` })
                 || game.addNarrative(spoken, 'npc');
             if (sources.length) this.renderSources(sources);
-            window.MusicSystem?.playSFX?.('coin');
             this.aiAvailable = ai;
             return true;
         }

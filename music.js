@@ -149,6 +149,8 @@ class AudioManagerController {
             death: ['assets/audio/sfx/death.wav', 'assets/audio/sfx/monster-roar.wav'],
             victory: ['assets/audio/music/victory.mp3'], door: ['assets/audio/sfx/door.wav'],
             pickup: ['assets/audio/sfx/pickup.wav'], heal: ['assets/audio/sfx/heal.wav'],
+            eat: ['assets/audio/sfx/eat.wav'], blessing: ['assets/audio/sfx/blessing.wav'],
+            chip: ['assets/audio/sfx/chip.wav'], 'music-transition': ['assets/audio/sfx/music-transition.wav'],
             'heal-chain': ['assets/audio/sfx/heal-chain.wav'],
             explore: ['assets/audio/sfx/explore.wav', 'assets/audio/sfx/step-leaves-1.ogg', 'assets/audio/sfx/step-leaves-2.ogg', 'assets/audio/sfx/step-stone.ogg', 'assets/audio/sfx/step-wood.ogg', 'assets/audio/sfx/step-gravel.ogg', 'assets/audio/sfx/step-mud.ogg'],
             miss: ['assets/audio/sfx/miss.wav'], 'body-fall': ['assets/audio/sfx/body-fall.wav'],
@@ -371,6 +373,7 @@ class AudioManagerController {
     async transitionWorldPlaylist(context) {
         const session = ++this.playbackSession;
         if (this.worldAudio && !this.worldAudio.paused && this.worldAudio.src) {
+            this.playSFX('music-transition');
             await this.fadeOut(this.worldAudio, 500, { pause: true, clear: false });
         }
         if (session !== this.playbackSession || this.battleActive || !this.musicEnabled) return;

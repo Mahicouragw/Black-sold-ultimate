@@ -905,12 +905,15 @@ const Game = {
         if (this._itemUseGuard[guardKey] && now - this._itemUseGuard[guardKey] < 400) return;
         this._itemUseGuard[guardKey] = now;
 
-        const item = this.state.inventory.find(i =>
-            i.name.toLowerCase().includes(itemName.toLowerCase())
-        );
+        const q = String(itemName || '').toLowerCase().trim();
+        const item = (this.state.inventory || []).find(i => {
+            const name = String(i?.name || '').toLowerCase();
+            const id = String(i?.id || '').toLowerCase();
+            return name === q || id === q || name.includes(q) || id.includes(q);
+        });
 
         if (!item) {
-            this.addNarrative("You don't have that item.", 'system');
+            this.addNarrative(`You don't have ${q || 'that item'} in your bag.`, 'system');
             return;
         }
 
@@ -950,8 +953,8 @@ const Game = {
         } else if (item.effect === 'both') {
             this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + item.value);
             this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + item.value);
-            this.addNarrative(`You eat ${item.name}. Restored ${item.value} HP and MP!`, 'item');
-            MusicSystem.playSFX('heal');
+            this.addNarrative(`You eat ${item.name}. Hunger eases. Strength returns with the meal. Health and magic are unchanged.`, 'item');
+            MusicSystem.playSFX('eat');
         } else {
             this.addNarrative(`${item.name} cannot be consumed. Try "equip ${item.name}".`, 'system');
             return;
@@ -968,10 +971,18 @@ const Game = {
 
     /** Human description of an inventory item (Examine). */
     examineInventoryItem(query) {
-        const item = this.state.inventory.find(i => i.name.toLowerCase().includes(String(query || '').toLowerCase()));
-        if (!item) { this.addNarrative("You do not carry that item.", 'system'); return null; }
+        const q = String(query || '').toLowerCase().trim();
+        const item = (this.state.inventory || []).find(i => {
+            const name = String(i?.name || '').toLowerCase();
+            const id = String(i?.id || '').toLowerCase();
+            return name === q || id === q || name.includes(q) || id.includes(q);
+        });
+        if (!item) { this.addNarrative(`You do not carry ${q || 'that item'}.`, 'system'); return null; }
         const description = item.desc || item.description || 'A useful traveller\'s possession.';
         this.addNarrative(`${item.name}: ${description}`, 'item');
+        if (item.type === 'food' || item.effect === 'hunger') {
+            this.addNarrative(`This is food. Type eat ${item.name.toLowerCase()} to eat it. It restores hunger and strength, not health or magic.`, 'system');
+        }
         return item;
     },
 
@@ -1166,7 +1177,6 @@ const Game = {
         } else if (npc.role === 'guild') {
             this.addNarrative('The quest board is open — type "quests" to review your current tasks.', 'system');
         }
-        MusicSystem.playSFX('coin');
     },
 
     /** Pick NPC dialog flavored by the hero's quest state (v7.17.0). */
@@ -1247,7 +1257,7 @@ const Game = {
             } else if (key === 'blessing') {
                 this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + 20);
                 this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + 20);
-                MusicSystem.playSFX('magic');
+                MusicSystem.playSFX('blessing');
                 this.addNarrative(`A blessing restores your body and magic. ${this.battleStatusText()}`, 'magic');
             } else {
                 MusicSystem.playSFX('magic');
@@ -1991,6 +2001,7 @@ const Game = {
         this.state.player.gold -= price;
         this.addItemToInventory(id, item);
         this.addNarrative(`Bought ${item.name} for ${price} rupees.`, 'item');
+        MusicSystem.playSFX('coin');
         this.updateHUD();
         this.showShop();
         this.save();
@@ -2055,17 +2066,22 @@ const Game = {
 
         if (this.state.inventory.length === 0) {
             list.innerHTML = '<p class="system">Your inventory is empty.</p>';
+            this.addNarrative('Your bag is empty.', 'system');
         } else {
+            const spoken = this.state.inventory.map(i => `${i.name} times ${i.quantity}`).join('; ');
+            this.addNarrative(`In your bag: ${spoken}. Examine an item, then eat it if it is food.`, 'item');
             this.state.inventory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'inv-item';
                 const canEquip = ['weapon','armor','helmet','gloves','boots','accessory'].includes(item.type);
+                const canEat = item.type === 'food' || item.effect === 'hunger';
                 const canUse = ['heal','mana','both'].includes(item.effect);
                 const safeName = this.escapeHTML(this.escapeJS(item.name));
                 const primary = canEquip
                     ? `<button onclick="Game.equipItem('${safeName}')">Equip</button>`
+                    : canEat ? `<button onclick="Game.useItem('${safeName}')">Eat</button>`
                     : canUse ? `<button onclick="Game.useItem('${safeName}')">Use</button>` : '';
-                div.innerHTML = `<span>${this.escapeHTML(item.name)} <small>${this.escapeHTML(item.type || '')}</small></span>`
+                div.innerHTML = `<span>${this.escapeHTML(item.name)} <small>${this.escapeHTML(item.type || 'item')}</small></span>`
                     + `<span>x${item.quantity} ${primary}`
                     + `<button onclick="Game.examineInventoryItem('${safeName}')">Examine</button>`
                     + `<button onclick="Game.showInventoryItemDetails('${safeName}')">Details</button></span>`;

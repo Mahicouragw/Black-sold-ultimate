@@ -81,6 +81,7 @@
             if (gold > purse) { this.say(`You only have ${purse} gold.`); return false; }
             this.draft.gold = gold;
             this.say(`Offering ${gold} gold. ${this.describeDraft()}`, 'item');
+            if (gold > 0) window.MusicSystem?.playSFX?.('coin');
             return true;
         },
 

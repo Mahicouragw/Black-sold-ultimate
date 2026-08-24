@@ -1,4 +1,4 @@
-const CACHE='black-sword-v7.25.4';
+const CACHE='black-sword-v7.25.5';
 const BASE=new URL('./',self.registration.scope);
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js',
@@ -14,7 +14,7 @@ const CORE=[
   'assets/audio/sfx/attack-fast.wav','assets/audio/sfx/attack-heavy.wav','assets/audio/sfx/attack.wav','assets/audio/sfx/board-dice.wav','assets/audio/sfx/board-error.wav','assets/audio/sfx/board-piece.wav',
   'assets/audio/sfx/board-turn.wav','assets/audio/sfx/body-fall.wav','assets/audio/sfx/card-draw.wav','assets/audio/sfx/card-flip.wav','assets/audio/sfx/card-shuffle.wav','assets/audio/sfx/carrom-strike.wav',
   'assets/audio/sfx/check.wav','assets/audio/sfx/checkmate.wav','assets/audio/sfx/chess-move.wav','assets/audio/sfx/coin-collision.wav','assets/audio/sfx/coin.wav','assets/audio/sfx/death.wav',
-  'assets/audio/sfx/door.wav','assets/audio/sfx/exp.wav','assets/audio/sfx/explore.wav','assets/audio/sfx/ghost-moan.wav','assets/audio/sfx/ghost-scream.wav','assets/audio/sfx/goblin-cackle.wav',
+  'assets/audio/sfx/door.wav','assets/audio/sfx/eat.wav','assets/audio/sfx/blessing.wav','assets/audio/sfx/chip.wav','assets/audio/sfx/music-transition.wav','assets/audio/sfx/exp.wav','assets/audio/sfx/explore.wav','assets/audio/sfx/ghost-moan.wav','assets/audio/sfx/ghost-scream.wav','assets/audio/sfx/goblin-cackle.wav',
   'assets/audio/sfx/haunted-wind.wav','assets/audio/sfx/heal-chain.wav','assets/audio/sfx/heal.wav','assets/audio/sfx/hit-metal-1.wav','assets/audio/sfx/hit-metal-2.wav','assets/audio/sfx/hit.wav',
   'assets/audio/sfx/levelup.wav','assets/audio/sfx/magic.wav','assets/audio/sfx/miss.wav','assets/audio/sfx/monster-hit.wav','assets/audio/sfx/monster-roar.wav','assets/audio/sfx/pickup.wav',
   'assets/audio/sfx/spell-arcane.wav','assets/audio/sfx/spell-cast.wav','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-mud.ogg',
