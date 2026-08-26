@@ -56,8 +56,15 @@
     const event=(game,text,type='system',options={})=>game.emitGameEvent?.(text,type,options)||Promise.resolve(game.addNarrative(text,type));
     const recordMastery=(game,spell,{mp=0,damage=0,healing=0}={})=>{if(!game.getSpellEfficiency)return;const eff=game.getSpellEfficiency(spell),gain=Math.max(5,Math.round(mp+damage/10+healing/10));eff.entry.xp=(eff.entry.xp||0)+gain;eff.entry.casts=(eff.entry.casts||0)+1;eff.entry.totalMp=(eff.entry.totalMp||0)+mp;eff.entry.totalDamage=(eff.entry.totalDamage||0)+damage;eff.entry.totalHealing=(eff.entry.totalHealing||0)+healing;game.state.spellMastery[eff.key]=eff.entry;};
 
-    const SPECIAL_DOOR=(()=>{const from='drakkar_keep_2',to='drakkar_keep_3',source=WorldData.locations[from],target=WorldData.locations[to];if(!source||!target)return null;const direction=Object.entries(source.exits||{}).find(([,id])=>id===to)?.[0]||'north',reverse=Object.entries(target.exits||{}).find(([,id])=>id===from)?.[0]||'south';return{id:'drakkar-rune-door',location:from,destination:to,direction,reverse,magical:true,canBeBrokenByMultipleStrike:true};})();
-    const doorConfig=()=>SPECIAL_DOOR;
+    let SPECIAL_DOOR=null;
+    const doorConfig=()=>{
+        if(SPECIAL_DOOR)return SPECIAL_DOOR;
+        const from='drakkar_keep_2',to='drakkar_keep_3',source=WorldData.locations[from],target=WorldData.locations[to];
+        if(!source||!target)return null;
+        const direction=Object.entries(source.exits||{}).find(([,id])=>id===to)?.[0]||'north',reverse=Object.entries(target.exits||{}).find(([,id])=>id===from)?.[0]||'south';
+        SPECIAL_DOOR={id:'drakkar-rune-door',location:from,destination:to,direction,reverse,magical:true,canBeBrokenByMultipleStrike:true};
+        return SPECIAL_DOOR;
+    };
     const applyDoorState=game=>{const config=doorConfig();if(!config)return;const state=game.state.specialDoors||(game.state.specialDoors={});const open=Boolean(state[config.id]?.open),source=WorldData.locations[config.location],target=WorldData.locations[config.destination];source.specialDoor={...config,open};target.specialDoor={...config,location:config.destination,destination:config.location,direction:config.reverse,reverse:config.direction,open};if(open){source.exits[config.direction]=config.destination;target.exits[config.reverse]=config.location;source.features=(source.features||[]).filter(f=>f!=='runed locked door');target.features=(target.features||[]).filter(f=>f!=='runed locked door');if(!source.features.includes('opened runed door'))source.features.push('opened runed door');if(!target.features.includes('opened runed door'))target.features.push('opened runed door');}else{if(source.exits[config.direction]===config.destination)delete source.exits[config.direction];if(target.exits[config.reverse]===config.location)delete target.exits[config.reverse];source.features=(source.features||[]).filter(f=>f!=='opened runed door');target.features=(target.features||[]).filter(f=>f!=='opened runed door');if(!source.features.includes('runed locked door'))source.features.push('runed locked door');if(!target.features.includes('runed locked door'))target.features.push('runed locked door');}};
 
     const SpellSystem={
@@ -76,6 +83,7 @@
         castMultipleStrike(game){
             const p=game.state.player,spell=p?.spells?.find(s=>s.toLowerCase()==='multi strike');if(!spell){game.addNarrative('You do not know Multiple Strike.','system');return false;}
             if(!game.state.inCombat||!game.state.enemy){
+                applyDoorState(game);
                 const door=WorldData.locations[game.state.location]?.specialDoor;
                 if(door?.canBeBrokenByMultipleStrike)return this.breakSpecialDoor(game,door,spell);
                 if(WorldData.locations[game.state.location]?.houseExterior)game.addNarrative('This door cannot be broken by Multiple Strike.','system');

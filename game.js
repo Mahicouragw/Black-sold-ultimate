@@ -2215,7 +2215,7 @@ const Game = {
         this.addNarrative("temple / pray [attribute] / pray revive - Blessings and divine death recovery", 'system');
         this.addNarrative("palace / palace ceremony - Required advancement after leveling", 'system');
         this.addNarrative("palace quest / train companion [name] / increase [attribute]", 'system');
-        this.addNarrative("guild spells - Summoner/Hunter tutorial spell rewards", 'system');
+        this.addNarrative("guild spells - After the Card Test: two class helpers. Palace hunt and Island hunt grant the last two plus Shark Tide", 'system');
         this.addNarrative("encounters on/off - Full or reduced forest encounters", 'system');
         this.addNarrative("storage / throw [item] / take loot [item] - Manual item management", 'system');
         this.addNarrative("enchantment shop / enchant [item] [attribute] - Permanent equipment runes", 'system');
