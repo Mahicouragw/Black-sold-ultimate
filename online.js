@@ -917,10 +917,11 @@ const OnlineSystem = {
         if (titleStatus && titleStatus.textContent !== line) titleStatus.textContent = line;
         const signIn = document.getElementById('btn-google-signin');
         if (signIn) {
-            signIn.disabled=false;
-            signIn.innerHTML=this.linked
-                ? '<span class="google-mark" aria-hidden="true">G</span> Restore Google Heroes'
-                : '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
+            signIn.hidden = Boolean(this.linked);
+            signIn.disabled = Boolean(this.linked);
+            if (!this.linked) {
+                signIn.innerHTML = '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
+            }
         }
         const code = document.getElementById('settings-player-code');
         if (code) code.textContent = this.getPlayerCode();
@@ -929,9 +930,17 @@ const OnlineSystem = {
         const account = document.getElementById('settings-account-status');
         if (account) account.textContent = this.linked ? 'Google linked' : (this.ready ? 'Guest account' : 'Local/offline guest');
         const google = document.getElementById('btn-link-google');
-        if (google) google.disabled = this.linked;
+        if (google) { google.disabled = this.linked; google.hidden = this.linked; }
         const merge = document.getElementById('btn-google-merge');
-        if (merge) merge.disabled = this.linked;
+        if (merge) { merge.disabled = this.linked; merge.hidden = this.linked; }
+        const guestBox = document.getElementById('settings-guest-google');
+        if (guestBox) guestBox.classList.toggle('hidden', this.linked);
+        const linkedBox = document.getElementById('settings-linked-google');
+        if (linkedBox) linkedBox.classList.toggle('hidden', !this.linked);
+        const pinLogin = document.getElementById('settings-pin-login');
+        if (pinLogin) pinLogin.classList.toggle('hidden', this.linked);
+        const signOut = document.getElementById('btn-account-signout');
+        if (signOut) signOut.hidden = false;
         this.populateVoiceSelectors();
         this.updateHeroEntryPoints();
     },
