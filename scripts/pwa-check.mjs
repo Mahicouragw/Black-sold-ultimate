@@ -12,9 +12,9 @@ if (!html.includes('manifest.webmanifest') || !html.includes('pwa.js')) throw Er
 if (!html.includes('world-navigation-v27.js')) throw Error('Final world graph normalizer is not deployed');
 if (!html.includes('stabilization-v7211.js')) throw Error('v7.21.1 stabilization module is not deployed');
 if (!html.includes('chat-notice-feedback-v7221.js')) throw Error('v7.22.1 chat notice / feedback module is not deployed');
-if (!html.includes('seasonal-events-v729.js')) throw Error('v7.25.9 seasonal module is not deployed');
+if (!html.includes('seasonal-events-v729.js')) throw Error('v7.25.10 seasonal module is not deployed');
 const version = await readFile('version.js', 'utf8');
-if (!version.includes("APP_VERSION = '7.25.9'")) throw Error('Application version is stale');
+if (!version.includes("APP_VERSION = '7.25.10'")) throw Error('Application version is stale');
 const registration = await readFile('pwa.js', 'utf8');
 if (registration.includes("register('/") || !registration.includes("new URL('sw.js',document.baseURI)")) throw Error('Service worker registration is not base-path safe');
 
@@ -31,6 +31,6 @@ for (const swFile of ['sw.js', 'service-worker.js']) {
     for (const required of ['world-navigation-v27.js', 'stabilization-v7211.js', 'chat-notice-feedback-v7221.js', 'assets/audio/audio-manifest.json', 'AUDIO_CREDITS.md', 'music.js', 'assets/audio/music/town-theme-rpg.mp3', 'assets/audio/music/natural-forest-theme.mp3', 'assets/audio/music/battle-theme-a.mp3', 'assets/audio/music/boss-battle-theme.mp3', 'assets/audio/music/final-boss-theme.ogg']) {
         if (!paths.includes(required)) throw Error(`${swFile} does not precache ${required}`);
     }
-    if (!content.includes("black-sword-v7.25.9")) throw Error(`${swFile} cache version is stale`);
+    if (!content.includes("black-sword-v7.25.10")) throw Error(`${swFile} cache version is stale`);
 }
 console.log('PWA manifest, relative GitHub Pages base, Vercel root, icons, precache assets, registration and service workers: PASS');

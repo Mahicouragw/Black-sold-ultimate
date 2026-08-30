@@ -25,7 +25,7 @@ test('v729 index has one html close and seasonal script', () => {
 
 test('v729 hides Google link when already linked', () => {
     assert.match(online, /signIn\.hidden = Boolean\(this\.linked\)/);
-    assert.match(online, /guestBox\.classList\.toggle\('hidden', this\.linked\)/);
+    assert.match(online, /guestBox\.classList\.add\('hidden'\)/);
     assert.match(online, /linkedBox\.classList\.toggle\('hidden', !this\.linked\)/);
     assert.doesNotMatch(online, /Restore Google Heroes/);
 });

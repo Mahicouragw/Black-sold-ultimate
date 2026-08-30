@@ -302,6 +302,20 @@ const Game = {
             this.addNarrative('Cloud save requested.', 'system');
         });
         document.getElementById('btn-account-signout').addEventListener('click', () => OnlineSystem.signOut());
+        document.getElementById('btn-settings-create-hero')?.addEventListener('click', () => {
+            document.getElementById('settings-panel')?.classList.add('hidden');
+            this.startNewHero();
+        });
+        document.getElementById('btn-settings-manage-heroes')?.addEventListener('click', () => {
+            document.getElementById('settings-panel')?.classList.add('hidden');
+            this.showHeroRoster();
+        });
+        document.getElementById('btn-settings-delete-hero')?.addEventListener('click', () => {
+            const id = this.state.activeHeroId || this.getRoster().activeHeroId;
+            if (!id) { this.addNarrative('No hero is selected to delete.', 'system'); return; }
+            document.getElementById('settings-panel')?.classList.add('hidden');
+            this.deleteHero(id);
+        });
 
         // Close buttons
         document.querySelectorAll('.close-btn').forEach(btn => {

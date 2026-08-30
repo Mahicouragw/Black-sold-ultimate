@@ -195,7 +195,11 @@ const OnlineSystem = {
 
     async refreshIdentityStatus() {
         const identities = this.user?.identities || [];
-        this.linked = identities.some(identity => identity.provider && identity.provider !== 'anonymous') || this.user?.is_anonymous === false;
+        const providers = identities.map(identity => String(identity.provider || '').toLowerCase());
+        this.linked = providers.includes('google')
+            || providers.some(p => p && p !== 'anonymous')
+            || this.user?.app_metadata?.provider === 'google'
+            || this.user?.is_anonymous === false;
     },
 
     async updatePresence() {
@@ -930,11 +934,11 @@ const OnlineSystem = {
         const account = document.getElementById('settings-account-status');
         if (account) account.textContent = this.linked ? 'Google linked' : (this.ready ? 'Guest account' : 'Local/offline guest');
         const google = document.getElementById('btn-link-google');
-        if (google) { google.disabled = this.linked; google.hidden = this.linked; }
+        if (google) { google.disabled = true; google.hidden = true; }
         const merge = document.getElementById('btn-google-merge');
-        if (merge) { merge.disabled = this.linked; merge.hidden = this.linked; }
+        if (merge) { merge.disabled = true; merge.hidden = true; }
         const guestBox = document.getElementById('settings-guest-google');
-        if (guestBox) guestBox.classList.toggle('hidden', this.linked);
+        if (guestBox) { guestBox.classList.add('hidden'); guestBox.hidden = true; }
         const linkedBox = document.getElementById('settings-linked-google');
         if (linkedBox) linkedBox.classList.toggle('hidden', !this.linked);
         const pinLogin = document.getElementById('settings-pin-login');

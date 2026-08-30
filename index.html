@@ -476,15 +476,20 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.25.9</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.25.10</span></div>
                     <p id="settings-account-note" class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
-                    <div id="settings-guest-google">
-                    <button id="btn-link-google" class="menu-btn primary"><span class="google-mark" aria-hidden="true">G</span> Link this guest with Google</button>
-                    <button id="btn-google-merge" class="menu-btn"><span class="google-mark" aria-hidden="true">G</span> Existing Google account: sign in and merge heroes</button>
+                    <hr class="settings-divider" aria-hidden="true">
+                    <h4>Heroes</h4>
+                    <button id="btn-settings-create-hero" class="menu-btn primary" type="button">Create new hero</button>
+                    <button id="btn-settings-manage-heroes" class="menu-btn" type="button">Manage heroes</button>
+                    <button id="btn-settings-delete-hero" class="menu-btn danger-btn" type="button">Delete hero</button>
+                    <div id="settings-guest-google" class="hidden" hidden>
+                    <button id="btn-link-google" class="menu-btn" type="button" hidden>Link this guest with Google</button>
+                    <button id="btn-google-merge" class="menu-btn" type="button" hidden>Existing Google account: sign in and merge heroes</button>
                     </div>
                     <div id="settings-linked-google" class="hidden">
-                    <p class="settings-note">Google is already connected. Sign-in and Link Google are hidden. Use Sign out or Delete account below.</p>
+                    <p class="settings-note">Google is connected. Use Sign out or Delete account below.</p>
                     <button id="btn-delete-account" class="menu-btn danger-btn" type="button">Delete Google-linked account on this device</button>
                     </div>
                     <hr class="settings-divider" aria-hidden="true">
