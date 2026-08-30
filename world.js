@@ -185,7 +185,7 @@ const WorldData = {
         "stolen gold": { name: "Stolen Gold", type: "treasure", value: 50, desc: "Gold coins stolen by goblins" },
 
         // Consumables
-        "bread": { name: "Bread", type: "food", effect: "hunger", satiety: 24, value: 4, desc: "A brown wheat roll from a city baker. Fills hunger and returns strength. Does not restore health or magic." },
+        "bread": { name: "Bread", type: "food", effect: "hunger", satiety: 24, value: 4, desc: "A brown wheat roll from a city baker." },
         "mountain flower": { name: "Mountain Flower", type: "herb", effect: "heal", value: 25, desc: "A rare flower from high peaks" },
         "herbs": { name: "Healing Herbs", type: "herb", effect: "heal", value: 20, desc: "Common healing herbs" },
         "swamp herb": { name: "Swamp Herb", type: "herb", effect: "heal", value: 15, desc: "A medicinal herb from the swamp" },

@@ -967,7 +967,7 @@ const Game = {
         } else if (item.effect === 'both') {
             this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + item.value);
             this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + item.value);
-            this.addNarrative(`You eat ${item.name}. Hunger eases. Strength returns with the meal. Health and magic are unchanged.`, 'item');
+            this.addNarrative(`You eat ${item.name}.`, 'item');
             MusicSystem.playSFX('eat');
         } else {
             this.addNarrative(`${item.name} cannot be consumed. Try "equip ${item.name}".`, 'system');
@@ -994,9 +994,6 @@ const Game = {
         if (!item) { this.addNarrative(`You do not carry ${q || 'that item'}.`, 'system'); return null; }
         const description = item.desc || item.description || 'A useful traveller\'s possession.';
         this.addNarrative(`${item.name}: ${description}`, 'item');
-        if (item.type === 'food' || item.effect === 'hunger') {
-            this.addNarrative(`This is food. Type eat ${item.name.toLowerCase()} to eat it. It restores hunger and strength, not health or magic.`, 'system');
-        }
         return item;
     },
 
@@ -1990,7 +1987,7 @@ const Game = {
         content.innerHTML = '<p>Loading online guild…</p>';
         const memberships = await OnlineSystem.listMyGuilds();
         if (!memberships.length) {
-            content.innerHTML = `<p>You are not in a guild. ${OnlineSystem.linked ? 'Create Dawn Guard or accept a future guild invitation.' : 'Link Google in Settings before creating or joining one.'}</p>`;
+            content.innerHTML = '<p>You are not in a guild yet. Create Dawn Guard or accept an invitation.</p>';
             return;
         }
         content.innerHTML = memberships.map(m => `<div class="stat-row"><span>Guild</span><span>${this.escapeHTML(m.guild.name)}</span></div><div class="stat-row"><span>Rank</span><span>${this.escapeHTML(m.role)}</span></div><div class="stat-row"><span>Guild Rupees</span><span>${m.guild.rupees}</span></div>`).join('') + `<h4>Companion combat group</h4><p>${this.state.combatGroup.length ? this.state.combatGroup.map(this.escapeHTML).join(', ') : 'No companions invited.'}</p>`;
@@ -2083,7 +2080,7 @@ const Game = {
             this.addNarrative('Your bag is empty.', 'system');
         } else {
             const spoken = this.state.inventory.map(i => `${i.name} times ${i.quantity}`).join('; ');
-            this.addNarrative(`In your bag: ${spoken}. Examine an item, then eat it if it is food.`, 'item');
+            this.addNarrative(`In your bag: ${spoken}.`, 'item');
             this.state.inventory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'inv-item';

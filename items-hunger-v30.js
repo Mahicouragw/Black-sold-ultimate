@@ -142,19 +142,19 @@
         },
         'barley loaf': {
             name: 'Barley Loaf', type: 'food', effect: 'hunger', satiety: 28, value: 4,
-            desc: 'A dense loaf of barley bread, the staple of real medieval tables. Eating it fills the belly and returns strength lost to hunger. It does not close wounds and it does not refill magic.'
+            desc: 'A dense barley loaf from a village oven.'
         },
         'mutton stew': {
             name: 'Mutton Stew', type: 'food', effect: 'hunger', satiety: 45, value: 12,
-            desc: 'A wooden bowl of mutton, onion and barley simmered in stock. A real meal. Strength comes back as the hunger fades. Health and mana stay as they were.'
+            desc: 'A wooden bowl of mutton, onion and barley.'
         },
         'dried dates': {
             name: 'Dried Dates', type: 'food', effect: 'hunger', satiety: 18, value: 6,
-            desc: 'Sun-dried dates from a caravan pack. Sweet, portable, filling enough to take the edge off a march. Food, not medicine.'
+            desc: 'Sun-dried dates from a caravan pack.'
         },
         'goat cheese': {
             name: 'Goat Cheese', type: 'food', effect: 'hunger', satiety: 22, value: 7,
-            desc: 'A wrapped round of salted goat cheese. Protein and fat for the road. Restores satiety and thereby strength, never hit points.'
+            desc: 'A wrapped round of salted goat cheese.'
         }
     };
 
@@ -168,7 +168,7 @@
         'war hammer': 'A horseman’s war hammer with a blunt face and a rear spike. Right hand. Built to crumple plate, not to look pretty.',
         "saint's maul": 'A two-handed wooden maul bound with iron and etched with a small sun-cross. Right hand. Heavy enough that a tired wielder will feel every miss.',
         'THE BLACK SWORD': 'A unique relic blade of this realm, not a historical pattern. Right hand. It drinks light along the fuller. Nothing else in Kandor shares this name.',
-        'bread': 'A brown wheat roll from a city baker. Food. Eat it when you are hungry; your strength returns. It will not knit a cut or refill a spell.',
+        'bread': 'A brown wheat roll from a city baker.',
         'honey cake': 'A small cake sweetened with real honey and crushed nuts. Food. Satiety and strength only.',
         'cheese wheel': 'A waxed wheel of hard cow’s-milk cheese. Food. A traveller’s ration. Hunger down, strength up. No healing.',
         'roast boar': 'Slices of spit-roasted wild boar, wrapped in dock leaves. A heavy meal. Restores a great deal of satiety and the strength hunger stole.',
@@ -287,7 +287,7 @@
         applyHungerPenalty(game);
         item.quantity--;
         if (item.quantity <= 0) game.state.inventory = game.state.inventory.filter(i => i !== item);
-        game.addNarrative(`You eat ${item.name}. Hunger eases. Strength returns with the meal. Health and magic are unchanged.`, 'item');
+        game.addNarrative(`You eat ${item.name}.`, 'item');
         window.MusicSystem?.playSFX?.('eat');
         game.updateHUD?.();
         game.save?.();
@@ -306,7 +306,7 @@
         ['str', 'dex', 'int', 'wis', 'hp', 'mp'].forEach(k => {
             if (item[k]) parts.push(`${k.toUpperCase()} ${item[k] > 0 ? '+' : ''}${item[k]}.`);
         });
-        if (item.type === 'food') parts.push(`Fills hunger by ${item.satiety || item.value || 0}. Does not restore health or magic.`);
+        if (item.type === 'food') parts.push('A meal.');
         if (item.type === 'ammo') parts.push('Ammo. Type shoot to fire one.');
         if (item.value) parts.push(`Value ${item.value} gold.`);
         return parts.filter(Boolean).join(' ');
