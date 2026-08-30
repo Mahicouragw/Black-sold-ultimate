@@ -145,10 +145,16 @@
         eco.dailyStreak = eco.lastDaily === yesterday ? eco.dailyStreak + 1 : 1;
         eco.lastDaily = today;
 
-        grant(this, 'gold', 100 + p.level * 25, `day ${eco.dailyStreak} treasure`);
-        if (eco.dailyStreak % 7 === 0) grant(this, 'ruby', 1, 'streak bonus');
+        const gold = 180 + p.level * 40 + eco.dailyStreak * 15;
+        grant(this, 'gold', gold, `day ${eco.dailyStreak} treasure`);
+        if (eco.dailyStreak % 3 === 0) grant(this, 'ruby', 1, 'three-day streak');
         if (eco.dailyStreak % 7 === 0) grant(this, 'goldRuby', 1, 'weekly streak bonus');
-        this.addNarrative(`Daily streak: ${eco.dailyStreak} day${eco.dailyStreak === 1 ? '' : 's'}. Come back tomorrow for a bigger chest!`, 'system');
+        if (eco.dailyStreak % 14 === 0) grant(this, 'diamond', 1, 'fortnight streak');
+        if (this.addItemToInventory && WorldData.items['healing potion']) {
+            this.addItemToInventory('healing potion', WorldData.items['healing potion']);
+            this.addNarrative('The chest also holds a healing potion.', 'item');
+        }
+        this.addNarrative(`Daily streak: ${eco.dailyStreak} day${eco.dailyStreak === 1 ? '' : 's'}. Come back tomorrow for a bigger chest.`, 'system');
     };
 
     /* ════════════════ 4. COMPANION REVIVAL ════════════════ */

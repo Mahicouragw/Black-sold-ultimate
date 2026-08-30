@@ -23,27 +23,35 @@
         };
 
         const ACHIEVEMENTS = [
-            { id: 'first-blood',  name: 'First Blood',     desc: 'Defeat your first monster.',                       when: s => (s.kills || 0) >= 1 },
-            { id: 'hunter',       name: 'Hunter',          desc: 'Defeat 25 monsters.',                              when: s => (s.kills || 0) >= 25 },
-            { id: 'slayer',       name: 'Slayer',          desc: 'Defeat 100 monsters.',                             when: s => (s.kills || 0) >= 100 },
-            { id: 'peace-1',      name: 'Peacebringer',    desc: 'Fully clear 1 area of monsters.',                  when: s => clearedAreas(s) >= 1 },
-            { id: 'peace-5',      name: 'Area Guardian',   desc: 'Fully clear 5 areas.',                             when: s => clearedAreas(s) >= 5 },
-            { id: 'peace-10',     name: 'World Cleanser',  desc: 'Fully clear 10 areas.',                            when: s => clearedAreas(s) >= 10 },
-            { id: 'level-5',      name: 'Rising Hero',     desc: 'Reach level 5.',                                   when: s => (s.player?.level || 1) >= 5 },
-            { id: 'level-10',     name: 'Veteran Hero',    desc: 'Reach level 10.',                                  when: s => (s.player?.level || 1) >= 10 },
-            { id: 'quest-3',      name: 'Quest Seeker',    desc: 'Complete 3 quests.',                               when: s => (s.completedQuests || []).length >= 3 },
-            { id: 'quest-all',    name: 'Story Master',    desc: 'Complete every quest.',                            when: s => (s.completedQuests || []).length >= (WorldData.quests || []).length },
-            { id: 'hoard',        name: 'Dragon Hoard',    desc: 'Hold 1000 gold coins at once.',                    when: s => (s.player?.gold || 0) >= 1000 },
-            { id: 'gem',          name: 'Gem Collector',   desc: 'Own at least one diamond.',                        when: s => (s.player?.diamonds || 0) >= 1 },
-            { id: 'arena-1',      name: 'Arena Challenger',desc: 'Win 1 wave in the Arena of Echoes.',               when: s => (s.achievementStats?.arenaWinsTotal || 0) >= 1 },
-            { id: 'arena-5',      name: 'Arena Legend',    desc: 'Win 5 waves in the Arena of Echoes.',              when: s => (s.achievementStats?.arenaWinsTotal || 0) >= 5 },
-            { id: 'explorer-20',  name: 'Pathfinder',      desc: 'Visit 20 different places.',                       when: s => (s.visited || []).length >= 20 },
+            { id: 'first-blood',  name: 'First Blood',     desc: 'Defeat your first monster.',                       when: s => (s.kills || 0) >= 1, gold: 80 },
+            { id: 'hunter',       name: 'Hunter',          desc: 'Defeat 25 monsters.',                              when: s => (s.kills || 0) >= 25, gold: 450, ruby: 1 },
+            { id: 'slayer',       name: 'Slayer',          desc: 'Defeat 100 monsters.',                             when: s => (s.kills || 0) >= 100, gold: 1400, ruby: 2, goldRuby: 1 },
+            { id: 'peace-1',      name: 'Peacebringer',    desc: 'Fully clear 1 area of monsters.',                  when: s => clearedAreas(s) >= 1, gold: 300 },
+            { id: 'peace-5',      name: 'Area Guardian',   desc: 'Fully clear 5 areas.',                             when: s => clearedAreas(s) >= 5, gold: 900, ruby: 1 },
+            { id: 'peace-10',     name: 'World Cleanser',  desc: 'Fully clear 10 areas.',                            when: s => clearedAreas(s) >= 10, gold: 2200, ruby: 2, diamond: 1 },
+            { id: 'level-5',      name: 'Rising Hero',     desc: 'Reach level 5.',                                   when: s => (s.player?.level || 1) >= 5, gold: 400 },
+            { id: 'level-10',     name: 'Veteran Hero',    desc: 'Reach level 10.',                                  when: s => (s.player?.level || 1) >= 10, gold: 1000, ruby: 1 },
+            { id: 'quest-3',      name: 'Quest Seeker',    desc: 'Complete 3 quests.',                               when: s => (s.completedQuests || []).length >= 3, gold: 500 },
+            { id: 'quest-all',    name: 'Story Master',    desc: 'Complete every quest.',                            when: s => (s.completedQuests || []).length >= (WorldData.quests || []).length, gold: 2500, goldRuby: 1, diamond: 1 },
+            { id: 'hoard',        name: 'Dragon Hoard',    desc: 'Hold 1000 gold coins at once.',                    when: s => (s.player?.gold || 0) >= 1000, gold: 250, ruby: 1 },
+            { id: 'gem',          name: 'Gem Collector',   desc: 'Own at least one diamond.',                        when: s => (s.player?.diamonds || 0) >= 1, gold: 600 },
+            { id: 'arena-1',      name: 'Arena Challenger',desc: 'Win 1 wave in the Arena of Echoes.',               when: s => (s.achievementStats?.arenaWinsTotal || 0) >= 1, gold: 200 },
+            { id: 'arena-5',      name: 'Arena Legend',    desc: 'Win 5 waves in the Arena of Echoes.',              when: s => (s.achievementStats?.arenaWinsTotal || 0) >= 5, gold: 800, ruby: 1 },
+            { id: 'explorer-20',  name: 'Pathfinder',      desc: 'Visit 20 different places.',                       when: s => (s.visited || []).length >= 20, gold: 350 },
         ];
 
         function unlock(a) {
             Game.state.achievements.push(a.id);
-            if (Game.state.player) Game.state.player.gold = (Game.state.player.gold || 0) + 150;
-            Game.addNarrative(`🏆 Achievement unlocked: ${a.name} — ${a.desc} (+150 🪙 gold)`, 'treasure');
+            const p = Game.state.player;
+            const gold = a.gold || 200;
+            if (p) {
+                p.gold = (p.gold || 0) + gold;
+                if (a.ruby) p.rubies = (p.rubies || 0) + a.ruby;
+                if (a.goldRuby) p.goldRubies = (p.goldRubies || 0) + a.goldRuby;
+                if (a.diamond) p.diamonds = (p.diamonds || 0) + a.diamond;
+            }
+            const extra = [a.ruby && `${a.ruby} ruby`, a.goldRuby && `${a.goldRuby} gold ruby`, a.diamond && `${a.diamond} diamond`].filter(Boolean).join(', ');
+            Game.addNarrative(`Achievement unlocked: ${a.name} — ${a.desc}. Reward: ${gold} gold${extra ? '; ' + extra : ''}.`, 'treasure');
             MusicSystem.playSFX('levelup');
             Game.save();
         }

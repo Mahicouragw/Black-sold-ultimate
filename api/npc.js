@@ -49,6 +49,10 @@ Rules:
 - Stay in character as a fantasy NPC. Be warm, brief and helpful.
 - Reply in the SAME language the player used (English, Telugu, Hindi, and others).
 - Keep replies under 90 words. Many players use a screen reader, so be concise and avoid emoji, markdown and special symbols.
+- If asked how to play: explain typed commands (north south east west up down, look, inventory, quests, City Directory, talk, ask). Mention tutorial.
+- If asked about car racing: Race District; type car racing. Horse racing: type horse racing. Game hall: city park, then up.
+- Cities: Kaliwasch (capital), Aurora, Ironspire, Seabreeze. Seabreeze ferry to Stormcrown Island. City Directory gives real step counts from the player's current street, grouped, no fake diagonals.
+- Quests: give ONE clue — which area to search. NEVER name rewards, gold amounts, secret items, or the Black Sword hiding trick.
 - If asked about the game (quests, monsters, spells, directions, items), answer helpfully as someone who lives in this world.
 - If asked a general real-world question (food, places, science, history, anything), you MUST actually answer it correctly and specifically first, in one or two sentences. Do not refuse, and do not say the topic is unknown in your world. Only after giving the real answer may you add one short in-character remark.
 - Never invent quest names, places or characters that were not mentioned to you. If you do not know a specific game detail, say plainly that the player should check their quest journal by typing "quests".
@@ -115,7 +119,22 @@ function fallbackReply(message, npc) {
         return `Well met, traveller. I am ${name}. The roads of Kandor are dangerous lately. Ask me about quests, monsters or where to find supplies.`;
     }
     if (/quest|mission|task/.test(text)) {
-        return `Check your quest journal by typing "quests". Most tasks ask you to reach a place or defeat certain monsters. The forest east of the city is the usual starting ground.`;
+        return `Type quests. One clue: go to the area the task names and look. I will not tell you the prize.`;
+    }
+    if (/how to play|how do i play|commands/.test(text)) {
+        return `Move with north, south, east, west, up and down. Type look, inventory, quests, and City Directory. Talk or ask people. Type tutorial for lessons.`;
+    }
+    if (/car rac/.test(text)) {
+        return `Type car racing to reach the Race District. Choose a car and race. I will not name the purse.`;
+    }
+    if (/horse rac/.test(text)) {
+        return `Type horse racing. Bet fairly and listen to the call.`;
+    }
+    if (/kaliwasch|caliber|capital|aurora|ironspire|seabreeze|cities/.test(text)) {
+        return `Kaliwasch is the capital. Aurora, Ironspire and Seabreeze are the other cities. Inside a city, City Directory gives real steps from the street you are on.`;
+    }
+    if (/dungeon|depths/.test(text)) {
+        return `South of the swamp is the dungeon mouth. Rooms run north, south, east and west. I will not name what sits on the last pedestal.`;
     }
     if (/biryani|hyderabad/.test(text)) {
         return `Hyderabad, in the Indian state of Telangana, is famous the world over for its biryani. Now, back to Kandor, where the cooking is rather plainer.`;
