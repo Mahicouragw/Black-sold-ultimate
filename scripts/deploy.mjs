@@ -25,8 +25,8 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, access, rm } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { readFile, access, rm, mkdtemp, writeFile } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 
 const run = promisify(execFile);
@@ -197,22 +197,22 @@ async function commitIfNeeded(message) {
     return true;
 }
 
-/**
- * Push using an in-memory authenticated URL.
- *
- * The token is passed as a one-shot argument to a single git invocation. It is
- * never stored via `git remote set-url`, never written to .git/config, and never
- * saved by a credential helper, so nothing sensitive survives this function.
- */
+/** Push with an ephemeral askpass helper, never a token-bearing URL or argument. */
 async function push(token) {
     step('Push to GitHub');
     if (DRY_RUN) { log('🧪', 'Dry run — push skipped'); return null; }
-
-    const authUrl = `https://x-access-token:${token}@github.com/${REPO_SLUG}.git`;
+    const directory = await mkdtemp(path.join(tmpdir(), 'bsu-askpass-'));
+    const helper = path.join(directory, 'askpass.sh');
     try {
-        await run('git', ['-c', 'credential.helper=', 'push', authUrl, `HEAD:${BRANCH}`], { cwd: process.cwd() });
+        await writeFile(helper, '#!/bin/sh\ncase "$1" in *Username*) printf "%s\\n" "x-access-token" ;; *) printf "%s\\n" "$BSU_GIT_PASSWORD" ;; esac\n', { mode: 0o700 });
+        await run('git', ['-c', 'credential.helper=', 'push', `https://github.com/${REPO_SLUG}.git`, `HEAD:${BRANCH}`], {
+            cwd: process.cwd(),
+            env: { ...process.env, GIT_ASKPASS: helper, GIT_TERMINAL_PROMPT: '0', BSU_GIT_PASSWORD: token, GIT_TRACE: '0', GIT_TRACE_CURL: '0', GIT_CURL_VERBOSE: '0' }
+        });
     } catch (error) {
-        fail(`Push rejected: ${error.stderr || error.message}`);
+        fail(`Push rejected: ${redact(error.stderr || error.message)}`);
+    } finally {
+        await rm(directory, { recursive: true, force: true });
     }
     const sha = await git(['rev-parse', 'HEAD']);
     log('✅', `Pushed ${sha.slice(0, 7)} to ${BRANCH}`);
