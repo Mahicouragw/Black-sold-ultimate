@@ -1,7 +1,7 @@
-const CACHE='black-sword-v7.25.11';
+const CACHE='black-sword-v7.25.12';
 const BASE=new URL('./',self.registration.scope);
 const CORE=[
-  '','index.html','styles.css','manifest.webmanifest','version.js','music.js',
+  '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js',
   'world.js','expansion.js','regions-v4.js','online.js','game.js','sacred.js',
   'alexa-parity.js','equipment-sets.js','housing-world-v5.js','forest-expansion-v6.js','island-tunnel-fishing.js','translation.js',
   'chat-rooms.js','voice-artifacts-maps.js','spell-mastery-black-sword.js','world-grid-houses-combat-v8.js','city-directory-v9.js','context-actions-houses-prayer-v10.js',

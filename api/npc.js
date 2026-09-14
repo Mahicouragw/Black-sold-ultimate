@@ -403,6 +403,8 @@ function cacheSet(key, value, ttl) {
 }
 function searchRateLimited(ip) {
     const now = Date.now();
+    for(const [key,times] of SEARCH_RATE)if(!times.length||now-times.at(-1)>=SEARCH_RATE_WINDOW)SEARCH_RATE.delete(key);
+    if(SEARCH_RATE.size>=5000&&!SEARCH_RATE.has(ip))return true;
     const bucket = (SEARCH_RATE.get(ip) || []).filter(t => now - t < SEARCH_RATE_WINDOW);
     if (bucket.length >= SEARCH_RATE_LIMIT) return true;
     bucket.push(now);
@@ -674,22 +676,7 @@ function extractUrlFromMessage(message) {
 }
 
 /** SSRF guard: refuse loopback, private, link-local and metadata hosts. */
-function isBlockedHost(hostname) {
-    const h = String(hostname || '').toLowerCase().replace(/\.$/, '');
-    if (!h) return true;
-    if (h === 'localhost' || h === '0.0.0.0' || h === '::1' || h.endsWith('.localhost') || h.endsWith('.local') || h.endsWith('.internal') || h === 'metadata.google.internal' || h.endsWith('.metadata.google.internal')) return true;
-    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h)) {
-        const p = h.split('.').map(Number);
-        if (p[0] === 10 || p[0] === 127 || p[0] === 0) return true;                      // private, loopback, "this network"
-        if (p[0] === 169 && p[1] === 254) return true;                                    // link-local
-        if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true;                       // private
-        if (p[0] === 192 && p[1] === 168) return true;                                    // private
-        if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true;                      // CGNAT
-        if (p[0] === 192 && p[1] === 0 && p[2] === 0) return true;                       // IETF reserved
-        if (p[0] >= 224) return true;                                                     // multicast/reserved
-    }
-    return false;
-}
+const { safePage, blockedHost: isBlockedHost } = require('../lib/safe-page');
 
 /** Remove scripts/styles, then all tags, and decode entities into readable text. */
 function stripHtmlDeep(html) {
@@ -724,19 +711,10 @@ async function fetchArbitraryUrl(url) {
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
     if (isBlockedHost(parsed.hostname)) return null;
 
-    const r = await fetch(url, {
-        signal: AbortSignal.timeout(8000),
-        redirect: 'follow',
-        headers: {
-            'User-Agent': 'BlackSwordUltimate/7.24 (+player-directed one-shot fetch)',
-            'Accept': 'text/html,text/plain;q=0.9'
-        }
-    });
-    if (!r.ok) return null;
-    const type = (r.headers.get('content-type') || '').toLowerCase();
-    if (!type.includes('text/html') && !type.includes('text/plain') && !type.includes('application/xhtml')) return null;
-
-    const body = await r.text();
+    const page = await safePage(url);
+    if (!page) return null;
+    parsed = new URL(page.url);
+    const body = page.html;
     const text = stripHtmlDeep(body).slice(0, 6000);
     if (!text) return null;
     return {
@@ -907,6 +885,8 @@ module.exports = async function handler(req, res) {
 
     const ip = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0];
     const now = Date.now();
+    for(const [key,times] of RATE)if(!times.length||now-times.at(-1)>=60000)RATE.delete(key);
+    if(RATE.size>=5000&&!RATE.has(ip)){res.statusCode=429;return res.end(JSON.stringify({error:'Please try again shortly.'}));}
     const bucket = (RATE.get(ip) || []).filter(t => now - t < 60000);
     if (bucket.length >= RATE_LIMIT) {
         res.statusCode = 429;
@@ -919,6 +899,7 @@ module.exports = async function handler(req, res) {
     try { body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {}); }
     catch { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Invalid JSON' })); }
 
+    if(!body||typeof body!=='object'||Array.isArray(body)){res.statusCode=400;return res.end(JSON.stringify({error:'Invalid request'}));}
     const message = String(body.message || '').trim().slice(0, MAX_PROMPT);
     if (!message) { res.statusCode = 400; return res.end(JSON.stringify({ error: 'Empty message' })); }
 
@@ -1022,7 +1003,7 @@ module.exports = async function handler(req, res) {
             }
         } catch (error) {
             // Never leak keys or provider internals to the client.
-            console.warn(`NPC provider ${name} failed:`, error.message);
+            console.warn(`NPC provider ${name} unavailable`);
         }
     }
 

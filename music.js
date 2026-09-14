@@ -32,6 +32,8 @@ class AudioManagerController {
         this.battleActive = false;
         this.pendingPlayback = null;
         this.playbackSession = 0;
+        this.pageSuspended = false;
+        this.activeSFX = new Set();
         this.fadeTokens = new WeakMap();
         this.playlistState = new Map();
         this.globalHistory = [];
@@ -241,6 +243,7 @@ class AudioManagerController {
         }
 
         const unlock = () => {
+            if(document.hidden||this.pageSuspended)return;
             this.unlockAudioContext();
             if (this.pendingPlayback && this.musicEnabled) {
                 const pending = this.pendingPlayback;
@@ -254,26 +257,36 @@ class AudioManagerController {
         // bounded music elements and resume the exact prior layer when the page
         // returns; autoplay rejection falls back to the normal gesture unlock.
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.visibilityResume = {
-                    world: Boolean(this.worldAudio && !this.worldAudio.paused),
-                    overlay: Boolean(this.overlayAudio && !this.overlayAudio.paused)
-                };
-                this.worldAudio?.pause();
-                this.overlayAudio?.pause();
-                return;
-            }
+            if (document.hidden) { this.pausePageAudio(); return; }
+            this.pageSuspended = false;
             const prior = this.visibilityResume;
             this.visibilityResume = null;
             if (!this.musicEnabled || !prior) return;
             const audio = prior.overlay && this.battleActive ? this.overlayAudio : prior.world ? this.worldAudio : null;
             if (audio) audio.play().catch(() => { this.pendingPlayback = { audio, layer: audio === this.overlayAudio ? 'overlay' : 'world' }; });
         });
+        window.addEventListener('pagehide',()=>this.pausePageAudio());
+        window.addEventListener('pageshow',()=>{if(!document.hidden)this.pageSuspended=false;});
         this.bindSettingsUI();
         this.preloadSFX();
         this.syncSettingsUI();
         console.log('AudioManager initialized: bounded players, smart playlists, Web Audio SFX and device TTS.');
     }
+
+    pausePageAudio() {
+        if(this.pageSuspended)return;
+        this.visibilityResume={world:Boolean(this.worldAudio&&!this.worldAudio.paused),overlay:Boolean(this.overlayAudio&&!this.overlayAudio.paused)};
+        this.pageSuspended=true;++this.playbackSession;this.pendingPlayback=null;
+        this.worldAudio?.pause();this.overlayAudio?.pause();this.stopVoice();this.stopSFX();
+        this.audioCtx?.suspend?.().catch(()=>{});
+    }
+
+    stopSFX() {
+        for(const node of this.activeSFX){try{node.stop();node.disconnect();}catch{}}this.activeSFX.clear();
+        for(const audio of this.sfxFallbackPool){audio.pause();audio.currentTime=0;audio.dataset.busy='false';}
+    }
+
+    trackSFX(node){this.activeSFX.add(node);node.addEventListener?.('ended',()=>{this.activeSFX.delete(node);try{node.disconnect();}catch{}},{once:true});return node;}
 
     bindSettingsUI() {
         const bindCheck = (id, key, onChange) => {
@@ -413,7 +426,7 @@ class AudioManagerController {
     }
 
     async startMusicLayer(layer, trackKey, { fadeMs = 450, forceRestart = false } = {}) {
-        if (!this.musicEnabled || !this.music[trackKey]) return false;
+        if (this.pageSuspended || document.hidden || !this.musicEnabled || !this.music[trackKey]) return false;
         const audio = layer === 'overlay' ? this.overlayAudio : this.worldAudio;
         const config = this.music[trackKey];
         if (!audio) return false;
@@ -433,6 +446,7 @@ class AudioManagerController {
         this.currentKey = trackKey;
         try {
             await audio.play();
+            if(this.pageSuspended||document.hidden){audio.pause();return false;}
             this.pendingPlayback = null;
             await this.fadeIn(audio, fadeMs);
             if (layer === 'world') this.audioState = 'world';
@@ -507,6 +521,7 @@ class AudioManagerController {
     }
 
     async resumeWorldMusic() {
+        if(this.pageSuspended||document.hidden)return;
         if (!this.musicEnabled) { this.audioState = 'idle'; return; }
         this.init();
         this.audioState = 'restore';
@@ -521,6 +536,7 @@ class AudioManagerController {
         this.currentKey = this.worldAudio.dataset.trackKey;
         try {
             await this.worldAudio.play();
+            if(this.pageSuspended||document.hidden){this.worldAudio.pause();return;}
             await this.fadeIn(this.worldAudio, 550);
             this.audioState = 'world';
         } catch { this.pendingPlayback = { audio: this.worldAudio, layer: 'world' }; }
@@ -719,6 +735,7 @@ class AudioManagerController {
 
     setSFXEnabled(value, persist = true) {
         this.sfxEnabled = Boolean(value);
+        if(!this.sfxEnabled)this.stopSFX();
         if (persist) this.persistSettings();
         return this.sfxEnabled;
     }
@@ -739,6 +756,7 @@ class AudioManagerController {
 
     toggleSFX() {
         this.sfxEnabled = !this.sfxEnabled;
+        if(!this.sfxEnabled)this.stopSFX();
         this.persistSettings();
         return this.sfxEnabled;
     }
@@ -822,7 +840,7 @@ class AudioManagerController {
     }
 
     playSFX(type) {
-        if (!this.sfxEnabled) return false;
+        if (!this.sfxEnabled||this.pageSuspended||document.hidden) return false;
         this.init();
         const src = this.resolveSFX(type);
         if (!src) return false;
@@ -830,10 +848,11 @@ class AudioManagerController {
     }
 
     playSFXSource(src) {
+        if(!this.sfxEnabled||this.pageSuspended||document.hidden)return false;
         const buffer = this.sfxBuffers[src];
         if (buffer && buffer !== 'loading' && buffer !== 'failed' && this.audioCtx) {
             if (this.audioCtx.state === 'suspended') this.audioCtx.resume().catch(() => {});
-            const node = this.audioCtx.createBufferSource();
+            const node = this.trackSFX(this.audioCtx.createBufferSource());
             node.buffer = buffer;
             node.playbackRate.value = 0.98 + Math.random() * 0.04;
             node.connect(this.sfxGain);
@@ -854,7 +873,7 @@ class AudioManagerController {
     }
 
     async playSFXAndWait(type, maximumMs = 2200) {
-        if (!this.sfxEnabled) return;
+        if (!this.sfxEnabled||this.pageSuspended||document.hidden) return;
         this.init();
         const src = this.resolveSFX(type);
         if (!src) return;
@@ -862,8 +881,9 @@ class AudioManagerController {
         try {
             let buffer = this.sfxBuffers[src];
             if (!buffer || buffer === 'loading') buffer = await this.loadSFXBuffer(src);
+            if(!this.sfxEnabled||this.pageSuspended||document.hidden)return;
             if (buffer && buffer !== 'failed' && this.audioCtx) {
-                const node = this.audioCtx.createBufferSource();
+                const node = this.trackSFX(this.audioCtx.createBufferSource());
                 node.buffer = buffer;
                 node.connect(this.sfxGain);
                 node.start(0);
@@ -881,7 +901,7 @@ class AudioManagerController {
         // Application TTS OFF is absolute: no SpeechSynthesis call is ever made,
         // and nothing may force it back on. Android TalkBack is an independent
         // OS service that this game neither controls nor disables.
-        if (!this.voiceEnabled || !String(text || '').trim()) return Promise.resolve(false);
+        if (this.pageSuspended || document.hidden || !this.voiceEnabled || !String(text || '').trim()) return Promise.resolve(false);
         if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
         const critical = priority === 'critical';
         if (critical) this.interruptVoiceForCritical();

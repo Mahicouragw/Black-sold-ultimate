@@ -1001,3 +1001,8 @@ html[data-interface-mode="blind"] .pulse { animation:none; }
 .npc-sources span{font-weight:600;color:#ffd479}
 .npc-sources a{color:#8fd3ff;text-decoration:underline;padding:.15rem .35rem;border-radius:.3rem}
 .npc-sources a:focus-visible{outline:3px solid #ffd479;outline-offset:2px}
+/* Keep dialog instructions legible against the modal card in both interfaces. */
+.interface-mode-card p {color:#e2e2e2;}
+:root {--text-dim:#aaa49e;}
+.submit-btn {color:#fff;background:#245f40;}
+.visually-hidden {position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0;}

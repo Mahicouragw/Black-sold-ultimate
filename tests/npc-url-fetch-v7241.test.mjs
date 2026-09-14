@@ -33,7 +33,7 @@ function mockFetchForPage() {
             return { ok: true, json: async () => ({ choices: [{ message: { content: `Summary says: ${system.includes('Example is a fictional entity') ? 'page-content-seen' : 'page-content-missing'}` } }] }) };
         }
         if (u.startsWith('https://example.com') || u.startsWith('http://example.com')) {
-            return { ok: true, headers: { get: () => 'text/html' }, text: async () => PAGE_HTML };
+            return new Response(PAGE_HTML, {headers:{'content-type':'text/html'}});
         }
         return { ok: false, status: 404, text: async () => '' };
     };
@@ -68,7 +68,7 @@ test('(302) webpage scripts are stripped so injected text never overrides rules'
             system = JSON.parse(opts.body).messages[0].content;
             return { ok: true, json: async () => ({ choices: [{ message: { content: 'ok' } }] }) };
         }
-        if (u.startsWith('https://example.com')) return { ok: true, headers: { get: () => 'text/html' }, text: async () => PAGE_HTML };
+        if (u.startsWith('https://example.com')) return new Response(PAGE_HTML, {headers:{'content-type':'text/html'}});
         return { ok: false, status: 404, text: async () => '' };
     };
     await ask('read https://example.com/article');

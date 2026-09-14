@@ -21,11 +21,11 @@ async function ask(message) {
 test('SearXNG is used when SEARXNG_URL is configured', async () => {
     const saved = global.fetch;
     const savedUrl = process.env.SEARXNG_URL;
-    process.env.SEARXNG_URL = 'https://searx.example.test';
+    process.env.SEARXNG_URL = 'https://searx.example.org';
     let hit = 0;
     global.fetch = async (url) => {
         const u = String(url);
-        if (u.includes('searx.example.test/search') && u.includes('format=json')) {
+        if (u.includes('searx.example.org/search') && u.includes('format=json')) {
             hit++;
             assert.match(u, /q=/, 'query is encoded');
             return {
@@ -58,10 +58,10 @@ test('SearXNG is used when SEARXNG_URL is configured', async () => {
 test('SearXNG JSON failure falls back to Google News then Wikipedia', async () => {
     const saved = global.fetch;
     const savedUrl = process.env.SEARXNG_URL;
-    process.env.SEARXNG_URL = 'https://searx.example.test';
+    process.env.SEARXNG_URL = 'https://searx.example.org';
     global.fetch = async (url) => {
         const u = String(url);
-        if (u.includes('searx.example.test')) return { ok: true, json: async () => ({ results: [] }) };
+        if (u.includes('searx.example.org')) return { ok: true, json: async () => ({ results: [] }) };
         if (u.includes('news.google.com/rss')) {
             return {
                 ok: true,

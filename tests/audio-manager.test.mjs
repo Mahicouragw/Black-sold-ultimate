@@ -62,3 +62,20 @@ test('device TTS is serialized and restores ducked music', async () => {
     assert.equal(manager.duckRequests.has('voice'), false);
     dom.window.close();
 });
+
+test('page hide and SFX-off stop active Web Audio, fallback media and speech', async () => {
+    const { dom, window, manager } = await managerFixture();
+    manager.init();let stopped=0,cancelled=0;
+    window.speechSynthesis.cancel=()=>{cancelled++;};
+    manager.activeSFX.add({stop(){stopped++;},disconnect(){}});
+    manager.sfxFallbackPool[0].paused=false;
+    manager.worldAudio.paused=false;
+    manager.pausePageAudio();
+    assert.equal(stopped,1);assert.equal(manager.activeSFX.size,0);
+    assert.ok(manager.worldAudio.paused);assert.ok(manager.sfxFallbackPool.every(p=>p.paused));assert.ok(cancelled>0);
+    assert.equal(manager.playSFXSource('assets/audio/sfx/music-transition.wav'),false);
+    assert.equal(await manager.playVoice('Must not speak while hidden'),false);
+    await manager.resumeWorldMusic();assert.ok(manager.worldAudio.paused);
+    manager.pageSuspended=false;manager.activeSFX.add({stop(){stopped++;},disconnect(){}});manager.setSFXEnabled(false);
+    assert.equal(stopped,2);dom.window.close();
+});

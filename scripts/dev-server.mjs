@@ -27,29 +27,34 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  let url;try{url=new URL(req.url,'http://preview.invalid');url.pathname=decodeURIComponent(url.pathname);}catch{res.writeHead(400);return res.end('Bad request');}
+  if(url.pathname.split('/').some(x=>x.startsWith('.')||x.includes('\\'))){res.writeHead(404);return res.end('Not found');}
 
-  if (url.pathname.startsWith('/api/translate') && req.method === 'POST') {
+  if (['/api/translate','/api/npc'].includes(url.pathname) && req.method === 'POST') {
     let body = '';
-    req.on('data', chunk => { body += chunk; });
+    let tooLarge=false;
+    req.on('data', chunk => { if(tooLarge)return;body+=chunk;if(Buffer.byteLength(body)>16384){tooLarge=true;res.writeHead(413);res.end('Request too large');} });
     req.on('end', async () => {
-      req.body = body;
+      if(tooLarge)return;req.body = body;
       try {
-        const handler = require(path.join(rootDir, 'api', 'translate.js'));
+        const handler = require(path.join(rootDir, 'api', url.pathname==='/api/npc'?'npc.js':'translate.js'));
         await handler(req, res);
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: 'Request unavailable' }));
       }
     });
     return;
   }
 
+  if(!['GET','HEAD'].includes(req.method)||['api','lib','scripts','tests','supabase','node_modules','android','ios','.git'].includes(url.pathname.split('/')[1])){res.writeHead(404);return res.end('Not found');}
   let filePath = path.join(rootDir, url.pathname === '/' ? 'index.html' : url.pathname);
   if (!fs.existsSync(filePath) && fs.existsSync(path.join(rootDir, 'www', url.pathname))) {
     filePath = path.join(rootDir, 'www', url.pathname);
   }
 
+  if(!path.resolve(filePath).startsWith(rootDir+path.sep)||!MIME_TYPES[path.extname(filePath)]){res.writeHead(404);return res.end('Not found');}
+  try{if(!fs.realpathSync(filePath).startsWith(rootDir+path.sep)){res.writeHead(404);return res.end('Not found');}}catch{res.writeHead(404);return res.end('Not found');}
   fs.stat(filePath, (err, stats) => {
     if (err || !stats.isFile()) {
       res.writeHead(404, { 'Content-Type': 'text/plain' });

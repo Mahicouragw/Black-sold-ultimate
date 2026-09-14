@@ -1,6 +1,6 @@
 {
   "name": "black-sword-ultimate",
-  "version": "7.25.11",
+  "version": "7.25.12",
   "private": true,
   "description": "Accessible open-world multiplayer fantasy RPG",
   "scripts": {
@@ -32,13 +32,15 @@
     "@capacitor/android": "7.6.8",
     "@capacitor/core": "7.6.8",
     "@capacitor/ios": "7.6.8",
-    "chess.js": "^1.4.0"
+    "chess.js": "^1.4.0",
+    "ipaddr.js": "^2.5.0",
+    "undici": "^7.29.1"
   },
   "devDependencies": {
     "@capacitor/cli": "7.6.8",
     "jsdom": "^26.1.0"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.18.1"
   }
 }

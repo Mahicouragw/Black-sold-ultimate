@@ -4,11 +4,11 @@ const languages = new Set(['en','de','fr','es','hi','it','pt','ja','ko','zh','ar
 
 module.exports = async function handler(req, res) {
   res.setHeader('Content-Type','application/json; charset=utf-8');
-  res.setHeader('Cache-Control','public, s-maxage=86400, stale-while-revalidate=604800');
+  res.setHeader('Cache-Control','no-store');
   if(req.method!=='POST'){res.statusCode=405;return res.end(JSON.stringify({error:'POST required'}));}
   const ip=(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0];
-  const now=Date.now(),bucket=(requests.get(ip)||[]).filter(t=>now-t<60000);if(bucket.length>=40){res.statusCode=429;return res.end(JSON.stringify({error:'Translation rate limit reached'}));}bucket.push(now);requests.set(ip,bucket);
-  let body={};try{body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});}catch{res.statusCode=400;return res.end(JSON.stringify({error:'Invalid JSON'}));}const text=String(body.text||'').trim().slice(0,450),source=String(body.source||'en').slice(0,2).toLowerCase(),target=String(body.target||'en').slice(0,2).toLowerCase();
+  const now=Date.now();for(const [key,times] of requests)if(!times.length||now-times.at(-1)>=60000)requests.delete(key);if(requests.size>=5000&&!requests.has(ip)){res.statusCode=429;return res.end(JSON.stringify({error:'Please try again shortly.'}));}const bucket=(requests.get(ip)||[]).filter(t=>now-t<60000);if(bucket.length>=40){res.statusCode=429;return res.end(JSON.stringify({error:'Translation rate limit reached'}));}bucket.push(now);requests.set(ip,bucket);
+  let body={};try{body=typeof req.body==='string'?JSON.parse(req.body||'{}'):(req.body||{});}catch{res.statusCode=400;return res.end(JSON.stringify({error:'Invalid JSON'}));}if(!body||typeof body!=='object'||Array.isArray(body)){res.statusCode=400;return res.end(JSON.stringify({error:'Invalid request'}));}const text=String(body.text||'').trim().slice(0,450),source=String(body.source||'en').slice(0,2).toLowerCase(),target=String(body.target||'en').slice(0,2).toLowerCase();
   if(!text||!languages.has(source)||!languages.has(target)){res.statusCode=400;return res.end(JSON.stringify({error:'Invalid text or language'}));}
   if(source===target)return res.end(JSON.stringify({text,translated:false,provider:'same-language'}));
   const key=`${source}|${target}|${text}`;if(cache.has(key))return res.end(JSON.stringify({...cache.get(key),cached:true}));

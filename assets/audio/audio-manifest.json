@@ -721,16 +721,16 @@
     {
       "path": "assets/audio/sfx/music-transition.wav",
       "kind": "sfx",
-      "title": "Music Transition",
-      "creator": "Black Soul Ultimate development team",
-      "source": "Original synthesis",
-      "sourcePage": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "title": "Swishes Sound Pack — swish-9",
+      "creator": "artisticdude",
+      "source": "OpenGameArt, real camcorder recording of swung objects",
+      "sourcePage": "https://opengameart.org/content/swishes-sound-pack",
       "license": "CC0 1.0",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
       "licenseRequirements": "Redistribution and commercial use permitted; no attribution required.",
       "attributionRequirements": "None legally required.",
-      "attribution": "Original music-shift whoosh synthesized for Black Soul Ultimate.",
-      "dateAccessed": "2026-08-24"
+      "attribution": "Swishes Sound Pack by artisticdude (CC0); 0.197-second recording, mono, normalized with fades. Not AI generated.",
+      "dateAccessed": "2026-09-14"
     },
     {
       "path": "assets/audio/sfx/chip.wav",
