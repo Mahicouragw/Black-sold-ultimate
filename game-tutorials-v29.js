@@ -222,7 +222,7 @@
         game.state.racing = null;
         const cont = document.getElementById('btn-continue');
         if (cont) cont.disabled = true;
-        window.OnlineSystem?.signOut?.();
+        window.OnlineSystem?.signOut?.({ flush: false });
         say('Your local account data and heroes have been deleted. You are signed out.', 'system');
         game.showScreen?.('title-screen');
     }
@@ -251,30 +251,20 @@
             else say('Account deletion cancelled.', 'system');
         });
 
-        const prevDelete = G.deleteHero.bind(G);
         G.deleteHero = async function (id) {
             const roster = this.getRoster();
             const hero = roster.heroes[id];
-            if (!hero) return;
+            if (!hero) return false;
             const name = hero.player?.name || 'this hero';
             const ok = await confirmAction({
                 title: 'Delete hero',
                 body: `Permanently delete ${name}? Hero ID ${id}. This cannot be undone.`,
                 yesLabel: 'Yes, delete hero'
             });
-            if (!ok) { say('Hero deletion cancelled.', 'system'); return; }
-            delete roster.heroes[id];
-            window.OnlineSystem?.releaseHeroName(id);
-            if (roster.activeHeroId === id) roster.activeHeroId = Object.keys(roster.heroes)[0] || null;
-            this.storeRoster(roster);
-            this.state.activeHeroId = roster.activeHeroId;
-            if (roster.activeHeroId) localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[roster.activeHeroId]));
-            else localStorage.removeItem(this.state.saveKey);
-            const cont = document.getElementById('btn-continue');
-            if (cont) cont.disabled = !roster.activeHeroId;
-            window.OnlineSystem?.saveGame(roster);
-            this.showHeroRoster();
-            say(`${name} has been deleted.`, 'system');
+            if (!ok) { say('Hero deletion cancelled.', 'system'); return false; }
+            const deleted = await this.commitHeroDeletion(id);
+            if (deleted) say(`${name} has been deleted. Choose another hero when you are ready.`, 'system');
+            return deleted;
         };
 
         const prevSpells = G.getClassSpells.bind(G);
