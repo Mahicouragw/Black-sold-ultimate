@@ -448,8 +448,8 @@
         const roster=data?.heroes?data:(data?.player?{version:2,activeHeroId:'hero_recovered',heroes:{hero_recovered:data}}:null);if(!roster){status.textContent='No hero progress was found.';return;}
         localStorage.setItem(Game.state.rosterKey,JSON.stringify(roster));const active=roster.heroes[roster.activeHeroId]||Object.values(roster.heroes)[0];localStorage.setItem(Game.state.saveKey,JSON.stringify(active));localStorage.setItem('black_sword_recovered_by_id','true');await OnlineSystem.saveGame(roster);OnlineSystem.updateHeroEntryPoints(true);status.textContent=`Progress restored: ${Object.values(roster.heroes).map(h=>h.player?.name||'Hero').join(', ')}. Reloading…`;setTimeout(()=>location.reload(),800);
     }
-    const oldOnlineSave=OnlineSystem.saveGame.bind(OnlineSystem);
-    OnlineSystem.saveGame=async function(data){await oldOnlineSave(data);if(this.ready)this.client.rpc('update_recovery_save',{current_save:data}).then(()=>{});};
+    // Cloud and recovery saves are serialized by OnlineSystem.saveGame. Keeping
+    // a second fire-and-forget recovery write here allowed stale rosters to win.
 
     document.getElementById('btn-id-recovery').addEventListener('click',()=>Game.showScreen('recovery-screen'));
     document.getElementById('btn-set-recovery-pin').addEventListener('click',setRecoveryPin);

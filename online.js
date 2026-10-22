@@ -20,7 +20,10 @@ const OnlineSystem = {
     googleMergeRequested: false,
     googleButtonInitialized: false,
     nameCheckTimer: null,
+    nameCheckRequest: 0,
     heroNameAvailable: null,
+    cloudSaveChains: new Map(),
+    authRevision: 0,
     systemVoices: [],
     voiceProfiles: Array.from({ length: 20 }, (_, i) => ({
         id: `${i < 10 ? 'boy' : 'girl'}-${(i % 10) + 1}`,
@@ -63,42 +66,21 @@ const OnlineSystem = {
             this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
             const oauthParams = new URLSearchParams(`${location.search || ''}&${(location.hash || '').replace(/^#/, '')}`);
             const oauthError = oauthParams.get('error_description') || oauthParams.get('error_code');
-            if (oauthError) { localStorage.removeItem('black_sword_google_login_requested'); localStorage.removeItem('black_sword_merge_requested'); } if (oauthError) this.status = `Google linking needs attention: ${decodeURIComponent(oauthError.replace(/\+/g, ' '))}. If this Google account already exists, use “sign in & merge heroes” in Settings.`;
+            if (oauthError) this.clearGoogleFlow();
+            if (oauthError) this.status = `Google linking needs attention: ${decodeURIComponent(oauthError.replace(/\+/g, ' '))}. Your local heroes are safe; please try Google sign-in again.`;
             await this.updatePresence();
             // Returning from the in-app Google page? Run the full welcome flow.
             if (this.linked && localStorage.getItem('black_sword_google_login_requested') === 'true') {
                 this.subscribe();
                 this.updateIndicators();
-                this.client.auth.onAuthStateChange(async (_event, newSession) => {
-                    try {
-                        if (!newSession) return;
-                        this.user = newSession.user;
-                        await this.loadProfile().catch(() => {});
-                        await this.refreshIdentityStatus();
-                        this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
-                        await this.cacheCloudSave().catch(() => {});
-                        this.updateIndicators();
-                        if (window.Game?.state?.player) this.saveGame(window.Game.getCloudData());
-                    } catch (authListenerError) { console.warn('Auth listener issue:', authListenerError?.message); }
-                });
+                this.registerAuthListener();
                 await this.welcomeSignedInPlayer().catch(e => this.onboardingFallback(e));
                 return;
             }
             await this.cacheCloudSave();
             this.subscribe();
             this.updateIndicators();
-            this.client.auth.onAuthStateChange(async (_event, newSession) => {
-                try {
-                    if (!newSession) return;
-                    this.user = newSession.user;
-                    await this.loadProfile().catch(() => {});
-                    await this.refreshIdentityStatus();
-                    this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
-                    await this.cacheCloudSave().catch(() => {});
-                    this.updateIndicators();
-                    if (window.Game?.state?.player) this.saveGame(window.Game.getCloudData());
-                } catch (authListenerError) { console.warn('Auth listener issue:', authListenerError?.message); }
-            });
+            this.registerAuthListener();
         } catch (error) {
             console.error('Online initialization failed:', error);
             this.status = error.message?.toLowerCase().includes('anonymous')
@@ -107,6 +89,33 @@ const OnlineSystem = {
             this.ensureLocalCode();
             this.updateIndicators();
         }
+    },
+
+    registerAuthListener() {
+        if(!this.client||this._authListenerClient===this.client)return;
+        this._authListenerClient=this.client;
+        this.client.auth.onAuthStateChange(async(event,newSession)=>{
+            try{
+                if(!newSession?.user)return;
+                const previousUserId=this.user?.id;
+                const accountChanged=Boolean(previousUserId&&previousUserId!==newSession.user.id);
+                if(accountChanged)this.authRevision++;
+                this.user=newSession.user;
+                await this.loadProfile().catch(()=>{});
+                await this.refreshIdentityStatus();
+                this.status=this.linked?'Online — Google linked':'Online guest — link Google for social actions';
+                // The explicit Google credential/welcome flow owns restore and
+                // navigation. A second auth-listener restore must not pull the
+                // player back to the roster after auto-continue.
+                if(this._googleAuthCallback||this._googleWelcomeInFlight||localStorage.getItem('black_sword_google_login_requested')==='true'){
+                    this.updateIndicators();
+                    return;
+                }
+                await this.cacheCloudSave(accountChanged&&event==='SIGNED_IN').catch(()=>{});
+                this.updateIndicators();
+                if(window.Game?.state?.player)this.saveGame(window.Game.getCloudData());
+            }catch(authListenerError){console.warn('Auth listener issue:',authListenerError?.message||authListenerError);}
+        });
     },
 
     defaultDisplayName() {
@@ -224,15 +233,35 @@ const OnlineSystem = {
         if (retry < 10) setTimeout(() => this.syncActiveHero(retry + 1), 500);
     },
 
-    async checkHeroNameAvailability(name,slot=null) {
+    cancelHeroNameChecks() {
+        clearTimeout(this.nameCheckTimer);
+        this.nameCheckTimer=null;
+        this.nameCheckRequest++;
+        this.heroNameAvailable=null;
+    },
+    async checkHeroNameAvailability(name,slot=null,request=null) {
         const status=document.getElementById('hero-name-status'),clean=name.trim();
-        if(clean.length<2){this.heroNameAvailable=null;if(status){status.textContent='Enter at least two characters.';status.className='name-status';}return false;}
-        if(!this.ready){this.heroNameAvailable=false;if(status){status.textContent='Connect online to reserve a multiplayer hero name.';status.className='name-status unavailable';}return false;}
-        const {data,error}=await this.client.rpc('hero_name_available',{desired_name:clean,current_slot:slot});
-        if(error){this.heroNameAvailable=false;if(status){status.textContent='Name check unavailable. Run the latest database migration.';status.className='name-status unavailable';}return false;}
+        const currentRequest=request??++this.nameCheckRequest;
+        const isCurrent=()=>currentRequest===this.nameCheckRequest;
+        if(clean.length<2){if(isCurrent()){this.heroNameAvailable=null;if(status){status.textContent='Enter at least two characters.';status.className='name-status';}}return false;}
+        if(!this.ready){if(isCurrent()){this.heroNameAvailable=false;if(status){status.textContent='Connect online to reserve a multiplayer hero name.';status.className='name-status unavailable';}}return false;}
+        let result;
+        try{result=await this.client.rpc('hero_name_available',{desired_name:clean,current_slot:slot});}
+        catch(error){result={data:null,error};}
+        // Network responses can arrive in any order. Only the newest typed name
+        // and newest creation form may enable Begin Adventure.
+        if(!isCurrent())return false;
+        const {data,error}=result;
+        if(error){this.heroNameAvailable=false;if(status){status.textContent='Name check unavailable. Check your connection and try again.';status.className='name-status unavailable';}window.Game?.updateCharButton?.();return false;}
         this.heroNameAvailable=Boolean(data);if(status){status.textContent=data?'Name is available.':'The name already exists. Please choose another name.';status.className=`name-status ${data?'available':'unavailable'}`;}window.Game?.updateCharButton?.();return Boolean(data);
     },
-    scheduleHeroNameCheck(name,slot=null){clearTimeout(this.nameCheckTimer);this.heroNameAvailable=null;this.nameCheckTimer=setTimeout(()=>this.checkHeroNameAvailability(name,slot),300);},
+    scheduleHeroNameCheck(name,slot=null){
+        clearTimeout(this.nameCheckTimer);
+        const request=++this.nameCheckRequest;
+        this.heroNameAvailable=null;
+        window.Game?.updateCharButton?.();
+        this.nameCheckTimer=setTimeout(()=>this.checkHeroNameAvailability(name,slot,request),300);
+    },
     async reserveHeroName(name,slot){if(!this.ready)return{ok:false,error:'Online connection is required to reserve a multiplayer name.'};const {error}=await this.client.rpc('reserve_hero_name',{desired_name:name.trim(),target_slot:slot});return error?{ok:false,error:error.message,migration:/reserve_hero_name|schema cache|function/i.test(error.message||'')}:{ok:true};},
     async releaseHeroName(slot){if(this.ready&&slot)await this.client.rpc('release_hero_name',{target_slot:slot});},
 
@@ -248,11 +277,41 @@ const OnlineSystem = {
         window.Game?.addNarrative?.(`Player ID copied: ${code}`, 'system');
     },
 
+    localHeroCount() {
+        try{return Object.keys(window.Game?.getRoster?.().heroes||{}).length;}catch{return 0;}
+    },
+
+    shouldMergeGuestHeroes() {
+        if(this.linked||this.localHeroCount()<1)return false;
+        try{
+            // Heroes downloaded from another owned account must not leak into a
+            // different Google account on a shared device. Ordinary guest heroes
+            // are preserved automatically when their owner first signs in.
+            return localStorage.getItem('black_sword_roster_was_linked')!=='true'
+                &&localStorage.getItem('black_sword_recovered_by_id')!=='true';
+        }catch{return true;}
+    },
+
+    prepareGoogleMerge() {
+        if(!window.Game)return false;
+        const snapshot=window.Game.getCloudData();
+        if(!snapshot?.heroes||!Object.keys(snapshot.heroes).length)return false;
+        localStorage.setItem('black_sword_pending_google_merge',JSON.stringify(snapshot));
+        localStorage.setItem('black_sword_merge_requested','true');
+        return true;
+    },
+
+    clearGoogleFlow({ keepPending = false } = {}) {
+        localStorage.removeItem('black_sword_google_login_requested');
+        localStorage.removeItem('black_sword_merge_requested');
+        if(!keepPending)localStorage.removeItem('black_sword_pending_google_merge');
+    },
+
     async signInGoogle() {
         if (!this.client) await this.init();
         if (!this.client) { this.status='Online service is not connected.'; this.updateIndicators(); return; }
         if(this.linked){localStorage.setItem('black_sword_google_login_requested','true');this.status=`Restoring ${this.profile?.display_name||'your Google account'} heroes…`;this.updateIndicators();await this.cacheCloudSave(true);return;}
-        this.openGoogleDialog(false);
+        this.openGoogleDialog(this.shouldMergeGuestHeroes());
     },
 
     // App mode: the APK wrapper loads the game with ?source=app. In app mode we
@@ -343,12 +402,13 @@ const OnlineSystem = {
         const status=document.getElementById('google-login-status');
         if(status)status.textContent='Opening secure Google sign-in…';
         try{
-            if(merge&&window.Game?.state?.player){
-                localStorage.setItem('black_sword_pending_google_merge',JSON.stringify(window.Game.getCloudData()));
-                localStorage.setItem('black_sword_merge_requested','true');
-            }
+            if(merge)this.prepareGoogleMerge();
             localStorage.setItem('black_sword_google_login_requested','true');
-            const back=new URL(location.origin+'/');
+            // Preserve the actual deployment path (GitHub Pages is not hosted at
+            // the domain root) and strip any previous OAuth response parameters.
+            const back=new URL(location.href);
+            back.hash='';
+            for(const key of [...back.searchParams.keys()])back.searchParams.delete(key);
             back.searchParams.set('source','app');
             const {error}=await this.client.auth.signInWithOAuth({
                 provider:'google',
@@ -356,8 +416,7 @@ const OnlineSystem = {
             });
             if(error)throw error;
         }catch(e){
-            localStorage.removeItem('black_sword_google_login_requested');
-            localStorage.removeItem('black_sword_merge_requested');
+            this.clearGoogleFlow();
             if(status)status.textContent=`Could not open Google sign-in: ${e.message||'network error'}. Tap the button to try again — guest progress is safe.`;
         }
     },
@@ -390,21 +449,19 @@ const OnlineSystem = {
             const message = 'This is a temporary preview address, so Google sign-in cannot work here. '
                 + 'Open the main game at https://black-sold-ultimate.vercel.app and sign in there. '
                 + 'Your heroes are safe.';
-            const status = document.getElementById('google-signin-status');
-            if (status) status.textContent = message;
+            document.querySelectorAll('#google-login-status,#google-signin-status').forEach(status=>{status.textContent=message;});
             window.Game?.addNarrative?.(message, 'system');
             return;
         }
         setTimeout(() => {
             const rendered = document.getElementById('google-signin-render');
-            const status = document.getElementById('google-signin-status');
             // A blocked origin renders no button at all.
             if (!rendered || rendered.children.length > 0) return;
             const message = `Google sign-in is blocked for this address (${location.origin}). `
                 + 'The site owner must add this exact address to the Authorized JavaScript origins '
                 + 'of the OAuth client in Google Cloud Console. You can still play as a guest, '
                 + 'or sign in with your Player ID and PIN.';
-            if (status) status.textContent = message;
+            document.querySelectorAll('#google-login-status,#google-signin-status').forEach(status=>{status.textContent=message;});
             window.Game?.addNarrative?.(message, 'system');
             console.warn('Google origin not authorized:', location.origin);
         }, 2500);
@@ -418,29 +475,44 @@ const OnlineSystem = {
         const status=document.getElementById('google-login-status');
         const say=(msg)=>{ if(status)status.textContent=msg; };
         if(!response?.credential){say('Google did not return an identity token. Please tap the Google button again — your guest progress is safe.');return;}
-        say('Google verified. Preparing your adventure…');
-        if(this.googleMergeRequested&&window.Game?.state?.player){localStorage.setItem('black_sword_pending_google_merge',JSON.stringify(window.Game.getCloudData()));localStorage.setItem('black_sword_merge_requested','true');}
-        localStorage.setItem('black_sword_google_login_requested','true');
-        let data,error;
-        try{({data,error}=await this.client.auth.signInWithIdToken({provider:'google',token:response.credential}));}
-        catch(e){data=null;error=e;}
-        if(error||!data?.user){
-            localStorage.removeItem('black_sword_google_login_requested');
-            localStorage.removeItem('black_sword_merge_requested');
-            say(`Google sign-in could not finish: ${error?.message||'network error — check your connection'} . Tap the Google button to try again; your guest progress is safe.`);
-            return;
-        }
-        this.user=data.user;this.linked=true;this.ready=true;
-        document.getElementById('google-login-panel')?.classList.add('hidden');
-        // 20-second watchdog: cloud hiccups can never strand a blind player.
-        const finish=this.welcomeSignedInPlayer().catch(e=>{console.warn('Welcome flow issue:',e);this.onboardingFallback(e);});
-        await Promise.race([finish,new Promise(resolve=>setTimeout(resolve,20000))]);
+        if(this._googleAuthCallback){say('Google sign-in is already finishing. Please wait.');return;}
+        this._googleAuthCallback=true;
+        try{
+            say('Google verified. Preparing your adventure…');
+            if(this.googleMergeRequested)this.prepareGoogleMerge();
+            localStorage.setItem('black_sword_google_login_requested','true');
+            let data,error;
+            try{({data,error}=await this.client.auth.signInWithIdToken({provider:'google',token:response.credential}));}
+            catch(e){data=null;error=e;}
+            if(error||!data?.user){
+                this.clearGoogleFlow();
+                say(`Google sign-in could not finish: ${error?.message||'network error — check your connection'}. Tap the Google button to try again; your guest progress is safe.`);
+                return;
+            }
+            if(this.user?.id!==data.user.id)this.authRevision++;
+            this.user=data.user;this.linked=true;this.ready=true;
+            document.getElementById('google-login-panel')?.classList.add('hidden');
+            // 20-second watchdog: cloud hiccups can never strand a blind player.
+            const finish=this.welcomeSignedInPlayer().catch(e=>{console.warn('Welcome flow issue:',e);this.onboardingFallback(e);});
+            let watchdog;
+            await Promise.race([finish,new Promise(resolve=>{watchdog=setTimeout(resolve,20000);})]);
+            clearTimeout(watchdog);
+        }finally{this._googleAuthCallback=false;}
     },
 
-    // Greet the player the moment Google sign-in succeeds.
-    // New Google account → straight to hero creation (name → race → class).
-    // Returning Google account → "You signed in again. Thank you." + auto-continue.
+    // Greet the player the moment Google sign-in succeeds. Auth callbacks and
+    // the credential callback can arrive together; only one welcome/restore may
+    // control the screen and active hero.
     async welcomeSignedInPlayer() {
+        if(this._welcomePromise)return this._welcomePromise;
+        this._googleWelcomeInFlight=true;
+        const run=this.performSignedInWelcome();
+        this._welcomePromise=run;
+        try{return await run;}
+        finally{this._welcomePromise=null;this._googleWelcomeInFlight=false;}
+    },
+
+    async performSignedInWelcome() {
         try{await this.loadProfile();}
         catch(profileError){console.warn('Profile read failed, creating one:',profileError?.message);await this.ensureProfileRow().catch(()=>{});}
         let rosterInfo={heroes:{},activeHeroId:null,restoredCount:0};
@@ -461,7 +533,9 @@ const OnlineSystem = {
             const heroName=active?.player?.name||this.profile?.display_name||'hero';
             this.status=`Online — Google linked; welcome back, ${heroName}`;
             this.announceToPlayer(wasMerging
-                ?`Your guest heroes were merged into your Google account. Welcome back, ${heroName}. Taking you into the adventure…`
+                ?(rosterInfo.mergeSynced===false
+                    ?`Your guest heroes are merged on this device, but cloud confirmation failed. Keep the game online and use Save to Cloud. Welcome back, ${heroName}.`
+                    :`Your guest heroes were merged into your Google account. Welcome back, ${heroName}. Taking you into the adventure…`)
                 :`You signed in again. Thank you! Welcome back, ${heroName}. Taking you into the adventure…`);
             const heroId=rosterInfo.activeHeroId&&rosterInfo.heroes[rosterInfo.activeHeroId]?rosterInfo.activeHeroId:Object.keys(rosterInfo.heroes)[0];
             this.updateIndicators();
@@ -515,6 +589,24 @@ const OnlineSystem = {
         catch{this.profile={id:this.user.id,player_code:code,display_name:this.defaultDisplayName(),level:1,current_location:'Kaliwasch City'};}
     },
 
+    mergeRosterSnapshots(cloudRoster,pending) {
+        const merged={...cloudRoster,version:2,activeHeroId:pending.activeHeroId,heroes:{...(cloudRoster.heroes||{})}};
+        for(const [id,hero] of Object.entries(pending.heroes||{})){
+            let target=id;
+            const existing=merged.heroes[target];
+            // Retrying after an uncertain network result is idempotent: the same
+            // guest slot is not duplicated under a fresh generated ID.
+            if(existing&&JSON.stringify(existing)===JSON.stringify(hero)){
+                if(id===pending.activeHeroId)merged.activeHeroId=target;
+                continue;
+            }
+            while(merged.heroes[target])target=`guest_${Date.now().toString(36)}_${target}`;
+            merged.heroes[target]=hero;
+            if(id===pending.activeHeroId)merged.activeHeroId=target;
+        }
+        return merged;
+    },
+
     // Fetch the cloud roster, apply a pending guest merge, persist locally.
     // Throws on real network failure so callers can pick the fallback path.
     async restoreRosterFromCloud() {
@@ -523,24 +615,31 @@ const OnlineSystem = {
         let roster=payload?.heroes?payload:(payload?.player?{version:2,activeHeroId:'hero_cloud_legacy',heroes:{hero_cloud_legacy:payload}}:{version:2,activeHeroId:null,heroes:{}});
         const mergeRequested=localStorage.getItem('black_sword_merge_requested')==='true';
         let pending=null;try{pending=JSON.parse(localStorage.getItem('black_sword_pending_google_merge'));}catch{}
+        let mergeSynced=true;
         if(mergeRequested&&pending?.heroes){
-            const merged={version:2,activeHeroId:pending.activeHeroId,heroes:{...roster.heroes}};
-            Object.entries(pending.heroes).forEach(([id,hero])=>{let target=id;while(merged.heroes[target])target=`guest_${Date.now().toString(36)}_${target}`;merged.heroes[target]=hero;if(id===pending.activeHeroId)merged.activeHeroId=target;});
-            roster=merged;localStorage.removeItem('black_sword_merge_requested');localStorage.removeItem('black_sword_pending_google_merge');
+            roster=this.mergeRosterSnapshots(roster,pending);
+            mergeSynced=await this.saveGame(roster);
+            if(mergeSynced){
+                localStorage.removeItem('black_sword_merge_requested');
+                localStorage.removeItem('black_sword_pending_google_merge');
+            }
             localStorage.setItem('black_sword_merged_this_login','true');
         }
         localStorage.removeItem('black_sword_google_login_requested');
         const restoredCount=Object.keys(roster.heroes||{}).length;
         if(restoredCount>0){
             if(!roster.activeHeroId||!roster.heroes[roster.activeHeroId])roster.activeHeroId=Object.keys(roster.heroes)[0];
-            localStorage.setItem(window.Game.state.rosterKey,JSON.stringify(roster));
+            window.Game.storeRoster(roster,{touch:false});
             localStorage.setItem(window.Game.state.saveKey,JSON.stringify(roster.heroes[roster.activeHeroId]));
+            // The previously loaded account must be unloaded before playHero;
+            // otherwise its outgoing-save protection could overwrite this cloud slot.
+            window.Game.resetHeroRuntime();
             window.Game.state.activeHeroId=roster.activeHeroId;
+            try{localStorage.setItem('black_sword_roster_was_linked',this.linked?'true':'false');}catch{}
             const active=roster.heroes[roster.activeHeroId];
             if(active?.player?.name){this.profile=this.profile||{};this.profile.display_name=active.player.name;this.client.from('profiles').update({display_name:active.player.name,level:active.player.level||1,last_seen:new Date().toISOString()}).eq('id',this.user.id).then(()=>{});}
-            if(mergeRequested)await this.saveGame(roster);
         }
-        return {heroes:roster.heroes||{},activeHeroId:roster.activeHeroId||null,restoredCount};
+        return {heroes:roster.heroes||{},activeHeroId:roster.activeHeroId||null,restoredCount,mergeSynced};
     },
 
     async mergeWithGoogle() {
@@ -610,11 +709,15 @@ const OnlineSystem = {
         }
     },
 
-    async signOut() {
-        if (!this.client) return;
-        await this.client.auth.signOut();
-        this.ready = false; this.user = null; this.profile = null; this.linked = false;
-        location.reload();
+    async signOut({ reload = true, flush = true } = {}) {
+        if(flush)await Promise.race([this.flushCloudSaves(),new Promise(resolve=>setTimeout(resolve,5000))]);
+        try{await this.client?.auth?.signOut?.({scope:'local'});}
+        catch(error){console.warn('Sign-out cleanup warning:',error?.message||error);}
+        this.authRevision++;
+        this.ready=false;this.user=null;this.profile=null;this.linked=false;
+        this.clearGoogleFlow();
+        try{localStorage.removeItem('black_sword_recovered_by_id');}catch{}
+        if(reload)location.reload();
     },
 
     requireLinked(action) {
@@ -624,13 +727,47 @@ const OnlineSystem = {
         return false;
     },
 
-    async saveGame(saveData) {
-        if (!this.ready || !this.user || !saveData) return;
-        const { error } = await this.client.from('game_saves').upsert({
-            user_id: this.user.id, save_data: saveData, updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-        if (error) console.warn('Cloud save failed:', error.message);
-        else this.updatePresence();
+    saveGame(saveData) {
+        if (!this.ready || !this.user || !saveData || !this.client) return Promise.resolve(false);
+        const userId=this.user.id;
+        const authRevision=this.authRevision;
+        const client=this.client;
+        let snapshot;
+        try{snapshot=JSON.parse(JSON.stringify(saveData));}
+        catch(error){console.warn('Cloud save could not be serialized:',error?.message||error);return Promise.resolve(false);}
+        // Supabase requests do not necessarily finish in invocation order. A
+        // per-account chain prevents an old create/switch/delete snapshot from
+        // overwriting the newest roster. Account IDs are captured up front so a
+        // queued guest save can never be written into a newly selected account.
+        const previous=this.cloudSaveChains.get(userId)||Promise.resolve();
+        const task=previous.catch(()=>false).then(async()=>{
+            if(this.user?.id!==userId||this.client!==client||this.authRevision!==authRevision)return false;
+            try{
+                const {error}=await client.from('game_saves').upsert({
+                    user_id:userId,save_data:snapshot,updated_at:new Date().toISOString()
+                },{onConflict:'user_id'});
+                if(error){console.warn('Cloud save failed:',error.message);return false;}
+                // Keep the optional Player ID + PIN recovery copy in the same
+                // ordered transaction sequence. Missing legacy RPCs or an
+                // unconfigured PIN never turn a successful cloud save into an
+                // unhandled rejection.
+                if(typeof client.rpc==='function'){
+                    try{await client.rpc('update_recovery_save',{current_save:snapshot});}catch{}
+                }
+                try{localStorage.setItem('black_sword_roster_was_linked',this.linked?'true':'false');}catch{}
+                if(this.user?.id===userId&&this.client===client&&this.authRevision===authRevision)await this.updatePresence().catch(()=>{});
+                return true;
+            }catch(error){console.warn('Cloud save failed:',error?.message||error);return false;}
+        });
+        this.cloudSaveChains.set(userId,task);
+        task.finally(()=>{if(this.cloudSaveChains.get(userId)===task)this.cloudSaveChains.delete(userId);});
+        return task;
+    },
+
+    async flushCloudSaves() {
+        const id=this.user?.id;
+        const pending=id?this.cloudSaveChains.get(id):null;
+        if(pending)await pending.catch(()=>false);
     },
 
     async loadCloudSave() {
@@ -641,54 +778,76 @@ const OnlineSystem = {
     },
 
     async cacheCloudSave(forceRestore = false) {
-        if (!this.ready || !window.Game) return;
+        if (!this.ready || !window.Game) return false;
         try {
             const loginRequested=forceRestore||localStorage.getItem('black_sword_google_login_requested')==='true';
-            const cloud = await this.loadCloudSave();
-            const payload = cloud?.save_data;
-            let roster = payload?.heroes ? payload : (payload?.player ? { version:2, activeHeroId:'hero_cloud_legacy', heroes:{ hero_cloud_legacy:payload } } : { version:2, activeHeroId:null, heroes:{} });
-            const mergeRequested = localStorage.getItem('black_sword_merge_requested') === 'true';
-            let pending = null;
-            try { pending = JSON.parse(localStorage.getItem('black_sword_pending_google_merge')); } catch {}
-            if (mergeRequested && pending?.heroes) {
-                const merged = { version:2, activeHeroId:pending.activeHeroId, heroes:{...roster.heroes} };
-                Object.entries(pending.heroes).forEach(([id,hero]) => {
-                    let target=id; while(merged.heroes[target]) target=`guest_${Date.now().toString(36)}_${target}`;
-                    merged.heroes[target]=hero; if(id===pending.activeHeroId) merged.activeHeroId=target;
-                });
-                roster=merged; localStorage.removeItem('black_sword_merge_requested'); localStorage.removeItem('black_sword_pending_google_merge');
-                await this.saveGame(roster); this.status=`Online — Google linked; guest heroes merged successfully`;
+            const localRoster=window.Game.getRoster();
+            const localCount=Object.keys(localRoster.heroes||{}).length;
+            const cloud=await this.loadCloudSave();
+            const payload=cloud?.save_data;
+            let roster=payload?.heroes?payload:(payload?.player?{version:2,activeHeroId:'hero_cloud_legacy',heroes:{hero_cloud_legacy:payload}}:{version:2,activeHeroId:null,heroes:{}});
+            let mergeRequested=localStorage.getItem('black_sword_merge_requested')==='true';
+            let pending=null;try{pending=JSON.parse(localStorage.getItem('black_sword_pending_google_merge'));}catch{}
+            if(mergeRequested&&!pending?.heroes){localStorage.removeItem('black_sword_merge_requested');mergeRequested=false;}
+            if(mergeRequested){
+                roster=this.mergeRosterSnapshots(roster,pending);
+                const synced=await this.saveGame(roster);
+                if(synced){localStorage.removeItem('black_sword_merge_requested');localStorage.removeItem('black_sword_pending_google_merge');}
+                this.status=synced?'Online — Google linked; guest heroes merged successfully':'Guest heroes are merged locally; cloud confirmation failed';
             }
-            if (!Object.keys(roster.heroes || {}).length) {
+            const restoredCount=Object.keys(roster.heroes||{}).length;
+            if(!restoredCount){
                 localStorage.removeItem('black_sword_google_login_requested');
-                this.status=this.linked?'Google account connected; no cloud heroes were found. Create the first hero.':'No cloud heroes were found.';
-                this.updateHeroEntryPoints(false);this.updateIndicators();return;
-            }
-            if (!window.Game.state.player || mergeRequested || loginRequested) {
-                localStorage.setItem(window.Game.state.rosterKey, JSON.stringify(roster));
-                const active = roster.heroes[roster.activeHeroId] || Object.values(roster.heroes)[0];
-                if (active) {
-                    localStorage.setItem(window.Game.state.saveKey, JSON.stringify(active));
-                    if (active.player?.name) {
-                        this.profile.display_name = active.player.name;
-                        this.client.from('profiles').update({ display_name:active.player.name, level:active.player.level||1, last_seen:new Date().toISOString() }).eq('id',this.user.id).then(()=>{});
-                    }
+                if(localCount&&!loginRequested){
+                    // An empty cloud row must not disable or erase an existing
+                    // local roster. Repair the empty backup in serialized order.
+                    this.status='Online — local heroes kept; repairing the empty cloud save';
+                    this.updateHeroEntryPoints(true);this.updateIndicators();
+                    await this.saveGame(localRoster);
+                }else{
+                    this.status=this.linked?'Google account connected; no cloud heroes were found. Create the first hero.':'No cloud heroes were found.';
+                    this.updateHeroEntryPoints(localCount>0);this.updateIndicators();
                 }
-                window.Game.state.activeHeroId=roster.activeHeroId;
-                if(loginRequested){window.Game.state.player=null;window.Game.state.inCombat=false;window.Game.state.enemy=null;}
-                this.updateHeroEntryPoints(true);
-                if(!mergeRequested)this.status=`Online — Google linked; restored ${Object.keys(roster.heroes).length} cloud hero${Object.keys(roster.heroes).length===1?'':'es'}`;
-                localStorage.removeItem('black_sword_google_login_requested');
-                this.updateIndicators();
-                if(loginRequested||forceRestore)window.Game.showHeroRoster();
+                return false;
             }
-        } catch (error) { localStorage.removeItem('black_sword_google_login_requested');this.status=`Cloud restore failed: ${error.message}`;this.updateIndicators();console.warn('Cloud restore check failed:', error.message); }
+            if(!roster.activeHeroId||!roster.heroes[roster.activeHeroId])roster.activeHeroId=Object.keys(roster.heroes)[0]||null;
+            const localTime=Date.parse(localRoster.updatedAt||'')||0;
+            const cloudTime=Date.parse(payload?.updatedAt||cloud?.updated_at||'')||0;
+            const cloudIsNewer=localTime>0&&cloudTime>localTime;
+            const shouldApply=Boolean(mergeRequested||loginRequested||!localCount||(cloudIsNewer&&!window.Game.state.player));
+            if(!shouldApply){this.updateHeroEntryPoints(true);this.updateIndicators();return true;}
+
+            window.Game.storeRoster(roster,{touch:false});
+            const active=roster.heroes[roster.activeHeroId];
+            if(loginRequested)window.Game.resetHeroRuntime();
+            window.Game.state.activeHeroId=roster.activeHeroId;
+            localStorage.setItem(window.Game.state.saveKey,JSON.stringify(active));
+            try{localStorage.setItem('black_sword_roster_was_linked',this.linked?'true':'false');}catch{}
+            if(active?.player?.name){
+                this.profile=this.profile||{};
+                this.profile.display_name=active.player.name;
+                this.client.from('profiles').update({display_name:active.player.name,level:active.player.level||1,last_seen:new Date().toISOString()}).eq('id',this.user.id).then(()=>{});
+            }
+            this.updateHeroEntryPoints(true);
+            if(!mergeRequested)this.status=`Online — Google linked; restored ${restoredCount} cloud hero${restoredCount===1?'':'es'}`;
+            localStorage.removeItem('black_sword_google_login_requested');
+            this.updateIndicators();
+            if(loginRequested||forceRestore)window.Game.showHeroRoster();
+            return true;
+        }catch(error){
+            localStorage.removeItem('black_sword_google_login_requested');
+            this.status=`Cloud restore failed: ${error?.message||'connection failed'}`;
+            this.updateIndicators();console.warn('Cloud restore check failed:',error?.message||error);
+            return false;
+        }
     },
 
     updateHeroEntryPoints(hasRoster = null) {
-        let rosterCount=0;try{rosterCount=Object.keys(window.Game?.getRoster?.().heroes||{}).length;}catch{}
-        const available=hasRoster===null?rosterCount>0:Boolean(hasRoster);
-        const protectedRoster=available&&(this.linked||localStorage.getItem('black_sword_recovered_by_id')==='true');
+        let roster={heroes:{},activeHeroId:null};try{roster=window.Game?.getRoster?.()||roster;}catch{}
+        const rosterCount=Object.keys(roster.heroes||{}).length;
+        const activeAvailable=Boolean(roster.activeHeroId&&roster.heroes[roster.activeHeroId]);
+        const available=hasRoster===false?false:activeAvailable;
+        const protectedRoster=rosterCount>0&&(this.linked||localStorage.getItem('black_sword_recovered_by_id')==='true');
         const newButton=document.getElementById('btn-new');if(newButton)newButton.hidden=protectedRoster;
         const continueButton=document.getElementById('btn-continue');if(continueButton)continueButton.disabled=!available;
         const heroesButton=document.getElementById('btn-heroes');if(heroesButton)heroesButton.hidden=false;

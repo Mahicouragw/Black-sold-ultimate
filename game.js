@@ -38,7 +38,9 @@ const Game = {
         saveKey: 'black_sword_ultimate_save',
         rosterKey: 'black_sword_hero_roster_v2',
         activeHeroId: null,
-        pendingHeroId: null
+        pendingHeroId: null,
+        creatingHero: false,
+        creationRequest: 0
     },
 
     // ============================================
@@ -66,8 +68,21 @@ const Game = {
     getRoster() {
         let roster;
         try { roster = JSON.parse(localStorage.getItem(this.state.rosterKey)); } catch { roster = null; }
-        if (!roster?.heroes) roster = { version: 2, activeHeroId: null, heroes: {} };
-        // Migrate the original one-hero save without deleting it.
+        if (!roster || typeof roster !== 'object' || Array.isArray(roster)) roster = {};
+        const source = roster.heroes && typeof roster.heroes === 'object' && !Array.isArray(roster.heroes) ? roster.heroes : {};
+        const heroes = {};
+        for (const [id, data] of Object.entries(source)) {
+            if (id && data && typeof data === 'object' && !Array.isArray(data)) heroes[id] = data;
+        }
+        roster = {
+            ...roster,
+            version: 2,
+            activeHeroId: typeof roster.activeHeroId === 'string' && heroes[roster.activeHeroId] ? roster.activeHeroId : null,
+            heroes
+        };
+        // Migrate the original one-hero save without deleting it. An active ID is
+        // never guessed here: after deleting a hero the player explicitly chooses
+        // which remaining hero to play.
         const legacy = localStorage.getItem(this.state.saveKey);
         if (!Object.keys(roster.heroes).length && legacy) {
             try {
@@ -82,11 +97,96 @@ const Game = {
         return roster;
     },
 
-    storeRoster(roster) {
-        localStorage.setItem(this.state.rosterKey, JSON.stringify(roster));
+    storeRoster(roster, { touch = true } = {}) {
+        const stored = {
+            ...roster,
+            version: 2,
+            activeHeroId: roster?.activeHeroId && roster?.heroes?.[roster.activeHeroId] ? roster.activeHeroId : null,
+            heroes: roster?.heroes && typeof roster.heroes === 'object' ? roster.heroes : {}
+        };
+        if (touch) {
+            stored.revision = Math.max(0, Number(roster?.revision) || 0) + 1;
+            stored.updatedAt = new Date().toISOString();
+        }
+        localStorage.setItem(this.state.rosterKey, JSON.stringify(stored));
+        return stored;
+    },
+
+    // Clear every per-hero runtime field before creating or loading another slot.
+    // Global preferences (audio, interface and save keys) deliberately survive.
+    resetHeroRuntime() {
+        Object.assign(this.state, {
+            player: null,
+            players: [],
+            currentPlayer: 0,
+            isMultiplayer: false,
+            location: 'kaliwasch',
+            inCombat: false,
+            enemy: null,
+            encounterTargets: [],
+            encounterGroupNames: [],
+            combatTransition: false,
+            randomEncounterPending: false,
+            battleSummary: null,
+            battlePrayerUsed: false,
+            convertedFoe: null,
+            arena: null,
+            inventory: [],
+            quests: [],
+            completedQuests: [],
+            visited: ['kaliwasch'],
+            kills: 0,
+            slainEnemies: {},
+            defending: false,
+            friends: [],
+            friendRequests: [],
+            companions: [],
+            messages: [],
+            guild: null,
+            combatGroup: [],
+            racing: null,
+            sacred: null,
+            parity: null,
+            housing: null,
+            fishing: null,
+            artifacts: null,
+            spellMastery: {},
+            doors: null,
+            spellCooldowns: {},
+            specialDoors: {},
+            economy: null,
+            regeneration: null,
+            achievements: [],
+            achievementStats: { arenaWinsTotal: 0 }
+        });
+    },
+
+    // Persist the outgoing hero under its own stable ID. Missing/deleted slots are
+    // never recreated by a late save from an old screen.
+    saveActiveHeroLocally() {
+        const roster = this.getRoster();
+        const id = this.state.activeHeroId;
+        if (!id || !this.state.player || !roster.heroes[id]) return roster;
+        const data = this.getSaveData();
+        roster.activeHeroId = id;
+        roster.heroes[id] = data;
+        const stored = this.storeRoster(roster);
+        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
+        return stored;
     },
 
     startNewHero() {
+        // Leaving a loaded hero for the creation screen is a suspension, not a
+        // switch. Save it first and prevent old combat/timers from writing back.
+        const hadLoadedHero = Boolean(this.state.player && this.state.activeHeroId);
+        const outgoing = this.saveActiveHeroLocally();
+        if (hadLoadedHero) window.OnlineSystem?.saveGame?.(outgoing);
+        window.OnlineSystem?.cancelHeroNameChecks?.();
+        this.state.creationRequest++;
+        this.resetHeroRuntime();
+        this.state.activeHeroId = null;
+        this.state.creatingHero = false;
+        localStorage.removeItem(this.state.saveKey);
         // No application/UI roster cap. The backend still owns authentication,
         // payload, rate, and resource protections for cloud saves and names.
         this.state.pendingHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
@@ -94,6 +194,7 @@ const Game = {
         OnlineSystem.heroNameAvailable=null;const nameStatus=document.getElementById('hero-name-status');if(nameStatus){nameStatus.textContent='Enter at least two characters.';nameStatus.className='name-status';}
         document.querySelectorAll('.race-btn,.class-btn').forEach(b => b.classList.remove('selected'));
         document.getElementById('btn-begin').disabled = true;
+        document.getElementById('btn-begin').removeAttribute('aria-busy');
         this.updateCharacterPreview();
         this.showScreen('char-screen');
     },
@@ -130,15 +231,25 @@ const Game = {
     },
 
     playHero(id) {
-        const roster = this.getRoster(),data=roster.heroes[id];
-        if (!data) return;
+        let roster = this.getRoster();
+        if (!roster.heroes[id]) return false;
+        // Capture the outgoing slot before changing activeHeroId. This is local;
+        // one final cloud snapshot below records both the progress and selection.
+        if (this.state.player && this.state.activeHeroId) this.saveActiveHeroLocally();
+        roster = this.getRoster();
+        const data = roster.heroes[id];
+        if (!data?.player) return false;
         // Migrate previously fallen Hardcore heroes into the new temple-revival system.
-        if(data.player?.permadead){data.player.permadead=false;data.player.pendingTempleRevival=true;data.player.hp=0;data.location='grand_temple';}
+        if(data.player.permadead){data.player.permadead=false;data.player.pendingTempleRevival=true;data.player.hp=0;data.location='grand_temple';}
         roster.activeHeroId = id;
         this.storeRoster(roster);
         this.state.activeHeroId = id;
+        this.state.pendingHeroId = null;
         localStorage.setItem(this.state.saveKey, JSON.stringify(data));
-        this.continueGame();
+        const loaded = this.continueGame();
+        if (loaded === false) return false;
+        window.OnlineSystem?.saveGame?.(this.getRoster());
+        return true;
     },
 
     async renameActiveHero(name) {
@@ -150,15 +261,43 @@ const Game = {
 
     deleteHero(id) {
         const roster=this.getRoster(),hero=roster.heroes[id];
-        if(!hero)return;
+        if(!hero)return false;
         const name=hero.player?.name||'this hero';
-        if(!confirm(`Permanently delete ${name} (hero ID ${id})? This cannot be undone.`))return;
-        delete roster.heroes[id];window.OnlineSystem?.releaseHeroName(id);
-        if(roster.activeHeroId===id)roster.activeHeroId=Object.keys(roster.heroes)[0]||null;
-        this.storeRoster(roster);this.state.activeHeroId=roster.activeHeroId;
-        if(roster.activeHeroId)localStorage.setItem(this.state.saveKey,JSON.stringify(roster.heroes[roster.activeHeroId]));else localStorage.removeItem(this.state.saveKey);
-        document.getElementById('btn-continue').disabled=!roster.activeHeroId;
-        window.OnlineSystem?.saveGame(roster);this.showHeroRoster();
+        if(!confirm(`Permanently delete ${name} (hero ID ${id})? This cannot be undone.`))return false;
+        return this.commitHeroDeletion(id);
+    },
+
+    async commitHeroDeletion(id) {
+        let roster=this.getRoster();
+        if(!roster.heroes[id])return false;
+        const deletingActive=roster.activeHeroId===id||this.state.activeHeroId===id;
+        // Preserve unsaved progress when removing a different, inactive card.
+        if(!deletingActive&&this.state.player&&this.state.activeHeroId)this.saveActiveHeroLocally();
+        roster=this.getRoster();
+        if(!roster.heroes[id])return false;
+        delete roster.heroes[id];
+        if(deletingActive)roster.activeHeroId=null;
+        const stored=this.storeRoster(roster);
+        if(deletingActive){
+            this.resetHeroRuntime();
+            this.state.activeHeroId=null;
+            this.state.pendingHeroId=null;
+            localStorage.removeItem(this.state.saveKey);
+        }else{
+            this.state.activeHeroId=stored.activeHeroId;
+            if(stored.activeHeroId)localStorage.setItem(this.state.saveKey,JSON.stringify(stored.heroes[stored.activeHeroId]));
+            else localStorage.removeItem(this.state.saveKey);
+        }
+        document.getElementById('btn-continue').disabled=!stored.activeHeroId;
+        // Snapshot the exact post-deletion roster before any later hero action.
+        const cloudTask=window.OnlineSystem?.saveGame?.(stored);
+        try{await window.OnlineSystem?.releaseHeroName?.(id);}catch(error){console.warn('Hero-name release failed:',error?.message||error);}
+        this.showHeroRoster();
+        const saved=await cloudTask;
+        if(saved===false){
+            this.addNarrative('Hero deleted on this device, but the cloud delete could not be confirmed. Keep the game online and use Save to Cloud before signing in elsewhere.','system');
+        }
+        return true;
     },
 
     bindEvents() {
@@ -430,18 +569,51 @@ const Game = {
     },
 
     async beginCharacterCreation(isMulti) {
-        const name=document.getElementById('char-name').value.trim(),slot=this.state.pendingHeroId||`hero_${Date.now().toString(36)}`;
-        const reserved=await OnlineSystem.reserveHeroName(name,slot);
-        if(!reserved.ok){const status=document.getElementById('hero-name-status');status.textContent=reserved.error.includes('already exists')?'The name already exists. Please choose another name.':reserved.error;status.className='name-status unavailable';OnlineSystem.heroNameAvailable=false;this.updateCharButton();return;}
-        this.state.pendingHeroId=slot;this.createCharacter(isMulti);
+        if(this.state.creatingHero)return false;
+        const name=document.getElementById('char-name').value.trim();
+        const race=document.querySelector('.race-btn.selected')?.dataset.race;
+        const cls=document.querySelector('.class-btn.selected')?.dataset.class;
+        const slot=this.state.pendingHeroId||`hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+        const status=document.getElementById('hero-name-status');
+        if(name.length<2||!race||!cls){if(status){status.textContent='Enter a name with at least two characters and choose a race and class.';status.className='name-status unavailable';}return false;}
+        const request=++this.state.creationRequest;
+        this.state.creatingHero=true;
+        const button=document.getElementById('btn-begin');button.disabled=true;button.setAttribute('aria-busy','true');
+        try{
+            const reserved=await OnlineSystem.reserveHeroName(name,slot);
+            if(!reserved.ok){if(status){status.textContent=reserved.error.includes('already exists')?'The name already exists. Please choose another name.':reserved.error;status.className='name-status unavailable';}OnlineSystem.heroNameAvailable=false;return false;}
+            // A delayed reservation from an abandoned/changed creation form must
+            // not create a hero after Back, after Play Hero, or in a newer form.
+            const sameForm=request===this.state.creationRequest
+                &&this.state.screen==='char-screen'
+                &&document.getElementById('char-name').value.trim()===name
+                &&document.querySelector('.race-btn.selected')?.dataset.race===race
+                &&document.querySelector('.class-btn.selected')?.dataset.class===cls
+                &&(!this.state.pendingHeroId||this.state.pendingHeroId===slot);
+            if(!sameForm){await OnlineSystem.releaseHeroName(slot).catch(()=>{});return false;}
+            this.state.pendingHeroId=slot;
+            const created=this.createCharacter(isMulti)!==false;
+            if(!created)await OnlineSystem.releaseHeroName(slot).catch(()=>{});
+            return created;
+        }catch(error){
+            if(status){status.textContent=`Hero creation could not finish: ${error?.message||'unknown error'}. Your other heroes are safe.`;status.className='name-status unavailable';}
+            return false;
+        }finally{
+            if(request===this.state.creationRequest){
+                this.state.creatingHero=false;button.removeAttribute('aria-busy');
+                if(this.state.screen==='char-screen')this.updateCharButton();
+            }
+        }
     },
 
     createCharacter(isMulti) {
         const name = document.getElementById('char-name').value.trim();
-        const race = document.querySelector('.race-btn.selected').dataset.race;
-        const cls = document.querySelector('.class-btn.selected').dataset.class;
+        const race = document.querySelector('.race-btn.selected')?.dataset.race;
+        const cls = document.querySelector('.class-btn.selected')?.dataset.class;
+        if(name.length<2||!race||!cls)return false;
         const background = document.getElementById('char-background').value;
         const mode = document.getElementById('hero-mode').value;
+        this.resetHeroRuntime();
 
         // Base stats by class
         const baseStats = {
@@ -545,7 +717,9 @@ const Game = {
         this.state.messages = [];
         this.state.guild = null;
         this.state.combatGroup = [];
-        this.state.activeHeroId = this.state.pendingHeroId || this.state.activeHeroId || `hero_${Date.now().toString(36)}`;
+        // Creation always allocates a new slot (or the explicit restart slot),
+        // never the previously active hero's ID.
+        this.state.activeHeroId = this.state.pendingHeroId || `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
         this.state.pendingHeroId = null;
 
         this.showScreen('game-screen');
@@ -2392,59 +2566,78 @@ const Game = {
 
     getCloudData() {
         const roster = this.getRoster();
-        if (this.state.player && this.state.activeHeroId) {
-            roster.activeHeroId = this.state.activeHeroId;
-            roster.heroes[this.state.activeHeroId] = this.getSaveData();
+        const id = this.state.activeHeroId;
+        // A loaded player may only update its own existing slot. In particular,
+        // after deletion there is no loaded player to leak into a sibling slot.
+        if (this.state.player && id && roster.heroes[id]) {
+            roster.activeHeroId = id;
+            roster.heroes[id] = this.getSaveData();
         }
         return roster;
     },
 
     save() {
-        const saveData = this.getSaveData();
-        localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
-        if (this.state.activeHeroId) {
-            const roster = this.getRoster();
-            roster.activeHeroId = this.state.activeHeroId;
-            roster.heroes[this.state.activeHeroId] = saveData;
-            this.storeRoster(roster);
+        let id = this.state.activeHeroId;
+        if (!this.state.player) return false;
+        let roster = this.getRoster();
+        // Backward compatibility for the original single-save API and old
+        // integrations: only an entirely empty roster may acquire hero_legacy.
+        // A deleted active slot is never guessed from a sibling hero.
+        if (!id && !Object.keys(roster.heroes).length) {
+            id = 'hero_legacy';
+            this.state.activeHeroId = id;
         }
-        window.OnlineSystem?.saveGame(this.getCloudData());
+        if (!id) return false;
+        const saveData = this.getSaveData();
+        roster = this.getRoster();
+        roster.activeHeroId = id;
+        roster.heroes[id] = saveData;
+        const stored = this.storeRoster(roster);
+        localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
+        window.OnlineSystem?.saveGame?.(stored);
         document.getElementById('btn-continue').disabled = false;
+        return true;
     },
 
     continueGame() {
         const roster = this.getRoster();
-        if (roster.activeHeroId && roster.heroes[roster.activeHeroId]) {
-            this.state.activeHeroId = roster.activeHeroId;
-            localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[roster.activeHeroId]));
+        const id = roster.activeHeroId;
+        const data = id ? roster.heroes[id] : null;
+        if (!id || !data?.player) {
+            this.state.activeHeroId = null;
+            localStorage.removeItem(this.state.saveKey);
+            document.getElementById('btn-continue').disabled = true;
+            this.showHeroRoster();
+            return false;
         }
-        const saved = localStorage.getItem(this.state.saveKey);
-        if (saved) {
-            const data = JSON.parse(saved);
-            this.state.player = data.player;
-            this.state.inventory = data.inventory;
-            this.state.location = data.location;
-            this.state.visited = data.visited;
-            this.state.quests = data.quests;
-            this.state.completedQuests = data.completedQuests || [];
-            this.state.kills = data.kills || 0;
-            this.state.slainEnemies = data.slainEnemies || {};
-            this.state.friends = data.friends || [];
-            this.state.friendRequests = data.friendRequests || [];
-            this.state.companions = data.companions || [];
-            this.state.messages = data.messages || [];
-            this.state.guild = data.guild || null;
-            this.state.combatGroup = data.combatGroup || [];
-            this.state.racing = data.racing || null;
-            this.state.player.armor ||= 'Traveler Clothes';
-            this.state.player.defense ||= 1;
-            this.state.player.spells ||= ['Minor Heal'];
-            if(this.state.player.permadead){this.state.player.permadead=false;this.state.player.pendingTempleRevival=true;this.state.player.hp=0;this.state.location='grand_temple';}
+        this.resetHeroRuntime();
+        this.state.activeHeroId = id;
+        this.state.pendingHeroId = null;
+        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
+        this.state.player = data.player;
+        this.state.inventory = Array.isArray(data.inventory) ? data.inventory : [];
+        this.state.location = data.location || 'kaliwasch';
+        this.state.visited = Array.isArray(data.visited) ? data.visited : [this.state.location];
+        this.state.quests = Array.isArray(data.quests) ? data.quests : [];
+        this.state.completedQuests = Array.isArray(data.completedQuests) ? data.completedQuests : [];
+        this.state.kills = data.kills || 0;
+        this.state.slainEnemies = data.slainEnemies || {};
+        this.state.friends = data.friends || [];
+        this.state.friendRequests = data.friendRequests || [];
+        this.state.companions = data.companions || [];
+        this.state.messages = data.messages || [];
+        this.state.guild = data.guild || null;
+        this.state.combatGroup = data.combatGroup || [];
+        this.state.racing = data.racing || null;
+        this.state.player.armor ||= 'Traveler Clothes';
+        this.state.player.defense ||= 1;
+        this.state.player.spells ||= ['Minor Heal'];
+        if(this.state.player.permadead){this.state.player.permadead=false;this.state.player.pendingTempleRevival=true;this.state.player.hp=0;this.state.location='grand_temple';}
 
-            this.showScreen('game-screen');
-            this.enterLocation(this.state.location);
-            window.OnlineSystem?.syncActiveHero();
-        }
+        this.showScreen('game-screen');
+        this.enterLocation(this.state.location);
+        window.OnlineSystem?.syncActiveHero();
+        return true;
     },
 
     updateUI() {

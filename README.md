@@ -2,7 +2,7 @@
 
 An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Features real royalty-free ambient music, enhanced combat, guilds, quests, and more!
 
-## Built-in narration and gesture interface (7.26.0)
+## Built-in narration and gesture interface (7.26.1)
 
 Tap **Start spoken gesture controls** for Accessible Gesture Mode and the optional
 spoken tutorial. TalkBack is not the narrator. Swipe movement, contextual combat,
