@@ -2,6 +2,8 @@
  * Never disables an OS screen reader. Works with the existing dialog open/close handlers. */
 (function(){
   'use strict';
+  // The named gesture surface is an input adapter for this modal, not background
+  // gameplay. It must remain operable for a player without an OS screen reader.
   let modal=null,opener=null,lastOutside=null,restores=[];
   const visible=e=>{for(let n=e;n&&n!==document;n=n.parentElement){if(n.hidden||n.classList.contains('hidden')||n.getAttribute('aria-hidden')==='true'||getComputedStyle(n).display==='none')return false;}return true;};
   const focusables=e=>[...e.querySelectorAll('button,input,select,textarea,a[href],[tabindex]')].filter(x=>!x.disabled&&x.tabIndex>=0&&visible(x));
@@ -20,11 +22,11 @@
     }
     if(!modal)return;
     for(let n=modal;n&&n.parentElement&&n!==document.body;n=n.parentElement){
-      for(const sibling of n.parentElement.children){if(sibling.inert||sibling.getAttribute('aria-hidden')==='true'||sibling===n||['SCRIPT','STYLE','LINK'].includes(sibling.tagName))continue;restores.push([sibling,sibling.inert,sibling.getAttribute('aria-hidden')]);sibling.inert=true;sibling.setAttribute('aria-hidden','true');}
+      for(const sibling of n.parentElement.children){if(sibling.inert||sibling.getAttribute('aria-hidden')==='true'||sibling===n||['gesture-interface','gesture-launch'].includes(sibling.id)||['SCRIPT','STYLE','LINK'].includes(sibling.tagName))continue;restores.push([sibling,sibling.inert,sibling.getAttribute('aria-hidden')]);sibling.inert=true;sibling.setAttribute('aria-hidden','true');}
     }
-    if(!modal.contains(document.activeElement)){if(!modal.hasAttribute('tabindex'))modal.tabIndex=-1;focus(focusables(modal)[0]||modal);}
+    if(!modal.contains(document.activeElement)&&!document.activeElement?.closest?.('#gesture-interface,#gesture-launch')){if(!modal.hasAttribute('tabindex'))modal.tabIndex=-1;focus(focusables(modal)[0]||modal);}
   }
-  document.addEventListener('focusin',e=>{if(!modal)lastOutside=e.target;else if(!modal.contains(e.target))focus(focusables(modal)[0]||modal);});
+  document.addEventListener('focusin',e=>{if(!modal)lastOutside=e.target;else if(!modal.contains(e.target)&&!e.target.closest?.('#gesture-interface,#gesture-launch'))focus(focusables(modal)[0]||modal);});
   document.addEventListener('keydown',e=>{
     if(!modal)return;
     if(e.key==='Tab'){

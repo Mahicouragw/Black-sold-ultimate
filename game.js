@@ -840,8 +840,10 @@ const Game = {
         this._movementPending = true;
         MusicSystem.playSFX('explore');
 
-        setTimeout(() => {
+        const origin = this.state.location;
+        this._movementTimer = setTimeout(() => {
             try {
+                if (this.state.location !== origin || this.state.inCombat || document.hidden) return;
                 const target = WorldData.locations[dest];
                 if (!target) return;
                 this.addNarrative(`You moved ${direction} to ${target.name}.`, 'location');
@@ -850,6 +852,12 @@ const Game = {
                 this._movementPending = false;
             }
         }, 320);
+    },
+
+    cancelPendingMovement() {
+        clearTimeout(this._movementTimer);
+        this._movementTimer = null;
+        this._movementPending = false;
     },
 
     look() {
@@ -1031,6 +1039,36 @@ const Game = {
             this.addNarrative(`Equipped ${item.name}.`, 'item');
         }
         this.save();
+    },
+
+    /** Remove real equipment without consuming it. Clears aliases used by legacy
+     * and body-slot equipment, then recalculates the existing set bonuses. */
+    unequipItem(itemName) {
+        const p = this.state.player;
+        const item = this.state.inventory.find(i => i.name.toLowerCase() === String(itemName).toLowerCase());
+        if (!p || !item) return this.addNarrative('You do not carry that equipment.', 'system');
+        const slots = ['weapon','armor','helmet','gloves','boots','accessory','rightHand','leftHand','head','face','ears','neck','chest','back','waist','legs','fingers','eyes','leftEar','rightEar'];
+        const worn = slots.filter(k => p[k] === item.name);
+        const gear = Object.keys(p.gearSlots || {}).filter(k => p.gearSlots[k] === item.name);
+        if (!worn.length && !gear.length) return this.addNarrative('That item is not equipped.', 'system');
+        // Only remove bonuses recorded by the original equipment engine. Newer
+        // body-slot gear does not record these, so no guessed bonuses are removed.
+        for (const slot of ['weapon','armor','accessory']) {
+            if (!worn.includes(slot) || !p.equipmentBonuses?.[slot]) continue;
+            const b = p.equipmentBonuses[slot];
+            for (const k of ['str','dex','int','wis']) p[k] -= b[k] || 0;
+            p.maxHp -= b.hp || 0; p.maxMp -= b.mp || 0;
+            delete p.equipmentBonuses[slot];
+        }
+        for (const k of worn) p[k] = null;
+        for (const k of gear) delete p.gearSlots[k];
+        if (worn.includes('rightHand') && p.leftHand === '(holding two-handed)') p.leftHand = null;
+        if (worn.includes('weapon') || worn.includes('rightHand')) p.weaponDamage = 8;
+        if (worn.includes('armor') || worn.includes('chest')) { p.baseDefense = 0; p.defense = 0; }
+        window.BlackSwordFeatures?.applySetBonuses(this);
+        p.hp = Math.min(p.hp, p.maxHp); p.mp = Math.min(p.mp, p.maxMp);
+        this.addNarrative(`Unequipped ${item.name}. It remains in your inventory.`, 'item');
+        this.updateHUD(); this.save();
     },
 
     attack(targetName) {

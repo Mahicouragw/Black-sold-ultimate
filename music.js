@@ -18,6 +18,7 @@ class AudioManagerController {
             sfxVolume: 0.55,
             voiceEnabled: false,
             voiceVolume: 0.9,
+            voiceRate: 1,
             shuffle: true
         };
         this.initialized = false;
@@ -41,6 +42,9 @@ class AudioManagerController {
         this.specialResolver = null;
         this.duckRequests = new Map();
         this.speechQueue = [];
+        this.voicePaused = false;
+        this.lastVoiceText = "";
+        this.recentVoice = new Map();
         this.speaking = false;
         this.currentUtterance = null;
         this.currentSpeechItem = null;
@@ -897,17 +901,29 @@ class AudioManagerController {
 
     /** Queue game/browser TTS. TalkBack remains an independent OS service:
      * semantic live regions are never disabled or used as proof of TTS output. */
-    playVoice(text, { voiceId = 'system:default', language = 'en-US', priority = false } = {}) {
+    playVoice(text, { voiceId = 'system:default', language = 'en-US', priority = false, channel = '' } = {}) {
         // Application TTS OFF is absolute: no SpeechSynthesis call is ever made,
         // and nothing may force it back on. Android TalkBack is an independent
         // OS service that this game neither controls nor disables.
         if (this.pageSuspended || document.hidden || !this.voiceEnabled || !String(text || '').trim()) return Promise.resolve(false);
-        if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
+        if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) { this.voiceStatus('Speech engine unavailable. Use text controls or install a browser/device voice.'); return Promise.resolve(false); }
+        text = String(text).trim();
+        const now = Date.now();
+        if (this.recentVoice.has(text) && now - this.recentVoice.get(text) < 600) return Promise.resolve(false);
+        this.recentVoice.set(text, now);
+        if (this.recentVoice.size > 100) this.recentVoice.delete(this.recentVoice.keys().next().value);
+        this.lastVoiceText = text;
         const critical = priority === 'critical';
         if (critical) this.interruptVoiceForCritical();
         return new Promise(resolve => {
-            const item = { text: String(text).slice(0, 600), voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal', resolve };
-            if (priority) this.speechQueue.unshift(item);
+            if (channel) this.speechQueue = this.speechQueue.filter(queued => { if (queued.channel !== channel) return true; queued.resolve(false); return false; });
+            const item = { channel, text: String(text).slice(0, 600), voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal', resolve };
+            while (this.speechQueue.length >= 12) {
+                const ordinary = this.speechQueue.findIndex(i => i.priority === 'normal');
+                if (ordinary < 0 && !priority) { resolve(false); return; }
+                this.speechQueue.splice(ordinary < 0 ? 0 : ordinary, 1)[0].resolve(false);
+            }
+            if (priority) { const at = this.speechQueue.findIndex(i => i.priority === 'normal'); this.speechQueue.splice(at < 0 ? this.speechQueue.length : at, 0, item); }
             else this.speechQueue.push(item);
             this.processVoiceQueue();
         });
@@ -918,6 +934,7 @@ class AudioManagerController {
     }
 
     interruptVoiceForCritical() {
+        clearTimeout(this.voiceWatchdog);
         this.speechQueue.splice(0).forEach(item => item.resolve(false));
         const active = this.currentSpeechItem;
         this.currentSpeechItem = null;
@@ -929,13 +946,14 @@ class AudioManagerController {
     }
 
     async processVoiceQueue() {
-        if (this.speaking || !this.speechQueue.length) return;
+        if (this.voicePaused || this.speaking || !this.speechQueue.length || !this.voiceEnabled) return;
         const item = this.speechQueue.shift();
         this.speaking = true;
         this.currentSpeechItem = item;
         const utterance = new SpeechSynthesisUtterance(item.text);
         utterance.lang = item.language || 'en-US';
         utterance.volume = this.voiceVolume;
+        utterance.rate = Math.max(0.5, Math.min(2, this.settings.voiceRate || 1));
         const voices = speechSynthesis.getVoices();
         const requestedName = item.voiceId?.startsWith('system:') ? item.voiceId.slice(7) : '';
         const language = utterance.lang.toLowerCase();
@@ -947,6 +965,7 @@ class AudioManagerController {
             // critical replacement has already started. Never let it finish the
             // replacement item or restore ducking early.
             if (this.currentSpeechItem !== item) return;
+            clearTimeout(this.voiceWatchdog);
             this.restoreMusic('voice');
             this.speaking = false;
             this.currentUtterance = null;
@@ -954,14 +973,45 @@ class AudioManagerController {
             item.resolve(success);
             setTimeout(() => this.processVoiceQueue(), 60);
         };
-        utterance.onstart = () => { if (this.currentSpeechItem === item) this.duckMusic(0.2, 'voice'); };
+        utterance.onstart = () => { if (this.currentSpeechItem === item) { this.voiceStatus('Narrator speaking.'); this.duckMusic(0.2, 'voice'); } };
         utterance.onend = () => finish(true);
-        utterance.onerror = () => finish(false);
+        utterance.onerror = e => { if (this.currentSpeechItem !== item) return; this.voiceStatus(`Speech failed: ${e.error || 'engine error'}. Tap Test narrator to retry; text controls remain available.`); finish(false); };
         this.currentUtterance = utterance;
-        try { speechSynthesis.speak(utterance); } catch { finish(false); }
+        clearTimeout(this.voiceWatchdog);
+        this.voiceWatchdog = setTimeout(() => { if (this.currentSpeechItem !== item || this.voicePaused) return; this.voiceStatus('Speech engine did not finish. Tap Test narrator to retry.'); this.stopVoice(); }, Math.max(15000, item.text.length * 150 / utterance.rate));
+        try { speechSynthesis.speak(utterance); } catch { this.voiceStatus('Speech engine failed. Text controls remain available.'); finish(false); }
+    }
+
+    voiceStatus(text) {
+        window.dispatchEvent(new CustomEvent('black-sword-speech-status', { detail: { text } }));
+    }
+
+    pauseVoice() {
+        this.voicePaused = true;
+        clearTimeout(this.voiceWatchdog);
+        if ('speechSynthesis' in window) speechSynthesis.pause?.();
+        this.voiceStatus('Narrator paused.');
+    }
+
+    resumeVoice() {
+        this.voicePaused = false;
+        if ('speechSynthesis' in window) speechSynthesis.resume?.();
+        if (this.currentSpeechItem) {
+            clearTimeout(this.voiceWatchdog);
+            this.voiceWatchdog = setTimeout(() => { this.voiceStatus('Speech engine did not resume. Tap Test narrator to retry.'); this.stopVoice(); }, 90000);
+        }
+        this.processVoiceQueue();
+    }
+
+    repeatVoice() {
+        const text = this.lastVoiceText;
+        this.recentVoice.delete(text);
+        return this.playVoice(text, { priority: 'critical' });
     }
 
     stopVoice() {
+        clearTimeout(this.voiceWatchdog);
+        this.voicePaused = false;
         this.speechQueue.splice(0).forEach(item => item.resolve(false));
         const active = this.currentSpeechItem;
         this.currentSpeechItem = null;
