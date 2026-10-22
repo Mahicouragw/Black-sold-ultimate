@@ -16,9 +16,9 @@
         <div class="interface-mode-card">
             <h1 id="interface-mode-title">Choose your game interface</h1>
             <p id="interface-mode-description">This changes the game layout only. It never turns Android TalkBack or other device accessibility services on or off. You can switch immediately in Settings.</p>
-            <button id="choose-interface-blind" class="menu-btn big-btn primary">Blind / TalkBack-first interface</button>
-            <p>Prioritizes text, spoken-game controls, stable focus order, and hides decorative ASCII art.</p>
-            <button id="choose-interface-sighted" class="menu-btn big-btn">Sighted visual interface</button>
+            <button id="choose-interface-blind" class="menu-btn big-btn primary">Accessible Gesture Mode</button>
+            <p>Built-in narration and gestures work with TalkBack OFF. Tap Start spoken gesture controls to enable speech.</p>
+            <button id="choose-interface-sighted" class="menu-btn big-btn">Sighted Visual Mode</button>
             <p>Keeps visual location art and the full visual layout. All controls still have accessible names and semantics.</p>
         </div>
     </section>
@@ -477,7 +477,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.25.12</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.26.0</span></div>
                     <p id="settings-account-note" class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
@@ -508,8 +508,8 @@
                         <legend>Game interface</legend>
                         <label for="setting-interface-mode">Interface mode</label>
                         <select id="setting-interface-mode">
-                            <option value="blind">Blind / TalkBack-first</option>
-                            <option value="sighted">Sighted visual</option>
+                            <option value="blind">Accessible Gesture Mode</option>
+                            <option value="sighted">Sighted Visual Mode</option>
                         </select>
                         <p id="interface-mode-help" class="settings-note">Switches immediately and persists across reloads, sign-in/out, and PWA restarts. This preference never disables platform accessibility.</p>
                     </fieldset>
@@ -680,6 +680,7 @@
     <script type="module" src="game-hall.js"></script>
     <script defer src="seasonal-events-v729.js"></script>
     <script src="pwa.js"></script>
+<script defer src="gesture-accessibility.js"></script>
 <script src="accessible-dialogs.js"></script>
 </body>
 </html>
