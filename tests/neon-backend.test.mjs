@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generateKeyPairSync } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { TextDecoder, TextEncoder } from 'node:util';
 import { setTimeout as wait } from 'node:timers/promises';
 import { JSDOM } from 'jsdom';
-import { encryptHandoff, decryptHandoff } from '../scripts/neon-crypto.mjs';
+import { encryptHandoff, decryptHandoff, keyIdFor, publicKeyId } from '../scripts/neon-crypto.mjs';
 
 const clientSource = readFileSync('neon-game-client.js', 'utf8');
 
@@ -158,4 +159,61 @@ test('claim handoff encryption never exposes credentials in the public payload',
     const serialized = JSON.stringify(encrypted);
     assert.doesNotMatch(serialized, /private-assertion|private-password|private-code/);
     assert.deepEqual(decryptHandoff(encrypted, privatePath), value);
+});
+
+test('handoff key ids identify the exact key pair and reject mismatches', t => {
+    const directory = mkdtempSync(join(tmpdir(), 'black-sword-neon-keyid-'));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    function pair(name) {
+        const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+            modulusLength: 2048,
+            publicKeyEncoding: { type: 'spki', format: 'pem' },
+            privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+        });
+        const publicPath = join(directory, `${name}-public.pem`);
+        const privatePath = join(directory, `${name}-private.pem`);
+        writeFileSync(publicPath, publicKey);
+        writeFileSync(privatePath, privateKey, { mode: 0o600 });
+        return { publicPath, privatePath, publicKey };
+    }
+    const first = pair('first');
+    const second = pair('second');
+    const encrypted = encryptHandoff({ claim: { verification_uri_complete: 'https://claim.example/code' } }, first.publicPath);
+    assert.equal(encrypted.key_id, keyIdFor(first.publicKey));
+    assert.equal(encrypted.key_id, publicKeyId(first.publicPath));
+    assert.deepEqual(decryptHandoff(encrypted, first.privatePath).claim.verification_uri_complete, 'https://claim.example/code');
+    assert.throws(() => decryptHandoff(encrypted, second.privatePath), /encrypted for key .+ local private key/);
+});
+
+test('the key generator refuses to overwrite an existing handoff key', t => {
+    const directory = mkdtempSync(join(tmpdir(), 'black-sword-neon-keygen-'));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    const env = {
+        ...process.env,
+        NEON_PUBLIC_KEY_FILE: join(directory, 'neon', 'handoff-public-key.pem'),
+        NEON_PRIVATE_KEY_FILE: join(directory, '.neon', 'handoff-private-key.pem')
+    };
+    const first = spawnSync(process.execPath, ['scripts/neon-keygen.mjs'], { env, encoding: 'utf8' });
+    assert.equal(first.status, 0, first.stderr);
+    assert.match(first.stdout, /Key id:\s+[A-Za-z0-9_-]{16}/);
+    assert.equal(existsSync(env.NEON_PUBLIC_KEY_FILE), true);
+    assert.equal(existsSync(env.NEON_PRIVATE_KEY_FILE), true);
+    const second = spawnSync(process.execPath, ['scripts/neon-keygen.mjs'], { env, encoding: 'utf8' });
+    assert.equal(second.status, 1);
+    assert.match(second.stderr, /Refusing to replace it/);
+    const forced = spawnSync(process.execPath, ['scripts/neon-keygen.mjs', '--force'], { env, encoding: 'utf8' });
+    assert.equal(forced.status, 0, forced.stderr);
+});
+
+test('the committed handoff public key matches a readable key id', () => {
+    const keyId = publicKeyId();
+    assert.match(keyId, /^[A-Za-z0-9_-]{16}$/);
+    const payload = encryptHandoff({ project: 'black-sword' });
+    assert.equal(payload.key_id, keyId);
+    assert.doesNotMatch(JSON.stringify(payload), /black-sword/);
+    // CI only has the public key; the workspace also holds the private key and
+    // must be able to read its own handoffs.
+    if (existsSync('.neon/handoff-private-key.pem')) {
+        assert.equal(decryptHandoff(payload).project, 'black-sword');
+    }
 });

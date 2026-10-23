@@ -6,7 +6,38 @@ Black Sword Ultimate uses **Neon Postgres, Managed Better Auth, and the Neon Dat
 
 The initial project is provisioned through Claimable Neon without signup or payment details. An unclaimed project is temporary: it expires after **72 hours**, with Claimable Neon storage/transfer limits. A human must claim it to keep it. Claim links last **15 minutes**; starting a claim rotates the database password, while Auth and Data API URLs remain enabled.
 
-The reviewed GitHub Actions workflow performs provisioning, the complete schema migration, integration/security verification, and claim handoff in one job. It does not depend on the unavailable Actions secrets API. Public configuration is posted to the associated pull request. The claim URL and project-scoped credentials are encrypted with the workspace-held RSA key; the private key remains in gitignored `.neon/` and is never committed or printed.
+The reviewed GitHub Actions workflow performs provisioning, the complete schema migration, integration/security verification, and claim handoff in one job. It does not depend on the unavailable Actions secrets API. Public configuration is posted to the pull request you name when dispatching the workflow. The claim URL and project-scoped credentials are encrypted with the workspace-held RSA key; the private key remains in gitignored `.neon/` and is never committed or printed.
+
+## Provisioning runbook
+
+1. **Create the handoff key pair once.** The public key is committed; the private key stays in the workspace.
+
+   ```sh
+   npm run neon:keygen            # refuses to overwrite an existing pair
+   git add neon/handoff-public-key.pem
+   ```
+
+   Back up `.neon/handoff-private-key.pem`. A published handoff cannot be decrypted without it, and `--force` rotation makes older claim links permanently unreadable.
+
+2. **Dispatch the provisioning workflow** from `main`, naming the pull request that should receive the encrypted handoff (any open or merged PR in this repository works):
+
+   ```sh
+   gh workflow run neon-backend.yml -f handoff_pr=<pull-request-number>
+   gh run watch
+   ```
+
+   The job provisions a Claimable Neon project, publishes the encrypted handoff and public configuration to that PR, applies `neon/schema.sql`, refreshes the Data API schema cache, and runs the integration/security verifier. The job does **not** wait for a human unless you also pass `-f wait_for_claim=true`.
+
+3. **Recover and apply the public configuration** in the workspace:
+
+   ```sh
+   npm run neon:recover          # prints the claim URL and writes .neon/*.json
+   npm run neon:apply-config     # writes the Auth/Data API URLs into backend-config.js
+   ```
+
+4. **Claim the project.** Open the printed `claim_url` and sign in to Neon within **15 minutes** of it being minted, before the project's **72-hour** pre-claim expiry. Claiming rotates the pre-claim database password (so `.neon/credentials.json` stops working for direct Postgres access) while the Auth and Data API URLs — and every cloud save inside the project — transfer unchanged.
+
+Re-running provisioning without an identity assertion creates a *new* project. To re-apply schema to the existing project, reuse `.neon/credentials.json` locally with `NEON_IDENTITY_ASSERTION` and `NEON_PROJECT_ID` set, or run `npm run neon:migrate` after writing that file to `NEON_SECRET_FILE`.
 
 ## Client architecture
 
