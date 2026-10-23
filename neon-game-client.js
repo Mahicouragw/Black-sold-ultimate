@@ -145,6 +145,11 @@
             });
             if (result.error && (existing || /already|exist|duplicate/i.test(result.error.message || ''))) {
                 result = await auth.signInWithPassword({ email: credentials.email, password: credentials.password });
+            } else if (!result.error && !result.data?.session) {
+                // Sign-up that does not open a session (for example when the
+                // project requires email verification, which a guest mailbox
+                // can never satisfy) still leaves a usable credential.
+                result = await auth.signInWithPassword({ email: credentials.email, password: credentials.password });
             }
             if (!result.error && result.data?.session?.user) saveGuest(credentials);
             return result;

@@ -3,8 +3,9 @@
  *
  * The public key is committed (neon/handoff-public-key.pem) and used by the
  * GitHub Actions provisioning job to encrypt the claim URL and project-scoped
- * credentials. The private key stays in the gitignored workspace directory
- * (.neon/handoff-private-key.pem) and is required by `npm run neon:recover`.
+ * credentials. The private key stays OUTSIDE the git tree, at
+ * ~/.black-sword-neon/handoff-private-key.pem (0600), and is required by
+ * `npm run neon:recover`.
  *
  * Rotating the key invalidates every previously published handoff, so this
  * script refuses to overwrite an existing pair unless --force is passed.
@@ -13,10 +14,12 @@ import { generateKeyPairSync } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { keyIdFor } from './neon-crypto.mjs';
+import { PRIVATE_KEY_FILE, assertSafeSecretPath } from './neon-secrets.mjs';
 
 const PUBLIC_PATH = process.env.NEON_PUBLIC_KEY_FILE || 'neon/handoff-public-key.pem';
-const PRIVATE_PATH = process.env.NEON_PRIVATE_KEY_FILE || '.neon/handoff-private-key.pem';
+const PRIVATE_PATH = PRIVATE_KEY_FILE;
 const force = process.argv.includes('--force');
+assertSafeSecretPath(PRIVATE_PATH);
 
 if (existsSync(PUBLIC_PATH) || existsSync(PRIVATE_PATH)) {
     if (!force) {
@@ -42,5 +45,5 @@ chmodSync(PRIVATE_PATH, 0o600);
 
 console.log('Neon handoff key pair generated.');
 console.log(`Public key:  ${PUBLIC_PATH}`);
-console.log(`Private key: ${PRIVATE_PATH} (gitignored — keep it with the workspace)`);
+console.log(`Private key: ${PRIVATE_PATH} (0600, outside the git tree — back it up)`);
 console.log(`Key id:      ${keyIdFor(publicKey)}`);

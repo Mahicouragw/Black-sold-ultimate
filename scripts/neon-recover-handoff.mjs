@@ -1,6 +1,13 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+/*
+ * Recovers an encrypted handoff published to a pull request and writes the
+ * credentials to ~/.black-sword-neon (0600), outside the git tree.
+ *
+ * Requires the matching private key. If it is lost the handoff cannot be read;
+ * say so instead of guessing.
+ */
 import { execFileSync } from 'node:child_process';
 import { decryptHandoff, publicKeyId } from './neon-crypto.mjs';
+import { CLAIM_FILE, PRIVATE_KEY_FILE, PUBLIC_FILE, SECRET_FILE, ensureSecretDir, writeSecretJSON } from './neon-secrets.mjs';
 
 const MARKER = '<!-- black-sword-neon-handoff-v1 -->';
 const repo = process.env.GITHUB_REPOSITORY || 'Mahicouragw/Black-sold-ultimate';
@@ -11,10 +18,11 @@ if (!comment) throw new Error('No encrypted Neon handoff comment was found.');
 const match = comment.body.match(/```black-sword-neon-encrypted\s*([\s\S]*?)```/);
 if (!match) throw new Error('The Neon handoff comment has no encrypted payload.');
 const handoff = decryptHandoff(JSON.parse(match[1]));
-mkdirSync('.neon', { recursive: true, mode: 0o700 });
-writeFileSync('.neon/credentials.json', `${JSON.stringify(handoff.secret, null, 2)}\n`, { mode: 0o600 });
-writeFileSync('.neon/public.json', `${JSON.stringify(handoff.publicConfig, null, 2)}\n`, { mode: 0o600 });
-writeFileSync('.neon/claim.json', `${JSON.stringify(handoff.claim, null, 2)}\n`, { mode: 0o600 });
+
+ensureSecretDir();
+writeSecretJSON(SECRET_FILE, handoff.secret);
+writeSecretJSON(PUBLIC_FILE, handoff.publicConfig);
+writeSecretJSON(CLAIM_FILE, handoff.claim);
 
 const mintedAt = Date.parse(handoff.claim.minted_at || '');
 const claimSecondsLeft = Number.isFinite(mintedAt)
@@ -22,6 +30,7 @@ const claimSecondsLeft = Number.isFinite(mintedAt)
     : null;
 console.log(JSON.stringify({
     key_id: publicKeyId(),
+    private_key: PRIVATE_KEY_FILE,
     project_id: handoff.publicConfig.project_id,
     branch_id: handoff.publicConfig.branch_id,
     project_expires_at: handoff.publicConfig.expires_at,
@@ -35,6 +44,6 @@ console.log(JSON.stringify({
     source_comment: comment.html_url
 }, null, 2));
 if (claimSecondsLeft !== null && claimSecondsLeft <= 0) {
-    console.warn('The published claim code has expired. Mint a new one with the stored identity assertion before the project expiry.');
+    console.warn('That claim code has expired. Run "npm run neon:claim" to mint a fresh one from the stored assertion — do not provision again.');
 }
-console.log('Saved .neon/credentials.json, .neon/public.json, and .neon/claim.json. Run "npm run neon:apply-config" to write the public configuration into backend-config.js.');
+console.log(`Saved credentials to ${SECRET_FILE}, public configuration to ${PUBLIC_FILE}. Run "npm run neon:apply-config -- --write" to update backend-config.js.`);

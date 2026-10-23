@@ -28,13 +28,16 @@
     "token:set": "node scripts/token.mjs set",
     "token:clear": "node scripts/token.mjs clear",
     "neon:schema": "node scripts/build-neon-schema.mjs",
-    "neon:vendor": "node scripts/vendor-neon.mjs",
     "neon:verify": "node scripts/verify-neon-backend.mjs",
     "neon:keygen": "node scripts/neon-keygen.mjs",
     "neon:recover": "node scripts/neon-recover-handoff.mjs",
     "neon:apply-config": "node scripts/neon-apply-config.mjs --write",
     "neon:migrate": "node scripts/neon-migrate.mjs",
-    "neon:refresh": "node scripts/neon-refresh-schema.mjs"
+    "neon:refresh": "node scripts/neon-refresh-schema.mjs",
+    "neon:provision": "node scripts/neon-provision.mjs",
+    "neon:claim": "node scripts/neon-claim.mjs",
+    "neon:schema:test": "node scripts/test-neon-schema.mjs",
+    "neon:vendor": "node scripts/vendor-neon.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
@@ -48,6 +51,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "7.6.8",
+    "@electric-sql/pglite": "^0.5.11",
     "esbuild": "^0.28.2",
     "jsdom": "^26.1.0"
   },

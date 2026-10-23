@@ -4,18 +4,12 @@
  * public by design: the browser uses them to reach Neon Auth and the Data API.
  * No database password, identity assertion, or provider secret is written.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { PUBLIC_FILE, readPublicConfig } from './neon-secrets.mjs';
 
-const publicFile = process.env.NEON_PUBLIC_FILE || '.neon/public.json';
 const configFile = process.env.NEON_CONFIG_FILE || 'backend-config.js';
 const write = process.argv.includes('--write');
-
-if (!existsSync(publicFile)) {
-    console.error(`No recovered Neon public configuration at ${publicFile}. Run "npm run neon:recover" first.`);
-    process.exit(1);
-}
-
-const publicConfig = JSON.parse(readFileSync(publicFile, 'utf8'));
+const publicConfig = readPublicConfig();
 for (const field of ['auth_url', 'data_api_url']) {
     let url;
     try { url = new URL(publicConfig[field]); } catch { throw new Error(`Neon ${field} is missing or invalid.`); }

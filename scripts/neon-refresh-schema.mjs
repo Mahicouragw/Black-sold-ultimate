@@ -1,24 +1,15 @@
-import { readFileSync } from 'node:fs';
+import { API, tokenFor } from './neon-api.mjs';
+import { readSecrets, redact } from './neon-secrets.mjs';
 
-const API = 'https://claimable.neon.tech/v1';
-const secret = JSON.parse(readFileSync(process.env.NEON_SECRET_FILE || '/tmp/black-sword-neon-secrets.json', 'utf8'));
+const secret = readSecrets();
 const database = new URL(secret.database_url).pathname.replace(/^\//, '');
 if (!secret.project_id || !secret.branch_id || !database) throw new Error('Neon project, branch, or database name is missing.');
 
-async function accessToken() {
-    const body = new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: secret.identity_assertion, resource: 'https://claimable.neon.tech/' });
-    const response = await fetch(`${API}/oauth2/token`, {
-        method: 'POST', headers: { accept: 'application/json', 'content-type': 'application/x-www-form-urlencoded' }, body: body.toString()
-    });
-    const result = await response.json();
-    if (!response.ok || !result.access_token) throw new Error(result?.error?.message || 'Neon token exchange failed.');
-    return result.access_token;
-}
 
 let lastError;
 for (let attempt = 1; attempt <= 4; attempt++) {
     try {
-        const token = await accessToken();
+        const token = await tokenFor(secret.identity_assertion);
         const path = `/projects/${encodeURIComponent(secret.project_id)}/branches/${encodeURIComponent(secret.branch_id)}/data-api/${encodeURIComponent(database)}`;
         const response = await fetch(`${API}${path}`, {
             method: 'PATCH',
@@ -39,4 +30,4 @@ for (let attempt = 1; attempt <= 4; attempt++) {
     }
     if (attempt < 4) await new Promise(resolve => setTimeout(resolve, attempt * 2000));
 }
-throw new Error(`Neon Data API schema refresh failed: ${String(lastError?.message || lastError).replaceAll(secret.identity_assertion, '[identity assertion]')}`);
+throw new Error(`Neon Data API schema refresh failed: ${redact(lastError?.message || lastError, [secret.identity_assertion, secret.database_url])}`);

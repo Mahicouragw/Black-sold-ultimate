@@ -5,6 +5,72 @@
 -- intentionally replaced by the authenticated polling client in neon-game-client.js.
 
 
+-- ============================================================================
+-- Neon compatibility bootstrap (generated)
+-- ============================================================================
+do $neon_roles$
+begin
+  if not exists (select 1 from pg_roles where rolname = 'authenticated') then
+    create role authenticated nologin;
+  end if;
+  if not exists (select 1 from pg_roles where rolname = 'anonymous') then
+    create role anonymous nologin;
+  end if;
+end
+$neon_roles$;
+
+create or replace function public.neon_subject_uuid(subject text)
+returns uuid
+language plpgsql
+immutable
+as $neon_subject_uuid$
+begin
+  if subject is null or subject = '' then
+    return null;
+  end if;
+  if subject ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    return subject::uuid;
+  end if;
+  return (substr(md5(subject), 1, 8) || '-' || substr(md5(subject), 9, 4) || '-' ||
+          substr(md5(subject), 13, 4) || '-' || substr(md5(subject), 17, 4) || '-' ||
+          substr(md5(subject), 21, 12))::uuid;
+end;
+$neon_subject_uuid$;
+
+create schema if not exists auth;
+
+create or replace function auth.jwt()
+returns jsonb
+language sql
+stable
+as $auth_jwt$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
+$auth_jwt$;
+
+create or replace function auth.role()
+returns text
+language sql
+stable
+as $auth_role$
+  select coalesce(nullif(auth.jwt() ->> 'role', ''),
+                  nullif(current_setting('request.jwt.claim.role', true), ''),
+                  current_user)
+$auth_role$;
+
+create or replace function auth.uid()
+returns uuid
+language sql
+stable
+as $auth_uid$
+  select public.neon_subject_uuid(nullif(auth.jwt() ->> 'sub', ''))
+$auth_uid$;
+
+grant usage on schema auth to authenticated, anonymous;
+grant execute on function auth.uid(), auth.role(), auth.jwt() to authenticated, anonymous;
+grant execute on function public.neon_subject_uuid(text) to authenticated, anonymous;
+grant usage on schema public to authenticated, anonymous;
+
+
 -- Source: supabase/schema.sql
 -- Black Sword Ultimate multiplayer schema
 -- Run once in Supabase Dashboard -> SQL Editor -> New query.
@@ -14,7 +80,7 @@ create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.profiles (
-  id uuid primary key references neon_auth."user"(id) on delete cascade,
+  id uuid primary key,
   player_code text not null unique,
   display_name text not null default 'Wandering Hero',
   level integer not null default 1 check (level between 1 and 999),
@@ -24,7 +90,7 @@ create table if not exists public.profiles (
 );
 
 create table if not exists public.game_saves (
-  user_id uuid primary key references neon_auth."user"(id) on delete cascade,
+  user_id uuid primary key,
   save_data jsonb not null default '{}'::jsonb,
   updated_at timestamptz not null default now()
 );
@@ -102,7 +168,7 @@ begin
     exit when not exists (select 1 from public.profiles where player_code = generated_code);
   end loop;
   insert into public.profiles (id, player_code, display_name)
-  values (new.id, generated_code, coalesce(nullif(new.name,''), 'Wandering Hero'))
+  values (public.neon_subject_uuid(new.id::text), generated_code, coalesce(nullif(new.name,''), 'Wandering Hero'))
   on conflict (id) do nothing;
   return new;
 end;
@@ -120,7 +186,7 @@ language sql stable security definer set search_path = public
 as $$
   select exists (
     select 1 from neon_auth.account
-    where "userId"::text = auth.uid()::text and "providerId" <> 'credential'
+    where "userId"::text = coalesce(auth.jwt() ->> 'sub', '') and "providerId" <> 'credential'
   );
 $$;
 grant execute on function public.has_linked_identity() to authenticated;
@@ -247,7 +313,7 @@ create schema if not exists extensions;
 create extension if not exists pgcrypto with schema extensions;
 
 create table if not exists public.player_recovery (
-  owner_id uuid primary key references neon_auth."user"(id) on delete cascade,
+  owner_id uuid primary key,
   player_code text not null unique,
   pin_hash text not null,
   save_data jsonb not null default '{}'::jsonb,
@@ -255,7 +321,7 @@ create table if not exists public.player_recovery (
 );
 
 create table if not exists public.recovery_attempts (
-  caller_id uuid primary key references neon_auth."user"(id) on delete cascade,
+  caller_id uuid primary key,
   attempts integer not null default 0,
   window_started timestamptz not null default now()
 );
@@ -1403,3 +1469,30 @@ grant execute on function public.list_trade_offers() to authenticated;
 
 comment on table public.trade_offers is
   'Player-to-player trades. Items and gold move only inside accept_trade_offer, which re-verifies ownership at settlement so nothing can be duplicated.';
+
+
+
+-- Keep application rows cascade-clean without a cross-schema foreign key.
+create or replace function public.delete_player_profile()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $delete_player_profile$
+begin
+  delete from public.profiles where id = public.neon_subject_uuid(old.id::text);
+  return old;
+end;
+$delete_player_profile$;
+
+drop trigger if exists delete_profile_after_user_delete on neon_auth."user";
+create trigger delete_profile_after_user_delete
+after delete on neon_auth."user"
+for each row execute function public.delete_player_profile();
+
+
+-- ============================================================================
+-- Neon Data API privileges (generated)
+-- ============================================================================
+grant usage on schema public to authenticated, anonymous;
+grant select on all tables in schema public to authenticated;
+grant execute on all functions in schema public to authenticated;

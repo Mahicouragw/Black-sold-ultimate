@@ -1,11 +1,22 @@
 name: Neon backend
 
+# Manual only. This workflow NEVER provisions on push: an unclaimed Neon
+# project is a real cloud resource with a 72-hour life, and the claim link must
+# be handed to a human in the same run that creates it.
 on:
   workflow_dispatch:
     inputs:
-      handoff_pr:
-        description: Pull request number that receives the encrypted claim handoff
+      stage:
+        description: 'provision = create project, print claim URL, stop. verify = migrate + verify an existing claimed project.'
         required: true
+        default: provision
+        type: choice
+        options:
+          - provision
+          - verify
+      handoff_pr:
+        description: Pull request number that receives the encrypted claim handoff (optional)
+        required: false
         type: string
       wait_for_claim:
         description: Keep polling until a human completes the claim (up to 30 minutes)
@@ -23,9 +34,10 @@ concurrency:
 
 jobs:
   provision:
-    name: Provision, migrate, verify, and hand off Neon
+    name: Provision and hand the claim URL to the operator
+    if: ${{ inputs.stage == 'provision' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,22 +47,57 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Validate the committed handoff public key
         run: node -e "import('./scripts/neon-crypto.mjs').then(module => console.log('Handoff key id:', module.publicKeyId()))"
-      - name: Provision the recoverable project
+      - name: Provision the project, store secrets outside the tree, and print the claim URL
+        # Creates ~/.black-sword-neon/secrets.json (0600). Nothing is written to
+        # the repository and no credential is echoed.
         run: node scripts/neon-provision.mjs
-      - name: Publish the encrypted claim handoff
+      - name: Publish the encrypted handoff to the named pull request (optional)
+        if: ${{ inputs.handoff_pr != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEON_HANDOFF_PR_NUMBER: ${{ inputs.handoff_pr }}
-        run: node scripts/neon-handoff.mjs --publish-only
-      - name: Apply the complete Neon schema atomically
-        run: node scripts/neon-migrate.mjs
-      - name: Refresh the Data API schema cache
-        run: node scripts/neon-refresh-schema.mjs
-      - name: Verify auth, database features, OAuth, and RLS
-        run: node scripts/verify-neon-backend.mjs
+        run: node scripts/neon-handoff.mjs
       - name: Wait for the human claim
         if: ${{ inputs.wait_for_claim }}
+        run: node scripts/neon-claim.mjs --wait
+      - name: Remind the operator what happens next
+        run: |
+          echo "Schema work is intentionally NOT part of this job." >> "$GITHUB_STEP_SUMMARY"
+          echo "Claim the project first, then run stage=verify (or npm run neon:migrate && npm run neon:verify locally)." >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    name: Migrate the claimed project and verify the backend
+    if: ${{ inputs.stage == 'verify' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Restore project credentials outside the git tree
+        # Repository secret NEON_PROJECT_SECRETS is the JSON written to
+        # ~/.black-sword-neon/secrets.json by the provisioning run. It is only
+        # ever materialised in the runner's home directory, with mode 0600.
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEON_HANDOFF_PR_NUMBER: ${{ inputs.handoff_pr }}
-        run: node scripts/neon-handoff.mjs --wait
+          NEON_PROJECT_SECRETS: ${{ secrets.NEON_PROJECT_SECRETS }}
+          NEON_PUBLIC_CONFIG: ${{ secrets.NEON_PUBLIC_CONFIG }}
+        run: |
+          test -n "$NEON_PROJECT_SECRETS" || { echo "NEON_PROJECT_SECRETS is not configured"; exit 1; }
+          mkdir -p "$HOME/.black-sword-neon"
+          chmod 700 "$HOME/.black-sword-neon"
+          printf '%s' "$NEON_PROJECT_SECRETS" > "$HOME/.black-sword-neon/secrets.json"
+          printf '%s' "$NEON_PUBLIC_CONFIG" > "$HOME/.black-sword-neon/public.json"
+          chmod 600 "$HOME/.black-sword-neon/secrets.json" "$HOME/.black-sword-neon/public.json"
+      - name: Regenerate and diff the schema (must be reproducible)
+        run: |
+          npm run neon:schema
+          git diff --exit-code -- neon/schema.sql
+      - name: Apply the complete Neon schema atomically
+        run: npm run neon:migrate
+      - name: Refresh the Data API schema cache
+        run: npm run neon:refresh
+      - name: Verify auth, database features, OAuth, and RLS
+        run: npm run neon:verify
