@@ -5,6 +5,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { loadWorld, createRuntime } from '../scripts/load-world.mjs';
 
 const CAR_IDS = [
@@ -189,4 +190,36 @@ test('accessible racing commands: accelerate, map, boost, pause, tutorial', asyn
   assert.equal(sim._paused, false);
   assert.equal(CarRacing.handleCommand('tutorial'), true);
   CarRacing.exitDriving();
+});
+
+test('racing audio uses bounded manager-owned recordings for RPM, terrain and discrete cues', async t => {
+  const source = await readFile('car-racing-v28.js', 'utf8');
+  assert.doesNotMatch(source, /createOscillator|getChannelData|new\s+Audio\s*\(|noiseBuffer|synth/i);
+  const { window, dom } = await createRuntime();
+  const { Game, CarRacing, MusicSystem } = window;
+  t.after(() => { try { CarRacing.activeSim?.stop(); MusicSystem.pausePageAudio(); } catch {} dom.window.close(); });
+  try { window.HTMLCanvasElement.prototype.getContext = function () { return null; }; } catch {}
+  Game.state.player = fakePlayer(5000); Game.state.racing = defaultRacing(); Game.state.location = 'car_racing_pit';
+  CarRacing.startDriving('practice');
+  const sim = CarRacing.activeSim;
+  window.cancelAnimationFrame(sim.raf); sim.raf = null;
+  const audio = sim.audio;
+  audio.engineOn = true; audio._startEngineLoops();
+  assert.ok(audio._loops.get('engine-low').audio.src.endsWith('engine-low.wav'));
+  assert.ok(audio._loops.get('engine-high').audio.src.endsWith('engine-high.wav'));
+  audio.setEngineRpm(.75);
+  assert.equal(audio._loops.get('engine-low').audio.playbackRate, 1.18);
+  assert.ok(audio._loops.get('engine-high').audio.playbackRate > 1);
+  audio.startTerrain('mud');
+  assert.ok(audio._loops.get('terrain').audio.src.endsWith('step-mud.ogg'));
+  for (let i = 0; i < 12; i++) audio._playLoop(`bound-${i}`, 'car-horn', .01, 1);
+  assert.equal(MusicSystem.sfxLoopPool.length, 8);
+  assert.equal(MusicSystem.activeSFXLoops.size, 8, 'loop ownership remains bounded');
+  const effects = [];
+  MusicSystem.playSFX = (type, options) => { effects.push({ type, channel: options.channel }); return true; };
+  audio.collision(.5); audio.checkpoint(); audio.countdownBeep(false); audio.winJingle(); audio.loseJingle();
+  assert.deepEqual(effects.map(e => e.type), ['car-collision', 'race-checkpoint', 'race-beep', 'victory', 'death']);
+  assert.ok(effects.every(e => e.channel === audio.channel));
+  audio.stopAll();
+  assert.equal(MusicSystem.activeSFXLoops.size, 0);
 });

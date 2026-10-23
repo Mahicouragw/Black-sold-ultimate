@@ -194,7 +194,7 @@
         this.state.player.gold-=cost; item.enchantments[key]=(item.enchantments[key]||0)+1; const amount=['hp','mp'].includes(key)?15:10; item[key]=(item[key]||0)+amount;
         const p=this.state.player, equipped=[p.weapon,p.armor,p.accessory].includes(item.name);
         if(equipped){if(key==='hp'){p.maxHp+=amount;p.hp+=amount;}else if(key==='mp'){p.maxMp+=amount;p.mp+=amount;}else p[key]+=amount;}
-        this.addNarrative(`✨ Selvara binds ${attribute} +${amount} to ${item.name} for ${cost} rupees.`, 'green-light');MusicSystem.playSFX('magic');this.updateHUD();this.save();this.showEnchantments();
+        const text=`✨ Selvara binds ${attribute} +${amount} to ${item.name} for ${cost} rupees.`;if(this.emitGameEvent)this.emitGameEvent(text,'green-light',{sfx:['magic']});else{this.addNarrative(text,'green-light');MusicSystem.playSFX('magic');}this.updateHUD();this.save();this.showEnchantments();
     };
     Game.divineRevive=function(){
         const p=this.state.player;if(this.state.location!=='grand_temple'){this.addNarrative('Your spirit must reach the Grand Temple first.','system');return;}if(!p.pendingTempleRevival){this.addNarrative(`${p.name} does not need divine revival.`,'system');return;}
@@ -206,8 +206,8 @@
         p.hp=p.maxHp;p.mp=p.maxMp;p.pendingTempleRevival=false;p.permadead=false;
         const lostText=Object.entries(lost).map(([name,count])=>`${name} x${count}`).join(', ');
         this.addNarrative(`Auralis revives ${p.name}.`,'green-light');
-        this.addNarrative(lostText?`Missing from inventory: ${lostText}.`:'Missing from inventory: nothing. No eligible carried items were available.','item');
-        MusicSystem.playSFX('heal');this.updateHUD();this.save();
+        const revivalItems=lostText?`Missing from inventory: ${lostText}.`:'Missing from inventory: nothing. No eligible carried items were available.';
+        if(this.emitGameEvent)this.emitGameEvent(revivalItems,'item',{sfx:['heal']});else{this.addNarrative(revivalItems,'item');MusicSystem.playSFX('heal');}this.updateHUD();this.save();
     };
     Game.pray = function(choice='') {
         if (this.state.location!=='grand_temple') { this.addNarrative('Travel to the Grand Temple first. Type "temple".', 'system'); return; }
@@ -226,7 +226,7 @@
         if (aliases[key]==='health') { this.state.player.maxHp+=5; this.state.player.hp+=5; }
         else if (aliases[key]==='magic') { this.state.player.maxMp+=5; this.state.player.mp+=5; }
         else this.state.player[aliases[key]]+=1;
-        s.lastDailyBlessing=now; this.addNarrative(`${GOD} grants your daily ${key} blessing!`, 'green-light'); MusicSystem.playSFX('blessing'); this.updateHUD(); this.save();
+        s.lastDailyBlessing=now; const text=`${GOD} grants your daily ${key} blessing!`;if(this.emitGameEvent)this.emitGameEvent(text,'green-light',{sfx:['blessing']});else{this.addNarrative(text,'green-light');MusicSystem.playSFX('blessing');} this.updateHUD(); this.save();
     };
     Game.palaceCeremony = function() {
         if (this.state.location!=='royal_palace') { this.addNarrative('Advancement ceremonies take place only at the Royal Palace. Type "palace".', 'system'); return; }
@@ -234,8 +234,8 @@
         if(s.pendingPalaceAdvancements<1){this.addNarrative('No advancement ceremony is pending. Earn another hero level first.','system');return;}
         s.pendingPalaceAdvancements--;s.unspentAttributePoints++;s.companionTrainingPoints++;
         p.hp=p.maxHp;p.mp=p.maxMp;this.state.companions.forEach(c=>{c.hp=c.maxHp;});
-        this.addNarrative(`The Royal Court recognizes ${p.name} at level ${p.level}. Hero and companions are restored; one Palace attribute choice and one companion training point are unlocked.`,'treasure');
-        MusicSystem.playSFX('levelup');this.updateHUD();this.save();
+        const text=`The Royal Court recognizes ${p.name} at level ${p.level}. Hero and companions are restored; one Palace attribute choice and one companion training point are unlocked.`;
+        if(this.emitGameEvent)this.emitGameEvent(text,'treasure',{sfx:['levelup']});else{this.addNarrative(text,'treasure');MusicSystem.playSFX('levelup');}this.updateHUD();this.save();
     };
     Game.palaceQuest = function() {
         if (this.state.location!=='royal_palace') { this.addNarrative('Go to the Royal Palace first. Type "palace".', 'system'); return; }
@@ -392,7 +392,7 @@
     Game.giveItemToCompanion=function(itemQuery,compQuery){const item=this.state.inventory.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase())),c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase()));if(!item||!c){this.addNarrative('Item or companion not found.','system');return;}c.inventory||=[];if(moveOne(this.state.inventory,c.inventory,item.id)){this.addNarrative(`You give ${item.name} to ${c.name}.`,'item');this.save();}};
     Game.takeItemFromCompanion=function(itemQuery,compQuery){const c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase()));const item=c?.inventory?.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase()));if(!item){this.addNarrative('That companion does not carry the item.','system');return;}moveOne(c.inventory,this.state.inventory,item.id);this.addNarrative(`You take ${item.name} from ${c.name}.`,'item');this.save();};
     Game.equipCompanion=function(compQuery,itemQuery){const c=this.state.companions.find(x=>x.name.toLowerCase().includes(compQuery.toLowerCase())),item=c?.inventory?.find(i=>i.name.toLowerCase().includes(itemQuery.toLowerCase()));if(!c||!item||!['weapon','armor'].includes(item.type)){this.addNarrative('Companion or suitable carried equipment not found.','system');return;}if(item.type==='weapon'){c.weapon=item.name;c.attack+=(item.damage||0);}else{c.armor=item.name;c.maxHp+=(item.hp||item.defense||0);c.hp=c.maxHp;}this.addNarrative(`${c.name} equips ${item.name}.`,'treasure');this.save();};
-    Game.sellItem=function(query){const loc=WorldData.locations[this.state.location],item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase()));if(!loc?.shop&&this.state.location!=='arcane_enchantery'){this.addNarrative('Sell items at a shop or enchantery.','system');return;}if(!item){this.addNarrative('You do not carry that item.','system');return;}const price=Math.max(1,Math.floor((item.value||item.damage||10)*.35));item.quantity--;if(item.quantity<=0)this.state.inventory.splice(this.state.inventory.indexOf(item),1);this.state.player.gold+=price;this.addNarrative(`Sold ${item.name} for ${price} rupees.`,'treasure');MusicSystem.playSFX('coin');this.save();};
+    Game.sellItem=function(query){const loc=WorldData.locations[this.state.location],item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase()));if(!loc?.shop&&this.state.location!=='arcane_enchantery'){this.addNarrative('Sell items at a shop or enchantery.','system');return;}if(!item){this.addNarrative('You do not carry that item.','system');return;}const price=Math.max(1,Math.floor((item.value||item.damage||10)*.35));item.quantity--;if(item.quantity<=0)this.state.inventory.splice(this.state.inventory.indexOf(item),1);this.state.player.gold+=price;const text=`Sold ${item.name} for ${price} rupees.`;if(this.emitGameEvent)this.emitGameEvent(text,'treasure',{sfx:['coin']});else{this.addNarrative(text,'treasure');MusicSystem.playSFX('coin');}this.save();};
     Game.dismissCompanion=function(query){const i=this.state.companions.findIndex(c=>c.name.toLowerCase().includes(query.toLowerCase()));if(i<0){this.addNarrative('Companion not found.','system');return;}const [c]=this.state.companions.splice(i,1);this.state.combatGroup=this.state.combatGroup.filter(n=>n!==c.name);this.addNarrative(`${c.name} leaves your group.`,'npc');this.save();};
     Game.reviveHero=function(){const p=this.state.player;if(p.hp>0&&!p.pendingTempleRevival){this.addNarrative(`${p.name} does not need revival.`,'system');return;}p.pendingTempleRevival=true;if(this.state.location!=='grand_temple'){this.addNarrative('Walk the spirit to the Grand Temple, then type “pray revive”.','system');return;}this.divineRevive();};
 

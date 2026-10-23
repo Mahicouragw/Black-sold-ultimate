@@ -39,7 +39,7 @@
     const oldNarrative = G.addNarrative;
     G.addNarrative = function(text, type) {
         const result = oldNarrative.call(this, text, type);
-        if (settings.narration && !UI.suppressLocation && !(UI.walking && (type === 'location' || /^Available directions:/.test(String(text))))) speak(text, /you have died|you awaken|health is low|^You encountered /i.test(String(text)) ? true : type === 'combat' ? 'high' : false, type === 'location' ? 'location' : '');
+        if (!this._audioNarrationHandled && settings.narration && !UI.suppressLocation && !(UI.walking && (type === 'location' || /^Available directions:/.test(String(text))))) speak(text, /you have died|you awaken|health is low|^You encountered /i.test(String(text)) ? true : type === 'combat' ? 'high' : false, type === 'location' ? 'location' : '');
         return result;
     };
 
@@ -108,6 +108,7 @@
         },
         handle(token) {
             if (!this.active()) return;
+            if (token !== 'tap') A.playSFX('swipe', { dedupKey: `gesture-swipe:${token}` });
             if (token === 'cancel') { this.back(); return; }
             if (this.menu) {
                 if (['up', 'right'].includes(token)) this.browse(-1);
@@ -465,6 +466,7 @@
 
     function init() {
         if ($('gesture-interface')) return;
+        document.addEventListener('click', event => { if (event.target.closest?.('button')) A.playSFX('click'); }, { passive: true });
         const launch = document.createElement('button'); launch.id = 'gesture-launch'; launch.type = 'button'; launch.textContent = 'Start spoken gesture controls'; launch.onclick = () => UI.enable(); (visible($('interface-mode-dialog')) ? $('interface-mode-dialog').querySelector('.interface-mode-card') : document.body).append(launch);
         const overlay = document.createElement('section'); overlay.id = 'gesture-interface'; overlay.hidden = true; overlay.setAttribute('aria-label', 'Accessible gesture controls');
         overlay.innerHTML = '<h2 id="gesture-heading">World gestures</h2><p id="gesture-selection"></p><div id="gesture-pad" tabindex="0" role="group" aria-label="Gesture surface. Swipe to move or browse menus. Double tap chooses. Two finger swipe cancels.">Gesture surface</div><div class="gesture-toolbar"><button id="gesture-all">Game controls</button><button id="gesture-back">Back / Cancel</button><button id="gesture-stop">Stop walking</button><button id="gesture-repeat">Repeat</button><button id="gesture-pause">Pause speech</button><button id="gesture-resume">Resume speech</button><button id="gesture-prefs">Narrator settings</button><button id="gesture-help">Gesture reference</button></div><p id="gesture-speech-status" role="status">Tap Test narrator if you do not hear speech. Browser voices may require installed device voice data.</p>';

@@ -287,8 +287,9 @@
         applyHungerPenalty(game);
         item.quantity--;
         if (item.quantity <= 0) game.state.inventory = game.state.inventory.filter(i => i !== item);
-        game.addNarrative(`You eat ${item.name}.`, 'item');
-        window.MusicSystem?.playSFX?.('eat');
+        const text = `You eat ${item.name}.`;
+        if (game.emitGameEvent) game.emitGameEvent(text, 'item', { sfx: ['eat'] });
+        else { game.addNarrative(text, 'item'); window.MusicSystem?.playSFX?.('eat'); }
         game.updateHUD?.();
         game.save?.();
         return true;

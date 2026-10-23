@@ -16,18 +16,27 @@ export async function createRuntime(root = process.cwd()) {
     window.fetch = async () => ({ ok: false, status: 404, arrayBuffer: async () => new ArrayBuffer(0), json: async () => ({}) });
     window.caches = { open: async () => ({ add: async () => {}, addAll: async () => {}, put: async () => {} }) };
     window.Audio = class {
-        constructor(src = '') { this.src = src; this.dataset = {}; this.paused = true; this.volume = 1; this.currentTime = 0; this.listeners = {}; }
-        addEventListener(type, listener) { this.listeners[type] = listener; }
-        removeEventListener(type) { delete this.listeners[type]; }
+        constructor(src = '') { this.src = src; this.dataset = {}; this.paused = true; this.volume = 1; this.currentTime = 0; this.duration = 0.01; this.loop = false; this.listeners = {}; }
+        addEventListener(type, listener) { (this.listeners[type] ||= new Set()).add(listener); }
+        removeEventListener(type, listener) { if (listener) this.listeners[type]?.delete(listener); else delete this.listeners[type]; }
+        emit(type) { for (const listener of [...(this.listeners[type] || [])]) listener(); }
         setAttribute() {} removeAttribute(name) { if (name === 'src') this.src = ''; }
-        load() {} pause() { this.paused = true; } play() { this.paused = false; return Promise.resolve(); }
+        load() {} pause() { this.paused = true; }
+        play() { this.paused = false; if (this.dataset.busy === 'true' && !this.loop) queueMicrotask(() => this.emit('ended')); return Promise.resolve(); }
     };
     window.AudioContext = class {
         constructor() { this.state = 'running'; this.destination = {}; }
         createGain() { return { gain: { value: 1 }, connect() {} }; }
-        createBufferSource() { return { connect() {}, disconnect() {}, start() {}, addEventListener() {}, buffer: null, playbackRate: { value: 1 } }; }
+        createBufferSource() {
+            const listeners = {};
+            return { connect() {}, disconnect() {}, buffer: null, playbackRate: { value: 1 },
+                addEventListener(type, listener) { (listeners[type] ||= new Set()).add(listener); },
+                start() { queueMicrotask(() => { for (const listener of listeners.ended || []) listener(); }); },
+                stop() { queueMicrotask(() => { for (const listener of listeners.ended || []) listener(); }); } };
+        }
         decodeAudioData() { return Promise.resolve({ duration: 0.01 }); }
-        resume() { return Promise.resolve(); }
+        resume() { this.state = 'running'; return Promise.resolve(); }
+        suspend() { this.state = 'suspended'; return Promise.resolve(); }
     };
     window.speechSynthesis = { getVoices: () => [], addEventListener() {}, cancel() {}, speak(utterance) { queueMicrotask(() => { utterance.onstart?.(); utterance.onend?.(); }); } };
     window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };

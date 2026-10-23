@@ -83,6 +83,7 @@ test('eat bread finds carried bread and does not report satiety as magic', async
     const { Game, WorldData, ItemHunger, MusicSystem } = window;
     const heard = [];
     MusicSystem.playSFX = (k) => { heard.push(k); return true; };
+    MusicSystem.playAction = (_text, effects) => { heard.push(...effects); return Promise.resolve(true); };
     const lines = [];
     Game.addNarrative = (m) => lines.push(String(m));
     Game.state.player = { name: 'Hero', hp: 40, maxHp: 100, mp: 10, maxMp: 50, str: 10, satiety: 20, hungerStrPenalty: 4, spells: [] };

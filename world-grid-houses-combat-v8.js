@@ -22,8 +22,8 @@
     const defaults=()=>({openedDoors:{}}),ensure=()=>Game.state.doors=Object.assign(defaults(),Game.state.doors||{});
     const oldGet=Game.getSaveData.bind(Game);Game.getSaveData=function(){return{...oldGet(),doors:ensure()};};
     const oldContinue=Game.continueGame.bind(Game);Game.continueGame=function(){let data;try{const r=this.getRoster();data=r.heroes[r.activeHeroId]||JSON.parse(localStorage.getItem(this.state.saveKey));}catch{}oldContinue();this.state.doors=Object.assign(defaults(),data?.doors||{});Object.keys(this.state.doors.openedDoors).forEach(id=>{if(WorldData.locations[id])WorldData.locations[id].exits.up=id.replace(/_door$/,'_foyer');});};
-    Game.openPhysicalDoor=function(){const loc=WorldData.locations[this.state.location];if(!loc?.houseExterior){this.addNarrative('There is no numbered house door here.','system');return;}ensure().openedDoors[this.state.location]=true;loc.exits.up=this.state.location.replace(/_door$/,'_foyer');loc.features=loc.features.filter(f=>f!=='closed front door');if(!loc.features.includes('open front door'))loc.features.push('open front door');this.addNarrative('The front door opens. Go Up to enter the foyer.','location');MusicSystem.playSFX('door');this.updateDirectionButtons(loc.exits);this.save();};
-    Game.closePhysicalDoor=function(){const loc=WorldData.locations[this.state.location];if(!loc?.houseExterior)return;delete ensure().openedDoors[this.state.location];delete loc.exits.up;this.addNarrative('The front door closes.','system');MusicSystem.playSFX('door');this.updateDirectionButtons(loc.exits);this.save();};
+    Game.openPhysicalDoor=function(){const loc=WorldData.locations[this.state.location];if(!loc?.houseExterior){this.addNarrative('There is no numbered house door here.','system');return;}ensure().openedDoors[this.state.location]=true;loc.exits.up=this.state.location.replace(/_door$/,'_foyer');loc.features=loc.features.filter(f=>f!=='closed front door');if(!loc.features.includes('open front door'))loc.features.push('open front door');const text='The front door opens. Go Up to enter the foyer.';if(this.emitGameEvent)this.emitGameEvent(text,'location',{sfx:['door']});else{this.addNarrative(text,'location');MusicSystem.playSFX('door');}this.updateDirectionButtons(loc.exits);this.save();};
+    Game.closePhysicalDoor=function(){const loc=WorldData.locations[this.state.location];if(!loc?.houseExterior)return;delete ensure().openedDoors[this.state.location];delete loc.exits.up;const text='The front door closes.';if(this.emitGameEvent)this.emitGameEvent(text,'system',{sfx:['door']});else{this.addNarrative(text,'system');MusicSystem.playSFX('door');}this.updateDirectionButtons(loc.exits);this.save();};
     Game.templeDirections=function(){this.addNarrative('Grand Temple route from central Kaliwasch: Down to the street grid, East three times, South once, then Up through the Temple entrance. Direction buttons show each available step.','location');};
     // Hide unvisited legendary secrets instead of listing names in advance.
     Game.examineBlackSwordLocations=function(){const visited=this.state.visited||[],known=visited.filter(id=>id.startsWith('black_sword_legacy_')).map(id=>WorldData.locations[id]?.name).filter(Boolean),unknown=12-known.length;this.addNarrative(`Known Black Sword locations: Shadow Chamber${known.length?`; ${known.join('; ')}`:''}. ${unknown} undiscovered legacy location${unknown===1?' remains':'s remain'} hidden. Enter the discovered route from Shadow Chamber by going Down.`,'location');};
@@ -40,14 +40,20 @@
         const bonusDex=blessing?.type==='dexterity'?blessing.value:0,bonusStr=blessing?.type==='strength'?blessing.value:0;
         const accuracy=Math.max(60,Math.min(97,78+(p.dex+bonusDex-(e.dex||8))*.6)),roll=Math.random()*100;
         if(roll>accuracy){
-            const text=`You miss ${e.name}.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');
-            MusicSystem.playSFX('miss');this.companionTurn();if(this.state.inCombat&&this.state.enemy)this.enemyAttack();return;
+            const text=`You miss ${e.name}.`;
+            if(this.emitGameEvent)this.emitGameEvent(text,'combat',{sfx:['miss']});
+            else{this.addNarrative(text,'combat');MusicSystem.playSFX('miss');}
+            this.companionTurn();if(this.state.inCombat&&this.state.enemy)this.enemyAttack();return;
         }
         const weapon=Object.values(WorldData.items).find(i=>i.name===p.weapon),type=weapon?.weaponType||'sharp',penetration=type==='blunt'?.55:.35;
         const effectiveDefense=Math.floor((e.defense||0)*(1-penetration)),variance=Math.floor(Math.random()*11),critChance=Math.max(3,Math.min(30,5+(p.dex+bonusDex)/8));
         const critical=Math.random()*100<critChance;let damage=Math.max(1,(p.weaponDamage||8)+Math.floor((p.str+bonusStr)/2)+variance-Math.floor(effectiveDefense/3));if(critical)damage=Math.floor(damage*1.75);
-        e.hp=Math.max(0,e.hp-damage);const text=critical?`You deal a critical hit to ${e.name} for ${damage} damage.`:`You strike ${e.name} for ${damage} damage.`;
-        this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');MusicSystem.playSFX('hit');this.updateEnemyHUD();OnlineSystem.recordGroupAttack(e.name,damage);
+        e.hp=Math.max(0,e.hp-damage);
+        const goblin=/goblin/i.test(e.name),text=critical?`You deal a critical hit to ${e.name} for ${damage} damage.`:goblin?`You hit ${e.name} for ${damage} damage.`:`You strike ${e.name} for ${damage} damage.`;
+        const effects=goblin?['weapon-hit']:['hit'],reaction=goblin?['goblin-reaction']:[];
+        if(this.emitGameEvent)this.emitGameEvent(text,'combat',{sfx:effects,reaction});
+        else{this.addNarrative(text,'combat');[...effects,...reaction].forEach(effect=>MusicSystem.playSFX(effect));}
+        this.updateEnemyHUD();OnlineSystem.recordGroupAttack(e.name,damage);
         // A defeated monster must not end the round: surviving group members
         // still each get exactly one turn (v7.22.2 fix).
         if(e.hp<=0){Promise.resolve(this.enemyDefeated()).then(()=>this.resolveSurvivorTurn?.());}

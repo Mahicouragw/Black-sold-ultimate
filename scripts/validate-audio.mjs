@@ -5,6 +5,7 @@ import { extname, join } from 'node:path';
 const manifest = JSON.parse(await readFile('assets/audio/audio-manifest.json', 'utf8'));
 const credits = await readFile('AUDIO_CREDITS.md', 'utf8');
 const musicSource = await readFile('music.js', 'utf8');
+const recordedChecksums = JSON.parse(await readFile('recorded-audio-checksums.json', 'utf8'));
 const supported = new Set(['.mp3', '.ogg', '.wav', '.m4a', '.aac', '.flac']);
 const required = ['path', 'kind', 'title', 'creator', 'source', 'sourcePage', 'license', 'licenseUrl', 'licenseRequirements', 'attributionRequirements', 'attribution', 'dateAccessed'];
 const issues = [];
@@ -38,10 +39,15 @@ for (const asset of assets) {
             if (asset.bytes !== bytes.length) issues.push({ check: 'music-byte-count-mismatch', path: asset.path, detail: `${asset.bytes} != ${bytes.length}` });
             if (!/^[a-f0-9]{64}$/.test(asset.sha256 || '') || asset.sha256 !== digest) issues.push({ check: 'music-checksum-mismatch', path: asset.path, detail: digest });
         }
+        if (asset.kind === 'sfx') {
+            const bytes = await readFile(asset.path), digest = createHash('sha256').update(bytes).digest('hex');
+            if (!/^[a-f0-9]{64}$/.test(recordedChecksums[asset.path] || '')) issues.push({ check: 'missing-recorded-checksum', path: asset.path });
+            else if (recordedChecksums[asset.path] !== digest) issues.push({ check: 'recorded-checksum-mismatch', path: asset.path, detail: digest });
+        }
     } catch { issues.push({ check: 'missing-file', path: asset.path }); }
     if (!credits.includes(`\`${asset.path}\``)) issues.push({ check: 'missing-credit-entry', path: asset.path });
     if (!/^https:\/\//.test(asset.sourcePage || '') || !/^https:\/\//.test(asset.licenseUrl || '')) issues.push({ check: 'invalid-source-or-license-url', path: asset.path });
-    if (!/CC0|CC BY|CC BY-SA/.test(asset.license || '')) issues.push({ check: 'unverified-license-label', path: asset.path, detail: asset.license });
+    if (!/CC0|CC BY|CC BY-SA|MIT/.test(asset.license || '')) issues.push({ check: 'unverified-license-label', path: asset.path, detail: asset.license });
 }
 
 const actual = [];
@@ -49,6 +55,7 @@ for (const directory of ['assets/audio/music', 'assets/audio/sfx']) {
     for (const name of await readdir(directory)) actual.push(join(directory, name).replaceAll('\\', '/'));
 }
 for (const path of actual) if (!paths.has(path)) issues.push({ check: 'orphaned-file-without-manifest', path });
+for (const path of Object.keys(recordedChecksums)) if (!paths.has(path)) issues.push({ check: 'orphaned-recorded-checksum', path });
 for (const path of paths) if (!actual.includes(path)) issues.push({ check: 'orphaned-manifest-record', path });
 
 // Every literal audio reference in shipped JS/HTML must resolve and be licensed.

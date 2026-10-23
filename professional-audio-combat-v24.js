@@ -1,65 +1,11 @@
 /**
- * Black Soul Ultimate - Professional Audio Event System v24
- * AAA Professional RPG - Every sound, animation, combat event, TalkBack announcement synchronized exactly like commercial game
- * 
- * AUDIO SYSTEM Requirements:
- * - Verified CC0, CC BY and CC BY-SA audio from Kenney, OpenGameArt and creator distribution pages
- * - Automatically preload and cache sounds before gameplay
- * - Never allow sounds to overlap incorrectly
- * - Every sound must play at exact gameplay event
- * - Wait for correct timing before starting next narration
- * 
- * COMBAT TIMELINE - Exact order as specified:
- * 
- * PLAYER ATTACK:
- * 1. User presses Attack
- * 2. Play weapon swing sound immediately
- * 3. When weapon connects, play hit sound
- * 4. If miss, play miss sound instead
- * 5. Then narrate: "You hit Goblin for 56 damage."
- * 6. If monster survives: "Goblin has 14 health remaining."
- * 
- * MONSTER TURN:
- * 1. Play monster attack sound
- * 2. Play hit or miss sound
- * 3. Narrate: "Goblin hits you for 33 damage."
- * 4. Narrate: "You have 127 health remaining."
- * 
- * HEALING SPELL:
- * 1. User presses Healing Spell
- * 2. Play magical healing sound
- * 3. Play healing completion sound
- * 4. Narrate: "Your healing spell restores 45 health."
- * 5. Narrate: "You now have 160 health."
- * 
- * MONSTER DEFEAT:
- * When monster reaches zero health:
- * Play: final hit, monster death, body falling sounds
- * After those sounds, narrate: "Goblin defeated."
- * Do not play victory music yet.
- * 
- * LOOT:
- * After every defeated enemy:
- * If loot exists: Play treasure appearance sound, narrate each item individually
- * Example: "You found an Iron Sword." "You found 23 Gold." "You found a Health Potion."
- * If no loot: Narrate "The monster dropped no loot." Do not play treasure sound.
- * 
- * EXPERIENCE:
- * After loot: Narrate "You gained 150 experience."
- * If level up: Play level-up sound, narrate "Congratulations! You reached Level 8."
- * 
- * VICTORY:
- * Victory music must NEVER begin before:
- * - all monsters are defeated
- * - all defeat sounds finish
- * - all loot announcements finish
- * - all experience announcements finish
- * Only then: Play victory fanfare, narrate "You have won the battle."
- * 
- * MULTIPLE ENEMIES: Support battles against multiple enemies, process defeat, loot, exp for each, finally victory fanfare
- * DAMAGE DISPLAY: Hide technical values (Accuracy, Critical Chance, Armor Penetration, etc), only natural messages
- * ACCESSIBILITY: Every combat event works with TalkBack, narration never overlaps, don't interrupt important announcements, every button has accessibility labels
- * BOARD GAMES: Same synchronized event system for every board game
+ * Black Sword Ultimate — recorded combat and board-game event timelines.
+ *
+ * AudioManager owns the only speech/effect queue. Every action or result is
+ * narrated first, then its matching recordings and optional reactions play in
+ * order to their real ended events. Loot, experience and victory remain later
+ * events; victory never jumps ahead of those events. No fixed-duration timer
+ * is used to cut a recording short, and no second speech or audio engine exists.
  */
 
 (function() {
@@ -184,199 +130,87 @@
     },
 
     // Play sound at exact gameplay event - never allow overlapping incorrectly
+    // Play a complete recording through the authoritative event queue.
     async playExact(id, options = {}) {
-      const sound = this.sounds[id];
-      if (!sound) {
-        console.warn(`Sound ${id} not found`);
-        return 0;
-      }
-
-      // Check if sound is already playing and should not overlap
-      if (this.isPlayingCriticalSound && !options.allowOverlap) {
-        // Queue or wait - for critical sounds like weapon swing -> hit, we must wait
-        await this.waitForCurrentSound();
-      }
-
+      const aliases = {
+        carrom_strike: 'carromStrike', carrom_collision: 'carromCollision', carrom_pocket: 'carromPocket',
+        chess_move: 'chessMove', chess_capture: 'chessCapture', chess_check: 'chessCheck', chess_checkmate: 'chessCheckmate',
+        card_flip: 'cardFlip', memory_match: 'check', memory_wrong: 'boardError', winner: 'victoryFanfare'
+      };
+      const sound = this.sounds[id] || this.sounds[aliases[id]];
+      if (!sound) { console.warn(`Sound ${id} not found`); return 0; }
       try {
-        // Use professional audio system with Web Audio API for sub-10ms latency
-        if (window.MusicSystem && window.MusicSystem.playSFX) {
-          // Use existing MusicSystem for actual playback
-          if (options.wait) {
-            await window.MusicSystem.playSFXAndWait(sound.src.split('/').pop().replace('.wav','').replace('.mp3','').replace('.ogg',''));
-          } else {
-            window.MusicSystem.playSFX(sound.src.split('/').pop().replace('.wav','').replace('.mp3','').replace('.ogg',''));
-          }
-        } else {
-          // AudioManager is the only audio engine. A missing manager is a safe
-          // no-op rather than an unbounded competing HTMLAudioElement.
-          console.warn(`AudioManager unavailable for ${id}`);
+        if (window.MusicSystem?.playSFXAndWait) {
+          if (options.wait === false) window.MusicSystem.playSFX(sound.src);
+          else await window.MusicSystem.playSFXAndWait(sound.src);
         }
-
-        // Return duration for timing next narration
         return sound.duration || 500;
-      } catch (e) {
-        console.log(`Play sound ${id} failed:`, e.message);
+      } catch (error) {
+        console.log(`Play sound ${id} failed:`, error.message);
         return 0;
       }
     },
 
-    async waitForCurrentSound() {
-      // Wait a bit for current critical sound to finish
-      await new Promise(r => setTimeout(r, 100));
+    async waitForCurrentSound() { return true; },
+
+    // Narration and its matching effects are one atomic queue item.
+    async narrate(text, priority = 'normal', sfx = [], reaction = []) {
+      const isCombat = /damage|hit|health|attack|defeat/i.test(text), type = isCombat ? 'combat' : 'system';
+      const options = { critical: priority === 'assertive', sfx, reaction };
+      if (window.Game?.emitGameEvent) return window.Game.emitGameEvent(text, type, options);
+      window.Game?.addNarrative?.(text, type);
+      return window.AudioManager?.playAction?.(text, sfx, { priority: priority === 'assertive' ? 'critical' : false, reaction }) || false;
     },
 
-    // Game events use the one AudioManager TTS queue and the normal narrative
-    // live region. This module does not maintain a competing speech queue.
-    async narrate(text, priority = 'normal') {
-      const isCombat=/damage|hit|health|attack|defeat/i.test(text),type=isCombat?'combat':'system';
-      if(window.Game?.emitGameEvent)return window.Game.emitGameEvent(text,type,{critical:priority==='assertive'});
-      window.Game?.addNarrative?.(text,type);
-      return window.AudioManager?.playVoice?.(text,{priority:priority==='assertive'?'critical':false})||false;
-    },
-
-    // ===== COMBAT TIMELINE - Exact order as specified =====
-
-    // PLAYER ATTACK: 1. Press Attack -> 2. Swing immediately -> 3. Hit when connects -> 4. Miss if misses -> 5. Narrate hit damage -> 6. Narrate remaining health
+    // The exact action/result is spoken first; swing, impact and optional
+    // goblin reaction then play sequentially without fixed-duration clipping.
     async playerAttack(attackerName, targetName, damage, isCrit, isMiss, remainingHealth) {
-      // 1. User presses Attack (already done - button press)
-      // 2. Play weapon swing sound immediately
-      await this.playExact('weaponSwing');
-      
-      // Simulate weapon travel time
-      await new Promise(r => setTimeout(r, 200));
-      
       if (isMiss) {
-        // 4. Miss sound instead
-        await this.playExact('miss');
-        await new Promise(r => setTimeout(r, 300));
-        // 5. Narrate miss (natural message, hide technical values like Accuracy, Critical Chance)
-        await this.narrate(`${attackerName} attacks but ${targetName} dodged the attack.`);
+        await this.narrate(`${attackerName} attacks but ${targetName} dodged the attack.`, 'normal', ['attack', 'miss']);
       } else {
-        // 3. When weapon connects, play hit sound
-        await this.playExact('hit');
-        await new Promise(r => setTimeout(r, 100));
-        
-        // 5. Narrate hit damage - natural message, hide technical values
-        const critText = isCrit ? ' critically' : '';
-        await this.narrate(`You hit ${targetName} for ${damage} damage.`);
-        
-        // 6. If monster survives
-        if (remainingHealth > 0) {
-          await new Promise(r => setTimeout(r, 300));
-          await this.narrate(`${targetName} has ${remainingHealth} health remaining.`);
-        }
+        const reaction = /goblin/i.test(targetName) ? ['goblin-reaction'] : [];
+        await this.narrate(`You hit ${targetName} for ${damage} damage${isCrit ? ' with a critical strike' : ''}.`, 'normal', ['attack', 'weapon-hit'], reaction);
+        if (remainingHealth > 0) await this.narrate(`${targetName} has ${remainingHealth} health remaining.`);
       }
     },
 
-    // MONSTER TURN
     async monsterAttack(monsterName, damage, isMiss, playerRemainingHealth) {
-      // 1. Play monster attack sound
-      await this.playExact('monsterAttack');
-      await new Promise(r => setTimeout(r, 400));
-      
       if (isMiss) {
-        await this.playExact('miss');
-        await new Promise(r => setTimeout(r, 300));
-        await this.narrate(`${monsterName} attacks but you blocked the attack.`);
+        await this.narrate(`${monsterName} attacks but you blocked the attack.`, 'normal', ['monster-roar', 'miss']);
       } else {
-        // 2. Play hit or miss sound
-        await this.playExact('monsterHit');
-        await new Promise(r => setTimeout(r, 100));
-        
-        // 3. Narrate hit damage
-        await this.narrate(`${monsterName} hits you for ${damage} damage.`);
-        
-        // 4. Narrate remaining health
-        await new Promise(r => setTimeout(r, 300));
+        await this.narrate(`${monsterName} hits you for ${damage} damage.`, 'normal', ['monster-roar', 'monster-hit']);
         await this.narrate(`You have ${playerRemainingHealth} health remaining.`);
       }
     },
 
-    // HEALING SPELL
     async healingSpell(healAmount, newHealth) {
-      // 1. User presses Healing Spell (already done)
-      // 2. Play magical healing sound
-      await this.playExact('healingStart');
-      await new Promise(r => setTimeout(r, 800));
-      
-      // 3. Play healing completion sound
-      await this.playExact('healingComplete');
-      await new Promise(r => setTimeout(r, 400));
-      
-      // 4. Narrate restore
-      await this.narrate(`Your healing spell restores ${healAmount} health.`);
-      
-      // 5. Narrate now have health
-      await new Promise(r => setTimeout(r, 300));
+      await this.narrate(`Your healing spell restores ${healAmount} health.`, 'normal', ['magic', 'heal']);
       await this.narrate(`You now have ${newHealth} health.`);
     },
 
-    // MONSTER DEFEAT - Play final hit, death, falling BEFORE narration, do NOT play victory yet
     async monsterDefeat(monsterName) {
-      // Play: final hit, monster death, body falling - must all play BEFORE narration
-      await this.playExact('finalHit');
-      await new Promise(r => setTimeout(r, 300));
-      
-      await this.playExact('monsterDeath');
-      await new Promise(r => setTimeout(r, 800));
-      
-      await this.playExact('bodyFall');
-      await new Promise(r => setTimeout(r, 600));
-      
-      // After those sounds, narrate defeated
-      await this.narrate(`${monsterName} defeated.`);
-      
-      // Do NOT play victory music yet - wait for loot, exp, all monsters
+      await this.narrate(`${monsterName} defeated.`, 'normal', ['hit', 'death', 'body-fall']);
+      // Victory remains a later, separate event after loot and experience.
     },
 
-    // LOOT - After every defeated enemy
     async loot(monsterName, items) {
-      // items: array of {name, goldAmount} or similar
       if (!items || items.length === 0) {
-        // If no loot: Narrate no loot, do NOT play treasure sound
         await this.narrate(`The ${monsterName} dropped no loot.`);
         return;
       }
-      
-      // If loot exists: Play treasure appearance sound
-      await this.playExact('treasureAppear');
-      await new Promise(r => setTimeout(r, 500));
-      
-      // Narrate each item individually
       for (const item of items) {
-        if (item.gold) {
-          await this.narrate(`You found ${item.gold} Gold.`);
-        } else if (item.name) {
-          await this.narrate(`You found ${item.name}.`);
-          await this.playExact('itemFound');
-        }
-        await new Promise(r => setTimeout(r, 400));
+        if (item.gold) await this.narrate(`You found ${item.gold} Gold.`, 'normal', ['coin']);
+        else if (item.name) await this.narrate(`You found ${item.name}.`, 'normal', ['pickup']);
       }
     },
 
-    // EXPERIENCE - After loot
     async experience(xp, newLevel, oldLevel) {
-      await this.narrate(`You gained ${xp} experience.`);
-      
-      if (newLevel > oldLevel) {
-        await new Promise(r => setTimeout(r, 300));
-        // Play level-up sound
-        await this.playExact('levelUp');
-        await new Promise(r => setTimeout(r, 500));
-        await this.narrate(`Congratulations! You reached Level ${newLevel}.`);
-      }
+      await this.narrate(`You gained ${xp} experience.`, 'normal', ['exp']);
+      if (newLevel > oldLevel) await this.narrate(`Congratulations! You reached Level ${newLevel}.`, 'normal', ['levelup']);
     },
 
-    // VICTORY - MUST NEVER begin before all monsters defeated, all defeat sounds, loot, exp finish
     async victory(options = {}) {
-      // Wait to ensure all previous narrations and sounds finish. The central
-      // AudioManager owns the battle → victory → world music transition, so the
-      // timeline can suppress this legacy SFX copy and avoid a doubled fanfare.
-      if (!options.skipFanfare) {
-        await this.playExact('victoryFanfare');
-        await new Promise(r => setTimeout(r, 500));
-      }
-      await this.narrate(`You have won the battle.`);
+      await this.narrate(`You have won the battle.`, 'normal', options.skipFanfare ? [] : ['victory']);
     },
 
     // MULTIPLE ENEMIES - Support battles against multiple enemies
@@ -408,95 +242,64 @@
     // BOARD GAMES - Same synchronized event system
     boardGames: {
       async diceRoll(value) {
-        // User presses Roll Dice -> Play dice rolling sound immediately
-        await ProfessionalAudioCombat.playExact('boardDice');
-        await new Promise(r => setTimeout(r, 800));
-        // TalkBack announces dice result
-        await ProfessionalAudioCombat.narrate(`You rolled the dice. You got ${value}.`);
+        await ProfessionalAudioCombat.narrate(`You rolled the dice. You got ${value}.`, 'normal', ['board-dice']);
       },
-      
-      async pieceMove(steps, position, playerName) {
-        // Play wooden footstep sound effect once for each step moved (e.g. 3 times for roll of 3)
-        // Zero spoken speech — sound effects only!
+
+      async pieceMove(steps, position, playerName) { // Game Hall narrates the exact move.
         const count = Math.max(1, Math.min(12, Number(steps) || 1));
-        for (let i = 1; i <= count; i++) {
-          await ProfessionalAudioCombat.playExact('boardPieceStep');
-          await new Promise(r => setTimeout(r, 220)); // 220ms per footstep sound
-        }
+        for (let i = 1; i <= count; i++) await ProfessionalAudioCombat.playExact('boardPieceStep');
       },
-      
-      async snakeBite(from, to) {
-        await ProfessionalAudioCombat.playExact('miss'); // Calm sliding CC0 whoosh
-        await new Promise(r => setTimeout(r, 450));
-        await ProfessionalAudioCombat.playExact('bodyFall'); // Soft CC0 landing thud
-        await new Promise(r => setTimeout(r, 450));
+
+      async snakeBite(from, to) { // Game Hall narrates the exact snake transition.
+        await ProfessionalAudioCombat.playExact('miss');
+        await ProfessionalAudioCombat.playExact('bodyFall');
       },
-      
-      async ladderClimb(from, to) {
-        await ProfessionalAudioCombat.playExact('healingStart'); // Magic CC0 shimmer rising
-        await new Promise(r => setTimeout(r, 500));
-        await ProfessionalAudioCombat.playExact('levelUp'); // Success CC0 chime
-        await new Promise(r => setTimeout(r, 500));
+
+      async ladderClimb(from, to) { // Game Hall narrates the exact ladder transition.
+        await ProfessionalAudioCombat.playExact('healingStart');
+        await ProfessionalAudioCombat.playExact('levelUp');
       },
-      
+
       async carromStrike(playerName) {
-        await ProfessionalAudioCombat.playExact('carrom_strike');
-        await new Promise(r => setTimeout(r, 500));
-        if (playerName) await ProfessionalAudioCombat.narrate(`${playerName} struck the striker.`);
+        if (playerName) await ProfessionalAudioCombat.narrate(`${playerName} struck the striker.`, 'normal', ['carrom-strike']);
+        else await ProfessionalAudioCombat.playExact('carrom_strike');
       },
-      
-      async carromCollision() {
-        await ProfessionalAudioCombat.playExact('carrom_collision');
-      },
-      
+
+      async carromCollision() { await ProfessionalAudioCombat.playExact('carrom_collision'); },
+
       async carromPocket() {
-        await ProfessionalAudioCombat.playExact('carrom_pocket');
-        await ProfessionalAudioCombat.narrate(`Coin pocketed!`);
+        await ProfessionalAudioCombat.narrate('Coin pocketed!', 'normal', ['coin']);
       },
-      
+
       async chessMove(from, to, player) {
-        await ProfessionalAudioCombat.playExact('chess_move');
-        await ProfessionalAudioCombat.narrate(`${player || ''} moved from ${from} to ${to}.`);
+        await ProfessionalAudioCombat.narrate(`${player || ''} moved from ${from} to ${to}.`, 'normal', ['chess-move']);
       },
-      
+
       async chessCapture() {
-        await ProfessionalAudioCombat.playExact('chess_capture');
-        await ProfessionalAudioCombat.narrate(`Piece captured.`);
+        await ProfessionalAudioCombat.narrate('Piece captured.', 'normal', ['attack']);
       },
-      
+
       async chessCheck() {
-        await ProfessionalAudioCombat.playExact('chess_check');
-        await ProfessionalAudioCombat.narrate(`Check!`);
+        await ProfessionalAudioCombat.narrate('Check!', 'normal', ['check']);
       },
-      
+
       async chessCheckmate() {
-        await ProfessionalAudioCombat.playExact('chess_checkmate');
-        await ProfessionalAudioCombat.narrate(`Checkmate!`);
+        await ProfessionalAudioCombat.narrate('Checkmate!', 'normal', ['checkmate']);
       },
-      
-      async memoryFlip() {
-        await ProfessionalAudioCombat.playExact('card_flip');
-      },
-      
+
+      async memoryFlip() { await ProfessionalAudioCombat.playExact('card_flip'); },
+
       async memoryMatch() {
-        await ProfessionalAudioCombat.playExact('memory_match');
-        await ProfessionalAudioCombat.narrate(`Match found!`);
+        await ProfessionalAudioCombat.narrate('Match found!', 'normal', ['check']);
       },
-      
+
       async memoryWrong() {
-        await ProfessionalAudioCombat.playExact('memory_wrong');
-        await ProfessionalAudioCombat.narrate(`Not a match, try again.`);
+        await ProfessionalAudioCombat.narrate('Not a match, try again.', 'normal', ['board-error']);
       },
-      
+
       async victory(playerName) {
-        // Celebration music, fireworks animation, victory sound
-        await ProfessionalAudioCombat.playExact('winner');
-        await new Promise(r => setTimeout(r, 500));
-        if (playerName) {
-          await ProfessionalAudioCombat.narrate(`Congratulations ${playerName}! You won the game.`);
-        } else {
-          await ProfessionalAudioCombat.narrate(`Congratulations! You won the game.`);
-        }
+        const text = playerName ? `Congratulations ${playerName}! You won the game.` : 'Congratulations! You won the game.';
+        await ProfessionalAudioCombat.narrate(text, 'normal', ['victory']);
       }
     }
   };
