@@ -7,6 +7,12 @@ on:
         description: 'Apply the checked-in Neon schema after provisioning'
         type: boolean
         default: false
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/neon-backend.yml'
+      - 'scripts/neon-*.mjs'
+      - 'neon/**'
 
 permissions:
   contents: read
@@ -39,8 +45,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/neon-store-credentials.mjs
       - name: Apply schema
-        if: ${{ inputs.migrate }}
+        if: ${{ inputs.migrate || hashFiles('neon/schema.sql') != '' }}
         run: node scripts/neon-migrate.mjs
       - name: Verify auth, database, and security
-        if: ${{ inputs.migrate }}
+        if: ${{ inputs.migrate || hashFiles('neon/schema.sql') != '' }}
         run: node scripts/verify-neon-backend.mjs
