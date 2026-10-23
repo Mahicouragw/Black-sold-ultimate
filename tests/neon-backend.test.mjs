@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { generateKeyPairSync } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
@@ -186,7 +186,9 @@ test('handoff key ids identify the exact key pair and reject mismatches', t => {
 });
 
 test('the key generator refuses to overwrite an existing handoff key', t => {
-    const directory = mkdtempSync(join(tmpdir(), 'black-sword-neon-keygen-'));
+    // The private key is deliberately never allowed under /tmp, so the test
+    // fixture lives beside the real handoff directory.
+    const directory = mkdtempSync(join(homedir(), '.black-sword-neon-keygen-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     const env = {
         ...process.env,

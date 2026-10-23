@@ -6,7 +6,10 @@ on:
       - 'neon/schema.sql'
       - 'scripts/build-neon-schema.mjs'
       - 'scripts/neon-migrate.mjs'
+      - 'scripts/neon-secrets.mjs'
       - 'scripts/test-neon-schema.mjs'
+      - 'tests/neon-schema-postgres.test.mjs'
+      - 'tests/neon-provisioning.test.mjs'
       - 'supabase/*.sql'
       - '.github/workflows/neon-schema-test.yml'
 
@@ -36,5 +39,9 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Test migrated schema against isolated Postgres
+      - name: Apply the schema twice and exercise RLS against real Postgres
         run: node scripts/test-neon-schema.mjs
+      - name: Rebuild the generator and fail if neon/schema.sql is stale
+        run: |
+          npm run neon:schema
+          git diff --exit-code -- neon/schema.sql

@@ -1,4 +1,4 @@
-/** Secure default, personal, and owner-managed Supabase chat rooms. */
+/** Secure default, personal, and owner-managed Neon chat rooms. */
 const ChatRooms={
     rooms:[],current:null,messages:[],subscription:null,heartbeatTimer:null,countdownTimer:null,messageExpiryTimer:null,openingPromise:null,joinPromise:null,joiningId:null,sending:false,expiryNoticeSpoken:false,
     isFresh(message,now=Date.now()){const expires=message?.expires_at?new Date(message.expires_at).getTime():new Date(message?.created_at||0).getTime()+300000;return Number.isFinite(expires)&&expires>now;},

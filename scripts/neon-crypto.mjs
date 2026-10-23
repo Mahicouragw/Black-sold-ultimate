@@ -1,5 +1,7 @@
 import { createDecipheriv, createCipheriv, createHash, createPrivateKey, createPublicKey, privateDecrypt, publicEncrypt, randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 /** Stable, non-secret identifier for the committed handoff public key. */
 export function keyIdFor(key) {
@@ -47,7 +49,8 @@ export function encryptHandoff(value, publicKeyPath = 'neon/handoff-public-key.p
     };
 }
 
-export function decryptHandoff(payload, privateKeyPath = '.neon/handoff-private-key.pem') {
+export function decryptHandoff(payload, privateKeyPath = process.env.NEON_PRIVATE_KEY_FILE
+    || join(homedir(), '.black-sword-neon', 'handoff-private-key.pem')) {
     if (payload?.version !== 2) throw new Error('Unsupported Neon handoff encryption version.');
     let privateKey;
     try {
