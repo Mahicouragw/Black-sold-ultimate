@@ -3,20 +3,18 @@ name: Neon backend
 on:
   workflow_dispatch:
     inputs:
-      migrate:
-        description: 'Apply the checked-in Neon schema after provisioning'
-        type: boolean
+      handoff_pr:
+        description: Pull request number that receives the encrypted claim handoff
+        required: true
+        type: string
+      wait_for_claim:
+        description: Keep polling until a human completes the claim (up to 30 minutes)
+        required: false
         default: false
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/neon-backend.yml'
-      - 'scripts/neon-*.mjs'
-      - 'neon/**'
+        type: boolean
 
 permissions:
   contents: read
-  actions: write
   pull-requests: write
 
 concurrency:
@@ -25,8 +23,9 @@ concurrency:
 
 jobs:
   provision:
-    name: Provision and verify claimable Neon
+    name: Provision, migrate, verify, and hand off Neon
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,26 +33,24 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Report non-secret credential access
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/neon-report-access.mjs
-      - name: Provision or reconnect to the project
-        if: ${{ hashFiles('neon/provision-enabled') != '' }}
-        env:
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-          NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
-          NEON_PROJECT_EXPIRES_AT: ${{ vars.NEON_PROJECT_EXPIRES_AT }}
-          NEON_IDENTITY_ASSERTION: ${{ secrets.NEON_IDENTITY_ASSERTION }}
+      - name: Validate the committed handoff public key
+        run: node -e "import('./scripts/neon-crypto.mjs').then(module => console.log('Handoff key id:', module.publicKeyId()))"
+      - name: Provision the recoverable project
         run: node scripts/neon-provision.mjs
-      - name: Store project-scoped credentials
-        if: ${{ hashFiles('neon/provision-enabled') != '' }}
+      - name: Publish the encrypted claim handoff
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/neon-store-credentials.mjs
-      - name: Apply schema
-        if: ${{ inputs.migrate || hashFiles('neon/schema.sql') != '' }}
+          NEON_HANDOFF_PR_NUMBER: ${{ inputs.handoff_pr }}
+        run: node scripts/neon-handoff.mjs --publish-only
+      - name: Apply the complete Neon schema atomically
         run: node scripts/neon-migrate.mjs
-      - name: Verify auth, database, and security
-        if: ${{ inputs.migrate || hashFiles('neon/schema.sql') != '' }}
+      - name: Refresh the Data API schema cache
+        run: node scripts/neon-refresh-schema.mjs
+      - name: Verify auth, database features, OAuth, and RLS
         run: node scripts/verify-neon-backend.mjs
+      - name: Wait for the human claim
+        if: ${{ inputs.wait_for_claim }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEON_HANDOFF_PR_NUMBER: ${{ inputs.handoff_pr }}
+        run: node scripts/neon-handoff.mjs --wait
