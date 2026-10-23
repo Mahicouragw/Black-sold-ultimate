@@ -41,7 +41,17 @@ class AudioManagerController {
         this.directTrack = false;
         this.specialResolver = null;
         this.duckRequests = new Map();
-        this.speechQueue = [];
+        this.speechQueue = []; // Unified narration/effect/reaction event queue.
+        this.voiceProcessing = false;
+        this.activeSpeechCancel = null;
+        this.activeSFXCancels = new Set();
+        this.legacySFXPending = [];
+        this.legacySFXFlushScheduled = false;
+        this.recentSFX = new Map();
+        this.recentAudioEvents = new Map();
+        this.audioEventIds = new Set();
+        this.audioEventSequence = 0;
+        this.audioQueueGeneration = 0;
         this.voicePaused = false;
         this.lastVoiceText = "";
         this.recentVoice = new Map();
@@ -59,6 +69,8 @@ class AudioManagerController {
         this.sfxBuffers = Object.create(null);
         this.sfxDecodePromises = Object.create(null);
         this.sfxFallbackPool = [];
+        this.sfxLoopPool = [];
+        this.activeSFXLoops = new Map();
         this.sfxFallbackCursor = 0;
 
         this.music = {
@@ -155,9 +167,18 @@ class AudioManagerController {
             death: ['assets/audio/sfx/death.wav', 'assets/audio/sfx/monster-roar.wav'],
             victory: ['assets/audio/music/victory.mp3'], door: ['assets/audio/sfx/door.wav'],
             pickup: ['assets/audio/sfx/pickup.wav'], heal: ['assets/audio/sfx/heal.wav'],
-            eat: ['assets/audio/sfx/eat.wav'], blessing: ['assets/audio/sfx/blessing.wav'],
-            chip: ['assets/audio/sfx/chip.wav'], 'music-transition': ['assets/audio/sfx/music-transition.wav'],
+            eat: ['assets/audio/sfx/eat.ogg'], drink: ['assets/audio/sfx/drink.ogg'],
+            blessing: ['assets/audio/sfx/magic.wav'], chip: ['assets/audio/sfx/ui-click.wav'],
+            click: ['assets/audio/sfx/ui-click.wav'], button: ['assets/audio/sfx/ui-click.wav'],
+            swipe: ['assets/audio/sfx/music-transition.wav'], 'goblin-reaction': ['assets/audio/sfx/goblin-reaction.ogg'],
+            'weapon-hit': ['assets/audio/sfx/hit.wav'], 'music-transition': ['assets/audio/sfx/music-transition.wav'],
+            'engine-low': ['assets/audio/sfx/engine-low.wav'], 'engine-high': ['assets/audio/sfx/engine-high.wav'],
+            'car-start': ['assets/audio/sfx/car-start.mp3'], 'car-horn': ['assets/audio/sfx/car-horn.mp3'],
+            'car-collision': ['assets/audio/sfx/car-collision.mp3'], 'car-skid': ['assets/audio/sfx/car-skid.ogg'],
+            'car-door-open': ['assets/audio/sfx/car-door-open.ogg'], 'car-door-close': ['assets/audio/sfx/car-door-close.ogg'],
+            'race-beep': ['assets/audio/sfx/race-beep.mp3'], 'race-checkpoint': ['assets/audio/sfx/race-checkpoint.mp3'],
             'heal-chain': ['assets/audio/sfx/heal-chain.wav'],
+            'step-leaves': ['assets/audio/sfx/step-leaves-1.ogg', 'assets/audio/sfx/step-leaves-2.ogg'],
             explore: ['assets/audio/sfx/explore.wav', 'assets/audio/sfx/step-leaves-1.ogg', 'assets/audio/sfx/step-leaves-2.ogg', 'assets/audio/sfx/step-stone.ogg', 'assets/audio/sfx/step-wood.ogg', 'assets/audio/sfx/step-gravel.ogg', 'assets/audio/sfx/step-mud.ogg'],
             miss: ['assets/audio/sfx/miss.wav'], 'body-fall': ['assets/audio/sfx/body-fall.wav'],
             check: ['assets/audio/sfx/check.wav'], checkmate: ['assets/audio/sfx/checkmate.wav'],
@@ -199,6 +220,8 @@ class AudioManagerController {
 
     clamp(value) { return Math.max(0, Math.min(1, Number(value) || 0)); }
 
+    isDocumentHidden() { return typeof document === 'undefined' || !document || document.hidden; }
+
     loadSettings() {
         try {
             const saved = JSON.parse(localStorage.getItem(this.storageKey) || 'null');
@@ -230,6 +253,17 @@ class AudioManagerController {
         this.worldAudio.addEventListener('ended', () => this.handleTrackEnded('world'));
         this.overlayAudio.addEventListener('ended', () => this.handleTrackEnded('overlay'));
 
+        // Eight additional bounded players are reserved for continuous recorded
+        // loops (vehicle engine/surface/contact layers), never for event overlap.
+        for (let index = 0; index < 8; index++) {
+            const loop = new Audio(); loop.preload = 'auto'; loop.loop = true;
+            loop.addEventListener('error', () => {
+                const id = loop.dataset.loopId; if (id) this.stopSFXLoop(id);
+                loop.dataset.busy = 'false';
+            });
+            this.sfxLoopPool.push(loop);
+        }
+
         // A fixed fallback pool prevents leaked Audio elements when Web Audio is
         // unavailable or a buffer is still decoding.
         for (let index = 0; index < 4; index++) {
@@ -247,7 +281,7 @@ class AudioManagerController {
         }
 
         const unlock = () => {
-            if(document.hidden||this.pageSuspended)return;
+            if(this.isDocumentHidden()||this.pageSuspended)return;
             this.unlockAudioContext();
             if (this.pendingPlayback && this.musicEnabled) {
                 const pending = this.pendingPlayback;
@@ -261,8 +295,9 @@ class AudioManagerController {
         // bounded music elements and resume the exact prior layer when the page
         // returns; autoplay rejection falls back to the normal gesture unlock.
         document.addEventListener('visibilitychange', () => {
-            if (document.hidden) { this.pausePageAudio(); return; }
+            if (this.isDocumentHidden()) { this.pausePageAudio(); return; }
             this.pageSuspended = false;
+            this.processVoiceQueue();
             const prior = this.visibilityResume;
             this.visibilityResume = null;
             if (!this.musicEnabled || !prior) return;
@@ -270,7 +305,7 @@ class AudioManagerController {
             if (audio) audio.play().catch(() => { this.pendingPlayback = { audio, layer: audio === this.overlayAudio ? 'overlay' : 'world' }; });
         });
         window.addEventListener('pagehide',()=>this.pausePageAudio());
-        window.addEventListener('pageshow',()=>{if(!document.hidden)this.pageSuspended=false;});
+        window.addEventListener('pageshow',()=>{if(!this.isDocumentHidden()){this.pageSuspended=false;this.processVoiceQueue();}});
         this.bindSettingsUI();
         this.preloadSFX();
         this.syncSettingsUI();
@@ -285,9 +320,17 @@ class AudioManagerController {
         this.audioCtx?.suspend?.().catch(()=>{});
     }
 
-    stopSFX() {
+    stopSFX({ includeLoops = true } = {}) {
+        for (const cancel of [...this.activeSFXCancels]) { try { cancel(); } catch {} }
+        this.activeSFXCancels.clear();
+        // Pending sound-only events must not play later after audio is re-enabled.
+        this.speechQueue = this.speechQueue.filter(item => {
+            if (item.text) return true;
+            item.cancelled = true; item.resolve(false); return false;
+        });
         for(const node of this.activeSFX){try{node.stop();node.disconnect();}catch{}}this.activeSFX.clear();
         for(const audio of this.sfxFallbackPool){audio.pause();audio.currentTime=0;audio.dataset.busy='false';}
+        if (includeLoops) for (const id of [...this.activeSFXLoops.keys()]) this.stopSFXLoop(id);
     }
 
     trackSFX(node){this.activeSFX.add(node);node.addEventListener?.('ended',()=>{this.activeSFX.delete(node);try{node.disconnect();}catch{}},{once:true});return node;}
@@ -318,9 +361,9 @@ class AudioManagerController {
         };
         bindCheck('setting-music-enabled', 'musicEnabled', enabled => enabled ? this.resumeWorldMusic() : this.stopMusic());
         bindRange('setting-music-volume', 'musicVolume', this.setMusicVolume);
-        bindCheck('setting-sfx-enabled', 'sfxEnabled');
+        bindCheck('setting-sfx-enabled', 'sfxEnabled', enabled => this.setSFXEnabled(enabled, false));
         bindRange('setting-sfx-volume', 'sfxVolume', this.setSFXVolume);
-        bindCheck('setting-voice-enabled', 'voiceEnabled', enabled => { if (!enabled) this.stopVoice(); });
+        bindCheck('setting-voice-enabled', 'voiceEnabled', enabled => this.setVoiceEnabled(enabled, false));
         bindRange('setting-voice-volume', 'voiceVolume', this.setVoiceVolume);
         bindCheck('setting-music-shuffle', 'shuffle', () => this.playlistState.clear());
     }
@@ -430,7 +473,7 @@ class AudioManagerController {
     }
 
     async startMusicLayer(layer, trackKey, { fadeMs = 450, forceRestart = false } = {}) {
-        if (this.pageSuspended || document.hidden || !this.musicEnabled || !this.music[trackKey]) return false;
+        if (this.pageSuspended || this.isDocumentHidden() || !this.musicEnabled || !this.music[trackKey]) return false;
         const audio = layer === 'overlay' ? this.overlayAudio : this.worldAudio;
         const config = this.music[trackKey];
         if (!audio) return false;
@@ -450,7 +493,7 @@ class AudioManagerController {
         this.currentKey = trackKey;
         try {
             await audio.play();
-            if(this.pageSuspended||document.hidden){audio.pause();return false;}
+            if(this.pageSuspended||this.isDocumentHidden()){audio.pause();return false;}
             this.pendingPlayback = null;
             await this.fadeIn(audio, fadeMs);
             if (layer === 'world') this.audioState = 'world';
@@ -525,7 +568,7 @@ class AudioManagerController {
     }
 
     async resumeWorldMusic() {
-        if(this.pageSuspended||document.hidden)return;
+        if(this.pageSuspended||this.isDocumentHidden())return;
         if (!this.musicEnabled) { this.audioState = 'idle'; return; }
         this.init();
         this.audioState = 'restore';
@@ -540,7 +583,7 @@ class AudioManagerController {
         this.currentKey = this.worldAudio.dataset.trackKey;
         try {
             await this.worldAudio.play();
-            if(this.pageSuspended||document.hidden){this.worldAudio.pause();return;}
+            if(this.pageSuspended||this.isDocumentHidden()){this.worldAudio.pause();return;}
             await this.fadeIn(this.worldAudio, 550);
             this.audioState = 'world';
         } catch { this.pendingPlayback = { audio: this.worldAudio, layer: 'world' }; }
@@ -722,6 +765,7 @@ class AudioManagerController {
     setSFXVolume(value, persist = true) {
         this.sfxVolume = value;
         if (this.sfxGain) this.sfxGain.gain.value = this.sfxVolume;
+        for (const loop of this.activeSFXLoops.values()) loop.audio.volume = this.sfxVolume * loop.level;
         if (persist) this.persistSettings();
     }
 
@@ -740,15 +784,40 @@ class AudioManagerController {
     setSFXEnabled(value, persist = true) {
         this.sfxEnabled = Boolean(value);
         if(!this.sfxEnabled)this.stopSFX();
+        window.dispatchEvent(new CustomEvent('black-sword-sfx-change', { detail: { enabled: this.sfxEnabled } }));
         if (persist) this.persistSettings();
         return this.sfxEnabled;
     }
 
     setVoiceEnabled(value, persist = true) {
         this.voiceEnabled = Boolean(value);
-        if (!this.voiceEnabled) this.stopVoice();
+        if (!this.voiceEnabled) this.disableVoicePlayback();
         if (persist) this.persistSettings();
         return this.voiceEnabled;
+    }
+
+    /** Narration OFF is independent from recorded effects and continuous loops. */
+    disableVoicePlayback() {
+        clearTimeout(this.voiceWatchdog);
+        this.voicePaused = false;
+        this.speechQueue = this.speechQueue.filter(item => {
+            if (!item.text) return true;
+            if (item.effects.length && this.sfxEnabled) { item.text = ''; return true; }
+            item.cancelled = true; item.resolve(false); return false;
+        });
+        const active = this.currentSpeechItem;
+        if (active?.text) {
+            // Let the existing event continuation release its matching effects;
+            // narration-only events settle immediately without playing them.
+            active.text = '';
+            active.cancelSpeech?.();
+        }
+        this.activeSpeechCancel = null;
+        if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch {} }
+        this.currentUtterance = null;
+        this.speaking = false;
+        this.restoreMusic('voice');
+        this.processVoiceQueue();
     }
 
     toggle() {
@@ -761,15 +830,13 @@ class AudioManagerController {
     toggleSFX() {
         this.sfxEnabled = !this.sfxEnabled;
         if(!this.sfxEnabled)this.stopSFX();
+        window.dispatchEvent(new CustomEvent('black-sword-sfx-change', { detail: { enabled: this.sfxEnabled } }));
         this.persistSettings();
         return this.sfxEnabled;
     }
 
     toggleVoice() {
-        this.voiceEnabled = !this.voiceEnabled;
-        if (!this.voiceEnabled) this.stopVoice();
-        this.persistSettings();
-        return this.voiceEnabled;
+        return this.setVoiceEnabled(!this.voiceEnabled);
     }
 
     stopMusic() {
@@ -835,7 +902,53 @@ class AudioManagerController {
         for (const src of new Set(frequent.flatMap(key => this.sfx[key] || []))) this.loadSFXBuffer(src);
     }
 
+    startSFXLoop(id, type, { volume = 1, playbackRate = 1 } = {}) {
+        if (!id || !this.sfxEnabled || this.pageSuspended || this.isDocumentHidden()) return null;
+        this.init();
+        const existing = this.activeSFXLoops.get(id);
+        if (existing) { existing.setVolume(volume); existing.setPlaybackRate(playbackRate); return existing; }
+        const src = this.resolveSFX(type), audio = this.sfxLoopPool.find(player => player.dataset.busy !== 'true');
+        if (!src || !audio) return null;
+        const handle = {
+            id, type, audio, level: Math.max(0, Math.min(1, Number(volume) || 0)),
+            setVolume(value) { this.level = Math.max(0, Math.min(1, Number(value) || 0)); this.audio.volume = AudioManager.sfxVolume * this.level; },
+            setPlaybackRate(value) { this.audio.playbackRate = Math.max(0.5, Math.min(2, Number(value) || 1)); },
+            stop: () => this.stopSFXLoop(id)
+        };
+        audio.dataset.busy = 'true'; audio.dataset.loopId = id; audio.loop = true;
+        audio.src = src; audio.currentTime = 0;
+        handle.setVolume(volume); handle.setPlaybackRate(playbackRate);
+        this.activeSFXLoops.set(id, handle);
+        audio.play().catch(() => this.stopSFXLoop(id));
+        return handle;
+    }
+
+    stopSFXLoop(id) {
+        const handle = this.activeSFXLoops.get(id);
+        if (!handle) return false;
+        this.activeSFXLoops.delete(id);
+        const { audio } = handle;
+        try { audio.pause(); audio.currentTime = 0; audio.removeAttribute('src'); audio.load(); } catch {}
+        audio.dataset.busy = 'false'; delete audio.dataset.loopId;
+        return true;
+    }
+
+    cancelAudioChannel(channel) {
+        if (!channel) return;
+        this.legacySFXPending = this.legacySFXPending.filter(entry => entry.options.channel !== channel);
+        this.speechQueue = this.speechQueue.filter(item => {
+            if (item.channel !== channel) return true;
+            item.cancelled = true; item.resolve(false); return false;
+        });
+        const active = this.currentSpeechItem;
+        if (active?.channel === channel) {
+            active.cancelled = true; active.cancelSpeech?.(); active.cancelEffect?.();
+            if (active.text && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch {} }
+        }
+    }
+
     resolveSFX(type) {
+        if (String(type || '').startsWith('assets/audio/')) return String(type);
         const choices = this.sfx[type];
         if (!choices?.length) return null;
         const viable = choices.filter(src => this.sfxBuffers[src] !== 'failed');
@@ -843,29 +956,54 @@ class AudioManagerController {
         return pool[Math.floor(Math.random() * pool.length)];
     }
 
-    playSFX(type) {
-        if (!this.sfxEnabled||this.pageSuspended||document.hidden) return false;
+    /**
+     * Compatibility entry point for older gameplay modules. The effect is
+     * flushed in a microtask so a narration emitted later in the same action
+     * still enters the authoritative queue first. No second player is created.
+     */
+    playSFX(type, options = {}) {
+        if (!this.sfxEnabled || this.pageSuspended || this.isDocumentHidden() || !this.resolveSFX(type)) return false;
         this.init();
-        const src = this.resolveSFX(type);
-        if (!src) return false;
-        return this.playSFXSource(src);
+        const now = Date.now();
+        const choices = this.sfx[type];
+        // Aliases such as button/click/chip share one recording and must not
+        // double-fire when a button handler and the document click bubble both
+        // report the same physical activation.
+        const dedupKey = options.dedupKey || (choices?.length === 1 ? choices[0] : String(type));
+        if (!options.allowDuplicate && now - (this.recentSFX.get(dedupKey) || 0) < 80) return false;
+        this.recentSFX.set(dedupKey, now);
+        if (this.recentSFX.size > 100) this.recentSFX.delete(this.recentSFX.keys().next().value);
+        this.legacySFXPending.push({ type, options });
+        if (!this.legacySFXFlushScheduled) {
+            this.legacySFXFlushScheduled = true;
+            queueMicrotask(() => {
+                this.legacySFXFlushScheduled = false;
+                const pending = this.legacySFXPending.splice(0);
+                if (this.pageSuspended || this.isDocumentHidden()) return;
+                for (const entry of pending) {
+                    this.enqueueAudioEvent({ effects: [entry.type], priority: entry.options.priority || false, channel: entry.options.channel || '' });
+                }
+            });
+        }
+        return true;
     }
 
+    /** Immediate low-level compatibility helper. New event code uses the queue. */
     playSFXSource(src) {
-        if(!this.sfxEnabled||this.pageSuspended||document.hidden)return false;
+        if (!this.sfxEnabled || this.pageSuspended || this.isDocumentHidden() || !src) return false;
+        this.init();
         const buffer = this.sfxBuffers[src];
         if (buffer && buffer !== 'loading' && buffer !== 'failed' && this.audioCtx) {
             if (this.audioCtx.state === 'suspended') this.audioCtx.resume().catch(() => {});
             const node = this.trackSFX(this.audioCtx.createBufferSource());
             node.buffer = buffer;
-            node.playbackRate.value = 0.98 + Math.random() * 0.04;
             node.connect(this.sfxGain);
-            node.addEventListener?.('ended', () => { try { node.disconnect(); } catch {} }, { once: true });
             node.start(0);
             return true;
         }
         if (buffer !== 'failed') this.loadSFXBuffer(src);
-        const effect = this.sfxFallbackPool.find(audio => audio.dataset.busy !== 'true') || this.sfxFallbackPool[this.sfxFallbackCursor++ % this.sfxFallbackPool.length];
+        // Never steal a busy element: doing so truncates the preceding effect.
+        const effect = this.sfxFallbackPool.find(audio => audio.dataset.busy !== 'true');
         if (!effect) return false;
         effect.pause();
         effect.src = src;
@@ -876,57 +1014,179 @@ class AudioManagerController {
         return true;
     }
 
-    async playSFXAndWait(type, maximumMs = 2200) {
-        if (!this.sfxEnabled||this.pageSuspended||document.hidden) return;
+    /** Play one recording to its real ended event, with only a hung-engine watchdog. */
+    async playSFXSourceAndWait(src, item = null) {
+        if (!this.sfxEnabled || this.pageSuspended || this.isDocumentHidden() || item?.cancelled || !src) return false;
         this.init();
-        const src = this.resolveSFX(type);
-        if (!src) return;
         this.duckMusic(0.3, 'sfx-wait');
         try {
             let buffer = this.sfxBuffers[src];
             if (!buffer || buffer === 'loading') buffer = await this.loadSFXBuffer(src);
-            if(!this.sfxEnabled||this.pageSuspended||document.hidden)return;
+            if (!this.sfxEnabled || this.pageSuspended || this.isDocumentHidden() || item?.cancelled) return false;
             if (buffer && buffer !== 'failed' && this.audioCtx) {
-                const node = this.trackSFX(this.audioCtx.createBufferSource());
-                node.buffer = buffer;
-                node.connect(this.sfxGain);
-                node.start(0);
-                await new Promise(resolve => setTimeout(resolve, Math.min(buffer.duration * 1000, maximumMs)));
-            } else {
-                this.playSFXSource(src);
-                await new Promise(resolve => setTimeout(resolve, maximumMs));
+                if (this.audioCtx.state === 'suspended') await this.audioCtx.resume().catch(() => {});
+                return await new Promise(resolve => {
+                    let settled = false;
+                    let watchdog = null;
+                    let node = null;
+                    const finish = success => {
+                        if (settled) return;
+                        settled = true;
+                        clearTimeout(watchdog);
+                        this.activeSFXCancels.delete(cancel);
+                        if (item?.cancelEffect === cancel) item.cancelEffect = null;
+                        if (node) this.activeSFX.delete(node);
+                        try { node?.disconnect(); } catch {}
+                        resolve(success);
+                    };
+                    const cancel = () => { try { node?.stop(); } catch {} finish(false); };
+                    try {
+                        node = this.trackSFX(this.audioCtx.createBufferSource());
+                        node.buffer = buffer;
+                        node.connect(this.sfxGain);
+                        node.addEventListener('ended', () => finish(true), { once: true });
+                        this.activeSFXCancels.add(cancel);
+                        if (item) item.cancelEffect = cancel;
+                        // This is deliberately beyond the recording's full duration;
+                        // it recovers a missing ended event without clipping normal audio.
+                        watchdog = setTimeout(cancel, Math.max(5000, Math.ceil((Number(buffer.duration) || 0) * 1000) + 2000));
+                        node.start(0);
+                    } catch { finish(false); }
+                });
             }
-        } finally { this.restoreMusic('sfx-wait'); }
+
+            // HTMLMediaElement fallback: wait for ended/error and never reuse a
+            // busy pool member. The bounded pool remains four elements total.
+            const effect = this.sfxFallbackPool.find(audio => audio.dataset.busy !== 'true');
+            if (!effect) return false;
+            return await new Promise(resolve => {
+                let settled = false;
+                let watchdog = null;
+                const finish = success => {
+                    if (settled) return;
+                    settled = true;
+                    clearTimeout(watchdog);
+                    effect.removeEventListener?.('ended', onEnded);
+                    effect.removeEventListener?.('error', onError);
+                    this.activeSFXCancels.delete(cancel);
+                    if (item?.cancelEffect === cancel) item.cancelEffect = null;
+                    effect.dataset.busy = 'false';
+                    resolve(success);
+                };
+                const onEnded = () => finish(true);
+                const onError = () => finish(false);
+                const cancel = () => { try { effect.pause(); } catch {} finish(false); };
+                try {
+                    effect.pause();
+                    effect.src = src;
+                    effect.volume = this.sfxVolume;
+                    effect.currentTime = 0;
+                    effect.dataset.busy = 'true';
+                    effect.addEventListener('ended', onEnded, { once: true });
+                    effect.addEventListener('error', onError, { once: true });
+                    this.activeSFXCancels.add(cancel);
+                    if (item) item.cancelEffect = cancel;
+                    const knownDuration = Number(effect.duration);
+                    watchdog = setTimeout(cancel, Number.isFinite(knownDuration) && knownDuration > 0 ? Math.ceil(knownDuration * 1000) + 3000 : 30000);
+                    const playing = effect.play();
+                    if (playing?.catch) playing.catch(() => finish(false));
+                } catch { finish(false); }
+            });
+        } finally {
+            this.restoreMusic('sfx-wait');
+        }
     }
 
-    /** Queue game/browser TTS. TalkBack remains an independent OS service:
-     * semantic live regions are never disabled or used as proof of TTS output. */
-    playVoice(text, { voiceId = 'system:default', language = 'en-US', priority = false, channel = '' } = {}) {
-        // Application TTS OFF is absolute: no SpeechSynthesis call is ever made,
-        // and nothing may force it back on. Android TalkBack is an independent
-        // OS service that this game neither controls nor disables.
-        if (this.pageSuspended || document.hidden || !this.voiceEnabled || !String(text || '').trim()) return Promise.resolve(false);
-        if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) { this.voiceStatus('Speech engine unavailable. Use text controls or install a browser/device voice.'); return Promise.resolve(false); }
-        text = String(text).trim();
+    async playSFXNow(type, item = null) {
+        const src = this.resolveSFX(type);
+        return src ? this.playSFXSourceAndWait(src, item) : false;
+    }
+
+    /** Await the complete queued recording; maximumMs is retained for API compatibility, not clipping. */
+    playSFXAndWait(type, maximumMs = 2200, options = {}) { // maximumMs is compatibility-only, never a clip timer
+        if (!this.sfxEnabled || this.pageSuspended || this.isDocumentHidden() || !this.resolveSFX(type)) return Promise.resolve(false);
+        this.init();
+        return this.enqueueAudioEvent({ effects: [type], channel: options.channel || '', priority: options.priority || false });
+    }
+
+    /**
+     * One bounded event queue for narration, matching effects and reactions.
+     * Each item finishes speech before its first effect and each effect before
+     * the next. Controls never await this queue unless their own logic chooses to.
+     */
+    enqueueAudioEvent({ text = '', effects = [], voiceId = 'system:default', language = 'en-US', priority = false, channel = '', eventId = '', requireVoice = false } = {}) {
+        text = String(text || '').trim();
+        effects = (Array.isArray(effects) ? effects : [effects]).filter(Boolean).map(String);
+        if (this.pageSuspended || this.isDocumentHidden() || (!text && !effects.length)) return Promise.resolve(false);
+        if (text && requireVoice && !this.voiceEnabled) return Promise.resolve(false);
+        if (!text && !this.sfxEnabled) return Promise.resolve(false);
+        if (text && this.voiceEnabled && (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance)) {
+            this.voiceStatus('Speech engine unavailable. Use text controls or install a browser/device voice.');
+            if (!effects.length || requireVoice) return Promise.resolve(false);
+        }
+
+        if (eventId && this.audioEventIds.has(eventId)) return Promise.resolve(false);
         const now = Date.now();
-        if (this.recentVoice.has(text) && now - this.recentVoice.get(text) < 600) return Promise.resolve(false);
-        this.recentVoice.set(text, now);
-        if (this.recentVoice.size > 100) this.recentVoice.delete(this.recentVoice.keys().next().value);
-        this.lastVoiceText = text;
+        const signature = eventId ? `id:${eventId}` : text ? `event:${text}|${effects.join(',')}` : '';
+        const recent = signature ? this.recentAudioEvents.get(signature) : 0;
+        if (signature && recent && now - recent < 600) return Promise.resolve(false);
+        if (text) {
+            if (this.recentVoice.has(text) && now - this.recentVoice.get(text) < 600 && !effects.length) return Promise.resolve(false);
+            this.recentVoice.set(text, now);
+            this.lastVoiceText = text;
+            if (this.recentVoice.size > 100) this.recentVoice.delete(this.recentVoice.keys().next().value);
+        }
+        if (eventId) {
+            this.audioEventIds.add(eventId);
+            if (this.audioEventIds.size > 300) this.audioEventIds.delete(this.audioEventIds.values().next().value);
+        }
+        if (signature) {
+            this.recentAudioEvents.set(signature, now);
+            if (this.recentAudioEvents.size > 300) this.recentAudioEvents.delete(this.recentAudioEvents.keys().next().value);
+        }
+
         const critical = priority === 'critical';
         if (critical) this.interruptVoiceForCritical();
         return new Promise(resolve => {
-            if (channel) this.speechQueue = this.speechQueue.filter(queued => { if (queued.channel !== channel) return true; queued.resolve(false); return false; });
-            const item = { channel, text: String(text).slice(0, 600), voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal', resolve };
-            while (this.speechQueue.length >= 12) {
-                const ordinary = this.speechQueue.findIndex(i => i.priority === 'normal');
-                if (ordinary < 0 && !priority) { resolve(false); return; }
-                this.speechQueue.splice(ordinary < 0 ? 0 : ordinary, 1)[0].resolve(false);
+            if (channel) {
+                this.speechQueue = this.speechQueue.filter(queued => {
+                    if (queued.channel !== channel) return true;
+                    queued.cancelled = true;
+                    queued.resolve(false);
+                    return false;
+                });
             }
-            if (priority) { const at = this.speechQueue.findIndex(i => i.priority === 'normal'); this.speechQueue.splice(at < 0 ? this.speechQueue.length : at, 0, item); }
-            else this.speechQueue.push(item);
+            const item = {
+                id: ++this.audioEventSequence, channel, eventId, text: text.slice(0, 600), effects,
+                voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal',
+                resolve, cancelled: false, cancelSpeech: null, cancelEffect: null
+            };
+            while (this.speechQueue.length >= 12) {
+                const ordinary = this.speechQueue.findIndex(queued => queued.priority === 'normal');
+                if (ordinary < 0 && !priority) { resolve(false); return; }
+                const dropped = this.speechQueue.splice(ordinary < 0 ? 0 : ordinary, 1)[0];
+                dropped.cancelled = true;
+                dropped.resolve(false);
+            }
+            if (priority) {
+                const at = this.speechQueue.findIndex(queued => queued.priority === 'normal');
+                this.speechQueue.splice(at < 0 ? this.speechQueue.length : at, 0, item);
+            } else this.speechQueue.push(item);
             this.processVoiceQueue();
         });
+    }
+
+    playVoice(text, options = {}) {
+        if (this.pageSuspended || this.isDocumentHidden() || !this.voiceEnabled || !String(text || '').trim()) return Promise.resolve(false);
+        return this.enqueueAudioEvent({ ...options, text, effects: [], requireVoice: true });
+    }
+
+    playAction(text, effects = [], options = {}) {
+        const reaction = options.reaction ? (Array.isArray(options.reaction) ? options.reaction : [options.reaction]) : [];
+        const allEffects = [...(Array.isArray(effects) ? effects : [effects]), ...reaction].filter(Boolean);
+        // With no effect this retains playVoice's absolute OFF behaviour. With
+        // an effect, disabled/unavailable speech is skipped and sound continues.
+        return this.enqueueAudioEvent({ ...options, text, effects: allEffects, requireVoice: !allEffects.length });
     }
 
     speakCritical(text, options = {}) {
@@ -934,52 +1194,101 @@ class AudioManagerController {
     }
 
     interruptVoiceForCritical() {
-        clearTimeout(this.voiceWatchdog);
-        this.speechQueue.splice(0).forEach(item => item.resolve(false));
-        const active = this.currentSpeechItem;
-        this.currentSpeechItem = null;
-        this.currentUtterance = null;
-        this.speaking = false;
-        if (active) active.resolve(false);
-        if ('speechSynthesis' in window) speechSynthesis.cancel();
-        this.restoreMusic('voice');
+        this.stopVoice();
     }
 
     async processVoiceQueue() {
-        if (this.voicePaused || this.speaking || !this.speechQueue.length || !this.voiceEnabled) return;
+        if (this.voiceProcessing || this.voicePaused || this.pageSuspended || this.isDocumentHidden() || !this.speechQueue.length) return;
         const item = this.speechQueue.shift();
-        this.speaking = true;
+        if (!item || item.cancelled) { if (this.speechQueue.length) queueMicrotask(() => this.processVoiceQueue()); return; }
+        this.voiceProcessing = true;
         this.currentSpeechItem = item;
-        const utterance = new SpeechSynthesisUtterance(item.text);
-        utterance.lang = item.language || 'en-US';
-        utterance.volume = this.voiceVolume;
-        utterance.rate = Math.max(0.5, Math.min(2, this.settings.voiceRate || 1));
-        const voices = speechSynthesis.getVoices();
-        const requestedName = item.voiceId?.startsWith('system:') ? item.voiceId.slice(7) : '';
-        const language = utterance.lang.toLowerCase();
-        const exact = voices.filter(voice => voice.lang?.toLowerCase() === language);
-        const base = voices.filter(voice => voice.lang?.toLowerCase().startsWith(language.slice(0, 2)));
-        utterance.voice = (requestedName && requestedName !== 'default' ? voices.find(voice => voice.name === requestedName) : null) || exact[0] || base[0] || voices[0] || null;
-        const finish = success => {
-            // A cancelled utterance can report an asynchronous error after a
-            // critical replacement has already started. Never let it finish the
-            // replacement item or restore ducking early.
-            if (this.currentSpeechItem !== item) return;
-            clearTimeout(this.voiceWatchdog);
-            this.restoreMusic('voice');
-            this.speaking = false;
-            this.currentUtterance = null;
-            this.currentSpeechItem = null;
-            item.resolve(success);
-            setTimeout(() => this.processVoiceQueue(), 60);
-        };
-        utterance.onstart = () => { if (this.currentSpeechItem === item) { this.voiceStatus('Narrator speaking.'); this.duckMusic(0.2, 'voice'); } };
-        utterance.onend = () => finish(true);
-        utterance.onerror = e => { if (this.currentSpeechItem !== item) return; this.voiceStatus(`Speech failed: ${e.error || 'engine error'}. Tap Test narrator to retry; text controls remain available.`); finish(false); };
-        this.currentUtterance = utterance;
-        clearTimeout(this.voiceWatchdog);
-        this.voiceWatchdog = setTimeout(() => { if (this.currentSpeechItem !== item || this.voicePaused) return; this.voiceStatus('Speech engine did not finish. Tap Test narrator to retry.'); this.stopVoice(); }, Math.max(15000, item.text.length * 150 / utterance.rate));
-        try { speechSynthesis.speak(utterance); } catch { this.voiceStatus('Speech engine failed. Text controls remain available.'); finish(false); }
+        item.queueGeneration = this.audioQueueGeneration;
+        let success = true;
+        try {
+            if (item.text && this.voiceEnabled && !item.cancelled) success = await this.speakQueuedItem(item);
+            // A real engine error resolves the speech stage and allows the
+            // matching recording to recover. Cancellation/page hide skips it.
+            if (!item.cancelled && this.sfxEnabled && !this.pageSuspended && !this.isDocumentHidden()) {
+                for (const effect of item.effects) {
+                    if (item.cancelled || !this.sfxEnabled || this.pageSuspended || this.isDocumentHidden()) break;
+                    const played = await this.playSFXNow(effect, item);
+                    if (!played && !item.cancelled) success = false;
+                }
+            }
+        } catch {
+            success = false;
+        } finally {
+            // Critical speech may cancel this item and start its replacement in
+            // the same task. A stale continuation must never clear the new
+            // utterance, watchdog or processing lock.
+            const currentGeneration = item.queueGeneration === this.audioQueueGeneration;
+            if (currentGeneration) {
+                clearTimeout(this.voiceWatchdog);
+                if (this.currentSpeechItem === item) this.currentSpeechItem = null;
+                this.currentUtterance = null;
+                this.speaking = false;
+                this.voiceProcessing = false;
+                this.restoreMusic('voice');
+            }
+            item.resolve(!item.cancelled && success);
+            if (currentGeneration) setTimeout(() => this.processVoiceQueue(), 40);
+        }
+    }
+
+    speakQueuedItem(item) {
+        if (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance) return Promise.resolve(false);
+        return new Promise(resolve => {
+            let settled = false;
+            const utterance = new SpeechSynthesisUtterance(item.text);
+            const finish = success => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(this.voiceWatchdog);
+                this.activeSpeechCancel = null;
+                item.cancelSpeech = null;
+                if (this.currentUtterance === utterance) this.currentUtterance = null;
+                this.speaking = false;
+                resolve(success);
+            };
+            const cancel = () => finish(false);
+            utterance.lang = item.language || 'en-US';
+            utterance.volume = this.voiceVolume;
+            utterance.rate = Math.max(0.5, Math.min(2, this.settings.voiceRate || 1));
+            let voices = [];
+            try { voices = speechSynthesis.getVoices() || []; } catch {}
+            const requestedName = item.voiceId?.startsWith('system:') ? item.voiceId.slice(7) : '';
+            const language = utterance.lang.toLowerCase();
+            const exact = voices.filter(voice => voice.lang?.toLowerCase() === language);
+            const base = voices.filter(voice => voice.lang?.toLowerCase().startsWith(language.slice(0, 2)));
+            utterance.voice = (requestedName && requestedName !== 'default' ? voices.find(voice => voice.name === requestedName) : null) || exact[0] || base[0] || voices[0] || null;
+            utterance.onstart = () => {
+                if (this.currentSpeechItem !== item || item.cancelled) return;
+                this.voiceStatus('Narrator speaking.');
+                this.duckMusic(0.2, 'voice');
+            };
+            utterance.onend = () => finish(true);
+            utterance.onerror = event => {
+                if (this.currentSpeechItem !== item || item.cancelled) return;
+                this.voiceStatus(`Speech failed: ${event.error || 'engine error'}. Tap Test narrator to retry; text controls remain available.`);
+                finish(false);
+            };
+            this.speaking = true;
+            this.currentUtterance = utterance;
+            this.activeSpeechCancel = cancel;
+            item.cancelSpeech = cancel;
+            this.voiceWatchdog = setTimeout(() => {
+                if (this.currentSpeechItem !== item || item.cancelled || this.voicePaused) return;
+                this.voiceStatus('Speech engine did not finish. Narration stopped; matching action audio can continue.');
+                try { speechSynthesis.cancel(); } catch {}
+                finish(false);
+            }, Math.max(20000, Math.ceil(item.text.length * 250 / utterance.rate)));
+            try { speechSynthesis.speak(utterance); }
+            catch {
+                this.voiceStatus('Speech engine failed. Text controls remain available.');
+                finish(false);
+            }
+        });
     }
 
     voiceStatus(text) {
@@ -996,9 +1305,12 @@ class AudioManagerController {
     resumeVoice() {
         this.voicePaused = false;
         if ('speechSynthesis' in window) speechSynthesis.resume?.();
-        if (this.currentSpeechItem) {
+        if (this.currentSpeechItem?.text && this.speaking) {
             clearTimeout(this.voiceWatchdog);
-            this.voiceWatchdog = setTimeout(() => { this.voiceStatus('Speech engine did not resume. Tap Test narrator to retry.'); this.stopVoice(); }, 90000);
+            this.voiceWatchdog = setTimeout(() => {
+                this.voiceStatus('Speech engine did not resume. The event was cancelled; text controls remain available.');
+                this.stopVoice();
+            }, 90000);
         }
         this.processVoiceQueue();
     }
@@ -1006,19 +1318,32 @@ class AudioManagerController {
     repeatVoice() {
         const text = this.lastVoiceText;
         this.recentVoice.delete(text);
+        for (const key of this.recentAudioEvents.keys()) if (key.includes(text)) this.recentAudioEvents.delete(key);
         return this.playVoice(text, { priority: 'critical' });
     }
 
     stopVoice() {
+        ++this.audioQueueGeneration;
         clearTimeout(this.voiceWatchdog);
         this.voicePaused = false;
-        this.speechQueue.splice(0).forEach(item => item.resolve(false));
+        this.legacySFXPending.splice(0);
+        this.speechQueue.splice(0).forEach(item => { item.cancelled = true; item.resolve(false); });
         const active = this.currentSpeechItem;
+        if (active) {
+            active.cancelled = true;
+            active.cancelSpeech?.();
+            active.cancelEffect?.();
+        }
+        this.activeSpeechCancel?.();
+        this.activeSpeechCancel = null;
+        if ('speechSynthesis' in window) {
+            try { speechSynthesis.cancel(); } catch {}
+        }
         this.currentSpeechItem = null;
-        if (active) active.resolve(false);
-        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        this.voiceProcessing = false;
         this.speaking = false;
         this.currentUtterance = null;
+        this.stopSFX({ includeLoops: false });
         this.restoreMusic('voice');
     }
 }

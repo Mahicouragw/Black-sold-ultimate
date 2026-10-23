@@ -988,6 +988,15 @@ const Game = {
         this.addNarrative("I don't understand. Type 'help' for commands.", 'system');
     },
 
+    getFootstepSFX(loc) {
+        const text = [loc?.name, loc?.region, loc?.description, loc?.music, ...(loc?.features || [])].join(' ').toLowerCase();
+        if (/wooden|floorboard|house|foyer|interior|inn|tavern|shop|guild|hall|ship/.test(text)) return 'step-wood';
+        if (/swamp|marsh|bog|mud/.test(text)) return 'step-mud';
+        if (/forest|grove|woodland|grass|pasture|meadow|leaves|canopy|thicket/.test(text)) return 'step-leaves';
+        if (/gravel|mountain|rocky|quarry|trail|path|beach|sand/.test(text)) return 'step-gravel';
+        return 'step-stone';
+    },
+
     move(direction) {
         const loc = WorldData.locations[this.state.location];
         const dest = loc?.exits?.[direction];
@@ -998,21 +1007,21 @@ const Game = {
             const message = dest
                 ? `You are in combat. You cannot move ${direction} until the battle ends. Type flee to escape, or keep fighting.`
                 : `You are in combat, and there is no path ${direction} from here. Type flee to escape, or keep fighting.`;
-            this.emitGameEvent?.(message, 'system') || this.addNarrative(message, 'system');
-            MusicSystem.playSFX('board-error');
+            if (this.emitGameEvent) this.emitGameEvent(message, 'system', { sfx: ['board-error'] });
+            else { this.addNarrative(message, 'system'); MusicSystem.playSFX('board-error'); }
             return;
         }
 
         if (!dest || !WorldData.locations[dest]) {
-            this.addNarrative(`You cannot move ${direction} from here.`, 'system');
-            MusicSystem.playSFX('explore');
+            const text = `You cannot move ${direction} from here.`;
+            if (this.emitGameEvent) this.emitGameEvent(text, 'system', { sfx: ['explore'] });
+            else { this.addNarrative(text, 'system'); MusicSystem.playSFX('explore'); }
             return;
         }
         // Serialize movement so rapid keyboard/voice input cannot dispatch two
         // logical moves from the same origin or produce duplicate announcements.
         if (this._movementPending) return;
         this._movementPending = true;
-        MusicSystem.playSFX('explore');
 
         const origin = this.state.location;
         this._movementTimer = setTimeout(() => {
@@ -1020,7 +1029,9 @@ const Game = {
                 if (this.state.location !== origin || this.state.inCombat || document.hidden) return;
                 const target = WorldData.locations[dest];
                 if (!target) return;
-                this.addNarrative(`You moved ${direction} to ${target.name}.`, 'location');
+                const text = `You moved ${direction} to ${target.name}.`, footstep = this.getFootstepSFX(target);
+                if (this.emitGameEvent) this.emitGameEvent(text, 'location', { sfx: [footstep] });
+                else { this.addNarrative(text, 'location'); MusicSystem.playSFX(footstep); }
                 this.enterLocation(dest);
             } finally {
                 this._movementPending = false;
@@ -1075,8 +1086,9 @@ const Game = {
         const itemData = WorldData.items[found];
         if (itemData) {
             this.addItemToInventory(found, itemData);
-            this.addNarrative(`You pick up ${itemData.name}!`, 'item');
-            MusicSystem.playSFX('pickup');
+            const text = `You pick up ${itemData.name}!`;
+            if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: ['pickup'] });
+            else { this.addNarrative(text, 'item'); MusicSystem.playSFX('pickup'); }
 
             loc.items = loc.items.filter(i => i !== found);
             this.checkQuests('collect', found);
@@ -1136,21 +1148,27 @@ const Game = {
             return;
         }
 
+        const isDrink = /potion|tonic|drink|water|elixir|ale|wine|juice|milk|flask/i.test(`${item.id || ''} ${item.name || ''}`);
         if (item.effect === 'heal') {
             const healAmount = item.value;
             this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + healAmount);
-            this.addNarrative(`You use ${item.name}. Healed ${healAmount} HP!`, 'item');
-            MusicSystem.playSFX('heal');
+            const text = `${isDrink ? 'You drink' : 'You use'} ${item.name}. Healed ${healAmount} HP!`;
+            const effects = isDrink ? ['drink', 'heal'] : ['heal'];
+            if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: effects });
+            else { this.addNarrative(text, 'item'); effects.forEach(effect => MusicSystem.playSFX(effect)); }
         } else if (item.effect === 'mana') {
             const manaAmount = item.value;
             this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + manaAmount);
-            this.addNarrative(`You use ${item.name}. Restored ${manaAmount} MP!`, 'magic');
-            MusicSystem.playSFX('heal');
+            const text = `${isDrink ? 'You drink' : 'You use'} ${item.name}. Restored ${manaAmount} MP!`;
+            const effects = isDrink ? ['drink', 'heal'] : ['heal'];
+            if (this.emitGameEvent) this.emitGameEvent(text, 'magic', { sfx: effects });
+            else { this.addNarrative(text, 'magic'); effects.forEach(effect => MusicSystem.playSFX(effect)); }
         } else if (item.effect === 'both') {
             this.state.player.hp = Math.min(this.state.player.maxHp, this.state.player.hp + item.value);
             this.state.player.mp = Math.min(this.state.player.maxMp, this.state.player.mp + item.value);
-            this.addNarrative(`You eat ${item.name}.`, 'item');
-            MusicSystem.playSFX('eat');
+            const text = `${isDrink ? 'You drink' : 'You eat'} ${item.name}.`;
+            if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: [isDrink ? 'drink' : 'eat'] });
+            else { this.addNarrative(text, 'item'); MusicSystem.playSFX(isDrink ? 'drink' : 'eat'); }
         } else {
             this.addNarrative(`${item.name} cannot be consumed. Try "equip ${item.name}".`, 'system');
             return;
@@ -2104,8 +2122,10 @@ const Game = {
         }
 
         const restored = p.hp - startHp;
-        this.addNarrative(`${used} +${restored} HP. (${p.hp}/${p.maxHp})`, 'item');
-        MusicSystem.playSFX('heal');
+        const text = `${used} +${restored} HP. (${p.hp}/${p.maxHp})`;
+        const effects = used.startsWith('You drink') ? ['drink', 'heal'] : ['heal'];
+        if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: effects });
+        else { this.addNarrative(text, 'item'); effects.forEach(effect => MusicSystem.playSFX(effect)); }
         this.announceForBlind(`Healed ${restored} HP. You now have ${p.hp} out of ${p.maxHp}.`);
         this.save();
         this.updateHUD && this.updateHUD();
@@ -2223,8 +2243,9 @@ const Game = {
         if (!item) return;
         this.state.player.gold -= price;
         this.addItemToInventory(id, item);
-        this.addNarrative(`Bought ${item.name} for ${price} rupees.`, 'item');
-        MusicSystem.playSFX('coin');
+        const text = `Bought ${item.name} for ${price} rupees.`;
+        if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: ['coin'] });
+        else { this.addNarrative(text, 'item'); MusicSystem.playSFX('coin'); }
         this.updateHUD();
         this.showShop();
         this.save();

@@ -14,8 +14,8 @@
  *     traction, gears/clutch, handbrake, collisions, vehicle condition).
  *   - An accessible driving mode with track-aware turn guidance, wrong-way
  *     detection, opponent announcements and status readouts.
- *   - A synthesized racing audio engine (engine RPM, doors, horn, brakes,
- *     reverse beeper, collisions, countdown, checkpoints, terrain, ambience)
+ *   - Recorded racing audio (engine RPM, doors, horn, brakes, reverse cue,
+ *     collisions, countdown, checkpoints and terrain), owned by AudioManager
  *     built with the Web Audio API — no external files, so it is license-clean
  *     by construction (documented in AUDIO_CREDITS.md).
  *   - AI opponent cars with 4 difficulty levels, checkpoints, laps, positions,
@@ -313,216 +313,190 @@
     return Promise.resolve(false);
   }
 
-  /* =====================================================================
-   * 5. RACING AUDIO ENGINE (procedural Web Audio — license-clean)
-   * =================================================================== */
+  let racingAudioSequence = 0;
 
+  /* Recorded racing audio. AudioManager owns every media element and event;
+   * this adapter only maps driving state to licensed recordings and loop handles. */
   class RacingAudio {
     constructor() {
-      this.ctx = null;
-      this.master = null;
-      this.engine = null;      // {osc, sub, filter, gain}
+      this.channel = `racing-${++racingAudioSequence}`;
+      this.engine = null;
       this.engineOn = false;
-      this.terrain = null;     // noise loop + filter + gain
+      this.terrain = null;
       this.terrainType = 'asphalt';
-      this._noiseBuf = null;
+      this.terrainVolume = 0;
       this._enabled = true;
-    }
-    _unlock() {
-      if (this._enabled === false) return false;
-      if (this.ctx) { if (this.ctx.state === 'suspended') { try { this.ctx.resume(); } catch (e) {} } return true; }
-      try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) { this._enabled = false; return false; }
-        const ctx = new AC();
-        // Feature-detect the methods we rely on so a limited/restricted audio
-        // environment degrades silently instead of throwing mid-drive.
-        if (typeof ctx.createOscillator !== 'function' || typeof ctx.createBuffer !== 'function' || typeof ctx.createGain !== 'function' || typeof ctx.createBiquadFilter !== 'function') {
-          this._enabled = false; return false;
+      this._loops = new Map();
+      this._engineToken = 0;
+      this._doorToken = 0;
+      this._braking = false;
+      this._skidding = false;
+      this._onPageHide = () => this.stopAll();
+      this._onVisibility = () => { if (window.document?.hidden) this.stopAll(); };
+      this._onSfxChange = event => {
+        if (!event.detail?.enabled) {
+          this._stopLoops();
+          window.MusicSystem?.cancelAudioChannel?.(this.channel);
+        } else {
+          if (this.engineOn) this._startEngineLoops();
+          this.startTerrain(this.terrainType);
+          this._syncSkid();
         }
-        this.ctx = ctx;
-        this.master = ctx.createGain();
-        this.master.gain.value = 0.85;
-        this.master.connect(ctx.destination);
-        return true;
-      } catch (e) { this._enabled = false; return false; }
+      };
+      window.addEventListener('pagehide', this._onPageHide);
+      document.addEventListener('visibilitychange', this._onVisibility);
+      window.addEventListener('black-sword-sfx-change', this._onSfxChange);
     }
-    _noise() {
-      if (!this._noiseBuf) {
-        const len = this.ctx.sampleRate * 2;
-        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-        const d = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-        this._noiseBuf = buf;
-      }
-      return this._noiseBuf;
+
+    _unlock() {
+      const manager = window.MusicSystem;
+      if (!manager || this._enabled === false) return false;
+      manager.init();
+      const doc = window.document;
+      return manager.sfxEnabled && !manager.pageSuspended && Boolean(doc) && !doc.hidden;
     }
-    _noiseSource() {
-      const src = this.ctx.createBufferSource();
-      src.buffer = this._noise();
-      src.loop = true;
-      return src;
+
+    _effect(type, wait = false) {
+      const manager = window.MusicSystem;
+      if (!manager || !this._unlock()) return Promise.resolve(false);
+      if (wait) return manager.playSFXAndWait(type, 2200, { channel: this.channel });
+      manager.playSFX(type, { channel: this.channel });
+      return Promise.resolve(true);
     }
-    _buildEngine() {
-      const c = this.ctx;
-      this.engine = {};
-      this.engine.osc = c.createOscillator(); this.engine.osc.type = 'sawtooth';
-      this.engine.sub = c.createOscillator(); this.engine.sub.type = 'square';
-      this.engine.filter = c.createBiquadFilter(); this.engine.filter.type = 'lowpass'; this.engine.filter.frequency.value = 400;
-      this.engine.gain = c.createGain(); this.engine.gain.value = 0;
-      this.engine.osc.connect(this.engine.filter);
-      this.engine.sub.connect(this.engine.filter);
-      this.engine.filter.connect(this.engine.gain);
-      this.engine.gain.connect(this.master);
-      this.engine.osc.start();
-      this.engine.sub.start();
+
+    _playLoop(key, type, volume = 0.2, playbackRate = 1) {
+      if (this._loops.has(key)) return this._loops.get(key);
+      if (!this._unlock()) return null;
+      const handle = window.MusicSystem.startSFXLoop(`${this.channel}:${key}`, type, { volume, playbackRate });
+      if (handle) this._loops.set(key, handle);
+      return handle;
+    }
+
+    _stopLoop(key) {
+      const handle = this._loops.get(key);
+      this._loops.delete(key);
+      if (handle) handle.stop();
+      else window.MusicSystem?.stopSFXLoop?.(`${this.channel}:${key}`);
+    }
+
+    _stopLoops() {
+      for (const key of [...this._loops.keys()]) this._stopLoop(key);
+      this.engine = null;
+      this.terrain = null;
+    }
+
+    _startEngineLoops() {
+      if (!this.engineOn || !this._unlock()) return;
+      this._playLoop('engine-low', 'engine-low', 0.2, 0.9);
+      this._playLoop('engine-high', 'engine-high', 0, 1);
+      this.engine = { recorded: true };
+      this.setEngineRpm(this._rpm || 0.16);
+    }
+
+    setEngineRpm(rpm) {
+      this._rpm = Math.max(0, Math.min(1, Number(rpm) || 0));
+      const low = this._loops.get('engine-low'), high = this._loops.get('engine-high');
+      low?.setVolume(0.10 + (1 - this._rpm) * 0.18);
+      low?.setPlaybackRate(0.82 + this._rpm * 0.48);
+      high?.setVolume(this._rpm * 0.24);
+      high?.setPlaybackRate(0.88 + this._rpm * 0.68);
+    }
+
+    async startEngineSequence(onDone) {
+      if (this.engineOn) { onDone?.(); return; }
       this.engineOn = true;
+      const token = ++this._engineToken;
+      await this._effect('car-start', true);
+      if (token === this._engineToken && this.engineOn) this._startEngineLoops();
+      onDone?.();
     }
-    setEngineRpm(rpm) { // rpm 0..1
-      if (!this.engine || !this.engineOn) return;
-      const c = this.ctx, t = c.currentTime;
-      const f = 52 + rpm * 340;
-      this.engine.osc.frequency.setTargetAtTime(f, t, 0.05);
-      this.engine.sub.frequency.setTargetAtTime(f * 0.5, t, 0.05);
-      this.engine.filter.frequency.setTargetAtTime(280 + rpm * 2800, t, 0.08);
-      this.engine.gain.gain.setTargetAtTime(0.10 + rpm * 0.22, t, 0.08);
-    }
-    // Full ignition sequence: click -> starter motor -> idle.
-    startEngineSequence(onDone) {
-      if (!this._unlock() || !this.ctx) { onDone && onDone(); return; }
-      const c = this.ctx, t = c.currentTime;
-      this._buildEngine();
-      this.setEngineRpm(0);
-      // ignition click
-      this._blip(1200, 0.06, t, 0.05);
-      // starter motor: rising saw + noise for ~700ms
-      const s = c.createOscillator(); s.type = 'sawtooth'; s.frequency.setValueAtTime(60, t); s.frequency.linearRampToValueAtTime(220, t + 0.7);
-      const sg = c.createGain(); sg.gain.setValueAtTime(0.0001, t); sg.gain.linearRampToValueAtTime(0.16, t + 0.15); sg.gain.linearRampToValueAtTime(0.0001, t + 0.72);
-      s.connect(sg); sg.connect(this.master); s.start(t); s.stop(t + 0.75);
-      const nz = this._noiseSource(); const ng = c.createGain(); ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(0.08, t + 0.2); ng.gain.linearRampToValueAtTime(0.0001, t + 0.7);
-      nz.connect(ng); ng.connect(this.master); nz.start(t); nz.stop(t + 0.75);
-      // settle into idle
-      const idleT = t + 0.75;
-      this.setEngineRpm(0.16);
-      setTimeout(() => { this.setEngineRpm(0.16); }, 850);
-      setTimeout(() => onDone && onDone(), 800);
-    }
+
     stopEngineSequence(onDone) {
-      if (!this.ctx || !this.engine) { onDone && onDone(); return; }
-      const c = this.ctx, t = c.currentTime;
-      this.setEngineRpm(0.04);
-      setTimeout(() => {
-        try {
-          this.engine.gain.gain.setTargetAtTime(0, c.currentTime, 0.3);
-          const e = this.engine;
-          setTimeout(() => { try { e.osc.stop(); e.sub.stop(); } catch (er) {} }, 700);
-        } catch (e) {}
-        this.engineOn = false;
-        onDone && onDone();
-      }, 350);
+      this.engineOn = false;
+      ++this._engineToken;
+      this._stopLoop('engine-low'); this._stopLoop('engine-high');
+      this.engine = null;
+      queueMicrotask(() => onDone?.());
     }
-    _blip(freq, dur, when, vol) {
-      const c = this.ctx, o = c.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
-      const g = c.createGain(); g.gain.setValueAtTime(0.0001, when); g.gain.linearRampToValueAtTime(vol, when + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-      o.connect(g); g.connect(this.master); o.start(when); o.stop(when + dur + 0.05);
-    }
+
     horn(on) {
-      if (!this._unlock() || !this.ctx) return;
-      if (this._hornNodes) { this._hornStop(); if (!on) return; }
-      if (!on) return;
-      const c = this.ctx, t = c.currentTime;
-      const o1 = c.createOscillator(); o1.type = 'square'; o1.frequency.value = 420;
-      const o2 = c.createOscillator(); o2.type = 'square'; o2.frequency.value = 530;
-      const g = c.createGain(); g.gain.value = 0.07;
-      o1.connect(g); o2.connect(g); g.connect(this.master);
-      o1.start(); o2.start();
-      this._hornNodes = { o1, o2, g };
+      if (on) this._playLoop('horn', 'car-horn', 0.38, 1);
+      else this._hornStop();
     }
-    _hornStop() {
-      if (!this._hornNodes) return;
-      try { this._hornNodes.o1.stop(); this._hornNodes.o2.stop(); } catch (e) {}
-      this._hornNodes = null;
-    }
+    _hornStop() { this._stopLoop('horn'); }
+
     brake(on) {
-      if (!this._unlock() || !this.ctx) return;
-      if (on && this._brakeNodes) return;
-      if (!on) { this._brakeStop(); return; }
-      const c = this.ctx;
-      const nz = this._noiseSource(); const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = 0.8;
-      const g = c.createGain(); g.gain.value = 0.05;
-      nz.connect(f); f.connect(g); g.connect(this.master); nz.start();
-      this._brakeNodes = { nz, g };
+      this._braking = Boolean(on);
+      this._syncSkid();
     }
-    _brakeStop() { if (this._brakeNodes) { try { this._brakeNodes.nz.stop(); } catch (e) {} this._brakeNodes = null; } }
+    _brakeStop() { this._braking = false; this._syncSkid(); }
+
     reverseBeep(on) {
-      if (!this._unlock() || !this.ctx) return;
-      if (this._revNodes) { this._revStop(); if (!on) return; }
-      if (!on) return;
-      const c = this.ctx;
-      const o = c.createOscillator(); o.type = 'square'; o.frequency.value = 1000;
-      const g = c.createGain(); g.gain.value = 0.0001;
-      o.connect(g); g.connect(this.master); o.start();
-      // pulsing
-      const pulse = () => { const t = c.currentTime; g.gain.setValueAtTime(0.06, t); g.gain.setValueAtTime(0.0001, t + 0.18); };
-      pulse(); this._revTimer = setInterval(pulse, 380);
-      this._revNodes = { o, g };
+      if (on) this._playLoop('reverse', 'race-beep', 0.14, 1);
+      else this._revStop();
     }
-    _revStop() { if (this._revTimer) clearInterval(this._revTimer); this._revTimer = null; if (this._revNodes) { try { this._revNodes.o.stop(); } catch (e) {} this._revNodes = null; } }
+    _revStop() { this._stopLoop('reverse'); }
+
     collision(intensity) {
-      if (!this._unlock() || !this.ctx) return;
-      const c = this.ctx, t = c.currentTime;
-      const nz = this._noiseSource(); const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
-      const g = c.createGain(); g.gain.setValueAtTime(Math.min(0.7, 0.15 + intensity * 0.4), t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-      nz.connect(f); f.connect(g); g.connect(this.master); nz.start(t); nz.stop(t + 0.35);
-      const o = c.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(45, t + 0.25);
-      const og = c.createGain(); og.gain.setValueAtTime(0.5, t); og.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-      o.connect(og); og.connect(this.master); o.start(t); o.stop(t + 0.32);
+      // The recording is a real metal impact; gameplay still applies intensity
+      // to damage. The queue serializes it with the matching collision speech.
+      this._effect('car-collision');
     }
+
     skid(on) {
-      if (!this._unlock() || !this.ctx) return;
-      if (on && this._skidNodes) return;
-      if (!on) { this._skidStop(); return; }
-      const c = this.ctx;
-      const nz = this._noiseSource(); const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 2;
-      const g = c.createGain(); g.gain.value = 0.04;
-      nz.connect(f); f.connect(g); g.connect(this.master); nz.start();
-      this._skidNodes = { nz, g };
+      this._skidding = Boolean(on);
+      this._syncSkid();
     }
-    _skidStop() { if (this._skidNodes) { try { this._skidNodes.nz.stop(); } catch (e) {} this._skidNodes = null; } }
-    // Door sequence: unlock click -> door open -> door close thud. Synthesized.
-    doorSequence(onDone) {
-      if (!this._unlock() || !this.ctx) { onDone && onDone(); return; }
-      const t = this.ctx.currentTime;
-      this._blip(1400, 0.05, t, 0.08);        // unlock click
-      this._blip(120, 0.16, t + 0.22, 0.3);   // door open
-      this._blip(95, 0.2, t + 0.75, 0.38);    // door close thud
-      setTimeout(() => onDone && onDone(), 1000);
+    _skidStop() { this._skidding = false; this._syncSkid(); }
+    _syncSkid() {
+      if (this._braking || this._skidding) {
+        const handle = this._playLoop('skid', 'car-skid', this._skidding ? 0.24 : 0.12, this._skidding ? 1 : 0.82);
+        handle?.setVolume(this._skidding ? 0.24 : 0.12);
+        handle?.setPlaybackRate(this._skidding ? 1 : 0.82);
+      } else this._stopLoop('skid');
     }
-    checkpoint() { if (!this._unlock() || !this.ctx) return; const t = this.ctx.currentTime; this._blip(880, 0.14, t, 0.12); this._blip(1320, 0.2, t + 0.13, 0.12); }
-    countdownBeep(final) { if (!this._unlock() || !this.ctx) return; const t = this.ctx.currentTime; this._blip(final ? 988 : 494, final ? 0.5 : 0.18, t, 0.16); }
-    winJingle() { if (!this._unlock() || !this.ctx) return; const t = this.ctx.currentTime; [523, 659, 784, 1047].forEach((f, i) => this._blip(f, 0.3, t + i * 0.14, 0.14)); }
-    loseJingle() { if (!this._unlock() || !this.ctx) return; const t = this.ctx.currentTime; [400, 340, 280].forEach((f, i) => this._blip(f, 0.3, t + i * 0.16, 0.13)); }
-    // Terrain rolling noise loop (surface changes the filter character)
+
+    async doorSequence(onDone) {
+      const token = ++this._doorToken;
+      await this._effect('car-door-open', true);
+      if (token === this._doorToken) await this._effect('car-door-close', true);
+      onDone?.();
+    }
+
+    checkpoint() { this._effect('race-checkpoint'); }
+    countdownBeep(final) { this._effect('race-beep'); }
+    winJingle() { this._effect('victory'); }
+    loseJingle() { this._effect('death'); }
+
     startTerrain(surface) {
-      if (!this._unlock() || !this.ctx) return;
       this.terrainType = surface || 'asphalt';
-      if (!this.terrain) {
-        const c = this.ctx;
-        this.terrain = {};
-        this.terrain.src = this._noiseSource();
-        this.terrain.filter = c.createBiquadFilter(); this.terrain.filter.type = 'lowpass';
-        this.terrain.gain = c.createGain(); this.terrain.gain.value = 0.0;
-        this.terrain.src.connect(this.terrain.filter); this.terrain.filter.connect(this.terrain.gain); this.terrain.gain.connect(this.master);
-        this.terrain.src.start();
-      }
-      const f = { asphalt: 900, dirt: 500, grass: 350, gravel: 1500, mud: 260, metal: 2200 }[this.terrainType] || 900;
-      this.terrain.filter.frequency.setTargetAtTime(f, this.ctx.currentTime, 0.3);
+      this._stopLoop('terrain');
+      const sample = {
+        asphalt: 'car-skid', dirt: 'step-gravel', grass: 'step-leaves-1',
+        gravel: 'step-gravel', mud: 'step-mud', metal: 'step-stone', stone: 'step-stone'
+      }[this.terrainType] || 'car-skid';
+      const rate = this.terrainType === 'asphalt' ? 0.65 : 0.75;
+      this.terrain = this._playLoop('terrain', sample, this.terrainVolume, rate);
     }
-    setTerrainVolume(v) { if (this.terrain) this.terrain.gain.gain.setTargetAtTime(Math.max(0, Math.min(0.12, v)), this.ctx.currentTime, 0.1); }
+
+    setTerrainVolume(value) {
+      this.terrainVolume = Math.max(0, Math.min(0.12, Number(value) || 0));
+      this.terrain?.setVolume(this.terrainVolume);
+    }
+
     stopAll() {
-      this._hornStop(); this._brakeStop(); this._revStop(); this._skidStop();
-      if (this.engine) { try { this.engine.osc.stop(); this.engine.sub.stop(); } catch (e) {} this.engine = null; this.engineOn = false; }
-      if (this.terrain) { try { this.terrain.src.stop(); } catch (e) {} this.terrain = null; }
+      ++this._engineToken; ++this._doorToken;
+      this.engineOn = false;
+      this._braking = this._skidding = false;
+      window.MusicSystem?.cancelAudioChannel?.(this.channel);
+      this._stopLoops();
+    }
+
+    destroy() {
+      this.stopAll();
+      window.removeEventListener('pagehide', this._onPageHide);
+      document.removeEventListener('visibilitychange', this._onVisibility);
+      window.removeEventListener('black-sword-sfx-change', this._onSfxChange);
     }
   }
 
@@ -659,7 +633,7 @@
     }
     stop() {
       if (this.raf) cancelAnimationFrame(this.raf);
-      this.audio.stopAll();
+      this.audio.destroy();
     }
 
     setInput(kind, on) { if (kind in this.input) this.input[kind] = on; }
@@ -1607,13 +1581,12 @@
       if (!sim) return;
       if (sim.engineOn) {
         sim.engineOn = false;
-        sim.audio.stopEngineSequence(() => say('Engine stopped.'));
+        say('Engine stopped.');
+        sim.audio.stopEngineSequence();
       } else {
+        say('Starting engine.');
         sim.audio.doorSequence(() => {
-          sim.audio.startEngineSequence(() => {
-            sim.engineOn = true;
-            say('Engine started.');
-          });
+          sim.audio.startEngineSequence(() => { sim.engineOn = true; });
         });
       }
     },
@@ -1629,13 +1602,13 @@
         const rs = ensureState();
         if (rs.ownedCars[sim.carId]) rs.ownedCars[sim.carId].condition = Math.max(0, Math.round(sim.condition));
         persist();
+        say('You step out of the car. Vehicle secured.');
         sim.audio.doorSequence();
       }
       this.activeSim = null;
       if (this._countdownTimer) clearTimeout(this._countdownTimer);
       this._unbindKeys();
       UI.hideOverlay();
-      say('You step out of the car. Vehicle secured.');
     },
 
     _keyState: {},
@@ -1683,7 +1656,7 @@
       const reward = place === 1 ? Math.round(cfg.reward * diff.rewardMult) : place === 2 ? Math.round(cfg.reward * diff.rewardMult * 0.5) : Math.round(cfg.reward * diff.rewardMult * 0.25);
       const elapsed = Math.round(sim._t);
       const won = place === 1;
-      if (won) { sim.audio.winJingle(); MusicSystem && MusicSystem.playSFX('victory'); }
+      if (won) sim.audio.winJingle();
       else sim.audio.loseJingle();
 
       G.state.player.gold = (G.state.player.gold || 0) + reward;

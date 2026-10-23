@@ -152,6 +152,9 @@ test('routes recompute from actual exits, never from synthetic bearings', async 
 test('ordinary narration reaches speech once, queue is bounded, OFF is absolute', async t => {
     const { G, w, settings } = await ready(t);
     settings.narration = true; w.AudioManager.setVoiceEnabled(true);
+    // Hero creation can finish a recorded level-up cue. Let that standalone
+    // effect drain before asserting the next narration's synchronous dispatch.
+    await wait(0);
     const spoken = []; w.speechSynthesis.speak = u => { spoken.push(u); u.onstart?.(); };
     G.emitGameEvent('One real game event.', 'combat'); assert.equal(spoken.length, 1);
     for (let i = 0; i < 40; i++) G.addNarrative(`Event ${i}`, 'system');
@@ -162,12 +165,13 @@ test('ordinary narration reaches speech once, queue is bounded, OFF is absolute'
 test('speech rate, pause, resume, repeat and engine error expose real state', async t => {
     const { w, settings, UI } = await ready(t);
     settings.narration = true; w.AudioManager.setVoiceEnabled(true);
+    await wait(0);
     const spoken = []; let paused = 0, resumed = 0;
     w.speechSynthesis.pause = () => paused++; w.speechSynthesis.resume = () => resumed++;
     w.speechSynthesis.speak = u => { spoken.push(u); u.onstart?.(); };
     UI.rate(.2); assert.equal(spoken[0].rate, 1.2);
     w.AudioManager.pauseVoice(); w.AudioManager.resumeVoice(); assert.equal(paused, 1); assert.equal(resumed, 1);
-    w.AudioManager.repeatVoice(); assert.equal(spoken.length, 2);
+    w.AudioManager.repeatVoice(); await wait(60); assert.equal(spoken.length, 2);
     spoken.at(-1).onerror({ error: 'voice-unavailable' });
     assert.match(w.document.getElementById('gesture-speech-status').textContent, /voice-unavailable/);
 });

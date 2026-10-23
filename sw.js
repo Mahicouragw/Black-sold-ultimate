@@ -1,4 +1,4 @@
-const CACHE='black-sword-v7.26.1';
+const CACHE='black-sword-v7.27.0';
 const BASE=new URL('./',self.registration.scope);
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',
@@ -12,13 +12,16 @@ const CORE=[
   'assets/audio/music/Fantasy-Choir-3.mp3','assets/audio/music/adventure-intro.wav','assets/audio/music/battle-fast.mp3','assets/audio/music/battle.ogg','assets/audio/music/boss.mp3','assets/audio/music/dark-forest.mp3',
   'assets/audio/music/determined-pursuit.mp3','assets/audio/music/town-theme-rpg.mp3','assets/audio/music/natural-forest-theme.mp3','assets/audio/music/battle-theme-a.mp3','assets/audio/music/boss-battle-theme.mp3','assets/audio/music/final-boss-theme.ogg','assets/audio/music/dungeon.ogg','assets/audio/music/exploration.mp3','assets/audio/music/inn.mp3','assets/audio/music/town.mp3','assets/audio/music/victory.mp3',
   'assets/audio/sfx/attack-fast.wav','assets/audio/sfx/attack-heavy.wav','assets/audio/sfx/attack.wav','assets/audio/sfx/board-dice.wav','assets/audio/sfx/board-error.wav','assets/audio/sfx/board-piece.wav',
-  'assets/audio/sfx/board-turn.wav','assets/audio/sfx/body-fall.wav','assets/audio/sfx/card-draw.wav','assets/audio/sfx/card-flip.wav','assets/audio/sfx/card-shuffle.wav','assets/audio/sfx/carrom-strike.wav',
+  'assets/audio/sfx/board-turn.wav','assets/audio/sfx/body-fall.wav','assets/audio/sfx/car-collision.mp3','assets/audio/sfx/car-door-close.ogg','assets/audio/sfx/car-door-open.ogg','assets/audio/sfx/car-horn.mp3',
+  'assets/audio/sfx/car-skid.ogg','assets/audio/sfx/car-start.mp3','assets/audio/sfx/card-draw.wav','assets/audio/sfx/card-flip.wav','assets/audio/sfx/card-shuffle.wav','assets/audio/sfx/carrom-strike.wav',
   'assets/audio/sfx/check.wav','assets/audio/sfx/checkmate.wav','assets/audio/sfx/chess-move.wav','assets/audio/sfx/coin-collision.wav','assets/audio/sfx/coin.wav','assets/audio/sfx/death.wav',
-  'assets/audio/sfx/door.wav','assets/audio/sfx/eat.wav','assets/audio/sfx/blessing.wav','assets/audio/sfx/chip.wav','assets/audio/sfx/music-transition.wav','assets/audio/sfx/exp.wav','assets/audio/sfx/explore.wav','assets/audio/sfx/ghost-moan.wav','assets/audio/sfx/ghost-scream.wav','assets/audio/sfx/goblin-cackle.wav',
-  'assets/audio/sfx/haunted-wind.wav','assets/audio/sfx/heal-chain.wav','assets/audio/sfx/heal.wav','assets/audio/sfx/hit-metal-1.wav','assets/audio/sfx/hit-metal-2.wav','assets/audio/sfx/hit.wav',
-  'assets/audio/sfx/levelup.wav','assets/audio/sfx/magic.wav','assets/audio/sfx/miss.wav','assets/audio/sfx/monster-hit.wav','assets/audio/sfx/monster-roar.wav','assets/audio/sfx/pickup.wav',
-  'assets/audio/sfx/spell-arcane.wav','assets/audio/sfx/spell-cast.wav','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-leaves-1.ogg','assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-mud.ogg',
-  'assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/audio-manifest.json','icons/icon-512.png','icons/icon-maskable-512.png','AUDIO_CREDITS.md'
+  'assets/audio/sfx/door.wav','assets/audio/sfx/drink.ogg','assets/audio/sfx/eat.ogg','assets/audio/sfx/engine-high.wav','assets/audio/sfx/engine-low.wav','assets/audio/sfx/exp.wav',
+  'assets/audio/sfx/explore.wav','assets/audio/sfx/ghost-moan.wav','assets/audio/sfx/ghost-scream.wav','assets/audio/sfx/goblin-cackle.wav','assets/audio/sfx/goblin-reaction.ogg','assets/audio/sfx/haunted-wind.wav',
+  'assets/audio/sfx/heal-chain.wav','assets/audio/sfx/heal.wav','assets/audio/sfx/hit-metal-1.wav','assets/audio/sfx/hit-metal-2.wav','assets/audio/sfx/hit.wav','assets/audio/sfx/levelup.wav',
+  'assets/audio/sfx/magic.wav','assets/audio/sfx/miss.wav','assets/audio/sfx/monster-hit.wav','assets/audio/sfx/monster-roar.wav','assets/audio/sfx/music-transition.wav','assets/audio/sfx/pickup.wav',
+  'assets/audio/sfx/race-beep.mp3','assets/audio/sfx/race-checkpoint.mp3','assets/audio/sfx/spell-arcane.wav','assets/audio/sfx/spell-cast.wav','assets/audio/sfx/step-gravel.ogg','assets/audio/sfx/step-leaves-1.ogg',
+  'assets/audio/sfx/step-leaves-2.ogg','assets/audio/sfx/step-mud.ogg','assets/audio/sfx/step-stone.ogg','assets/audio/sfx/step-wood.ogg','assets/audio/sfx/ui-click.wav',
+  'assets/audio/audio-manifest.json','recorded-audio-checksums.json','assets/audio/licenses/Starter-Kit-Racing-MIT.txt','icons/icon-512.png','icons/icon-maskable-512.png','AUDIO_CREDITS.md'
 ];
 const CORE_URLS=CORE.map(path=>new URL(path,BASE).href);
 const FALLBACK=new URL('index.html',BASE).href;

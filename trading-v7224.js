@@ -23,9 +23,12 @@
         offers: [],
         busy: false,
 
-        say(text, type = 'system') {
+        say(text, type = 'system', sfx = []) {
             const game = window.Game;
-            game.emitGameEvent?.(text, type) || game.addNarrative(text, type);
+            if (game.emitGameEvent) return game.emitGameEvent(text, type, { sfx });
+            game.addNarrative(text, type);
+            for (const effect of sfx) window.MusicSystem?.playSFX?.(effect);
+            return Promise.resolve(false);
         },
 
         requireOnline() {
@@ -80,8 +83,7 @@
             const purse = window.Game.state.player?.gold || 0;
             if (gold > purse) { this.say(`You only have ${purse} gold.`); return false; }
             this.draft.gold = gold;
-            this.say(`Offering ${gold} gold. ${this.describeDraft()}`, 'item');
-            if (gold > 0) window.MusicSystem?.playSFX?.('coin');
+            this.say(`Offering ${gold} gold. ${this.describeDraft()}`, 'item', gold > 0 ? ['coin'] : []);
             return true;
         },
 
@@ -114,8 +116,7 @@
                     gold_requested: 0
                 });
                 if (error) { this.say(this.friendlyError(error.message)); return false; }
-                this.say(`Trade offer sent to ${this.draft.heroName}. They have ten minutes to accept.`, 'treasure');
-                window.MusicSystem?.playSFX?.('coin');
+                this.say(`Trade offer sent to ${this.draft.heroName}. They have ten minutes to accept.`, 'treasure', ['coin']);
                 this.draft = null;
                 return Boolean(data);
             } finally { this.busy = false; }
@@ -161,8 +162,7 @@
             try {
                 const { error } = await window.OnlineSystem.client.rpc('accept_trade_offer', { offer_id: offer.id });
                 if (error) { this.say(this.friendlyError(error.message)); return false; }
-                this.say(`Trade complete. You and ${offer.other_hero} have exchanged your goods.`, 'treasure');
-                window.MusicSystem?.playSFX?.('levelup');
+                this.say(`Trade complete. You and ${offer.other_hero} have exchanged your goods.`, 'treasure', ['coin']);
                 // The server is authoritative, so pull the updated hero back down.
                 await window.OnlineSystem.loadGame?.();
                 window.Game.updateHUD?.();
