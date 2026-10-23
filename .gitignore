@@ -16,7 +16,8 @@ ios/App/DerivedData/
 *.deploy-token
 TOKEN-HERE.txt
 
-# Local API keys — never commit
+# Local API keys and recoverable Neon handoff secrets — never commit
 .env
 .env.local
 .env.*.local
+.neon/

@@ -1,6 +1,6 @@
 {
   "name": "black-sword-ultimate",
-  "version": "7.27.0",
+  "version": "7.28.0",
   "private": true,
   "description": "Accessible open-world multiplayer fantasy RPG",
   "scripts": {
@@ -26,18 +26,24 @@
     "release": "node scripts/github-auth.mjs --status >/dev/null 2>&1 || node scripts/github-auth.mjs; node scripts/deploy.mjs",
     "token": "node scripts/token.mjs",
     "token:set": "node scripts/token.mjs set",
-    "token:clear": "node scripts/token.mjs clear"
+    "token:clear": "node scripts/token.mjs clear",
+    "neon:schema": "node scripts/build-neon-schema.mjs",
+    "neon:vendor": "node scripts/vendor-neon.mjs",
+    "neon:verify": "node scripts/verify-neon-backend.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",
     "@capacitor/core": "7.6.8",
     "@capacitor/ios": "7.6.9",
+    "@neondatabase/neon-js": "^0.9.0-beta",
     "chess.js": "^1.4.0",
     "ipaddr.js": "^2.5.0",
+    "pg": "^8.23.1",
     "undici": "^7.29.1"
   },
   "devDependencies": {
     "@capacitor/cli": "7.6.8",
+    "esbuild": "^0.28.2",
     "jsdom": "^26.1.0"
   },
   "engines": {

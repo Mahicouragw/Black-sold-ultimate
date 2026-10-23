@@ -2,21 +2,16 @@ name: Neon backend
 
 on:
   workflow_dispatch:
-    inputs:
-      migrate:
-        description: 'Apply the checked-in Neon schema after provisioning'
-        type: boolean
-        default: false
   push:
     branches: [main]
     paths:
       - '.github/workflows/neon-backend.yml'
       - 'scripts/neon-*.mjs'
+      - 'scripts/verify-neon-backend.mjs'
       - 'neon/**'
 
 permissions:
   contents: read
-  actions: write
   pull-requests: write
 
 concurrency:
@@ -25,8 +20,9 @@ concurrency:
 
 jobs:
   provision:
-    name: Provision and verify claimable Neon
+    name: Provision, migrate, verify, and hand off Neon
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -34,26 +30,17 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Report non-secret credential access
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/neon-report-access.mjs
-      - name: Provision or reconnect to the project
+      - name: Provision the recoverable project
         if: ${{ hashFiles('neon/provision-enabled') != '' }}
-        env:
-          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
-          NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
-          NEON_PROJECT_EXPIRES_AT: ${{ vars.NEON_PROJECT_EXPIRES_AT }}
-          NEON_IDENTITY_ASSERTION: ${{ secrets.NEON_IDENTITY_ASSERTION }}
         run: node scripts/neon-provision.mjs
-      - name: Store project-scoped credentials
+      - name: Apply the complete Neon schema atomically
+        if: ${{ hashFiles('neon/provision-enabled') != '' }}
+        run: node scripts/neon-migrate.mjs
+      - name: Verify auth, database features, OAuth, and RLS
+        if: ${{ hashFiles('neon/provision-enabled') != '' }}
+        run: node scripts/verify-neon-backend.mjs
+      - name: Publish public configuration and encrypted claim handoff
         if: ${{ hashFiles('neon/provision-enabled') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/neon-store-credentials.mjs
-      - name: Apply schema
-        if: ${{ inputs.migrate || hashFiles('neon/schema.sql') != '' }}
-        run: node scripts/neon-migrate.mjs
-      - name: Verify auth, database, and security
-        if: ${{ inputs.migrate || hashFiles('neon/schema.sql') != '' }}
-        run: node scripts/verify-neon-backend.mjs
+        run: node scripts/neon-handoff.mjs --wait

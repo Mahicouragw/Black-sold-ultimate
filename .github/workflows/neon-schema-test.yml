@@ -1,0 +1,40 @@
+name: Neon schema test
+
+on:
+  pull_request:
+    paths:
+      - 'neon/schema.sql'
+      - 'scripts/build-neon-schema.mjs'
+      - 'scripts/neon-migrate.mjs'
+      - 'scripts/test-neon-schema.mjs'
+      - 'supabase/*.sql'
+      - '.github/workflows/neon-schema-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  postgres:
+    name: Apply full schema twice and test RLS
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Test migrated schema against isolated Postgres
+        run: node scripts/test-neon-schema.mjs

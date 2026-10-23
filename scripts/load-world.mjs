@@ -43,7 +43,7 @@ export async function createRuntime(root = process.cwd()) {
 
     const scripts = [...window.document.querySelectorAll('script[src]')]
         .map(element => element.getAttribute('src'))
-        .filter(source => source && !source.startsWith('http') && !source.startsWith('assets/vendor') && source !== 'game-hall.js' && source !== 'pwa.js' && source !== 'supabase-config.js');
+        .filter(source => source && !source.startsWith('http') && !source.startsWith('assets/vendor') && !['game-hall.js','pwa.js','backend-config.js','neon-game-client.js'].includes(source));
     let bundle = '';
     for (const file of scripts) bundle += `\n// ---- ${file} ----\n${await readFile(new URL(`file://${root}/${file}`), 'utf8')}\n`;
     window.eval(bundle);
