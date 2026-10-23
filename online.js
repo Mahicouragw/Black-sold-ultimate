@@ -1,4 +1,4 @@
-/** Supabase-backed guest identity, cloud saves, friends and chat. */
+/** Neon-backed guest identity, cloud saves, friends and chat. */
 const OnlineSystem = {
     client: null,
     user: null,
@@ -39,17 +39,15 @@ const OnlineSystem = {
         this.populateVoiceSelectors();
         if('speechSynthesis'in window&&!this._voicesListener){speechSynthesis.addEventListener?.('voiceschanged',()=>this.populateVoiceSelectors());this._voicesListener=true;}
         this.setupHeroAutocomplete();
-        const config = window.SUPABASE_CONFIG;
-        if (!config || !window.supabase?.createClient) {
-            this.status = 'Offline mode — online library unavailable';
+        const config = window.BLACK_SWORD_BACKEND_CONFIG;
+        if (!config || !window.BlackSwordBackend?.createClient || !config.authUrl || !config.dataApiUrl) {
+            this.status = 'Offline mode — online backend is not configured';
             this.ensureLocalCode();
             this.updateIndicators();
             return;
         }
         try {
-            this.client = window.supabase.createClient(config.url, config.publishableKey, {
-                auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-            });
+            this.client = window.BlackSwordBackend.createClient(config);
             const { data: { session } } = await this.client.auth.getSession();
             let activeSession = session;
             if (!activeSession) {
@@ -84,7 +82,7 @@ const OnlineSystem = {
         } catch (error) {
             console.error('Online initialization failed:', error);
             this.status = error.message?.toLowerCase().includes('anonymous')
-                ? 'Setup needed: enable Anonymous Sign-Ins in Supabase'
+                ? 'Neon guest sign-in is not configured'
                 : `Offline mode — ${error.message || 'connection failed'}`;
             this.ensureLocalCode();
             this.updateIndicators();
@@ -206,9 +204,15 @@ const OnlineSystem = {
         const identities = this.user?.identities || [];
         const providers = identities.map(identity => String(identity.provider || '').toLowerCase());
         this.linked = providers.includes('google')
-            || providers.some(p => p && p !== 'anonymous')
+            || providers.some(p => p && p !== 'anonymous' && p !== 'credential')
             || this.user?.app_metadata?.provider === 'google'
             || this.user?.is_anonymous === false;
+        // Neon session responses do not embed provider identities. The
+        // owner-only RPC reads neon_auth.account without exposing credentials.
+        if(!this.linked&&this.client&&this.user){
+            const {data,error}=await this.client.rpc('has_linked_identity');
+            if(!error&&typeof data==='boolean')this.linked=data;
+        }
     },
 
     async updatePresence() {
@@ -351,15 +355,17 @@ const OnlineSystem = {
     },
 
     openGoogleDialog(merge=false,retry=0) {
-        this.googleMergeRequested=merge;const panel=document.getElementById('google-login-panel'),status=document.getElementById('google-login-status');panel?.classList.remove('hidden');
+        this.googleMergeRequested=merge;const panel=document.getElementById('google-login-panel'),status=document.getElementById('google-login-status'),config=window.BLACK_SWORD_BACKEND_CONFIG;panel?.classList.remove('hidden');
         // Google refuses OAuth inside in-app WebViews (our APK): guide the player
         // instead of looping on a script Google will never finish serving.
         if(this.isEmbeddedWebView()){
             if(status)status.textContent='Google sign-in is blocked inside app WebViews by Google. Open https://black-sold-ultimate.vercel.app in Chrome, sign in once with the same Google account — your heroes then sync to the app automatically. Guest mode keeps working meanwhile.';
             this.status='To link Google: open the game in Chrome once';this.updateIndicators();return;
         }
-        if(this.isAppMode()){
+        if(this.isAppMode()||config?.authMode==='redirect'){
             // Full-page secure sign-in: no popup, no cookie trap, always returns.
+            // Neon uses its managed Google provider, so this is also the normal
+            // desktop flow and needs no Google client secret in the browser.
             const target=document.getElementById('google-signin-render');
             if(target && !target.querySelector('button')){
                 target.innerHTML='';
@@ -371,8 +377,8 @@ const OnlineSystem = {
                 target.appendChild(btn);
             }
             if(status)status.textContent=merge
-                ?'Tap Continue with Google. A secure sign-in page opens inside the app; after you choose your account you come straight back here, and guest heroes are merged.'
-                :'Tap Continue with Google. A secure sign-in page opens inside the app and returns you to the game automatically.';
+                ?'Tap Continue with Google. After you choose your account you come straight back here, and guest heroes are merged.'
+                :'Tap Continue with Google. Secure sign-in returns you to the game automatically.';
             return;
         }
         if(!window.google?.accounts?.id){
@@ -383,7 +389,6 @@ const OnlineSystem = {
             return;
         }
         this._gisLoadFailed=false;
-        const config=window.SUPABASE_CONFIG;
         try{
             if(!this.googleButtonInitialized){google.accounts.id.initialize({client_id:config.googleClientId,callback:response=>this.handleGoogleCredential(response),auto_select:false,cancel_on_tap_outside:false,use_fedcm_for_prompt:false});this.googleButtonInitialized=true;}
             const target=document.getElementById('google-signin-render');if(target){target.innerHTML='';google.accounts.id.renderButton(target,{theme:'outline',size:'large',text:'continue_with',shape:'rectangular',logo_alignment:'left',width:300});}
@@ -397,8 +402,8 @@ const OnlineSystem = {
     },
 
     async startGoogleRedirect(merge) {
-        // Full-page OAuth: leaves the page, signs in at Google, and returns to
-        // the game with a code that supabase-js exchanges automatically.
+        // Full-page OAuth: leaves the page, signs in through Neon Auth and
+        // Google, then returns to the game with a managed session cookie.
         const status=document.getElementById('google-login-status');
         if(status)status.textContent='Opening secure Google sign-in…';
         try{
@@ -650,7 +655,7 @@ const OnlineSystem = {
         if (!this.client) await this.init();
         if (!this.client) { this.status='Online service is not connected.';this.updateIndicators();return; }
         if(this.linked){this.status='Google is already connected. Restoring cloud heroes…';this.updateIndicators();await this.cacheCloudSave(true);return;}
-        // Direct Google token sign-in avoids exposing a Supabase redirect page.
+        // Direct token sign-in remains available for compatible auth modes.
         // The current guest roster is merged into the selected Google account.
         this.openGoogleDialog(true);
     },
@@ -735,7 +740,7 @@ const OnlineSystem = {
         let snapshot;
         try{snapshot=JSON.parse(JSON.stringify(saveData));}
         catch(error){console.warn('Cloud save could not be serialized:',error?.message||error);return Promise.resolve(false);}
-        // Supabase requests do not necessarily finish in invocation order. A
+        // Backend requests do not necessarily finish in invocation order. A
         // per-account chain prevents an old create/switch/delete snapshot from
         // overwriting the newest roster. Account IDs are captured up front so a
         // queued guest save can never be written into a newly selected account.
