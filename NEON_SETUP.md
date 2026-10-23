@@ -29,7 +29,7 @@ Supabase realtime publications are not available on Claimable Neon. The compatib
 npm run neon:schema
 ```
 
-The generator replaces Supabase `auth.users`/`auth.identities`, role names, and realtime publication statements. It keeps pgcrypto in `extensions`, makes named policies rerunnable, and preserves all features through player-to-player trading v20. `scripts/neon-migrate.mjs` applies the generated file in one owner transaction with an advisory lock.
+The generator replaces Supabase `auth.users`/`auth.identities`, role names, and realtime publication statements. It keeps pgcrypto in `extensions`, makes named policies rerunnable, and preserves all features through player-to-player trading v20. `scripts/neon-migrate.mjs` applies the generated file in one owner transaction with an advisory lock, then the workflow refreshes the Data API schema cache through Neon's management API before browser-level verification.
 
 The integration verifier checks:
 

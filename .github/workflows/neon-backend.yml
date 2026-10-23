@@ -36,6 +36,9 @@ jobs:
       - name: Apply the complete Neon schema atomically
         if: ${{ hashFiles('neon/provision-enabled') != '' }}
         run: node scripts/neon-migrate.mjs
+      - name: Refresh the Data API schema cache
+        if: ${{ hashFiles('neon/provision-enabled') != '' }}
+        run: node scripts/neon-refresh-schema.mjs
       - name: Verify auth, database features, OAuth, and RLS
         if: ${{ hashFiles('neon/provision-enabled') != '' }}
         run: node scripts/verify-neon-backend.mjs
