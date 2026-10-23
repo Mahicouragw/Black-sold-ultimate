@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   actions: write
+  pull-requests: write
 
 concurrency:
   group: neon-black-sword-backend
@@ -33,7 +34,12 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Report non-secret credential access
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/neon-report-access.mjs
       - name: Provision or reconnect to the project
+        if: ${{ hashFiles('neon/provision-enabled') != '' }}
         env:
           NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
           NEON_BRANCH_ID: ${{ vars.NEON_BRANCH_ID }}
@@ -41,6 +47,7 @@ jobs:
           NEON_IDENTITY_ASSERTION: ${{ secrets.NEON_IDENTITY_ASSERTION }}
         run: node scripts/neon-provision.mjs
       - name: Store project-scoped credentials
+        if: ${{ hashFiles('neon/provision-enabled') != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/neon-store-credentials.mjs
