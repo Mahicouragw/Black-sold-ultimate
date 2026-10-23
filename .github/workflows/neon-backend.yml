@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       handoff_pr:
-        description: Pull request number that receives the encrypted claim handoff
-        required: true
+        description: Pull request number that receives the encrypted claim handoff (defaults to neon/handoff-pr)
+        required: false
+        default: ''
         type: string
       wait_for_claim:
         description: Keep polling until a human completes the claim (up to 30 minutes)
@@ -13,9 +14,18 @@ on:
         default: false
         type: boolean
 
+  # A path-gated push to a session branch is the provisioning trigger when the
+  # automation token cannot dispatch workflows itself. Change
+  # neon/provision-request only when a new project should be created.
+  push:
+    branches: ['arena/**']
+    paths:
+      - 'neon/provision-request'
+
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 concurrency:
   group: neon-black-sword-backend

@@ -1,0 +1,7 @@
+Provision one Claimable Neon project and publish its encrypted claim handoff.
+
+Changing this file is the deliberate, path-gated provisioning trigger for
+session branches where the automation token cannot dispatch workflows.
+It does not make the project permanent: a human must open the claim URL from
+the handoff comment within 15 minutes and Neon gives the project 72 hours in
+total before it expires.

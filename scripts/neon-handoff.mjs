@@ -37,6 +37,10 @@ async function tokenFor(assertion) {
 
 function pullRequestNumber() {
     if (process.env.NEON_HANDOFF_PR_NUMBER) return Number(process.env.NEON_HANDOFF_PR_NUMBER);
+    try {
+        const configured = Number(readFileSync('neon/handoff-pr', 'utf8').trim());
+        if (Number.isInteger(configured) && configured > 0) return configured;
+    } catch {}
     const repo = process.env.GITHUB_REPOSITORY;
     const sha = process.env.GITHUB_SHA;
     if (!repo || !sha) throw new Error('GitHub repository/commit context is missing.');

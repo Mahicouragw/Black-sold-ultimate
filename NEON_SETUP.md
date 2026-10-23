@@ -26,6 +26,8 @@ The reviewed GitHub Actions workflow performs provisioning, the complete schema 
    gh run watch
    ```
 
+   If the automation token cannot dispatch workflows, touch `neon/provision-request` on an `arena/**` session branch and push. That path is the only push trigger, so ordinary pushes never create projects. The handoff target falls back to the pull request recorded in `neon/handoff-pr`.
+
    The job provisions a Claimable Neon project, publishes the encrypted handoff and public configuration to that PR, applies `neon/schema.sql`, refreshes the Data API schema cache, and runs the integration/security verifier. The job does **not** wait for a human unless you also pass `-f wait_for_claim=true`.
 
 3. **Recover and apply the public configuration** in the workspace:
