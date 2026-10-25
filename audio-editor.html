@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Home Audio Editor - Voice Pitch &amp; Duplicate</title>
+<style>
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; height: 100%; background: #0b1120; color: #e8eaf2; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow-x: hidden; }
+.screen { display: none; padding: 12px; min-height: 100vh; }
+.screen.active { display: block; }
+.card { background: #141b2d; border: 1px solid #2a354a; border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+h1 { font-size: 20px; margin: 0 0 6px; color: #f2c94c; }
+h2 { font-size: 15px; margin: 8px 0 10px; color: #c7d2e0; border-bottom: 1px solid #2a354a; padding-bottom: 6px; }
+p.sub { font-size: 13px; color: #94a3b8; margin: 0 0 12px; }
+button { width: 100%; padding: 14px; margin: 6px 0; border: none; border-radius: 10px; font-size: 16px; font-weight: 900; cursor: pointer; background: #f2c94c; color: #3a1f00; }
+button.secondary { background: #2a354a; color: #e8eaf2; border: 1px solid #3d4c64; }
+button.danger { background: #c0563a; color: #fff; border: 1px solid #8d3a24; }
+button:active { filter: brightness(0.9); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+.row { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+.col { flex: 1; min-width: 120px; display: flex; flex-direction: column; }
+label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; font-weight: 800; }
+input[type=range] { accent-color: #f2c94c; cursor: pointer; height: 22px; }
+input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px dashed #3d4c64; background: #0e1424; color: #e8eaf2; font-size: 14px; cursor: pointer; }
+input[type=text] { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #3d4c64; background: #0e1424; color: #e8eaf2; font-size: 14px; }
+.val { color: #f2c94c; font-weight: 900; font-variant-numeric: tabular-nums; margin-top: 3px; font-size: 13px; }
+.track-card { background: #0e1424; border: 1px solid #2a354a; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.track-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.track-name { color: #e8eaf2; font-weight: 900; font-size: 14px; }
+.status { margin-top: 8px; font-size: 13px; color: #22d3ee; min-height: 20px; font-weight: 800; text-align: center; }
+.progress { width: 100%; height: 6px; background: #2a354a; border-radius: 3px; overflow: hidden; margin: 8px 0; }
+.progress .fill { height: 100%; width: 0%; background: #f2c94c; transition: width 0.1s linear; }
+.time { font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; margin-top: 4px; }
+.project-item { background: #0e1424; border: 1px solid #2a354a; border-radius: 10px; padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.project-name { color: #e8eaf2; font-weight: 800; }
+.project-meta { font-size: 11px; color: #94a3b8; }
+.project-actions button { width: auto; padding: 6px 12px; font-size: 13px; margin-left: 4px; }
+.hidden { display: none !important; }
+.note { font-size: 12px; color: #94a3b8; margin-top: 5px; }
+.skip-row button { width: auto; flex: 1; }
+.transport-row button { width: auto; flex: 1; }
+</style>
+</head>
+<body>
+
+<!-- HOME SCREEN -->
+<div id="home-screen" class="screen active">
+  <div class="card">
+    <h1>🏠 Home Audio Editor</h1>
+    <p class="sub">Simple voice pitch &amp; duplicate tracks. Works on tablet.</p>
+    <button id="btnNewProject">+ New Project</button>
+    <button id="btnUpload" class="secondary">📁 Upload Audio File</button>
+    <h2>My Projects</h2>
+    <div id="projectList">No projects yet.</div>
+  </div>
+</div>
+
+<!-- EDITOR SCREEN -->
+<div id="editor-screen" class="screen">
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+    <button id="btnBack" class="secondary">← Home</button>
+    <h1 id="editorTitle">Audio Editor</h1>
+    <button id="btnSave" class="secondary">💾 Save</button>
+  </div>
+
+  <div class="card">
+    <label>Audio File</label>
+    <input type="file" id="fileInput" accept="audio/*">
+    <div id="fileName" style="color:#94a3b8; font-size:13px; margin-top:6px;">No file loaded</div>
+  </div>
+
+  <div class="card">
+    <h2>Playback</h2>
+    <div class="transport-row">
+      <button id="btnBack5" class="secondary">⏮ -5s</button>
+      <button id="btnPlay" style="background:#22c55e; color:#052e16;">▶ Play</button>
+      <button id="btnStop" class="secondary danger">■ Stop</button>
+      <button id="btnFwd5" class="secondary">+5s ⏭</button>
+    </div>
+    <div class="progress"><div class="fill" id="progressFill"></div></div>
+    <div class="time"><span id="timeCur">0:00</span><span id="timeDur">/ 0:00</span></div>
+  </div>
+
+  <div class="card">
+    <h2>Pitch &amp; Global Speed</h2>
+    <div class="row">
+      <div class="col">
+        <label>Pitch (octaves)</label>
+        <input type="range" id="sldPitch" min="-2" max="2" step="0.5" value="0">
+        <div class="val" id="valPitch">0 oct</div>
+      </div>
+      <div class="col">
+        <label>Global Speed (1.0 = Normal)</label>
+        <input type="range" id="sldSpeed" min="0.5" max="2.0" step="0.05" value="1">
+        <div class="val" id="valSpeed">1.0x</div>
+      </div>
+    </div>
+    <div class="note">Shift pitch, then set Global Speed back to 1.0x to keep natural timing.</div>
+  </div>
+
+  <div class="card">
+    <h2>Duplicate Tracks (Voice 1 / 2 / 3)</h2>
+
+    <div class="track-card">
+      <div class="track-header"><span class="track-name">Voice 1 (Main)</span><span class="val" id="v1Label">ON</span></div>
+      <div class="row">
+        <div class="col"><label>Pitch (octaves)</label><input type="range" id="v1Pitch" min="-2" max="2" step="0.5" value="0"><div class="val" id="v1PitchLab">0 oct</div></div>
+        <div class="col"><label>Speed</label><input type="range" id="v1Speed" min="0.5" max="2.0" step="0.05" value="1"><div class="val" id="v1SpeedLab">1.0x</div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Gain</label><input type="range" id="v1Gain" min="0" max="1" step="0.05" value="1"><div class="val" id="v1GainLab">1.0</div></div>
+        <div class="col"><label>Delay (ms)</label><input type="range" id="v1Delay" min="0" max="500" step="1" value="0"><div class="val" id="v1DelayLab">0 ms</div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Start Offset (s)</label><input type="range" id="v1Start" min="0" max="60" step="0.1" value="0"><div class="val" id="v1StartLab">0 s</div></div>
+      </div>
+    </div>
+
+    <div class="track-card">
+      <div class="track-header"><span class="track-name">Voice 2</span><span class="val" id="v2Label">OFF</span></div>
+      <div class="row">
+        <div class="col"><label>Pitch (octaves)</label><input type="range" id="v2Pitch" min="-2" max="2" step="0.5" value="0"><div class="val" id="v2PitchLab">0 oct</div></div>
+        <div class="col"><label>Speed</label><input type="range" id="v2Speed" min="0.5" max="2.0" step="0.05" value="1"><div class="val" id="v2SpeedLab">1.0x</div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Gain</label><input type="range" id="v2Gain" min="0" max="1" step="0.05" value="0.5"><div class="val" id="v2GainLab">0.5</div></div>
+        <div class="col"><label>Delay (ms)</label><input type="range" id="v2Delay" min="0" max="500" step="1" value="23"><div class="val" id="v2DelayLab">23 ms</div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Start Offset (s)</label><input type="range" id="v2Start" min="0" max="60" step="0.1" value="0"><div class="val" id="v2StartLab">0 s</div></div>
+      </div>
+    </div>
+
+    <div class="track-card">
+      <div class="track-header"><span class="track-name">Voice 3</span><span class="val" id="v3Label">OFF</span></div>
+      <div class="row">
+        <div class="col"><label>Pitch (octaves)</label><input type="range" id="v3Pitch" min="-2" max="2" step="0.5" value="0"><div class="val" id="v3PitchLab">0 oct</div></div>
+        <div class="col"><label>Speed</label><input type="range" id="v3Speed" min="0.5" max="2.0" step="0.05" value="1"><div class="val" id="v3SpeedLab">1.0x</div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Gain</label><input type="range" id="v3Gain" min="0" max="1" step="0.05" value="0.5"><div class="val" id="v3GainLab">0.5</div></div>
+        <div class="col"><label>Delay (ms)</label><input type="range" id="v3Delay" min="0" max="500" step="1" value="14"><div class="val" id="v3DelayLab">14 ms</div></div>
+      </div>
+      <div class="row">
+        <div class="col"><label>Start Offset (s)</label><input type="range" id="v3Start" min="0" max="60" step="0.1" value="0"><div class="val" id="v3StartLab">0 s</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Ambience</h2>
+    <div class="row">
+      <div class="col"><label>Reverb Mix</label><input type="range" id="sldReverb" min="0" max="1" step="0.05" value="0.2"><div class="val" id="vRevLab">0.2</div></div>
+      <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="chkVintage"><label style="margin:0; color:#e8eaf2; font-size:13px; font-weight:800;">Winter Vintage (warm)</label></div>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;">
+    <button id="btnDownload">⬇ Download Edited WAV</button>
+    <div id="renderStatus" class="status"></div>
+  </div>
+</div>
+
+<script>
+const homeScreen = document.getElementById('home-screen');
+const editorScreen = document.getElementById('editor-screen');
+let audioCtx = null;
+let buffer = null;
+let playing = false;
+let playStartTime = 0;
+let playOffset = 0;
+let sources = [];
+let raf = null;
+let reverbIR = null;
+let projects = JSON.parse(localStorage.getItem('aeProjects') || '[]');
+
+function show(id){ homeScreen.classList.remove('active'); editorScreen.classList.remove('active'); document.getElementById(id).classList.add('active'); }
+
+function getCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') return audioCtx.resume();
+  return Promise.resolve(audioCtx);
+}
+
+function stopAll(){
+  playing = false;
+  sources.forEach(s => { try { s.stop(); } catch(e){} try { s.disconnect(); } catch(e){} });
+  sources = [];
+  if(raf){ cancelAnimationFrame(raf); raf = null; }
+  const bp = document.getElementById('btnPlay'); if(bp) bp.textContent = '▶ Play';
+  const pf = document.getElementById('progressFill'); if(pf) pf.style.width = '0%';
+}
+
+function generateIR(C, duration, decay){
+  const len = Math.max(1, Math.floor(C.sampleRate * duration));
+  const ir = C.createBuffer(2, len, C.sampleRate);
+  const l = ir.getChannelData(0), r = ir.getChannelData(1);
+  for(let i=0;i<len;i++){
+    const t=i/C.sampleRate; const env=Math.exp(-t*decay);
+    l[i]=(Math.random()*2-1)*env; r[i]=(Math.random()*2-1)*env;
+  }
+  return ir;
+}
+
+function build(offset){
+  const C = audioCtx;
+  const master = C.createGain(); master.gain.value=1; master.connect(C.destination);
+  const dry = C.createGain(); dry.gain.value=1; dry.connect(master);
+
+  const revMix = parseFloat(document.getElementById('sldReverb').value || 0.2);
+  if(revMix > 0){
+    const conv = C.createConvolver();
+    if(!reverbIR || reverbIR.sampleRate !== C.sampleRate) reverbIR = generateIR(C, 2.0, 1.8);
+    conv.buffer = reverbIR;
+    const send = C.createGain(); send.gain.value = revMix;
+    const lp = C.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = document.getElementById('chkVintage').checked ? 700 : 4200; lp.Q.value=1.2;
+    const rg = C.createGain(); rg.gain.value=1;
+    conv.connect(lp); lp.connect(rg); rg.connect(C.destination);
+    dry.connect(send);
+  }
+
+  const now = C.currentTime;
+  for(let n=1; n<=3; n++){
+    const gain = parseFloat(document.getElementById('v'+n+'Gain').value || (n===1 ? 1 : 0.5));
+    if(gain <= 0) continue;
+    const pitchOct = parseFloat(document.getElementById('v'+n+'Pitch').value || 0);
+    const speed = parseFloat(document.getElementById('v'+n+'Speed').value || 1);
+    const delayMs = parseFloat(document.getElementById('v'+n+'Delay').value || 0);
+    const startOff = parseFloat(document.getElementById('v'+n+'Start').value || 0);
+
+    const src = C.createBufferSource();
+    src.buffer = buffer;
+    src.detune.value = pitchOct * 1200;
+    src.playbackRate.value = speed;
+
+    const g = C.createGain(); g.gain.value = gain;
+    src.connect(g); g.connect(dry);
+
+    const startSec = (n===1 ? 0 : delayMs/1000) + startOff + offset;
+    const playFrom = Math.max(0, Math.min(startOff, buffer.duration));
+    const dur = buffer.duration - playFrom;
+    if(dur <= 0) continue;
+    src.start(now + startSec, playFrom, dur);
+    sources.push(src);
+  }
+}
+
+function startPlayback(){
+  if(!buffer) return;
+  stopAll();
+  getCtx().then(() => {
+    playing = true;
+    playStartTime = audioCtx.currentTime - playOffset;
+    build(playOffset);
+    document.getElementById('btnPlay').textContent = '⏸ Pause';
+    raf = requestAnimationFrame(tick);
+  }).catch(e => alert('Audio start failed: ' + e.message));
+}
+
+function pausePlayback(){
+  if(!playing) return;
+  playOffset = Math.max(0, playOffset + (audioCtx.currentTime - playStartTime));
+  playOffset = Math.min(playOffset, buffer.duration);
+  stopAll();
+  document.getElementById('btnPlay').textContent = '▶ Play';
+  updateTime();
+}
+
+function stopPlayback(){
+  playOffset = 0;
+  stopAll();
+  updateTime();
+}
+
+function skip(sec){
+  if(!buffer) return;
+  let next = playOffset + sec;
+  next = Math.max(0, Math.min(next, buffer.duration));
+  const wasPlaying = playing;
+  if(wasPlaying) pausePlayback();
+  playOffset = next;
+  if(wasPlaying){
+    playStartTime = audioCtx.currentTime - playOffset;
+    build(playOffset);
+    document.getElementById('btnPlay').textContent = '⏸ Pause';
+    raf = requestAnimationFrame(tick);
+  } else {
+    updateTime();
+  }
+}
+
+function tick(){
+  if(!playing || !audioCtx){ updateTime(); raf = requestAnimationFrame(tick); return; }
+  const cur = playOffset + (audioCtx.currentTime - playStartTime);
+  if(cur >= buffer.duration){ stopPlayback(); return; }
+  playOffset = cur;
+  updateTime();
+  raf = requestAnimationFrame(tick);
+}
+
+function updateTime(){
+  document.getElementById('timeCur').textContent = formatTime(playOffset);
+  document.getElementById('timeDur').textContent = '/ ' + formatTime(buffer ? buffer.duration : 0);
+  const pct = buffer ? (playOffset / buffer.duration) * 100 : 0;
+  document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
+}
+
+function formatTime(s){
+  if(!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s/60); const sec = Math.floor(s % 60);
+  return m + ':' + String(sec).padStart(2,'0');
+}
+
+function wire(id, outId, suffix){
+  const el = document.getElementById(id); const out = document.getElementById(outId);
+  el.addEventListener('input', () => { out.textContent = el.value + suffix; });
+}
+wire('sldPitch','valPitch',' oct');
+wire('sldSpeed','valSpeed','x');
+wire('v1Pitch','v1PitchLab',' oct'); wire('v1Speed','v1SpeedLab','x'); wire('v1Gain','v1GainLab',''); wire('v1Delay','v1DelayLab',' ms'); wire('v1Start','v1StartLab',' s');
+wire('v2Pitch','v2PitchLab',' oct'); wire('v2Speed','v2SpeedLab','x'); wire('v2Gain','v2GainLab',''); wire('v2Delay','v2DelayLab',' ms'); wire('v2Start','v2StartLab',' s');
+wire('v3Pitch','v3PitchLab',' oct'); wire('v3Speed','v3SpeedLab','x'); wire('v3Gain','v3GainLab',''); wire('v3Delay','v3DelayLab',' ms'); wire('v3Start','v3StartLab',' s');
+wire('sldReverb','vRevLab','');
+
+document.getElementById('fileInput').addEventListener('change', async (e) => {
+  const f = e.target.files[0]; if(!f) return;
+  document.getElementById('fileName').textContent = 'Loading...';
+  try {
+    const ab = await f.arrayBuffer();
+    await getCtx();
+    buffer = await audioCtx.decodeAudioData(ab);
+    playOffset = 0;
+    document.getElementById('fileName').textContent = f.name + '  •  ' + formatTime(buffer.duration);
+    document.getElementById('timeDur').textContent = '/ ' + formatTime(buffer.duration);
+    document.getElementById('btnPlay').disabled = false;
+    updateTime();
+  } catch(err){ alert('Failed to load audio: ' + err.message); }
+});
+
+document.getElementById('btnPlay').addEventListener('click', () => playing ? pausePlayback() : startPlayback());
+document.getElementById('btnStop').addEventListener('click', stopPlayback);
+document.getElementById('btnBack5').addEventListener('click', () => skip(-5));
+document.getElementById('btnFwd5').addEventListener('click', () => skip(5));
+
+document.getElementById('btnBack').addEventListener('click', () => { stopAll(); show('home-screen'); renderProjects(); });
+document.getElementById('btnNewProject').addEventListener('click', () => { show('editor-screen'); document.getElementById('editorTitle').textContent = 'New Project'; });
+document.getElementById('btnUpload').addEventListener('click', (e) => { e.preventDefault(); show('editor-screen'); });
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const name = prompt('Project name:', document.getElementById('editorTitle').textContent || 'My Project');
+  if(!name) return;
+  const g = (id) => document.getElementById(id).value;
+  projects.push({
+    name, date: new Date().toLocaleString(),
+    pitch: g('sldPitch'), speed: g('sldSpeed'), reverb: g('sldReverb'), vintage: document.getElementById('chkVintage').checked,
+    v1: {pitch:g('v1Pitch'),speed:g('v1Speed'),gain:g('v1Gain'),delay:g('v1Delay'),start:g('v1Start')},
+    v2: {pitch:g('v2Pitch'),speed:g('v2Speed'),gain:g('v2Gain'),delay:g('v2Delay'),start:g('v2Start')},
+    v3: {pitch:g('v3Pitch'),speed:g('v3Speed'),gain:g('v3Gain'),delay:g('v3Delay'),start:g('v3Start')},
+  });
+  localStorage.setItem('aeProjects', JSON.stringify(projects));
+  renderProjects();
+  alert('Settings saved. Re-upload audio when you open the project.');
+});
+
+function renderProjects(){
+  const list = document.getElementById('projectList');
+  if(projects.length === 0){ list.innerHTML = 'No projects yet.'; return; }
+  list.innerHTML = projects.map((p,i) => `
+    <div class="project-item">
+      <div><div class="project-name">${esc(p.name)}</div><div class="project-meta">${esc(p.date)}</div></div>
+      <div class="project-actions">
+        <button class="secondary" onclick="appOpen(${i})">Open</button>
+        <button class="secondary danger" onclick="appDel(${i})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+window.appOpen = (i) => {
+  const p = projects[i];
+  show('editor-screen');
+  document.getElementById('editorTitle').textContent = p.name;
+  const s = p.settings || {};
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+  set('sldPitch', s.pitch ?? 0); set('sldSpeed', s.speed ?? 1); set('sldReverb', s.reverb ?? 0.2);
+  document.getElementById('chkVintage').checked = s.vintage ?? false;
+  ['v1','v2','v3'].forEach(k => {
+    const v = s[k] || {};
+    set(k+'Pitch', v.pitch ?? 0); set(k+'Speed', v.speed ?? 1); set(k+'Gain', v.gain ?? (k==='v1'?1:0.5));
+    set(k+'Delay', v.delay ?? (k==='v2'?23:(k==='v3'?14:0))); set(k+'Start', v.start ?? 0);
+  });
+  document.getElementById('fileName').textContent = 'Project: ' + esc(p.name) + '  •  Re-upload audio to edit';
+};
+window.appDel = (i) => { if(confirm('Delete project?')){ projects.splice(i,1); localStorage.setItem('aeProjects', JSON.stringify(projects)); renderProjects(); } };
+function esc(t){ return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+document.getElementById('btnDownload').addEventListener('click', async () => {
+  if(!buffer){ alert('Load an audio file first'); return; }
+  const st = document.getElementById('renderStatus');
+  st.textContent = 'Rendering...';
+  try {
+    const C = new OfflineAudioContext(2, buffer.length, buffer.sampleRate);
+    const master = C.createGain(); master.gain.value = 1; master.connect(C.destination);
+    const dry = C.createGain(); dry.gain.value = 1; dry.connect(master);
+    const revMix = parseFloat(document.getElementById('sldReverb').value || 0.2);
+    if(revMix > 0){
+      const conv = C.createConvolver();
+      if(!reverbIR || reverbIR.sampleRate !== C.sampleRate) reverbIR = generateIR(C, 2.0, 1.8);
+      conv.buffer = reverbIR;
+      const send = C.createGain(); send.gain.value = revMix;
+      const lp = C.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = document.getElementById('chkVintage').checked ? 700 : 4200; lp.Q.value=1.2;
+      const rg = C.createGain(); rg.gain.value=1;
+      conv.connect(lp); lp.connect(rg); rg.connect(C.destination);
+      dry.connect(send);
+    }
+    for(let n=1; n<=3; n++){
+      const gain = parseFloat(document.getElementById('v'+n+'Gain').value || (n===1?1:0.5));
+      if(gain <= 0) continue;
+      const src = C.createBufferSource(); src.buffer = buffer;
+      src.detune.value = parseFloat(document.getElementById('v'+n+'Pitch').value || 0) * 1200;
+      src.playbackRate.value = parseFloat(document.getElementById('v'+n+'Speed').value || 1);
+      const g = C.createGain(); g.gain.value = gain;
+      src.connect(g); g.connect(dry);
+      const delayMs = parseFloat(document.getElementById('v'+n+'Delay').value || 0);
+      const startOff = parseFloat(document.getElementById('v'+n+'Start').value || 0);
+      const startSec = (n===1 ? 0 : delayMs/1000) + startOff;
+      const playFrom = Math.max(0, Math.min(startOff, buffer.duration));
+      const dur = buffer.duration - playFrom;
+      if(dur <= 0) continue;
+      src.start(startSec, playFrom, dur);
+    }
+    const rendered = await C.startRendering();
+    const ch = rendered.numberOfChannels; const len = rendered.length; const sr = rendered.sampleRate;
+    const ba = ch * 2; const arr = new Uint8Array(44 + len*ba); const view = new DataView(arr.buffer);
+    const w = (off, str) => { for(let i=0;i<str.length;i++) view.setUint8(off+i, str.charCodeAt(i)); };
+    w(0,'RIFF'); view.setUint32(4, 36 + len*ba, true);
+    w(8,'WAVE'); w(12,'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, ch, true); view.setUint32(24, sr, true); view.setUint32(28, sr*ba, true);
+    view.setUint16(32, ba, true); view.setUint16(34, 16, true);
+    w(36,'data'); view.setUint32(40, len*ba, true);
+    let o = 44;
+    for(let i=0;i<len;i++) for(let c=0;c<ch;c++){
+      let s = rendered.getChannelData(c)[i]; s = Math.max(-1, Math.min(1, s));
+      view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2;
+    }
+    const blob = new Blob([arr], { type: 'audio/wav' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'edited-audio.wav'; a.click();
+    st.textContent = 'Downloaded edited-audio.wav';
+  } catch(err){ console.error(err); st.textContent = 'Render failed: ' + err.message; }
+});
+
+show('home-screen'); renderProjects();
+</script>
+</body>
+</html>
