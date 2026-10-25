@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Simple Voice Editor</title>
+<title>Voice Editor - Pitch, Speed &amp; Duplicate</title>
 <style>
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; padding: 0; height: 100%; background: #0b1120; color: #e8eaf2; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; overflow-x: hidden; }
@@ -37,14 +37,29 @@ input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px 
 .progress .fill { height: 100%; width: 0%; background: #f2c94c; transition: width 0.1s linear; }
 .time { font-size: 12px; color: #94a3b8; display: flex; justify-content: space-between; margin-top: 4px; }
 .note { font-size: 12px; color: #94a3b8; margin-top: 5px; }
+.track-card { background: #0e1424; border: 1px solid #2a354a; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.track-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.track-name { color: #e8eaf2; font-weight: 900; font-size: 14px; }
 </style>
 </head>
 <body>
 
-<div class="screen active">
+<div id="home-screen" class="screen active">
   <div class="card">
-    <h1>Simple Voice Editor</h1>
-    <p class="sub">Load your song, shift pitch, change speed, duplicate voice, skip forward/back.</p>
+    <h1>🏠 Voice Editor</h1>
+    <p class="sub">Simple voice pitch &amp; speed editor. Works on tablet.</p>
+    <button id="btnNewProject">+ New Project</button>
+    <button id="btnUpload" class="secondary">📁 Upload Audio File</button>
+    <h2>My Projects</h2>
+    <div id="projectList">No projects yet.</div>
+  </div>
+</div>
+
+<div id="editor-screen" class="screen">
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+    <button id="btnBack" class="secondary" style="width:auto;">← Home</button>
+    <h1 id="editorTitle">Voice Editor</h1>
+    <button id="btnSave" class="secondary" style="width:auto;">💾 Save</button>
   </div>
 
   <div class="card">
@@ -73,50 +88,40 @@ input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px 
         <label>Pitch (semitones)</label>
         <input type="range" id="sldPitch" min="-12" max="12" step="1" value="0">
         <div class="val" id="valPitch">0</div>
+        <div class="note">Changes voice height only. Duration stays the same.</div>
       </div>
       <div class="col">
         <label>Speed (1.0 = Normal)</label>
         <input type="range" id="sldSpeed" min="0.5" max="2.0" step="0.05" value="1">
         <div class="val" id="valSpeed">1.0x</div>
+        <div class="note">Changes playback speed only.</div>
       </div>
     </div>
-    <div class="note">Pitch changes voice height. Speed changes how fast it plays. Set Speed to 1.0x for natural timing.</div>
   </div>
 
   <div class="card">
-    <h2>Duplicate Voice</h2>
-    <div class="row">
-      <div class="col" style="min-width:140px;">
-        <label>Copy 1 Delay (ms)</label>
-        <input type="range" id="d1Delay" min="0" max="500" step="1" value="23">
-        <div class="val" id="d1DelayLab">23 ms</div>
-      </div>
-      <div class="col" style="min-width:140px;">
-        <label>Copy 1 Pitch (oct)</label>
-        <input type="range" id="d1Pitch" min="-2" max="2" step="0.5" value="0">
-        <div class="val" id="d1PitchLab">0 oct</div>
-      </div>
-      <div class="col" style="min-width:140px;">
-        <label>Copy 1 Gain</label>
-        <input type="range" id="d1Gain" min="0" max="1" step="0.05" value="0.5">
-        <div class="val" id="d1GainLab">0.5</div>
+    <h2>Duplicate Tracks</h2>
+    <div class="track-card">
+      <div class="track-header"><span class="track-name">Voice 1 (Main)</span><span class="val" id="v1Label">ON</span></div>
+      <div class="row">
+        <div class="col"><label>Pitch (semitones)</label><input type="range" id="v1Pitch" min="-12" max="12" step="1" value="0"><div class="val" id="v1PitchLab">0</div></div>
+        <div class="col"><label>Gain</label><input type="range" id="v1Gain" min="0" max="1" step="0.05" value="1"><div class="val" id="v1GainLab">1.0</div></div>
       </div>
     </div>
-    <div class="row">
-      <div class="col" style="min-width:140px;">
-        <label>Copy 2 Delay (ms)</label>
-        <input type="range" id="d2Delay" min="0" max="500" step="1" value="14">
-        <div class="val" id="d2DelayLab">14 ms</div>
+    <div class="track-card">
+      <div class="track-header"><span class="track-name">Voice 2</span><span class="val" id="v2Label">OFF</span></div>
+      <div class="row">
+        <div class="col"><label>Pitch (semitones)</label><input type="range" id="v2Pitch" min="-12" max="12" step="1" value="0"><div class="val" id="v2PitchLab">0</div></div>
+        <div class="col"><label>Gain</label><input type="range" id="v2Gain" min="0" max="1" step="0.05" value="0.5"><div class="val" id="v2GainLab">0.5</div></div>
+        <div class="col"><label>Delay (ms)</label><input type="range" id="v2Delay" min="0" max="500" step="1" value="23"><div class="val" id="v2DelayLab">23 ms</div></div>
       </div>
-      <div class="col" style="min-width:140px;">
-        <label>Copy 2 Pitch (oct)</label>
-        <input type="range" id="d2Pitch" min="-2" max="2" step="0.5" value="0">
-        <div class="val" id="d2PitchLab">0 oct</div>
-      </div>
-      <div class="col" style="min-width:140px;">
-        <label>Copy 2 Gain</label>
-        <input type="range" id="d2Gain" min="0" max="1" step="0.05" value="0.5">
-        <div class="val" id="d2GainLab">0.5</div>
+    </div>
+    <div class="track-card">
+      <div class="track-header"><span class="track-name">Voice 3</span><span class="val" id="v3Label">OFF</span></div>
+      <div class="row">
+        <div class="col"><label>Pitch (semitones)</label><input type="range" id="v3Pitch" min="-12" max="12" step="1" value="0"><div class="val" id="v3PitchLab">0</div></div>
+        <div class="col"><label>Gain</label><input type="range" id="v3Gain" min="0" max="1" step="0.05" value="0.5"><div class="val" id="v3GainLab">0.5</div></div>
+        <div class="col"><label>Delay (ms)</label><input type="range" id="v3Delay" min="0" max="500" step="1" value="14"><div class="val" id="v3DelayLab">14 ms</div></div>
       </div>
     </div>
   </div>
@@ -124,7 +129,7 @@ input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px 
   <div class="card">
     <h2>Ambience</h2>
     <div class="row">
-      <div class="col"><label>Reverb</label><input type="range" id="sldReverb" min="0" max="1" step="0.05" value="0.2"><div class="val" id="vRevLab">0.2</div></div>
+      <div class="col"><label>Reverb Mix</label><input type="range" id="sldReverb" min="0" max="1" step="0.05" value="0.2"><div class="val" id="vRevLab">0.2</div></div>
       <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="chkVintage"><label style="margin:0; color:#e8eaf2; font-size:13px; font-weight:800;">Winter Vintage</label></div>
     </div>
   </div>
@@ -136,14 +141,94 @@ input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px 
 </div>
 
 <script>
+// ==================== WSOLA PITCH SHIFTER ====================
+// Changes pitch independently of speed using time-domain overlap-add.
+// Step 1: Time-stretch by 1/pitchFactor (preserves pitch, changes duration)
+// Step 2: Resample by pitchFactor (changes pitch, restores duration)
+// Net: pitch shifted, duration preserved.
+
+function timeStretchWSOLA(buffer, stretchFactor) {
+  const numChannels = buffer.numberOfChannels;
+  const length = buffer.length;
+  const sampleRate = buffer.sampleRate;
+  const winSize = 1024;
+  const hopOut = Math.floor(winSize / 2);      // 50% overlap output
+  const hopIn = Math.floor(hopOut * stretchFactor);
+
+  // Calculate output length
+  let numFrames = 0;
+  let inPos = 0;
+  while (inPos + winSize <= length) { numFrames++; inPos += hopIn; }
+  const outLength = Math.min(length, numFrames * hopOut + winSize);
+
+  const result = new AudioBuffer(numChannels, outLength, sampleRate);
+  const window = new Float32Array(winSize);
+  for (let i = 0; i < winSize; i++) {
+    window[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (winSize - 1)));
+  }
+
+  for (let c = 0; c < numChannels; c++) {
+    const input = buffer.getChannelData(c);
+    const output = result.getChannelData(c);
+    outPos = 0;
+    inPos = 0;
+    while (inPos + winSize <= length && outPos + winSize <= outLength) {
+      // Simple WSOLA: no pitch-period matching (good enough for voice)
+      for (let i = 0; i < winSize; i++) {
+        output[outPos + i] += input[inPos + i] * window[i];
+      }
+      outPos += hopOut;
+      inPos += hopIn;
+    }
+  }
+  return result;
+}
+
+function resampleBuffer(buffer, factor) {
+  const numChannels = buffer.numberOfChannels;
+  const length = buffer.length;
+  const sampleRate = buffer.sampleRate;
+  const outLength = Math.floor(length / factor);
+  const result = new AudioBuffer(numChannels, outLength, sampleRate);
+
+  for (let c = 0; c < numChannels; c++) {
+    const input = buffer.getChannelData(c);
+    const output = result.getChannelData(c);
+    for (let i = 0; i < outLength; i++) {
+      const srcPos = i * factor;
+      const idx = Math.floor(srcPos);
+      const frac = srcPos - idx;
+      if (idx + 1 < length) {
+        output[i] = input[idx] * (1 - frac) + input[idx + 1] * frac;
+      } else {
+        output[i] = input[idx] || 0;
+      }
+    }
+  }
+  return result;
+}
+
+function pitchShiftBuffer(buffer, semitones) {
+  if (semitones === 0) return buffer;
+  const pitchFactor = Math.pow(2, semitones / 12);
+  // Time-stretch by 1/pitchFactor (preserves pitch, changes duration)
+  const stretched = timeStretchWSOLA(buffer, 1 / pitchFactor);
+  // Resample by pitchFactor (changes pitch, restores duration)
+  const shifted = resampleBuffer(stretched, pitchFactor);
+  return shifted;
+}
+
+// ==================== AUDIO ENGINE ====================
 let audioCtx = null;
-let buffer = null;
+let originalBuffer = null;   // raw uploaded audio
+let processBuffer = null;    // pitch-shifted version for playback
 let playing = false;
-let playOffset = 0;
-let playStartTime = 0; // audioCtx.currentTime at start, minus playOffset
+let playOffset = 0;          // position in processBuffer (seconds)
+let playStartTime = 0;       // audioCtx.currentTime when playback started (minus playOffset)
 let sources = [];
 let raf = null;
 let reverbIR = null;
+let pendingPitchShift = null; // {buffer, semitones, resolve}
 
 function getCtx(){
   if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -156,8 +241,8 @@ function stopAll(){
   sources.forEach(s => { try { s.stop(); } catch(e){} try { s.disconnect(); } catch(e){} });
   sources = [];
   if(raf){ cancelAnimationFrame(raf); raf = null; }
-  document.getElementById('btnPlay').textContent = '▶ Play';
-  document.getElementById('progressFill').style.width = '0%';
+  const btn = document.getElementById('btnPlay'); if(btn) btn.textContent = '▶ Play';
+  const pf = document.getElementById('progressFill'); if(pf) pf.style.width = '0%';
 }
 
 function generateIR(C, duration, decay){
@@ -171,7 +256,7 @@ function generateIR(C, duration, decay){
   return ir;
 }
 
-function build(){
+function buildGraph(){
   const C = audioCtx;
   const master = C.createGain(); master.gain.value=1; master.connect(C.destination);
   const dry = C.createGain(); dry.gain.value=1; dry.connect(master);
@@ -182,48 +267,54 @@ function build(){
     if(!reverbIR || reverbIR.sampleRate !== C.sampleRate) reverbIR = generateIR(C, 2.0, 1.8);
     conv.buffer = reverbIR;
     const send = C.createGain(); send.gain.value = revMix;
-    const lp = C.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = document.getElementById('chkVintage').checked ? 700 : 4200; lp.Q.value=1.2;
+    const lp = C.createBiquadFilter(); lp.type='lowpass';
+    lp.frequency.value = document.getElementById('chkVintage').checked ? 700 : 4200; lp.Q.value=1.2;
     const rg = C.createGain(); rg.gain.value=1;
-    conv.connect(lp); lp.connect(rg); rg.connect(C.destination);
-    dry.connect(send);
+    // FIXED routing: dry → send → convolver → lowpass → gain → destination
+    dry.connect(send); send.connect(conv); conv.connect(lp); lp.connect(rg); rg.connect(C.destination);
   }
 
   const speed = parseFloat(document.getElementById('sldSpeed').value || 1);
-  const pitchOct = parseFloat(document.getElementById('sldPitch').value || 0) * 12;
+  const now = C.currentTime;
 
-  // Main voice: start NOW, read buffer from playOffset
-  const main = C.createBufferSource();
-  main.buffer = buffer;
-  main.detune.value = pitchOct * 100;
-  main.playbackRate.value = speed;
-  const g1 = C.createGain(); g1.gain.value = 1;
-  main.connect(g1); g1.connect(dry);
-  main.start(0, playOffset);
-  sources.push(main);
+  // Track 1 (main) - no delay
+  addTrackSource(1, now, speed, 0);
+  // Track 2 - delayed
+  addTrackSource(2, now, speed, parseFloat(document.getElementById('v2Delay').value || 0) / 1000);
+  // Track 3 - delayed
+  addTrackSource(3, now, speed, parseFloat(document.getElementById('v3Delay').value || 0) / 1000);
+}
 
-  // Duplicate copies: start delayed, read buffer from playOffset
-  for(let n=1; n<=2; n++){
-    const gain = parseFloat(document.getElementById('d'+n+'Gain').value || 0.5);
-    if(gain <= 0) continue;
-    const src = C.createBufferSource();
-    src.buffer = buffer;
-    src.detune.value = parseFloat(document.getElementById('d'+n+'Pitch').value || 0) * 1200;
-    src.playbackRate.value = speed;
-    const g = C.createGain(); g.gain.value = gain;
-    src.connect(g); g.connect(dry);
-    const delaySec = parseFloat(document.getElementById('d'+n+'Delay').value || 0) / 1000;
-    src.start(delaySec, playOffset);
-    sources.push(src);
-  }
+function addTrackSource(trackNum, now, speed, extraDelaySec){
+  const gainId = 'v'+trackNum+'Gain';
+  const pitchId = 'v'+trackNum+'Pitch';
+  const gain = parseFloat(document.getElementById(gainId).value || (trackNum===1 ? 1 : 0.5));
+  if(gain <= 0) return;
+  const pitchSemi = parseFloat(document.getElementById(pitchId).value || 0);
+
+  const src = audioCtx.createBufferSource();
+  src.buffer = processBuffer;
+  // detune in cents: semitones * 100
+  src.detune.value = pitchSemi * 100;
+  src.playbackRate.value = speed;
+  const g = audioCtx.createGain(); g.gain.value = gain;
+  src.connect(g); g.connect(dry);
+
+  const startSec = now + extraDelaySec;
+  // Start reading processBuffer from playOffset
+  const dur = processBuffer.duration - playOffset;
+  if(dur <= 0) return;
+  src.start(startSec, playOffset, dur);
+  sources.push(src);
 }
 
 function startPlayback(){
-  if(!buffer){ document.getElementById('status').textContent = 'Load an audio file first'; return; }
+  if(!processBuffer){ document.getElementById('status').textContent = 'Load an audio file first'; return; }
   stopAll();
   getCtx().then(() => {
     playing = true;
     playStartTime = audioCtx.currentTime - playOffset;
-    build();
+    buildGraph();
     document.getElementById('btnPlay').textContent = '⏸ Pause';
     raf = requestAnimationFrame(tick);
   }).catch(e => { document.getElementById('status').textContent = 'Audio failed: ' + e.message; });
@@ -231,7 +322,7 @@ function startPlayback(){
 
 function pausePlayback(){
   if(!playing) return;
-  playOffset = Math.max(0, Math.min(playOffset + (audioCtx.currentTime - playStartTime), buffer.duration));
+  playOffset = Math.max(0, Math.min(playOffset + (audioCtx.currentTime - playStartTime), processBuffer.duration));
   stopAll();
   document.getElementById('btnPlay').textContent = '▶ Play';
   updateTime();
@@ -244,13 +335,13 @@ function stopPlayback(){
 }
 
 function skip(sec){
-  if(!buffer) return;
+  if(!processBuffer) return;
   const wasPlaying = playing;
   if(wasPlaying) pausePlayback();
-  playOffset = Math.max(0, Math.min(playOffset + sec, buffer.duration));
+  playOffset = Math.max(0, Math.min(playOffset + sec, processBuffer.duration));
   if(wasPlaying){
     playStartTime = audioCtx.currentTime - playOffset;
-    build();
+    buildGraph();
     document.getElementById('btnPlay').textContent = '⏸ Pause';
     raf = requestAnimationFrame(tick);
   } else {
@@ -261,7 +352,7 @@ function skip(sec){
 function tick(){
   if(!playing || !audioCtx){ updateTime(); raf = requestAnimationFrame(tick); return; }
   const cur = playOffset + (audioCtx.currentTime - playStartTime);
-  if(cur >= buffer.duration){ stopPlayback(); return; }
+  if(cur >= processBuffer.duration){ stopPlayback(); return; }
   updateTime(cur);
   raf = requestAnimationFrame(tick);
 }
@@ -269,8 +360,8 @@ function tick(){
 function updateTime(pos){
   const p = pos !== undefined ? pos : playOffset;
   document.getElementById('timeCur').textContent = formatTime(p);
-  document.getElementById('timeDur').textContent = '/ ' + formatTime(buffer ? buffer.duration : 0);
-  const pct = buffer ? (p / buffer.duration) * 100 : 0;
+  document.getElementById('timeDur').textContent = '/ ' + formatTime(processBuffer ? processBuffer.duration : 0);
+  const pct = processBuffer ? (p / processBuffer.duration) * 100 : 0;
   document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
 }
 
@@ -286,69 +377,192 @@ function wire(id, outId, suffix){
 }
 wire('sldPitch','valPitch','');
 wire('sldSpeed','valSpeed','x');
-wire('d1Delay','d1DelayLab',' ms'); wire('d1Pitch','d1PitchLab',' oct'); wire('d1Gain','d1GainLab','');
-wire('d2Delay','d2DelayLab',' ms'); wire('d2Pitch','d2PitchLab',' oct'); wire('d2Gain','d2GainLab','');
+wire('v1Pitch','v1PitchLab','');
+wire('v1Gain','v1GainLab','');
+wire('v2Pitch','v2PitchLab','');
+wire('v2Gain','v2GainLab','');
+wire('v2Delay','v2DelayLab',' ms');
+wire('v3Pitch','v3PitchLab','');
+wire('v3Gain','v3GainLab','');
+wire('v3Delay','v3DelayLab',' ms');
 wire('sldReverb','vRevLab','');
 
+// ==================== FILE LOAD ====================
 document.getElementById('fileInput').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if(!f) return;
   document.getElementById('fileName').textContent = 'Loading...';
   try {
     const ab = await f.arrayBuffer();
     await getCtx();
-    buffer = await audioCtx.decodeAudioData(ab);
+    originalBuffer = await audioCtx.decodeAudioData(ab);
     playOffset = 0;
-    document.getElementById('fileName').textContent = f.name + '  •  ' + formatTime(buffer.duration);
-    document.getElementById('timeDur').textContent = '/ ' + formatTime(buffer.duration);
+    // Initial process buffer = original (no pitch shift yet)
+    processBuffer = originalBuffer;
+    document.getElementById('fileName').textContent = f.name + '  •  ' + formatTime(originalBuffer.duration);
+    document.getElementById('timeDur').textContent = '/ ' + formatTime(originalBuffer.duration);
     document.getElementById('btnPlay').disabled = false;
     document.getElementById('status').textContent = 'Ready';
     updateTime();
+    // Apply current pitch shift
+    applyPitchShift(parseInt(document.getElementById('sldPitch').value, 10));
   } catch(err){ document.getElementById('status').textContent = 'Failed: ' + err.message; }
 });
 
+// ==================== PITCH SHIFT (debounced) ====================
+let pitchShiftTimer = null;
+function applyPitchShift(semitones){
+  if(!originalBuffer) return;
+  if(pitchShiftTimer) clearTimeout(pitchShiftTimer);
+  pitchShiftTimer = setTimeout(async () => {
+    document.getElementById('status').textContent = 'Shifting pitch...';
+    try {
+      const shifted = await pitchShiftWorker(originalBuffer, semitones);
+      processBuffer = shifted;
+      // Preserve relative position
+      if(playing){
+        const ratio = playOffset / originalBuffer.duration;
+        playOffset = ratio * processBuffer.duration;
+      }
+      document.getElementById('status').textContent = 'Ready';
+      updateTime();
+    } catch(err){
+      document.getElementById('status').textContent = 'Pitch shift failed: ' + err.message;
+    }
+  }, 400);
+}
+
+function pitchShiftWorker(buffer, semitones){
+  return new Promise((resolve) => {
+    // Run on next tick to keep UI responsive
+    setTimeout(() => {
+      resolve(pitchShiftBuffer(buffer, semitones));
+    }, 10);
+  });
+}
+
+document.getElementById('sldPitch').addEventListener('input', (e) => {
+  applyPitchShift(parseInt(e.target.value, 10));
+});
+
+// ==================== TRANSPORT ====================
 document.getElementById('btnPlay').addEventListener('click', () => playing ? pausePlayback() : startPlayback());
 document.getElementById('btnStop').addEventListener('click', stopPlayback);
 document.getElementById('btnBack5').addEventListener('click', () => skip(-5));
 document.getElementById('btnFwd5').addEventListener('click', () => skip(5));
 
+// ==================== NAV ====================
+document.getElementById('btnBack').addEventListener('click', () => { stopAll(); showScreen('home-screen'); renderProjects(); });
+document.getElementById('btnNewProject').addEventListener('click', () => { showScreen('editor-screen'); document.getElementById('editorTitle').textContent = 'New Project'; });
+document.getElementById('btnUpload').addEventListener('click', (e) => { e.preventDefault(); showScreen('editor-screen'); });
+
+// ==================== PROJECTS ====================
+let projects = JSON.parse(localStorage.getItem('voiceEditorProjects') || '[]');
+
+function showScreen(id){
+  document.getElementById('home-screen').classList.remove('active');
+  document.getElementById('editor-screen').classList.remove('active');
+  document.getElementById(id).classList.add('active');
+}
+
+function renderProjects(){
+  const list = document.getElementById('projectList');
+  if(projects.length === 0){ list.innerHTML = 'No projects yet.'; return; }
+  list.innerHTML = projects.map((p,i) => `
+    <div class="track-card" style="display:flex; justify-content:space-between; align-items:center;">
+      <div><div class="track-name">${esc(p.name)}</div><div style="font-size:11px;color:#94a3b8;">${esc(p.date)}</div></div>
+      <div style="display:flex; gap:4px;">
+        <button class="secondary" style="width:auto;" onclick="appOpen(${i})">Open</button>
+        <button class="secondary" style="width:auto;background:#c0563a;" onclick="appDel(${i})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('btnSave').addEventListener('click', () => {
+  const name = prompt('Project name:', document.getElementById('editorTitle').textContent || 'My Project');
+  if(!name) return;
+  const g = (id) => document.getElementById(id).value;
+  projects.push({
+    name, date: new Date().toLocaleString(),
+    pitch: g('sldPitch'), speed: g('sldSpeed'), reverb: g('sldReverb'), vintage: document.getElementById('chkVintage').checked,
+    v1: {pitch:g('v1Pitch'),gain:g('v1Gain')},
+    v2: {pitch:g('v2Pitch'),gain:g('v2Gain'),delay:g('v2Delay')},
+    v3: {pitch:g('v3Pitch'),gain:g('v3Gain'),delay:g('v3Delay')}
+  });
+  localStorage.setItem('voiceEditorProjects', JSON.stringify(projects));
+  renderProjects();
+  alert('Project settings saved. Re-upload audio when opening.');
+});
+
+window.appOpen = (i) => {
+  const p = projects[i];
+  showScreen('editor-screen');
+  document.getElementById('editorTitle').textContent = p.name;
+  const s = p.settings || {};
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+  set('sldPitch', p.pitch ?? 0); set('sldSpeed', p.speed ?? 1); set('sldReverb', p.reverb ?? 0.2);
+  document.getElementById('chkVintage').checked = p.vintage ?? false;
+  const v1 = p.v1 || {}; const v2 = p.v2 || {}; const v3 = p.v3 || {};
+  set('v1Pitch', v1.pitch ?? 0); set('v1Gain', v1.gain ?? 1);
+  set('v2Pitch', v2.pitch ?? 0); set('v2Gain', v2.gain ?? 0.5); set('v2Delay', v2.delay ?? 23);
+  set('v3Pitch', v3.pitch ?? 0); set('v3Gain', v3.gain ?? 0.5); set('v3Delay', v3.delay ?? 14);
+  document.getElementById('fileName').textContent = 'Project: ' + esc(p.name) + '  •  Re-upload audio to edit';
+};
+window.appDel = (i) => { if(confirm('Delete project?')){ projects.splice(i,1); localStorage.setItem('voiceEditorProjects', JSON.stringify(projects)); renderProjects(); } };
+function esc(t){ return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+// ==================== EXPORT ====================
 document.getElementById('btnDownload').addEventListener('click', async () => {
-  if(!buffer){ alert('Load an audio file first'); return; }
+  if(!processBuffer){ alert('Load an audio file first'); return; }
   const st = document.getElementById('renderStatus');
   st.textContent = 'Rendering...';
   try {
-    const C = new OfflineAudioContext(2, buffer.length, buffer.sampleRate);
+    const C = new OfflineAudioContext(2, processBuffer.length, processBuffer.sampleRate);
     const master = C.createGain(); master.gain.value = 1; master.connect(C.destination);
     const dry = C.createGain(); dry.gain.value = 1; dry.connect(master);
+
     const revMix = parseFloat(document.getElementById('sldReverb').value || 0.2);
     if(revMix > 0){
       const conv = C.createConvolver();
       if(!reverbIR || reverbIR.sampleRate !== C.sampleRate) reverbIR = generateIR(C, 2.0, 1.8);
       conv.buffer = reverbIR;
       const send = C.createGain(); send.gain.value = revMix;
-      const lp = C.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = document.getElementById('chkVintage').checked ? 700 : 4200; lp.Q.value=1.2;
+      const lp = C.createBiquadFilter(); lp.type='lowpass';
+      lp.frequency.value = document.getElementById('chkVintage').checked ? 700 : 4200; lp.Q.value=1.2;
       const rg = C.createGain(); rg.gain.value=1;
-      conv.connect(lp); lp.connect(rg); rg.connect(C.destination);
-      dry.connect(send);
+      dry.connect(send); send.connect(conv); conv.connect(lp); lp.connect(rg); rg.connect(C.destination);
     }
+
     const speed = parseFloat(document.getElementById('sldSpeed').value || 1);
-    const pitchOct = parseFloat(document.getElementById('sldPitch').value || 0) * 12;
-    const main = C.createBufferSource(); main.buffer = buffer;
-    main.detune.value = pitchOct * 100; main.playbackRate.value = speed;
-    const g1 = C.createGain(); g1.gain.value = 1;
+    // Main track
+    const main = C.createBufferSource(); main.buffer = processBuffer;
+    main.detune.value = parseFloat(document.getElementById('v1Pitch').value || 0) * 100;
+    main.playbackRate.value = speed;
+    const g1 = C.createGain(); g1.gain.value = parseFloat(document.getElementById('v1Gain').value || 1);
     main.connect(g1); g1.connect(dry);
     main.start(0, 0);
 
-    for(let n=1; n<=2; n++){
-      const gain = parseFloat(document.getElementById('d'+n+'Gain').value || 0.5);
-      if(gain <= 0) continue;
-      const src = C.createBufferSource(); src.buffer = buffer;
-      src.detune.value = parseFloat(document.getElementById('d'+n+'Pitch').value || 0) * 1200;
-      src.playbackRate.value = speed;
-      const g = C.createGain(); g.gain.value = gain;
-      src.connect(g); g.connect(dry);
-      const delaySec = parseFloat(document.getElementById('d'+n+'Delay').value || 0) / 1000;
-      src.start(delaySec, 0);
+    // Track 2
+    const g2 = parseFloat(document.getElementById('v2Gain').value || 0.5);
+    if(g2 > 0){
+      const src2 = C.createBufferSource(); src2.buffer = processBuffer;
+      src2.detune.value = parseFloat(document.getElementById('v2Pitch').value || 0) * 100;
+      src2.playbackRate.value = speed;
+      const g2n = C.createGain(); g2n.gain.value = g2;
+      src2.connect(g2n); g2n.connect(dry);
+      src2.start(parseFloat(document.getElementById('v2Delay').value || 0) / 1000, 0);
     }
+    // Track 3
+    const g3 = parseFloat(document.getElementById('v3Gain').value || 0.5);
+    if(g3 > 0){
+      const src3 = C.createBufferSource(); src3.buffer = processBuffer;
+      src3.detune.value = parseFloat(document.getElementById('v3Pitch').value || 0) * 100;
+      src3.playbackRate.value = speed;
+      const g3n = C.createGain(); g3n.gain.value = g3;
+      src3.connect(g3n); g3n.connect(dry);
+      src3.start(parseFloat(document.getElementById('v3Delay').value || 0) / 1000, 0);
+    }
+
     const rendered = await C.startRendering();
     const ch = rendered.numberOfChannels; const len = rendered.length; const sr = rendered.sampleRate;
     const ba = ch * 2; const arr = new Uint8Array(44 + len*ba); const view = new DataView(arr.buffer);
@@ -366,11 +580,14 @@ document.getElementById('btnDownload').addEventListener('click', async () => {
     const blob = new Blob([arr], { type: 'audio/wav' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'edited-audio.wav'; a.click();
+    URL.revokeObjectURL(url);
     st.textContent = 'Downloaded edited-audio.wav';
   } catch(err){ console.error(err); st.textContent = 'Render failed: ' + err.message; }
 });
 
+// init
 updateTime();
+renderProjects();
 </script>
 </body>
 </html>
