@@ -14,11 +14,11 @@ h1 { font-size: 20px; margin: 0 0 6px; color: #f2c94c; }
 h2 { font-size: 15px; margin: 8px 0 10px; color: #c7d2e0; border-bottom: 1px solid #2a354a; padding-bottom: 6px; }
 p.sub { font-size: 13px; color: #94a3b8; margin: 0 0 12px; }
 
-/* Big transport buttons - all visible */
 .transport { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
-.transport button { flex: 1; min-width: 70px; padding: 16px 8px; border: none; border-radius: 10px; font-size: 16px; font-weight: 900; cursor: pointer; background: #f2c94c; color: #3a1f00; }
-.transport button.secondary { background: #2a354a; color: #e8eaf2; border: 1px solid #3d4c64; }
+.transport button { flex: 1; min-width: 70px; padding: 16px 8px; border: none; border-radius: 10px; font-size: 16px; font-weight: 900; cursor: pointer; }
 .transport button.play { background: #22c55e; color: #052e16; }
+.transport button.secondary { background: #2a354a; color: #e8eaf2; border: 1px solid #3d4c64; }
+.transport button.danger { background: #c0563a; color: #fff; border: 1px solid #8d3a24; }
 .transport button:active { filter: brightness(0.9); }
 .transport button:disabled { opacity: 0.45; cursor: not-allowed; }
 
@@ -41,9 +41,8 @@ input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px 
 </head>
 <body>
 
-<div id="editor" class="screen active">
+<div class="screen active">
   <div class="card">
-    <button id="btnBack" class="secondary" style="width:auto;">← Back</button>
     <h1>Simple Voice Editor</h1>
     <p class="sub">Load your song, shift pitch, change speed, duplicate voice, skip forward/back.</p>
   </div>
@@ -59,7 +58,7 @@ input[type=file] { width: 100%; padding: 12px; border-radius: 10px; border: 2px 
     <div class="transport">
       <button class="secondary" id="btnBack5">⏮ -5s</button>
       <button class="play" id="btnPlay">▶ Play</button>
-      <button class="secondary" id="btnStop">■ Stop</button>
+      <button class="secondary danger" id="btnStop">■ Stop</button>
       <button class="secondary" id="btnFwd5">+5s ⏭</button>
     </div>
     <div class="progress"><div class="fill" id="progressFill"></div></div>
@@ -141,6 +140,7 @@ let audioCtx = null;
 let buffer = null;
 let playing = false;
 let playOffset = 0;
+let playStartTime = 0; // audioCtx.currentTime at start, minus playOffset
 let sources = [];
 let raf = null;
 let reverbIR = null;
@@ -171,7 +171,7 @@ function generateIR(C, duration, decay){
   return ir;
 }
 
-function build(offset){
+function build(){
   const C = audioCtx;
   const master = C.createGain(); master.gain.value=1; master.connect(C.destination);
   const dry = C.createGain(); dry.gain.value=1; dry.connect(master);
@@ -188,38 +188,31 @@ function build(offset){
     dry.connect(send);
   }
 
-  const now = C.currentTime;
   const speed = parseFloat(document.getElementById('sldSpeed').value || 1);
-  const pitchOct = parseFloat(document.getElementById('sldPitch').value || 0) * 12; // semitones
+  const pitchOct = parseFloat(document.getElementById('sldPitch').value || 0) * 12;
 
-  // Main voice
+  // Main voice: start NOW, read buffer from playOffset
   const main = C.createBufferSource();
   main.buffer = buffer;
   main.detune.value = pitchOct * 100;
   main.playbackRate.value = speed;
   const g1 = C.createGain(); g1.gain.value = 1;
   main.connect(g1); g1.connect(dry);
-  main.start(now + offset, offset, buffer.duration - offset);
+  main.start(0, playOffset);
   sources.push(main);
 
-  // Duplicate copies
+  // Duplicate copies: start delayed, read buffer from playOffset
   for(let n=1; n<=2; n++){
     const gain = parseFloat(document.getElementById('d'+n+'Gain').value || 0.5);
     if(gain <= 0) continue;
     const src = C.createBufferSource();
     src.buffer = buffer;
-    const dPitch = parseFloat(document.getElementById('d'+n+'Pitch').value || 0) * 1200;
-    const dSpeed = speed; // copies use same global speed
-    src.detune.value = dPitch;
-    src.playbackRate.value = dSpeed;
+    src.detune.value = parseFloat(document.getElementById('d'+n+'Pitch').value || 0) * 1200;
+    src.playbackRate.value = speed;
     const g = C.createGain(); g.gain.value = gain;
     src.connect(g); g.connect(dry);
     const delaySec = parseFloat(document.getElementById('d'+n+'Delay').value || 0) / 1000;
-    const startSec = offset + delaySec;
-    const playFrom = Math.max(0, Math.min(offset, buffer.duration));
-    const dur = buffer.duration - playFrom;
-    if(dur <= 0) continue;
-    src.start(now + startSec, playFrom, dur);
+    src.start(delaySec, playOffset);
     sources.push(src);
   }
 }
@@ -229,7 +222,8 @@ function startPlayback(){
   stopAll();
   getCtx().then(() => {
     playing = true;
-    build(playOffset);
+    playStartTime = audioCtx.currentTime - playOffset;
+    build();
     document.getElementById('btnPlay').textContent = '⏸ Pause';
     raf = requestAnimationFrame(tick);
   }).catch(e => { document.getElementById('status').textContent = 'Audio failed: ' + e.message; });
@@ -237,9 +231,7 @@ function startPlayback(){
 
 function pausePlayback(){
   if(!playing) return;
-  playOffset = Math.max(0, playOffset + (audioCtx.currentTime - (audioCtx.currentTime - playOffset)));
-  // simpler: just mark offset as current position
-  playOffset = Math.min(playOffset, buffer.duration);
+  playOffset = Math.max(0, Math.min(playOffset + (audioCtx.currentTime - playStartTime), buffer.duration));
   stopAll();
   document.getElementById('btnPlay').textContent = '▶ Play';
   updateTime();
@@ -253,13 +245,12 @@ function stopPlayback(){
 
 function skip(sec){
   if(!buffer) return;
-  let next = playOffset + sec;
-  next = Math.max(0, Math.min(next, buffer.duration));
   const wasPlaying = playing;
-  if(wasPlaying) stopAll();
-  playOffset = next;
+  if(wasPlaying) pausePlayback();
+  playOffset = Math.max(0, Math.min(playOffset + sec, buffer.duration));
   if(wasPlaying){
-    build(playOffset);
+    playStartTime = audioCtx.currentTime - playOffset;
+    build();
     document.getElementById('btnPlay').textContent = '⏸ Pause';
     raf = requestAnimationFrame(tick);
   } else {
@@ -269,49 +260,17 @@ function skip(sec){
 
 function tick(){
   if(!playing || !audioCtx){ updateTime(); raf = requestAnimationFrame(tick); return; }
-  const cur = playOffset + (audioCtx.currentTime - (audioCtx.currentTime - playOffset));
-  // We don't have startTime stored, so approximate using offset accumulation
-  // Better: track elapsed since build
-  updateTime();
+  const cur = playOffset + (audioCtx.currentTime - playStartTime);
+  if(cur >= buffer.duration){ stopPlayback(); return; }
+  updateTime(cur);
   raf = requestAnimationFrame(tick);
 }
 
-// Simpler time tracking: use a start timestamp
-let playStartTs = 0;
-function startPlayback2(){
-  if(!buffer){ document.getElementById('status').textContent = 'Load an audio file first'; return; }
-  stopAll();
-  getCtx().then(() => {
-    playing = true;
-    playStartTs = audioCtx.currentTime;
-    build(playOffset);
-    document.getElementById('btnPlay').textContent = '⏸ Pause';
-    raf = requestAnimationFrame(tick2);
-  }).catch(e => { document.getElementById('status').textContent = 'Audio failed: ' + e.message; });
-}
-
-function tick2(){
-  if(!playing || !audioCtx){ updateTime(); raf = requestAnimationFrame(tick2); return; }
-  const cur = playOffset + (audioCtx.currentTime - playStartTs);
-  if(cur >= buffer.duration){ stopPlayback(); return; }
-  playOffset = cur;
-  updateTime();
-  raf = requestAnimationFrame(tick2);
-}
-
-function pausePlayback2(){
-  if(!playing) return;
-  playOffset = Math.max(0, playOffset + (audioCtx.currentTime - playStartTs));
-  playOffset = Math.min(playOffset, buffer.duration);
-  stopAll();
-  document.getElementById('btnPlay').textContent = '▶ Play';
-  updateTime();
-}
-
-function updateTime(){
-  document.getElementById('timeCur').textContent = formatTime(playOffset);
+function updateTime(pos){
+  const p = pos !== undefined ? pos : playOffset;
+  document.getElementById('timeCur').textContent = formatTime(p);
   document.getElementById('timeDur').textContent = '/ ' + formatTime(buffer ? buffer.duration : 0);
-  const pct = buffer ? (playOffset / buffer.duration) * 100 : 0;
+  const pct = buffer ? (p / buffer.duration) * 100 : 0;
   document.getElementById('progressFill').style.width = Math.max(0, Math.min(100, pct)) + '%';
 }
 
@@ -347,12 +306,10 @@ document.getElementById('fileInput').addEventListener('change', async (e) => {
   } catch(err){ document.getElementById('status').textContent = 'Failed: ' + err.message; }
 });
 
-document.getElementById('btnPlay').addEventListener('click', () => playing ? pausePlayback2() : startPlayback2());
+document.getElementById('btnPlay').addEventListener('click', () => playing ? pausePlayback() : startPlayback());
 document.getElementById('btnStop').addEventListener('click', stopPlayback);
 document.getElementById('btnBack5').addEventListener('click', () => skip(-5));
 document.getElementById('btnFwd5').addEventListener('click', () => skip(5));
-
-document.getElementById('btnBack').addEventListener('click', () => { stopAll(); });
 
 document.getElementById('btnDownload').addEventListener('click', async () => {
   if(!buffer){ alert('Load an audio file first'); return; }
