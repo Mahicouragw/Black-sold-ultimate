@@ -278,14 +278,14 @@ function buildGraph(){
   const now = C.currentTime;
 
   // Track 1 (main) - no delay
-  addTrackSource(1, now, speed, 0);
+  addTrackSource(1, now, speed, 0, dry);
   // Track 2 - delayed
-  addTrackSource(2, now, speed, parseFloat(document.getElementById('v2Delay').value || 0) / 1000);
+  addTrackSource(2, now, speed, parseFloat(document.getElementById('v2Delay').value || 0) / 1000, dry);
   // Track 3 - delayed
-  addTrackSource(3, now, speed, parseFloat(document.getElementById('v3Delay').value || 0) / 1000);
+  addTrackSource(3, now, speed, parseFloat(document.getElementById('v3Delay').value || 0) / 1000, dry);
 }
 
-function addTrackSource(trackNum, now, speed, extraDelaySec){
+function addTrackSource(trackNum, now, speed, extraDelaySec, dry){
   const gainId = 'v'+trackNum+'Gain';
   const pitchId = 'v'+trackNum+'Pitch';
   const gain = parseFloat(document.getElementById(gainId).value || (trackNum===1 ? 1 : 0.5));
