@@ -1386,8 +1386,8 @@ test('(94) a blocked Google origin is explained to the player, not just the cons
     target.innerHTML = '';                    // simulate Google refusing to render
     online.checkGoogleOriginAllowed();
     await wait(2700);
-    assert.match(status.textContent, /Authorized JavaScript origins/i, 'explains the real cause');
-    assert.match(status.textContent, /Player ID/i, 'offers a working alternative');
+    assert.match(status.textContent, /isn\u2019t available/i, 'explains the situation');
+    assert.match(status.textContent, /guest/i, 'offers a working alternative');
 });
 
 test('(95) a Vercel preview address tells the player to use the production URL', async t => {
