@@ -48,6 +48,7 @@ const OnlineSystem = {
         }
         try {
             this.client = window.BlackSwordBackend.createClient(config);
+            console.log('Neon: client created, attempting session...');
             const { data: { session } } = await this.client.auth.getSession();
             let activeSession = session;
             if (!activeSession) {
@@ -79,11 +80,17 @@ const OnlineSystem = {
             this.subscribe();
             this.updateIndicators();
             this.registerAuthListener();
+            console.log('Neon: fully connected as', this.user?.id);
         } catch (error) {
             console.error('Online initialization failed:', error);
-            this.status = error.message?.toLowerCase().includes('anonymous')
-                ? 'Neon guest sign-in is not configured'
-                : `Offline mode — ${error.message || 'connection failed'}`;
+            const msg = error.message || 'connection failed';
+            if (/Neon SDK|NeonBackend|createClient|SupabaseAuthAdapter/i.test(msg)) {
+                this.status = `Neon SDK error: ${msg}. Check browser console (F12) for details.`;
+            } else if (msg.toLowerCase().includes('anonymous')) {
+                this.status = 'Neon guest sign-in is not configured';
+            } else {
+                this.status = `Offline mode — ${msg}`;
+            }
             this.ensureLocalCode();
             this.updateIndicators();
         }
