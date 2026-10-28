@@ -40,15 +40,21 @@ const OnlineSystem = {
         if('speechSynthesis'in window&&!this._voicesListener){speechSynthesis.addEventListener?.('voiceschanged',()=>this.populateVoiceSelectors());this._voicesListener=true;}
         this.setupHeroAutocomplete();
         const config = window.BLACK_SWORD_BACKEND_CONFIG;
-        if (!config || !window.BlackSwordBackend?.createClient || !config.authUrl || !config.dataApiUrl) {
-            this.status = 'Offline mode — online backend is not configured';
+        const hasFirebase = config?.provider === 'firebase' && config?.firebase;
+        const hasNeonAuth = config?.authUrl && config?.dataApiUrl;
+        if (!config || !window.BlackSwordBackend?.createClient || (!hasFirebase && !hasNeonAuth)) {
+            this.status = 'Guest mode';
             this.ensureLocalCode();
             this.updateIndicators();
             return;
         }
         try {
-            this.client = window.BlackSwordBackend.createClient(config);
-            console.log('Neon: client created, attempting session...');
+            // createClient may return a Promise (Firebase) or sync object (Neon).
+            const maybePromise = window.BlackSwordBackend.createClient(config);
+            this.client = maybePromise && typeof maybePromise.then === 'function'
+                ? await maybePromise : maybePromise;
+            if (!this.client) throw new Error('No auth provider configured');
+            console.log('Auth: client created, attempting session...');
             const { data: { session } } = await this.client.auth.getSession();
             let activeSession = session;
             if (!activeSession) {
@@ -361,16 +367,32 @@ const OnlineSystem = {
 
     openGoogleDialog(merge=false,retry=0) {
         this.googleMergeRequested=merge;const panel=document.getElementById('google-login-panel'),status=document.getElementById('google-login-status'),config=window.BLACK_SWORD_BACKEND_CONFIG;panel?.classList.remove('hidden');
+        const isFirebase = String(config?.provider || '') === 'firebase';
         // Google refuses OAuth inside in-app WebViews (our APK): guide the player
         // instead of looping on a script Google will never finish serving.
         if(this.isEmbeddedWebView()){
             if(status)status.textContent='Google sign-in is blocked inside app WebViews by Google. Open https://black-sold-ultimate.vercel.app in Chrome, sign in once with the same Google account — your heroes then sync to the app automatically. Guest mode keeps working meanwhile.';
             this.status='To link Google: open the game in Chrome once';this.updateIndicators();return;
         }
+        if(isFirebase){
+            // Firebase: always use popup — simple, stays on page, no redirect.
+            const target=document.getElementById('google-signin-render');
+            if(target && !target.querySelector('button')){
+                target.innerHTML='';
+                const btn=document.createElement('button');
+                btn.className='menu-btn google-btn';
+                btn.setAttribute('aria-label','Continue with Google — secure sign-in popup');
+                btn.innerHTML='<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
+                btn.addEventListener('click',()=>this.startGoogleRedirect(this.googleMergeRequested));
+                target.appendChild(btn);
+            }
+            if(status)status.textContent=merge
+                ?'Tap Continue with Google. A popup will ask you to pick your account, then guest heroes merge automatically.'
+                :'Tap Continue with Google. A popup will ask you to pick your account.';
+            return;
+        }
         if(this.isAppMode()||config?.authMode==='redirect'){
-            // Full-page secure sign-in: no popup, no cookie trap, always returns.
-            // Neon uses its managed Google provider, so this is also the normal
-            // desktop flow and needs no Google client secret in the browser.
+            // Neon legacy: full-page redirect flow.
             const target=document.getElementById('google-signin-render');
             if(target && !target.querySelector('button')){
                 target.innerHTML='';
@@ -407,35 +429,43 @@ const OnlineSystem = {
     },
 
     async startGoogleRedirect(merge) {
-        // Full-page OAuth: leaves the page, signs in through Neon Auth and
-        // Google, then returns to the game with a managed session cookie.
         const status=document.getElementById('google-login-status');
         if(status)status.textContent='Opening secure Google sign-in…';
         try{
             if(merge)this.prepareGoogleMerge();
             localStorage.setItem('black_sword_google_login_requested','true');
-            // Preserve the actual deployment path (GitHub Pages is not hosted at
-            // the domain root) and strip any previous OAuth response parameters.
-            const back=new URL(location.href);
-            back.hash='';
-            for(const key of [...back.searchParams.keys()])back.searchParams.delete(key);
-            back.searchParams.set('source','app');
-            const {error}=await this.client.auth.signInWithOAuth({
-                provider:'google',
-                options:{redirectTo:back.toString(),queryParams:{prompt:'select_account'}}
-            });
-            if(error)throw error;
+            const isFirebase = String(window.BLACK_SWORD_BACKEND_CONFIG?.provider || '') === 'firebase';
+            if (isFirebase) {
+                // Firebase: simple popup, stays on the page.
+                const { error } = await this.client.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { queryParams: { prompt: 'select_account' } }
+                });
+                if (error) throw error;
+            } else {
+                // Neon legacy: full-page redirect.
+                const back=new URL(location.href);
+                back.hash='';
+                for(const key of [...back.searchParams.keys()])back.searchParams.delete(key);
+                back.searchParams.set('source','app');
+                const {error}=await this.client.auth.signInWithOAuth({
+                    provider:'google',
+                    options:{redirectTo:back.toString(),queryParams:{prompt:'select_account'}}
+                });
+                if(error)throw error;
+            }
         }catch(e){
             this.clearGoogleFlow();
-            // Surface a friendly, actionable message — never raw HTTP codes.
             const code = String(e?.code || e?.status || '');
-            const isOAuthNotConfigured = code === '403' || /403|not.enabled|not.configured|provider/i.test(String(e?.message || ''));
+            const isBlocked = code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request';
+            const isNotConfigured = /not.configured|not.enabled|403|api[_-]?key/i.test(String(e?.message || code));
             if (status) {
-                status.textContent = isOAuthNotConfigured
-                    ? 'Google sign-in isn\u2019t set up yet. Your guest heroes are safe \u2014 play as a guest, or open the Neon console and enable Google under Integrations.'
-                    : 'Google sign-in couldn\u2019t open on this device. Your guest heroes are safe \u2014 try again on Wi-Fi or in Chrome.';
+                status.textContent = isBlocked
+                    ? 'Google sign-in was blocked by your browser. Allow pop-ups for this site and try again. Your guest heroes are safe.'
+                    : isNotConfigured
+                        ? 'Google sign-in isn\u2019t set up yet. Your guest heroes are safe \u2014 play as a guest, or finish Firebase setup to enable Google.'
+                        : 'Google sign-in couldn\u2019t open on this device. Your guest heroes are safe \u2014 try again on Wi-Fi or in Chrome.';
             }
-            // Technical detail stays in console only.
             console.error('Google sign-in failed:', e?.message || e?.code || e);
         }
     },
