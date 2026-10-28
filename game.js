@@ -197,6 +197,8 @@ const Game = {
         document.getElementById('btn-begin').removeAttribute('aria-busy');
         this.updateCharacterPreview();
         this.showScreen('char-screen');
+        // Auto-generate a unique hero name for this New Adventure
+        setTimeout(() => this.generateHeroName(), 100);
     },
 
     showHeroRoster() {
@@ -499,6 +501,20 @@ const Game = {
                     case 'i': this.showInventory(); break;
                     case 'm': this.showMap(); break;
                     case 'q': this.showQuests(); break;
+                    case 't': this.processCommand('northwest'); break;
+                    case 'y': this.processCommand('northeast'); break;
+                    case 'g': this.processCommand('southwest'); break;
+                    case 'h': this.processCommand('southeast'); break;
+                    case 'u': this.processCommand('up'); break;
+                    case 'j': this.processCommand('down'); break;
+                    case '1': this.processCommand('northwest'); break;
+                    case '2': this.processCommand('north'); break;
+                    case '3': this.processCommand('northeast'); break;
+                    case '4': this.processCommand('west'); break;
+                    case '6': this.processCommand('east'); break;
+                    case '7': this.processCommand('southwest'); break;
+                    case '8': this.processCommand('south'); break;
+                    case '9': this.processCommand('southeast'); break;
                     case 'escape': this.closePanels(); break;
                 }
             }
@@ -523,13 +539,25 @@ const Game = {
         const race = document.querySelector('.race-btn.selected')?.dataset.race || 'human';
         const cls = document.querySelector('.class-btn.selected')?.dataset.class || 'adventurer';
         const raceStarts = {
-            human:['Alden','Mira','Rowan','Elara'], elf:['Ael','Lyth','Syl','Eira'], dwarf:['Brom','Dagna','Thorin','Kelda'],
-            halfling:['Pip','Milo','Tilly','Nessa'], orc:['Grom','Urza','Thrak','Mogra'], gnome:['Nim','Fizz','Tink','Wren']
+            human:['Alden','Mira','Rowan','Elara','Kael','Brenna','Corin','Lyra','Darian','Seraphina','Garrett','Vex'],
+            elf:['Ael','Lyth','Syl','Eira','Thalion','Nimrodel','Caelynn','Faelar','Ilythi','Vaelan','Shivara','Aenor'],
+            dwarf:['Brom','Dagna','Thorin','Kelda','Magni','Helga','Durin','Runa','Barik','Thora','Gundren','Hilda'],
+            halfling:['Pip','Milo','Tilly','Nessa','Rosie','Finnan','Lidda','Cora','Merric','Vani','Shandar','Bree'],
+            orc:['Grom','Urza','Thrak','Mogra','Drak','Shara','Vrog','Kira','Nazg','Bolga','Krull','Yenna'],
+            gnome:['Nim','Fizz','Tink','Wren','Zana','Cog','Dina','Pik','Bobbie','Glim','Nissa','Spark']
         };
         const classEnds = {
-            warrior:['Ironheart','Stormblade'], mage:['Starweaver','Brightmind'], rogue:['Nightstep','Quickhand'], cleric:['Lightkeeper','Dawnvoice'],
-            paladin:['Oathhammer','Sunshield'], ranger:['Wildpath','Greenarrow'], monk:['Stillwater','Swiftpalm'], druid:['Moonroot','Oakwhisper'],
-            summoner:['Spiritcaller','Runebinder'], hunter:['Wolfeye','Hawktrack'], adventurer:['Wayfarer','Braveheart']
+            warrior:['Ironheart','Stormblade','Blackforge','Steelfist','Bloodaxe','Warborn','Shieldbreaker','Ironfury'],
+            mage:['Starweaver','Brightmind','Spellfire','Frostweave','Shadowcast','Runemaster','Arcanis','Voidwalker'],
+            rogue:['Nightstep','Quickhand','Silentblade','Shadowmere','Darkwhisper','Nightfall','Duskmantle','Swiftshade'],
+            cleric:['Lightkeeper','Dawnvoice','Gracewind','Sunweaver','Holyforge','Mercyborn','Lifebinder','Praycaller'],
+            paladin:['Oathhammer','Sunshield','Dawnguard','Lightsworn','Truthbearer','Justicar','Vindicator','Sacredblade'],
+            ranger:['Wildpath','Greenarrow','Thornwalker','Beastfriend','Windrunner','Mossheart','Trailseeker','Hawkeye'],
+            monk:['Stillwater','Swiftpalm','Ironfist','Zenblade','Serenity','Voidstep','Lotusstrike','Sagefoot'],
+            druid:['Moonroot','Oakwhisper','Wildthorn','Stormleaf','Earthcaller','Thornbloom','Frostbark','Natureweave'],
+            summoner:['Spiritcaller','Runebinder','Soulreaver','Phantomlord','Ghostweaver','Shadecaller','Eidolon','Voidpact'],
+            hunter:['Wolfeye','Hawktrack','Beastbane','Preyseeker','Trapmaker','Bloodtrail','Predator','Stalker'],
+            adventurer:['Wayfarer','Braveheart','Fortune','Destiny','Legend','Wanderer','Chronicle','Odyssey']
         };
         const used = new Set(Object.values(this.getRoster().heroes).map(h => h.player?.name?.toLowerCase()));
         let generated;

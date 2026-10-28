@@ -852,7 +852,9 @@ const OnlineSystem = {
         const rosterCount=Object.keys(roster.heroes||{}).length;
         const activeAvailable=Boolean(roster.activeHeroId&&roster.heroes[roster.activeHeroId]);
         const available=hasRoster===false?false:activeAvailable;
-        const protectedRoster=rosterCount>0&&(this.linked||localStorage.getItem('black_sword_recovered_by_id')==='true');
+        // Only protect the roster when a real online account is linked.
+        // Offline/local guests can always start a New Adventure.
+        const protectedRoster=rosterCount>0&&this.linked;
         const newButton=document.getElementById('btn-new');if(newButton)newButton.hidden=protectedRoster;
         const continueButton=document.getElementById('btn-continue');if(continueButton)continueButton.disabled=!available;
         const heroesButton=document.getElementById('btn-heroes');if(heroesButton)heroesButton.hidden=false;

@@ -220,14 +220,16 @@
             <div class="help-content">
                 <h3>🎮 Controls</h3>
                 <div class="controls-grid">
-                    <div class="control-item"><kbd>N/S/E/W</kbd> or <kbd>Arrows</kbd> - Move</div>
+                    <div class="control-item"><kbd>W/↑</kbd> North, <kbd>S/↓</kbd> South, <kbd>A/←</kbd> West, <kbd>D/→</kbd> East</div>
+                    <div class="control-item"><kbd>T</kbd> or <kbd>1</kbd> Northwest, <kbd>Y</kbd> or <kbd>3</kbd> Northeast</div>
+                    <div class="control-item"><kbd>G</kbd> or <kbd>7</kbd> Southwest, <kbd>H</kbd> or <kbd>9</kbd> Southeast</div>
+                    <div class="control-item"><kbd>U</kbd> Up, <kbd>J</kbd> Down</div>
                     <div class="control-item"><kbd>Look</kbd> - Examine area</div>
                     <div class="control-item"><kbd>Take [item]</kbd> - Pick up</div>
                     <div class="control-item"><kbd>Attack</kbd> - Fight</div>
                     <div class="control-item"><kbd>Cast [spell]</kbd> - Magic</div>
                     <div class="control-item"><kbd>Use [item]</kbd> - Use item</div>
-                    <div class="control-item"><kbd>I</kbd> - Inventory</div>
-                    <div class="control-item"><kbd>M</kbd> - Map</div>
+                    <div class="control-item"><kbd>I</kbd> - Inventory, <kbd>M</kbd> - Map, <kbd>Q</kbd> - Quests</div>
                     <div class="control-item"><kbd>Escape</kbd> - Close panels</div>
                 </div>
 
@@ -302,17 +304,17 @@
             <!-- Action Bar -->
             <div class="action-bar">
                 <div class="dpad" aria-label="Available directions">
-                    <button class="dir-btn dir-nw" data-cmd="northwest">Northwest</button>
-                    <button class="dir-btn dir-n" data-cmd="north">North</button>
-                    <button class="dir-btn dir-ne" data-cmd="northeast">Northeast</button>
-                    <button class="dir-btn dir-w" data-cmd="west">West</button>
+                    <button class="dir-btn dir-nw" data-cmd="northwest" title="Northwest (T / 1)">↖ NW</button>
+                    <button class="dir-btn dir-n" data-cmd="north" title="North (W / ↑ / 2)">↑ N</button>
+                    <button class="dir-btn dir-ne" data-cmd="northeast" title="Northeast (Y / 3)">↗ NE</button>
+                    <button class="dir-btn dir-up" data-cmd="up" title="Up (U)">▲ Up</button>
+                    <button class="dir-btn dir-w" data-cmd="west" title="West (A / ← / 4)">← W</button>
                     <span class="dpad-center" aria-hidden="true">◆</span>
-                    <button class="dir-btn dir-e" data-cmd="east">East</button>
-                    <button class="dir-btn dir-sw" data-cmd="southwest">Southwest</button>
-                    <button class="dir-btn dir-s" data-cmd="south">South</button>
-                    <button class="dir-btn dir-se" data-cmd="southeast">Southeast</button>
-                    <button class="dir-btn dir-up" data-cmd="up">Up</button>
-                    <button class="dir-btn dir-down" data-cmd="down">Down</button>
+                    <button class="dir-btn dir-e" data-cmd="east" title="East (D / → / 6)">→ E</button>
+                    <button class="dir-btn dir-down" data-cmd="down" title="Down (J)">▼ Down</button>
+                    <button class="dir-btn dir-sw" data-cmd="southwest" title="Southwest (G / 7)">↙ SW</button>
+                    <button class="dir-btn dir-s" data-cmd="south" title="South (S / ↓ / 8)">↓ S</button>
+                    <button class="dir-btn dir-se" data-cmd="southeast" title="Southeast (H / 9)">↘ SE</button>
                 </div>
                 <div class="action-btns">
                     <button class="action-btn" data-cmd="look">👁️ Look</button>
