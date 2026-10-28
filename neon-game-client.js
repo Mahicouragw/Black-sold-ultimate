@@ -1,4 +1,7 @@
-/* Neon Auth + Data API compatibility layer for Black Sword Ultimate. */
+/* Neon Auth + Data API compatibility layer for Black Sword Ultimate.
+ * When Neon is not configured (empty authUrl/dataApiUrl), the game runs fully
+ * offline using localStorage. This client is only activated by online.js when
+ * both URLs are present. */
 (() => {
     'use strict';
     const GUEST_KEY = 'black_sword_neon_guest_v1';
