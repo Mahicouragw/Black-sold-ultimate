@@ -253,7 +253,7 @@ const OnlineSystem = {
         const currentRequest=request??++this.nameCheckRequest;
         const isCurrent=()=>currentRequest===this.nameCheckRequest;
         if(clean.length<2){if(isCurrent()){this.heroNameAvailable=null;if(status){status.textContent='Enter at least two characters.';status.className='name-status';}}return false;}
-        if(!this.ready){if(isCurrent()){this.heroNameAvailable=false;if(status){status.textContent='Connect online to reserve a multiplayer hero name.';status.className='name-status unavailable';}}return false;}
+        if(!this.ready){if(isCurrent()){this.heroNameAvailable=true;if(status){status.textContent='Guest mode — name saved locally.';status.className='name-status available';}}return true;}
         let result;
         try{result=await this.client.rpc('hero_name_available',{desired_name:clean,current_slot:slot});}
         catch(error){result={data:null,error};}
@@ -271,7 +271,7 @@ const OnlineSystem = {
         window.Game?.updateCharButton?.();
         this.nameCheckTimer=setTimeout(()=>this.checkHeroNameAvailability(name,slot,request),300);
     },
-    async reserveHeroName(name,slot){if(!this.ready)return{ok:false,error:'Online connection is required to reserve a multiplayer name.'};const {error}=await this.client.rpc('reserve_hero_name',{desired_name:name.trim(),target_slot:slot});return error?{ok:false,error:error.message,migration:/reserve_hero_name|schema cache|function/i.test(error.message||'')}:{ok:true};},
+    async reserveHeroName(name,slot){if(!this.ready)return{ok:true,local:true};const {error}=await this.client.rpc('reserve_hero_name',{desired_name:name.trim(),target_slot:slot});return error?{ok:false,error:error.message,migration:/reserve_hero_name|schema cache|function/i.test(error.message||'')}:{ok:true};},
     async releaseHeroName(slot){if(this.ready&&slot)await this.client.rpc('release_hero_name',{target_slot:slot});},
 
     getPlayerCode() {
