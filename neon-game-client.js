@@ -173,6 +173,9 @@
         }
     }
 
-    globalThis.BlackSwordBackend = Object.freeze({ createClient });
+    // Only register if another provider (Firebase) hasn't already claimed it.
+    if (!globalThis.BlackSwordBackend) {
+        globalThis.BlackSwordBackend = Object.freeze({ createClient });
+    }
     globalThis.addEventListener?.('pagehide', () => { for (const channel of CHANNELS) channel.stop(); });
 })();
