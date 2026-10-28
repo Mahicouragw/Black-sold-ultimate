@@ -127,39 +127,50 @@
     }
 
     function createClient(config) {
-        if (!globalThis.NeonBackend?.createClient || !globalThis.NeonBackend?.SupabaseAuthAdapter) {
-            throw new Error('Neon browser SDK is unavailable');
+        const hasSDK = Boolean(globalThis.NeonBackend?.createClient && globalThis.NeonBackend?.SupabaseAuthAdapter);
+        if (!hasSDK) {
+            console.warn('Neon SDK not loaded: NeonBackend =', typeof globalThis.NeonBackend,
+                '| createClient =', typeof globalThis.NeonBackend?.createClient,
+                '| SupabaseAuthAdapter =', typeof globalThis.NeonBackend?.SupabaseAuthAdapter);
+            throw new Error('Neon browser SDK is unavailable — check assets/vendor/neon-0.9.0-beta.js');
         }
         if (!config?.authUrl || !config?.dataApiUrl) throw new Error('Neon backend is not configured');
-        const client = globalThis.NeonBackend.createClient({
-            auth: { url: config.authUrl, adapter: globalThis.NeonBackend.SupabaseAuthAdapter() },
-            dataApi: { url: config.dataApiUrl }
-        });
-        const auth = client.auth;
-        const signOut = auth.signOut.bind(auth);
-        auth.signInAnonymously = async (options = {}) => {
-            const existing = readGuest();
-            const credentials = existing || newGuest();
-            const displayName = options?.options?.data?.display_name || options?.options?.data?.displayName || 'Wandering Hero';
-            let result = await auth.signUp({
-                email: credentials.email,
-                password: credentials.password,
-                options: { data: { displayName } }
+        console.log('Neon: connecting to', config.authUrl, '->', config.dataApiUrl);
+        try {
+            const client = globalThis.NeonBackend.createClient({
+                auth: { url: config.authUrl, adapter: globalThis.NeonBackend.SupabaseAuthAdapter() },
+                dataApi: { url: config.dataApiUrl }
             });
-            if (result.error && (existing || /already|exist|duplicate/i.test(result.error.message || ''))) {
-                result = await auth.signInWithPassword({ email: credentials.email, password: credentials.password });
-            }
-            if (!result.error && result.data?.session?.user) saveGuest(credentials);
-            return result;
-        };
-        auth.signOut = async (...args) => {
-            const result = await signOut(...args);
-            try { localStorage.removeItem(GUEST_KEY); } catch {}
-            return result;
-        };
-        client.channel = name => pollingChannel(client, String(name));
-        client.removeChannel = async channel => { channel?.stop?.(); return { error: null }; };
-        return client;
+            const auth = client.auth;
+            const signOut = auth.signOut.bind(auth);
+            auth.signInAnonymously = async (options = {}) => {
+                const existing = readGuest();
+                const credentials = existing || newGuest();
+                const displayName = options?.options?.data?.display_name || options?.options?.data?.displayName || 'Wandering Hero';
+                let result = await auth.signUp({
+                    email: credentials.email,
+                    password: credentials.password,
+                    options: { data: { displayName } }
+                });
+                if (result.error && (existing || /already|exist|duplicate/i.test(result.error.message || ''))) {
+                    result = await auth.signInWithPassword({ email: credentials.email, password: credentials.password });
+                }
+                if (!result.error && result.data?.session?.user) saveGuest(credentials);
+                return result;
+            };
+            auth.signOut = async (...args) => {
+                const result = await signOut(...args);
+                try { localStorage.removeItem(GUEST_KEY); } catch {}
+                return result;
+            };
+            client.channel = name => pollingChannel(client, String(name));
+            client.removeChannel = async channel => { channel?.stop?.(); return { error: null }; };
+            console.log('Neon: client created successfully');
+            return client;
+        } catch (sdkError) {
+            console.error('Neon: SDK createClient failed:', sdkError?.message || sdkError);
+            throw new Error(`Neon SDK failed to create client: ${sdkError?.message || 'unknown error'}`);
+        }
     }
 
     globalThis.BlackSwordBackend = Object.freeze({ createClient });
