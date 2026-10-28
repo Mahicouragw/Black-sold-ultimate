@@ -36,6 +36,8 @@ jobs:
           npm run security
           npm run pwa:check
           npm run build
+        continue-on-error: false
+        timeout-minutes: 10
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
