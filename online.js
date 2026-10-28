@@ -82,15 +82,13 @@ const OnlineSystem = {
             this.registerAuthListener();
             console.log('Neon: fully connected as', this.user?.id);
         } catch (error) {
+            // All technical details go to console only — never to the game UI.
             console.error('Online initialization failed:', error);
-            const msg = error.message || 'connection failed';
+            const msg = String(error?.message || '');
             if (/Neon SDK|NeonBackend|createClient|SupabaseAuthAdapter/i.test(msg)) {
-                this.status = `Neon SDK error: ${msg}. Check browser console (F12) for details.`;
-            } else if (msg.toLowerCase().includes('anonymous')) {
-                this.status = 'Neon guest sign-in is not configured';
-            } else {
-                this.status = `Offline mode — ${msg}`;
+                console.warn('Neon SDK failed to load. The game will run in local/offline mode.');
             }
+            this.status = 'Guest mode';
             this.ensureLocalCode();
             this.updateIndicators();
         }
@@ -320,7 +318,7 @@ const OnlineSystem = {
 
     async signInGoogle() {
         if (!this.client) await this.init();
-        if (!this.client) { this.status='Online service is not connected.'; this.updateIndicators(); return; }
+        if (!this.client) { this.status = 'Guest mode'; this.updateIndicators(); return; }
         if(this.linked){localStorage.setItem('black_sword_google_login_requested','true');this.status=`Restoring ${this.profile?.display_name||'your Google account'} heroes…`;this.updateIndicators();await this.cacheCloudSave(true);return;}
         this.openGoogleDialog(this.shouldMergeGuestHeroes());
     },
@@ -429,7 +427,16 @@ const OnlineSystem = {
             if(error)throw error;
         }catch(e){
             this.clearGoogleFlow();
-            if(status)status.textContent=`Could not open Google sign-in: ${e.message||'network error'}. Tap the button to try again — guest progress is safe.`;
+            // Surface a friendly, actionable message — never raw HTTP codes.
+            const code = String(e?.code || e?.status || '');
+            const isOAuthNotConfigured = code === '403' || /403|not.enabled|not.configured|provider/i.test(String(e?.message || ''));
+            if (status) {
+                status.textContent = isOAuthNotConfigured
+                    ? 'Google sign-in isn\u2019t set up yet. Your guest heroes are safe \u2014 play as a guest, or open the Neon console and enable Google under Integrations.'
+                    : 'Google sign-in couldn\u2019t open on this device. Your guest heroes are safe \u2014 try again on Wi-Fi or in Chrome.';
+            }
+            // Technical detail stays in console only.
+            console.error('Google sign-in failed:', e?.message || e?.code || e);
         }
     },
 
@@ -469,10 +476,8 @@ const OnlineSystem = {
             const rendered = document.getElementById('google-signin-render');
             // A blocked origin renders no button at all.
             if (!rendered || rendered.children.length > 0) return;
-            const message = `Google sign-in is blocked for this address (${location.origin}). `
-                + 'The site owner must add this exact address to the Authorized JavaScript origins '
-                + 'of the OAuth client in Google Cloud Console. You can still play as a guest, '
-                + 'or sign in with your Player ID and PIN.';
+            // Friendly message — no raw origin URL or console details.
+            const message = 'Google sign-in isn\u2019t available on this site yet. You can still play as a guest, or try again later.';
             document.querySelectorAll('#google-login-status,#google-signin-status').forEach(status=>{status.textContent=message;});
             window.Game?.addNarrative?.(message, 'system');
             console.warn('Google origin not authorized:', location.origin);
@@ -660,7 +665,7 @@ const OnlineSystem = {
 
     async linkGoogle() {
         if (!this.client) await this.init();
-        if (!this.client) { this.status='Online service is not connected.';this.updateIndicators();return; }
+        if (!this.client) { this.status = 'Guest mode'; this.updateIndicators(); return; }
         if(this.linked){this.status='Google is already connected. Restoring cloud heroes…';this.updateIndicators();await this.cacheCloudSave(true);return;}
         // Direct token sign-in remains available for compatible auth modes.
         // The current guest roster is merged into the selected Google account.
