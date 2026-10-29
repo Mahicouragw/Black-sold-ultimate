@@ -52,7 +52,35 @@ const Game = {
         this.bindEvents();
         this.updateUI();
         window.OnlineSystem?.init();
+        // Auto-resume: if player had an active hero and was in-game, skip title screen
+        this.autoResumeIfActive();
         console.log('⚔️ The Black Sword Chronicles - Ultimate Edition loaded!');
+    },
+
+    autoResumeIfActive() {
+        const roster = this.getRoster();
+        const activeId = roster.activeHeroId;
+        const active = activeId && roster.heroes[activeId];
+        if (!active) return; // No hero — show title screen as normal
+        // If the player was in the middle of a game (has a location), resume directly
+        const savedLoc = active.location || active.state?.location;
+        if (savedLoc && WorldData.locations[savedLoc]) {
+            // Restore the hero state and jump straight into gameplay
+            try {
+                this.state.player = active.player || active;
+                this.state.location = savedLoc;
+                this.state.inventory = active.inventory || [];
+                this.state.companions = active.companions || [];
+                this.state.visited = active.visited || [];
+                this.state.kills = active.kills || 0;
+                this.state.activeHeroId = activeId;
+                this.showScreen('game-screen');
+                this.enterLocation(savedLoc);
+                this.look();
+            } catch (e) {
+                console.warn('Auto-resume failed, showing title:', e);
+            }
+        }
     },
 
     loadState() {

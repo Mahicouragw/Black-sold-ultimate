@@ -107,11 +107,46 @@
             Gestures.stop(); this.menu = null; this.stack = []; this.render(); this.busy = true;
             try { await fn(); } catch (error) { console.warn('Gesture action failed', error); speak('The action could not be completed. No success is assumed.'); }
             finally { this.busy = false; }
-            if (this.active() && document.querySelector('.panel:not(.hidden)')) this.controls();
+            // Don't auto-open controls when a panel is visible — let the user interact with it directly.
+        },
+        playSwipeSound() {
+            // Generate a realistic short whoosh/swipe sound using Web Audio API
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const duration = 0.15;
+                const bufferSize = ctx.sampleRate * duration;
+                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                // Filtered noise that sweeps from high to low frequency (whoosh effect)
+                for (let i = 0; i < bufferSize; i++) {
+                    const t = i / bufferSize;
+                    const envelope = Math.sin(t * Math.PI) * (1 - t * 0.5); // attack-decay
+                    const noise = (Math.random() * 2 - 1);
+                    // Frequency sweep simulation via amplitude modulation
+                    const freq = Math.sin(t * 80 * Math.PI * (1 - t * 0.7)) * 0.3;
+                    data[i] = (noise * 0.7 + freq) * envelope * 0.25;
+                }
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                // Bandpass filter for realistic whoosh
+                const filter = ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.setValueAtTime(2000, ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + duration);
+                filter.Q.value = 1.5;
+                const gain = ctx.createGain();
+                gain.gain.setValueAtTime(0.4, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+                source.connect(filter);
+                filter.connect(gain);
+                gain.connect(ctx.destination);
+                source.start();
+                source.onended = () => ctx.close();
+            } catch (e) { /* audio not available */ }
         },
         handle(token) {
             if (!this.active()) return;
-            if (token !== 'tap') A.playSFX('swipe', { dedupKey: `gesture-swipe:${token}` });
+            if (token !== 'tap') this.playSwipeSound();
             if (token === 'cancel') { this.back(); return; }
             // Direct go_up / go_down from two-finger swipes (bypasses settings.map)
             if (token === 'go_up' || token === 'go_down') return this.verticalMove(token);
@@ -143,7 +178,8 @@
         move(direction) {
             if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return; }
             if (this.menu || this.busy || G._movementPending) return;
-            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) { Gestures.stop(); this.controls(); return; }
+            // When a panel is open, don't intercept — let the panel handle its own interactions.
+            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return;
             if (G.state.player.gesturePosture) { speak('Stand up before walking. Open contextual actions.'); Gestures.stop(); return; }
             if (G.state.inCombat || G.state.combatTransition) { speak('You cannot walk during combat. Open down-right for combat actions, including flee.'); Gestures.stop(); return; }
             if (!loc()?.exits?.[direction]) { speak(`Blocked. No path ${direction} from ${loc()?.name}.`); Gestures.stop(); return; }
@@ -152,7 +188,8 @@
         verticalMove(action) {
             if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return; }
             if (this.menu || this.busy || G._movementPending) return;
-            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) { Gestures.stop(); this.controls(); return; }
+            // When a panel is open, don't intercept.
+            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return;
             if (G.state.inCombat || G.state.combatTransition) { speak('You cannot move during combat.'); Gestures.stop(); return; }
             const dir = action === 'go_up' ? 'up' : 'down';
             if (!loc()?.exits?.[dir]) { speak(`No way to go ${dir} from ${loc()?.name}.`); Gestures.stop(); return; }
