@@ -1,4 +1,4 @@
-const CACHE='black-sword-v7.35.0';
+const CACHE='black-sword-v7.36.0';
 const BASE=new URL('./',self.registration.scope);
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',
@@ -29,17 +29,9 @@ self.addEventListener('install',event=>event.waitUntil(
   caches.open(CACHE).then(cache=>cache.addAll(CORE_URLS)).then(()=>self.skipWaiting())
 ));
 self.addEventListener('activate',event=>event.waitUntil(
-  caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()).then(()=>{
-    // Tell all controlled pages to reload so they pick up the new cache.
-    self.clients.matchAll({type:'window'}).then(clients=>{
-      clients.forEach(c=>c.postMessage({type:'RELOAD_FOR_UPDATE'}));
-    });
-  })
+  caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())
 ));
-// Allow pages to send SKIP_WAITING to force immediate activation.
-self.addEventListener('message',event=>{
-  if(event.data&&event.data.type==='SKIP_WAITING')self.skipWaiting();
-});
+// Service worker activates immediately after install, claims all pages.
 self.addEventListener('fetch',event=>{
   const request=event.request,url=new URL(request.url);
   if(request.method!=='GET'||url.pathname.includes('/api/')||url.hostname.endsWith('.neon.tech')||url.hostname.endsWith('.neon.build')||url.hostname.includes('google.com')||url.hostname.includes('gstatic.com')||url.hostname.includes('firebaseio.com')||url.hostname.includes('firebaseapp.com'))return;
