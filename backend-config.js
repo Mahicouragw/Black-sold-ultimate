@@ -5,12 +5,13 @@
 window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
     provider: 'firebase',
     firebase: {
-        apiKey: 'AIzaSyD-PLACEHOLDER-REPLACE-WITH-YOUR-FIREBASE-API-KEY',
-        authDomain: 'black-sword-ultimate.firebaseapp.com',
-        projectId: 'black-sword-ultimate',
-        storageBucket: 'black-sword-ultimate.appspot.com',
-        messagingSenderId: '000000000000',
-        appId: '1:000000000000:web:abcdef1234567890'
+        apiKey: "AIzaSyDbxZJZbX2c4Z-6ibJ_Jf0mYhLq_re3fhc",
+        authDomain: "black-sword-ultimate-43c4d.firebaseapp.com",
+        projectId: "black-sword-ultimate-43c4d",
+        storageBucket: "black-sword-ultimate-43c4d.firebasestorage.app",
+        messagingSenderId: "672939027677",
+        appId: "1:672939027677:web:776a93b7d72f5833b3bf34",
+        measurementId: "G-SDY2WG9QT7"
     },
     // Neon Data API still used for cloud saves, chat, multiplayer.
     dataApiUrl: 'https://ep-dark-bread-at1dja9x.apirest.c-9.us-east-1.aws.neon.tech/neondb/rest/v1',
