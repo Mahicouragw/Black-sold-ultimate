@@ -456,6 +456,123 @@
             </div>
 
             <!-- Guild -->
+            <!-- Notifications Panel (diagonal down-right) -->
+            <div id="notifications-panel" class="panel hidden" aria-label="Notifications">
+                <h3>🔔 Notifications</h3>
+                <div id="notifications-content">
+                    <h4>📨 Friend Requests</h4>
+                    <div id="notif-friend-requests"><p class="muted">No pending friend requests.</p></div>
+                    <h4>⚔️ Combat Group Invites</h4>
+                    <div id="notif-combat-invites"><p class="muted">No pending combat group invites.</p></div>
+                    <h4>🎁 Gifts Received</h4>
+                    <div id="notif-gifts"><p class="muted">No gifts received.</p></div>
+                    <h4>💰 Trade Requests</h4>
+                    <div id="notif-trades"><p class="muted">No pending trade requests.</p></div>
+                </div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Voice Command Panel (diagonal up-right) -->
+            <div id="voice-command-panel" class="panel hidden" aria-label="Voice and text commands">
+                <h3>🎤 Voice & Text Commands</h3>
+                <p class="settings-note">Type or speak a command. Examples: "chat hello", "eat cheese wheel", "drink healing potion", "attack", "say hello to guard", "go north".</p>
+                <div class="social-compose">
+                    <input id="voice-command-input" type="text" maxlength="200" placeholder="Type a command…" aria-label="Voice or text command">
+                    <button id="btn-voice-execute" class="menu-btn primary">Execute</button>
+                </div>
+                <div id="voice-command-result" class="settings-note" aria-live="polite"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Social Hub Panel (diagonal down-left) -->
+            <div id="hub-panel" class="panel hidden" aria-label="Social hub">
+                <h3>🌐 Social Hub</h3>
+                <div id="hub-content">
+                    <h4>⚔️ Combat Groups</h4>
+                    <div id="hub-combat-group">
+                        <button id="btn-hub-create-group" class="menu-btn">Create Combat Group</button>
+                        <button id="btn-hub-manage-group" class="menu-btn">Manage Combat Group</button>
+                        <button id="btn-hub-invite-group" class="menu-btn">Invite to Combat Group</button>
+                    </div>
+                    <h4>💰 Trade & Gifts</h4>
+                    <div id="hub-trade">
+                        <button id="btn-hub-send-trade" class="menu-btn">Send Trade Request</button>
+                        <button id="btn-hub-send-gift" class="menu-btn">Send Gift</button>
+                    </div>
+                    <h4>🤝 Social</h4>
+                    <div id="hub-social">
+                        <button id="btn-hub-friends" class="menu-btn">Friend Requests</button>
+                        <button id="btn-hub-chat-rooms" class="menu-btn">Chat Rooms</button>
+                        <button id="btn-hub-players-online" class="menu-btn">Players Online</button>
+                    </div>
+                </div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Combat Group Create Dialog -->
+            <div id="combat-group-create-dialog" class="panel hidden" role="dialog" aria-modal="true" aria-label="Create combat group">
+                <h3>⚔️ Create Combat Group</h3>
+                <div class="social-compose">
+                    <label for="cg-name">Group Name</label>
+                    <input id="cg-name" type="text" maxlength="40" placeholder="e.g. Dragon Slayers" aria-label="Combat group name">
+                </div>
+                <div class="social-compose">
+                    <label for="cg-desc">Description</label>
+                    <textarea id="cg-desc" maxlength="200" placeholder="What is this group about?" aria-label="Combat group description"></textarea>
+                </div>
+                <div id="cg-status" class="settings-note" aria-live="polite"></div>
+                <button id="btn-cg-confirm" class="menu-btn primary">Create Group</button>
+                <button class="menu-btn close-btn">Cancel</button>
+            </div>
+
+            <!-- Combat Group Invite Dialog -->
+            <div id="combat-group-invite-dialog" class="panel hidden" role="dialog" aria-modal="true" aria-label="Invite to combat group">
+                <h3>⚔️ Invite to Combat Group</h3>
+                <p id="cg-invite-status" class="settings-note" aria-live="polite"></p>
+                <div id="cg-invite-list"></div>
+                <button class="menu-btn close-btn">Close</button>
+            </div>
+
+            <!-- Trade Dialog -->
+            <div id="trade-dialog" class="panel hidden" role="dialog" aria-modal="true" aria-label="Send trade request">
+                <h3>💰 Send Trade Request</h3>
+                <div class="social-compose">
+                    <label for="trade-target">Trade with (hero name)</label>
+                    <input id="trade-target" type="text" maxlength="40" placeholder="Hero name" aria-label="Trade recipient">
+                </div>
+                <div class="social-compose">
+                    <label for="trade-offer-gold">Your gold offer</label>
+                    <input id="trade-offer-gold" type="number" min="0" value="0" aria-label="Gold to offer">
+                </div>
+                <div class="social-compose">
+                    <label for="trade-offer-item">Item you want</label>
+                    <input id="trade-offer-item" type="text" maxlength="40" placeholder="Item name (optional)" aria-label="Item to request">
+                </div>
+                <div id="trade-status" class="settings-note" aria-live="polite"></div>
+                <button id="btn-trade-send" class="menu-btn primary">Send Trade Request</button>
+                <button class="menu-btn close-btn">Cancel</button>
+            </div>
+
+            <!-- Gift Dialog -->
+            <div id="gift-dialog" class="panel hidden" role="dialog" aria-modal="true" aria-label="Send gift">
+                <h3>🎁 Send Gift</h3>
+                <div class="social-compose">
+                    <label for="gift-target">Send to (hero name)</label>
+                    <input id="gift-target" type="text" maxlength="40" placeholder="Hero name" aria-label="Gift recipient">
+                </div>
+                <div class="social-compose">
+                    <label for="gift-gold">Gold amount</label>
+                    <input id="gift-gold" type="number" min="0" value="0" aria-label="Gold to gift">
+                </div>
+                <div class="social-compose">
+                    <label for="gift-item">Item from inventory</label>
+                    <input id="gift-item" type="text" maxlength="40" placeholder="Item name (optional)" aria-label="Item to gift">
+                </div>
+                <div id="gift-status" class="settings-note" aria-live="polite"></div>
+                <button id="btn-gift-send" class="menu-btn primary">Send Gift</button>
+                <button class="menu-btn close-btn">Cancel</button>
+            </div>
+
             <div id="guild-panel" class="panel hidden" aria-label="Guild and combat group">
                 <h3>🏰 Guild & Combat Group</h3>
                 <div id="guild-content"></div>
@@ -477,7 +594,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.33.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.34.0</span></div>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">

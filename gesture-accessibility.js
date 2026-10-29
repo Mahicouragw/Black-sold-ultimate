@@ -8,10 +8,12 @@
     const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
     const KEY = 'black_sword_gestures_v1';
     const defaults = Object.freeze({ up: 'north', down: 'south', left: 'west', right: 'east',
-        'down-right': 'context', 'up-right': 'magic', 'up-left': 'interact', 'down-left': 'navigation',
+        'down-right': 'notifications', 'up-right': 'voice', 'up-left': 'interact', 'down-left': 'hub',
         double: 'interact', 'two-tap': 'inventory', hold: 'sit', 'two-hold': 'lie' });
     const names = { north: 'Move north', south: 'Move south', west: 'Move west', east: 'Move east',
         go_up: 'Go up (stairs/ladder)', go_down: 'Go down (stairs/ladder)',
+        notifications: 'Notifications (requests & gifts)', voice: 'Voice & text commands',
+        hub: 'Social hub (groups, trades, friends)',
         context: 'Context or combat actions', magic: 'Magic and healing', interact: 'Interact',
         navigation: 'Directions and routes', inventory: 'Inventory', sit: 'Sit', lie: 'Lie down',
         reference: 'Gesture reference', repeat: 'Repeat speech', stop: 'Stop walking' };
@@ -131,6 +133,9 @@
             if (action === 'interact') return this.context(); // never guesses among unrelated objects
             if (action === 'sit' || action === 'lie') return this.posture(action);
             if (action === 'go_up' || action === 'go_down') return this.verticalMove(action);
+            if (action === 'notifications') return this.notifications();
+            if (action === 'voice') return this.voiceCommands();
+            if (action === 'hub') return this.hub();
             if (action === 'reference') return this.reference();
             if (action === 'repeat') return A.repeatVoice();
             if (action === 'stop') Gestures.stop();
@@ -152,6 +157,40 @@
             const dir = action === 'go_up' ? 'up' : 'down';
             if (!loc()?.exits?.[dir]) { speak(`No way to go ${dir} from ${loc()?.name}.`); Gestures.stop(); return; }
             G.processCommand(dir);
+        },
+        notifications() {
+            // Open notifications panel (trade requests, gifts, combat group invites, friend requests)
+            const panel = $('notifications-panel');
+            if (panel) {
+                panel.classList.remove('hidden');
+                speak('Notifications opened. Check trade requests, gifts, combat group invites, and friend requests.');
+                G.refreshNotifications?.();
+            } else {
+                speak('Notifications panel is loading.');
+            }
+        },
+        voiceCommands() {
+            // Open voice command panel
+            const panel = $('voice-command-panel');
+            if (panel) {
+                panel.classList.remove('hidden');
+                const input = $('voice-command-input');
+                if (input) { input.value = ''; input.focus(); }
+                speak('Voice and text commands opened. Type or speak a command like chat hello, eat cheese, drink potion, or attack.');
+            } else {
+                speak('Voice command panel is loading.');
+            }
+        },
+        hub() {
+            // Open social hub (combat groups, trades, gifts, friends, chat rooms)
+            const panel = $('hub-panel');
+            if (panel) {
+                panel.classList.remove('hidden');
+                speak('Social hub opened. Create or manage combat groups, send trades and gifts, friend requests, and chat rooms.');
+                G.refreshHub?.();
+            } else {
+                speak('Social hub is loading.');
+            }
         },
         context() {
             if (!G.state.player || G.state.screen !== 'game-screen') return this.controls();
@@ -339,6 +378,7 @@
         tutorial(step) {
             const lessons = [
                 'World movement. Swipe up north, down south, left west, right east. Two-finger swipe up goes up stairs or ladders. Two-finger swipe down goes down. Two-finger swipe left or right cancels.',
+                'Diagonal swipes. Swipe down-right opens Notifications (requests, gifts, combat invites). Swipe up-right opens Voice Commands (type or speak game commands). Swipe down-left opens Social Hub (combat groups, trades, gifts, friends, chat rooms).',
                 'Continuous walking. Swipe in a cardinal direction and keep the finger down for half a second. Release to stop, including any pending step. Stop walking is always available.',
                 'Menus. Down-right opens location or combat actions. Up-left or double tap opens nearby interaction choices. No object is selected automatically.',
                 'Magic. Up-right opens known spells with requirements. Browse, choose a spell, then confirm Cast or Cancel.',
