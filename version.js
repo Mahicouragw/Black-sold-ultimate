@@ -1,2 +1,2 @@
-window.APP_VERSION = '7.28.1';
-window.APP_BUILD = '2026.10.23';
+window.APP_VERSION = '7.29.0';
+window.APP_BUILD = '2026.10.29';
