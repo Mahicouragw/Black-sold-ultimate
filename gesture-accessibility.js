@@ -11,6 +11,7 @@
         'down-right': 'context', 'up-right': 'magic', 'up-left': 'interact', 'down-left': 'navigation',
         double: 'interact', 'two-tap': 'inventory', hold: 'sit', 'two-hold': 'lie' });
     const names = { north: 'Move north', south: 'Move south', west: 'Move west', east: 'Move east',
+        go_up: 'Go up (stairs/ladder)', go_down: 'Go down (stairs/ladder)',
         context: 'Context or combat actions', magic: 'Magic and healing', interact: 'Interact',
         navigation: 'Directions and routes', inventory: 'Inventory', sit: 'Sit', lie: 'Lie down',
         reference: 'Gesture reference', repeat: 'Repeat speech', stop: 'Stop walking' };
@@ -110,6 +111,8 @@
             if (!this.active()) return;
             if (token !== 'tap') A.playSFX('swipe', { dedupKey: `gesture-swipe:${token}` });
             if (token === 'cancel') { this.back(); return; }
+            // Direct go_up / go_down from two-finger swipes (bypasses settings.map)
+            if (token === 'go_up' || token === 'go_down') return this.verticalMove(token);
             if (this.menu) {
                 if (['up', 'right'].includes(token)) this.browse(-1);
                 else if (token === 'down') this.browse(1);
@@ -127,6 +130,7 @@
             if (action === 'navigation') return this.navigation();
             if (action === 'interact') return this.context(); // never guesses among unrelated objects
             if (action === 'sit' || action === 'lie') return this.posture(action);
+            if (action === 'go_up' || action === 'go_down') return this.verticalMove(action);
             if (action === 'reference') return this.reference();
             if (action === 'repeat') return A.repeatVoice();
             if (action === 'stop') Gestures.stop();
@@ -139,6 +143,15 @@
             if (G.state.inCombat || G.state.combatTransition) { speak('You cannot walk during combat. Open down-right for combat actions, including flee.'); Gestures.stop(); return; }
             if (!loc()?.exits?.[direction]) { speak(`Blocked. No path ${direction} from ${loc()?.name}.`); Gestures.stop(); return; }
             G.processCommand(direction);
+        },
+        verticalMove(action) {
+            if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return; }
+            if (this.menu || this.busy || G._movementPending) return;
+            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) { Gestures.stop(); this.controls(); return; }
+            if (G.state.inCombat || G.state.combatTransition) { speak('You cannot move during combat.'); Gestures.stop(); return; }
+            const dir = action === 'go_up' ? 'up' : 'down';
+            if (!loc()?.exits?.[dir]) { speak(`No way to go ${dir} from ${loc()?.name}.`); Gestures.stop(); return; }
+            G.processCommand(dir);
         },
         context() {
             if (!G.state.player || G.state.screen !== 'game-screen') return this.controls();
@@ -325,7 +338,7 @@
         },
         tutorial(step) {
             const lessons = [
-                'World movement. Swipe up north, down south, left west, right east. Release for one step. Two finger swipe cancels.',
+                'World movement. Swipe up north, down south, left west, right east. Two-finger swipe up goes up stairs or ladders. Two-finger swipe down goes down. Two-finger swipe left or right cancels.',
                 'Continuous walking. Swipe in a cardinal direction and keep the finger down for half a second. Release to stop, including any pending step. Stop walking is always available.',
                 'Menus. Down-right opens location or combat actions. Up-left or double tap opens nearby interaction choices. No object is selected automatically.',
                 'Magic. Up-right opens known spells with requirements. Browse, choose a spell, then confirm Cast or Cancel.',
@@ -416,7 +429,14 @@
             this.stop();
             if (this.points.size) { this.endToken = token; return; }
             const finalToken = token || this.endToken; this.endToken = null;
-            if (count === 2 && finalToken) { this.lastTap = 0; UI.handle('cancel'); return; }
+            if (count === 2 && finalToken) {
+                this.lastTap = 0;
+                // Two-finger swipe up = go up, two-finger swipe down = go down
+                if (finalToken === 'up') { UI.handle('go_up'); return; }
+                if (finalToken === 'down') { UI.handle('go_down'); return; }
+                UI.handle('cancel');
+                return;
+            }
             if (this.held) { this.lastTap = 0; return; }
             if (count === 2) { this.lastTap = 0; UI.handle('two-tap'); return; }
             if (finalToken) { this.lastTap = 0; UI.handle(finalToken); return; }

@@ -838,6 +838,7 @@ const Game = {
 
         this.showScreen('game-screen');
         this.enterLocation('kaliwasch');
+        this.look(); // Show initial location description on game start
         this.save();
         window.OnlineSystem?.syncActiveHero();
     },
@@ -875,12 +876,8 @@ const Game = {
         // Play location music
         MusicSystem.play(loc.music || 'tavern');
 
-        if (!alreadyVisited) {
-            // First visit: show full description
-            this.showLocationArt(locId);
-            this.addNarrative(loc.description, 'location');
-        }
-        // else: returning player — just show name (already announced in move)
+        // Never show description during movement. Description only shows via Look / Look Around.
+        // (The initial game start still shows it via a separate flag.)
 
         // Show the actual finite-world exits in a stable compass order.
         const directionOrder = ['north','south','east','west','up','down'];
@@ -1208,6 +1205,7 @@ const Game = {
         if (!loc) { this.addNarrative("You're not sure where you are.", 'system'); return; }
 
         this.addNarrative(`📍 ${loc.name}`, 'location');
+        this.addNarrative(loc.description, 'location');
 
         const directionOrder = ['north','south','east','west','up','down'];
         const exits = directionOrder.filter(d => loc.exits[d]);
@@ -2502,18 +2500,49 @@ const Game = {
         if (!loc.shop) content.innerHTML = '<p>There is no shop at this location.</p>';
         else {
             const stock = ExpansionData.shopStock[loc.shop] || ExpansionData.shopStock.provisions;
-            content.innerHTML = `<p>${this.escapeHTML(loc.name)} ${this.escapeHTML(loc.shop)} shop — You have ${this.state.player.gold} rupees.</p>` + stock.map(s => `<div class="shop-row"><span>${this.escapeHTML(WorldData.items[s.id]?.name || s.id)} — ${s.price} rupees</span><button onclick="Game.buyItem('${this.escapeJS(s.id)}', ${s.price})">Buy</button></div>`).join('');
+            content.innerHTML = `<p>${this.escapeHTML(loc.name)} ${this.escapeHTML(loc.shop)} shop — You have ${this.state.player.gold} rupees.</p>` + stock.map(s => {
+                const itemName = this.escapeHTML(WorldData.items[s.id]?.name || s.id);
+                const jsName = this.escapeJS(s.id);
+                return `<div class="shop-row"><span>${itemName} — ${s.price} rupees each</span>`
+                    + `<span class="shop-controls">`
+                    + `<label for="qty-${jsName.replace(/\s+/g,'-')}" class="sr-only">Quantity</label>`
+                    + `<input type="number" id="qty-${jsName.replace(/\s+/g,'-')}" class="shop-qty" min="1" max="99" value="1" style="width:50px;text-align:center;">`
+                    + `<button onclick="Game.buyItemQty('${jsName}', ${s.price})">Buy</button>`
+                    + `</span></div>`;
+            }).join('');
         }
         panel.classList.remove('hidden');
     },
 
     buyItem(id, price) {
-        if (this.state.player.gold < price) { this.addNarrative('Not enough rupees.', 'system'); return; }
+        this.buyItemQty(id, price, 1);
+    },
+
+    buyItemQty(id, price, qty) {
+        // Read qty from the input in the same shop row as the clicked button
+        if (qty === undefined || qty === null || qty < 1) {
+            const btn = document.activeElement;
+            const row = btn?.closest?.('.shop-row');
+            const inp = row?.querySelector?.('.shop-qty');
+            qty = inp ? Math.max(1, Math.min(99, parseInt(inp.value) || 1)) : 1;
+        }
+        const totalCost = price * qty;
+        if (this.state.player.gold < totalCost) { this.addNarrative(`Not enough rupees. You need ${totalCost} but have ${this.state.player.gold}.`, 'system'); return; }
         const item = WorldData.items[id];
         if (!item) return;
-        this.state.player.gold -= price;
-        this.addItemToInventory(id, item);
-        const text = `Bought ${item.name} for ${price} rupees.`;
+        this.state.player.gold -= totalCost;
+        // Add quantity to inventory (stack if already have it)
+        const existing = this.state.inventory.find(i => i.name === item.name);
+        if (existing) {
+            existing.quantity += qty;
+        } else {
+            this.addItemToInventory(id, item);
+            if (qty > 1) {
+                const newItem = this.state.inventory.find(i => i.name === item.name);
+                if (newItem) newItem.quantity = qty;
+            }
+        }
+        const text = `Bought ${qty} × ${item.name} for ${totalCost} rupees.`;
         if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: ['coin'] });
         else { this.addNarrative(text, 'item'); MusicSystem.playSFX('coin'); }
         this.updateHUD();
@@ -2990,6 +3019,7 @@ const Game = {
 
         this.showScreen('game-screen');
         this.enterLocation(this.state.location);
+        this.look(); // Show description when loading/continuing a hero
         window.OnlineSystem?.syncActiveHero();
         return true;
     },
