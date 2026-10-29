@@ -275,12 +275,14 @@ const Game = {
         if (!p) return;
         const oldName = p.name;
         p.name = newName;
+        p.lastRenameAt = new Date().toISOString();
         // Update the roster copy too.
         const roster = this.getRoster();
         const id = this.state.activeHeroId || roster.activeHeroId;
         if (id && roster.heroes[id]) {
             roster.heroes[id].player = roster.heroes[id].player || {};
             roster.heroes[id].player.name = newName;
+            roster.heroes[id].player.lastRenameAt = p.lastRenameAt;
             this.storeRoster(roster);
         }
         // Sync cloud if online.
@@ -288,9 +290,8 @@ const Game = {
             window.OnlineSystem.saveGame(this.getCloudData()).catch(() => {});
             window.OnlineSystem.updatePresence?.().catch(() => {});
         }
-        this.addNarrative(`Hero renamed from "${oldName}" to "${newName}".`, 'system');
+        this.addNarrative(`Hero renamed from "${oldName}" to "${newName}". You can rename again in 7 days.`, 'system');
         this.save();
-        // Update the settings display.
         window.OnlineSystem?.updateIndicators?.();
     },
 
@@ -479,7 +480,16 @@ const Game = {
         document.getElementById('btn-settings-rename-hero')?.addEventListener('click', () => {
             const p = this.state.player;
             if (!p) { this.addNarrative('No hero is active.', 'system'); return; }
-            const newName = window.prompt(`Rename your hero (current: ${p.name}):`, p.name);
+            // Check rename cooldown (7 days)
+            const lastRename = p.lastRenameAt ? new Date(p.lastRenameAt).getTime() : 0;
+            const daysSinceRename = (Date.now() - lastRename) / (1000 * 60 * 60 * 24);
+            const cooldownDays = 7;
+            if (lastRename > 0 && daysSinceRename < cooldownDays) {
+                const remaining = Math.ceil(cooldownDays - daysSinceRename);
+                this.addNarrative(`Hero name can only be changed once every ${cooldownDays} days. You can rename again in ${remaining} day${remaining === 1 ? '' : 's'}.`, 'system');
+                return;
+            }
+            const newName = window.prompt(`Rename your hero (current: ${p.name}):\n\nNote: You can only rename once every ${cooldownDays} days.`, p.name);
             if (!newName || newName.trim() === '' || newName.trim() === p.name) return;
             this.renameHero(newName.trim());
         });
@@ -772,6 +782,8 @@ const Game = {
             int: Math.floor(base.int * (bonus.int || 1)),
             wis: base.wis,
             gold: bg.gold || 50,
+            diamonds: 0,
+            rubies: 0,
             weapon: bg.weapon || (cls === 'mage' || cls === 'druid' ? 'Wooden Staff' : cls === 'paladin' ? 'Iron Mace' : cls === 'monk' ? 'Oak Club' : 'Rusty Sword'),
             weaponDamage: cls === 'mage' || cls === 'druid' ? 6 : cls === 'paladin' ? 16 : cls === 'monk' ? 9 : 10,
             armor: cls === 'paladin' ? 'Chainmail' : cls === 'mage' || cls === 'druid' ? 'Mage Robe' : 'Leather Armor',
@@ -850,7 +862,7 @@ const Game = {
     // GAMEPLAY
     // ============================================
 
-    enterLocation(locId) {
+    enterLocation(locId, alreadyVisited = false) {
         const loc = WorldData.locations[locId];
         if (!loc) return;
 
@@ -863,16 +875,17 @@ const Game = {
         // Play location music
         MusicSystem.play(loc.music || 'tavern');
 
-        // Display ASCII art
-        this.showLocationArt(locId);
-
-        // Show description
-        this.addNarrative(loc.description, 'location');
+        if (!alreadyVisited) {
+            // First visit: show full description
+            this.showLocationArt(locId);
+            this.addNarrative(loc.description, 'location');
+        }
+        // else: returning player — just show name (already announced in move)
 
         // Show the actual finite-world exits in a stable compass order.
         const directionOrder = ['north','south','east','west','up','down'];
         const exits = directionOrder.filter(direction => loc.exits[direction]);
-        this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
+        this.addNarrative(`Exits: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
         this.updateDirectionButtons(loc.exits);
         if (loc.shop) this.addNarrative(`🛒 A ${loc.shop} shop is open here. Type "shop" to browse.`, 'item');
         const localNpcs = WorldData.npcs[locId] || [];
@@ -966,9 +979,15 @@ const Game = {
             return;
         }
 
-        // Look Around - shows location + distance to key landmarks
-        if (c === 'look around' || c === 'lookaround' || c === 'where am i' || c === 'whereami') {
+        // Look Around - shows location + directions
+        if (c === 'look around' || c === 'lookaround') {
             this.lookAround();
+            return;
+        }
+
+        // Where am I - shows distance to key landmarks
+        if (c === 'where am i' || c === 'whereami' || c === 'distance') {
+            this.whereAmI();
             return;
         }
 
@@ -1069,6 +1088,7 @@ const Game = {
         if (c === 'chat' || c === 'social' || c === 'friends' || c === 'companions') { this.showSocial(); return; }
         if (c === 'guild' || c === 'group') { this.showGuild(); return; }
         if (c === 'shop' || c === 'buy') { this.showShop(); return; }
+        if (c === 'premium shop' || c === 'premium' || c === 'diamond shop') { this.showPremiumShop(); return; }
         if (c === 'settings' || c === 'account' || c === 'player id') { OnlineSystem.showSettings(); return; }
         if (c.startsWith('request ')) { this.sendFriendRequest(c.slice(8)); return; }
         if (c.startsWith('accept ')) { this.acceptFriendRequest(c.slice(7)); return; }
@@ -1132,15 +1152,22 @@ const Game = {
         this._movementPending = true;
 
         const origin = this.state.location;
+
+        // Announce direction being taken
+        const dirLabel = direction.charAt(0).toUpperCase() + direction.slice(1);
+        this.addNarrative(`Going ${dirLabel}…`, 'system');
+
         this._movementTimer = setTimeout(() => {
             try {
                 if (this.state.location !== origin || this.state.inCombat || document.hidden) return;
                 const target = WorldData.locations[dest];
                 if (!target) return;
-                const text = `You moved ${direction} to ${target.name}.`, footstep = this.getFootstepSFX(target);
+                const alreadyVisited = this.state.visited.includes(dest);
+                const text = `You moved ${direction} to ${target.name}.`;
+                const footstep = this.getFootstepSFX(target);
                 if (this.emitGameEvent) this.emitGameEvent(text, 'location', { sfx: [footstep] });
                 else { this.addNarrative(text, 'location'); MusicSystem.playSFX(footstep); }
-                this.enterLocation(dest);
+                this.enterLocation(dest, alreadyVisited);
             } finally {
                 this._movementPending = false;
             }
@@ -1180,6 +1207,21 @@ const Game = {
         const loc = WorldData.locations[this.state.location];
         if (!loc) { this.addNarrative("You're not sure where you are.", 'system'); return; }
 
+        this.addNarrative(`📍 ${loc.name}`, 'location');
+
+        const directionOrder = ['north','south','east','west','up','down'];
+        const exits = directionOrder.filter(d => loc.exits[d]);
+        if (exits.length > 0) {
+            this.addNarrative(`Directions: ${exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ')}`, 'system');
+        } else {
+            this.addNarrative('No exits from here.', 'system');
+        }
+    },
+
+    whereAmI() {
+        const loc = WorldData.locations[this.state.location];
+        if (!loc) { this.addNarrative("You're not sure where you are.", 'system'); return; }
+
         // BFS to find nearest landmarks
         const bfs = (targetIds) => {
             if (!targetIds || targetIds.length === 0) return -1;
@@ -1205,30 +1247,26 @@ const Game = {
             return -1;
         };
 
-        const dist = (ids) => { const d = bfs(Array.isArray(ids) ? ids : [ids]); return d === -1 ? 'unknown' : d; };
+        const dist = (ids) => bfs(Array.isArray(ids) ? ids : [ids]);
 
-        const market = dist(['market_square', 'town_market', 'black_market']);
-        const forestEntrance = dist(['dark_forest_entrance', 'forest_entrance', 'forest_path', 'whispering_woods', 'dark_forest']);
-        const caveEntrance = dist(['mystic_cave_entrance', 'cave_entrance', 'abandoned_mine_entrance', 'dragon_cave_entrance']);
-        const village = dist(['peaceful_village', 'mountain_village', 'ancient_ruins', 'abandoned_village']);
+        // Each room ~= 0.1 miles
+        const toMiles = (rooms) => rooms <= 0 ? 'here' : rooms <= 5 ? `${(rooms * 0.1).toFixed(1)} miles` : `${Math.round(rooms * 0.1)} miles`;
 
         this.addNarrative(`📍 You are at: ${loc.name}`, 'location');
 
+        const market = dist(['market_square', 'town_market', 'black_market']);
+        const forest = dist(['dark_forest_entrance', 'forest_entrance', 'forest_path', 'whispering_woods', 'dark_forest']);
+        const cave = dist(['mystic_cave_entrance', 'cave_entrance', 'abandoned_mine_entrance', 'dragon_cave_entrance']);
+        const village = dist(['peaceful_village', 'mountain_village', 'ancient_ruins', 'abandoned_village']);
+
         const dists = [];
-        if (market !== 'unknown' && typeof market === 'number' && market > 0) dists.push(`Market Square: ${market} rooms away`);
-        if (forestEntrance !== 'unknown' && typeof forestEntrance === 'number' && forestEntrance > 0) dists.push(`Forest: ${forestEntrance} rooms away`);
-        if (caveEntrance !== 'unknown' && typeof caveEntrance === 'number' && caveEntrance > 0) dists.push(`Cave: ${caveEntrance} rooms away`);
-        if (village !== 'unknown' && typeof village === 'number' && village > 0) dists.push(`Village: ${village} rooms away`);
+        if (market >= 0) dists.push(`Market Square: ${toMiles(market)}`);
+        if (forest >= 0) dists.push(`Forest: ${toMiles(forest)}`);
+        if (cave >= 0) dists.push(`Cave: ${toMiles(cave)}`);
+        if (village >= 0) dists.push(`Village: ${toMiles(village)}`);
 
         if (dists.length > 0) {
-            this.addNarrative(`🧭 Nearby: ${dists.join(' • ')}`, 'system');
-        } else {
-            this.addNarrative(`You are at the center of it all.`, 'system');
-        }
-
-        const exits = Object.entries(loc.exits).filter(([_, v]) => v).map(([d]) => d[0].toUpperCase() + d.slice(1));
-        if (exits.length > 0) {
-            this.addNarrative(`🚪 Exits: ${exits.join(', ')}`, 'system');
+            this.addNarrative(`🧭 ${dists.join(' • ')}`, 'system');
         }
     },
 
@@ -1370,6 +1408,8 @@ const Game = {
         if (item.minDamage !== undefined) parts.push(`min damage ${item.minDamage}`);
         if (item.maxDamage !== undefined) parts.push(`max damage ${item.maxDamage}`);
         if (item.strength) parts.push(`STR +${item.strength}`);
+        if (item.fireDamage) parts.push(`🔥 fire damage ${item.fireDamage}`);
+        if (item.airDamage) parts.push(`🌪️ air damage ${item.airDamage}`);
         if (item.waterDamage) parts.push(`💧 water damage ${item.waterDamage}`);
         if (item.earthDamage) parts.push(`🌍 earth damage ${item.earthDamage}`);
         if (item.defense) parts.push(`defense ${item.defense}`);
@@ -1394,6 +1434,8 @@ const Game = {
             if (item.minDamage !== undefined) extras.push(`min ${item.minDamage}`);
             if (item.maxDamage !== undefined) extras.push(`max ${item.maxDamage}`);
             if (item.strength) extras.push(`STR +${item.strength}`);
+            if (item.fireDamage) extras.push(`🔥 fire ${item.fireDamage}`);
+            if (item.airDamage) extras.push(`🌪️ air ${item.airDamage}`);
             if (item.waterDamage) extras.push(`💧 water ${item.waterDamage}`);
             if (item.earthDamage) extras.push(`🌍 earth ${item.earthDamage}`);
             const detail = extras.length ? `${p.weaponDamage} dmg, ${extras.join(', ')}` : `${p.weaponDamage} damage`;
@@ -1851,8 +1893,17 @@ const Game = {
             const isCrit = Math.random() * 100 < critChance;
             // v7.17.0: dodge chance so misses are possible (sounds + narration).
             const isMiss = Math.random() * 100 < 8;
-            let damage = Math.max(1, baseDamage + strBonus + Math.floor(Math.random() * 6));
+            // Elemental damage bonuses from weapon
+            const elementalBonus = (weaponItem?.fireDamage || 0) + (weaponItem?.airDamage || 0) + (weaponItem?.waterDamage || 0) + (weaponItem?.earthDamage || 0);
+            let damage = Math.max(1, baseDamage + strBonus + Math.floor(elementalBonus / 3) + Math.floor(Math.random() * 6));
             if (isCrit) damage *= 2;
+            // Build elemental suffix for attack narration
+            const elemParts = [];
+            if (weaponItem?.fireDamage) elemParts.push(`🔥${weaponItem.fireDamage}`);
+            if (weaponItem?.airDamage) elemParts.push(`🌪️${weaponItem.airDamage}`);
+            if (weaponItem?.waterDamage) elemParts.push(`💧${weaponItem.waterDamage}`);
+            if (weaponItem?.earthDamage) elemParts.push(`🌍${weaponItem.earthDamage}`);
+            const elemSuffix = elemParts.length ? ` (${elemParts.join('+')})` : '';
 
             if (this._pro) {
                 // Professional timeline: swing → hit/miss → narrate → remaining HP.
@@ -1867,7 +1918,7 @@ const Game = {
                     this.addNarrative(`Your attack misses ${e.name}!`, 'combat');
                 } else {
                     MusicSystem.playSFX('hit');
-                    this.addNarrative(`You ${isCrit ? 'CRITICALLY ' : ''}attack for ${damage} damage!`, 'combat');
+                    this.addNarrative(`You ${isCrit ? 'CRITICALLY ' : ''}attack for ${damage} damage!${elemSuffix}`, 'combat');
                 }
                 if (!isMiss) this.applyEnemyDamage(damage, null);
             }
@@ -2020,16 +2071,31 @@ const Game = {
             p.gold += e.gold;
             this.state.kills++;
 
+            // Premium currency drops (rare)
+            let bonusLoot = '';
+            if (e.boss || e.finalBoss) {
+                // Bosses always drop diamonds
+                const diamondDrop = Math.floor(Math.random() * 3) + 1;
+                p.diamonds = (p.diamonds || 0) + diamondDrop;
+                bonusLoot += `, 💎 +${diamondDrop} diamonds`;
+            } else if (Math.random() < 0.08) {
+                // 8% chance for regular enemies to drop a ruby
+                p.rubies = (p.rubies || 0) + 1;
+                bonusLoot += ', 💎 +1 ruby';
+            } else if (Math.random() < 0.03) {
+                // 3% chance for regular enemies to drop a diamond
+                p.diamonds = (p.diamonds || 0) + 1;
+                bonusLoot += ', 💎 +1 diamond';
+            }
+
             if (this._pro) {
                 const oldLevel = p.level;
                 await this._pro.monsterDefeat(e.name);
                 await this._pro.loot(e.name, e.gold > 0 ? [{ gold: e.gold }] : []);
-                // Level up state first so the XP narration reports the true level
-                // (narration/sound handled by the professional timeline).
                 if (p.xp >= p.xpToNext) this.levelUp(true);
                 await this._pro.experience(e.xp, p.level, oldLevel);
             } else {
-                this.addNarrative(`🎉 ${e.name} defeated! +${e.xp} XP, +${e.gold} gold`, 'treasure');
+                this.addNarrative(`🎉 ${e.name} defeated! +${e.xp} XP, +${e.gold} gold${bonusLoot}`, 'treasure');
                 MusicSystem.playSFX('victory');
                 if (p.xp >= p.xpToNext) this.levelUp();
             }
@@ -2042,6 +2108,24 @@ const Game = {
 
             // Check quests
             this.checkQuests('kill', e.name);
+
+            // Chance to win a companion after defeating certain enemies
+            const companionChance = e.boss ? 0.25 : 0.05;
+            if (Math.random() < companionChance && this.state.companions.length < 3) {
+                const companionPool = [
+                    { name: 'Brave Squire', attack: 14, maxHp: 80, heal: 0 },
+                    { name: 'Wandering Healer', attack: 6, maxHp: 60, heal: 25 },
+                    { name: 'Shadow Rogue', attack: 18, maxHp: 70, heal: 0 },
+                    { name: 'Forest Ranger', attack: 15, maxHp: 85, heal: 10 }
+                ];
+                const newCompanion = companionPool[Math.floor(Math.random() * companionPool.length)];
+                if (!this.state.companions.some(c => c.name === newCompanion.name)) {
+                    const companion = { name: newCompanion.name, role: 'companion', maxHp: newCompanion.maxHp, hp: newCompanion.maxHp, attack: newCompanion.attack, heal: newCompanion.heal };
+                    this.state.companions.push(companion);
+                    this.state.combatGroup.push(companion.name);
+                    this.addNarrative(`🎉 ${companion.name} was impressed by your victory and joined your group! (ATK: ${companion.attack}, HP: ${companion.maxHp}${companion.heal ? `, Heal: ${companion.heal}` : ''})`, 'treasure');
+                }
+            }
 
             // End combat
             this.state.inCombat = false;
@@ -2437,6 +2521,46 @@ const Game = {
         this.save();
     },
 
+    showPremiumShop() {
+        const panel = document.getElementById('shop-panel');
+        const content = document.getElementById('shop-content');
+        const p = this.state.player;
+        const premiumItems = [
+            { id: 'flame blade', price: { diamonds: 2 } },
+            { id: 'frost spear', price: { diamonds: 2 } },
+            { id: 'thunder axe', price: { diamonds: 3 } },
+            { id: 'earth shatter maul', price: { diamonds: 3 } },
+            { id: 'diamond edge katana', price: { diamonds: 5 } },
+            { id: 'ruby heart bow', price: { rubies: 3 } }
+        ];
+        content.innerHTML = `<p>💎 Premium Shop — You have ${p.diamonds || 0} 💎 diamonds, ${p.rubies || 0} 🔴 rubies</p>` +
+            premiumItems.map(pi => {
+                const item = WorldData.items[pi.id];
+                const cost = pi.price.diamonds ? `${pi.price.diamonds} 💎` : `${pi.price.rubies} 🔴`;
+                return `<div class="shop-row"><span>${this.escapeHTML(item?.name || pi.id)} — ${cost}</span><button onclick="Game.buyPremiumItem('${this.escapeJS(pi.id)}')">Buy</button></div>`;
+            }).join('');
+        panel.classList.remove('hidden');
+    },
+
+    buyPremiumItem(id) {
+        const p = this.state.player;
+        const item = WorldData.items[id];
+        if (!item) return;
+        const cost = item.premiumCost;
+        if (!cost) { this.addNarrative('This item is not available in the premium shop.', 'system'); return; }
+        if (cost.diamonds && (p.diamonds || 0) < cost.diamonds) { this.addNarrative(`Not enough diamonds. You need ${cost.diamonds} 💎.`, 'system'); return; }
+        if (cost.rubies && (p.rubies || 0) < cost.rubies) { this.addNarrative(`Not enough rubies. You need ${cost.rubies} 🔴.`, 'system'); return; }
+        if (cost.diamonds) p.diamonds -= cost.diamonds;
+        if (cost.rubies) p.rubies -= cost.rubies;
+        this.addItemToInventory(id, item);
+        const costText = cost.diamonds ? `${cost.diamonds} 💎` : `${cost.rubies} 🔴`;
+        this.addNarrative(`Purchased ${item.name} for ${costText}!`, 'treasure');
+        MusicSystem.playSFX('coin');
+        this.updateHUD();
+        this.showPremiumShop();
+        this.save();
+    },
+
     escapeHTML(value) {
         return String(value).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     },
@@ -2541,6 +2665,8 @@ const Game = {
             if (wData.minDamage !== undefined) extras.push(`min ${wData.minDamage}`);
             if (wData.maxDamage !== undefined) extras.push(`max ${wData.maxDamage}`);
             if (wData.strength) extras.push(`STR +${wData.strength}`);
+            if (wData.fireDamage) extras.push(`🔥 fire ${wData.fireDamage}`);
+            if (wData.airDamage) extras.push(`🌪️ air ${wData.airDamage}`);
             if (wData.waterDamage) extras.push(`💧 water ${wData.waterDamage}`);
             if (wData.earthDamage) extras.push(`🌍 earth ${wData.earthDamage}`);
             if (extras.length) weaponLine = `${p.weapon} (${p.weaponDamage || 0} dmg, ${extras.join(', ')})`;
@@ -2560,6 +2686,8 @@ const Game = {
             <div class="stat-row"><span>VIT:</span><span>${p.vit || Math.max(10, Math.floor(p.maxHp / 10))}</span></div>
             <div class="stat-row"><span>XP:</span><span>${p.xp}/${p.xpToNext}</span></div>
             <div class="stat-row"><span>Gold:</span><span>${p.gold}</span></div>
+            <div class="stat-row"><span>💎 Diamonds:</span><span>${p.diamonds || 0}</span></div>
+            <div class="stat-row"><span>🔴 Rubies:</span><span>${p.rubies || 0}</span></div>
             <div class="stat-row"><span>Weapon:</span><span>${weaponLine}</span></div>
             <div class="stat-row"><span>Armor:</span><span>${p.armor || 'None'} (${p.defense || 0} defense)</span></div>
             <div class="stat-row"><span>Helmet:</span><span>${p.helmet || 'None'}</span></div>

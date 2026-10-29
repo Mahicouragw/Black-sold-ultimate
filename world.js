@@ -206,6 +206,12 @@ const WorldData = {
         "war hammer": { name: "War Hammer", type: "weapon", weaponType: "blunt", damage: 23, desc: "A heavy two-handed crushing weapon" },
         "saint's maul": { name: "Saint's Maul", type: "weapon", weaponType: "blunt", damage: 32, magic: 12, desc: "A holy maul favored by paladins" },
         "THE BLACK SWORD": { name: "THE BLACK SWORD", type: "weapon", damage: 100, legendary: true, desc: "The legendary sword of ultimate power!" },
+        "flame blade": { name: "Flame Blade", type: "weapon", damage: 28, minDamage: 25, maxDamage: 50, strength: 15, fireDamage: 20, desc: "A sword wreathed in eternal flames" },
+        "frost spear": { name: "Frost Spear", type: "weapon", damage: 25, minDamage: 22, maxDamage: 45, strength: 12, waterDamage: 18, desc: "A spear tipped with frozen ice" },
+        "thunder axe": { name: "Thunder Axe", type: "weapon", damage: 30, minDamage: 26, maxDamage: 55, strength: 18, airDamage: 15, desc: "An axe crackling with lightning" },
+        "earth shatter maul": { name: "Earth Shatter Maul", type: "weapon", damage: 35, minDamage: 30, maxDamage: 60, strength: 20, earthDamage: 22, desc: "A massive maul that shakes the ground" },
+        "diamond edge katana": { name: "Diamond Edge Katana", type: "weapon", damage: 45, minDamage: 40, maxDamage: 70, strength: 25, fireDamage: 10, waterDamage: 10, desc: "A diamond-edged blade — costs 5 diamonds to purchase", premiumCost: { diamonds: 5 } },
+        "ruby heart bow": { name: "Ruby Heart Bow", type: "weapon", damage: 40, minDamage: 35, maxDamage: 65, strength: 22, fireDamage: 25, desc: "A bow with a ruby heart — costs 3 rubies to purchase", premiumCost: { rubies: 3 } },
 
         // Armor & Accessories
         "leather armor": { name: "Leather Armor", type: "armor", defense: 4, dex: 2, desc: "Light armor that preserves agility" },
