@@ -1144,6 +1144,18 @@ const Game = {
             return;
         }
 
+        // Spell book / spell panel
+        if (c === 'spells' || c === 'spellbook' || c === 'spell book' || c === 'magic') {
+            this.showSpellBook();
+            return;
+        }
+
+        // Alohomora shortcut
+        if (c === 'alohomora' || c === 'unlock' || c === 'unlock door') {
+            this.castSpell('alohomora');
+            return;
+        }
+
         // Take item
         if (c.startsWith('take ') || c.startsWith('get ')) {
             const item = c.replace(/^(take|get) /, '');
@@ -1756,13 +1768,82 @@ const Game = {
     },
 
     castSpell(spellName) {
-        if (!this.state.inCombat) {
-            this.addNarrative("You can only cast spells in combat.", 'system');
+        // Some spells can be cast outside combat (healing, utility)
+        const outOfCombatSpells = ['minor heal', 'heal', 'nature mend', 'mass heal', 'holy light', 'blessing', 'alohomora', 'open door', 'close door'];
+        const isOutOfCombatSpell = outOfCombatSpells.some(s => spellName.toLowerCase().includes(s));
+        if (!this.state.inCombat && !isOutOfCombatSpell) {
+            this.addNarrative("You can only cast combat spells in battle. Healing and utility spells can be cast anytime. Type 'spells' to see your spell book.", 'system');
             return;
         }
         const spell = this.state.player.spells.find(s =>
             s.toLowerCase().includes(spellName.toLowerCase())
         );
+
+        // Handle Alohomora / open door spell (works outside combat)
+        if (spell && (spell.toLowerCase().includes('alohomora') || spell.toLowerCase().includes('open door'))) {
+            const loc = WorldData.locations[this.state.location];
+            if (loc?.specialDoor?.magical && !loc.specialDoor.open) {
+                const cost = 20;
+                if (this.state.player.mp < cost) { this.addNarrative("Not enough mana for Alohomora!", 'system'); return; }
+                this.state.player.mp -= cost;
+                loc.specialDoor.open = true;
+                this.addNarrative(`✨ Alohomora! The magical door unlocks and swings open!`, 'magic');
+                MusicSystem.playSFX('magic');
+                this.updateDirectionButtons(loc.exits);
+                this.save();
+                return;
+            }
+            // Also try physical door
+            if (loc?.houseExterior) {
+                const cost = 10;
+                if (this.state.player.mp < cost) { this.addNarrative("Not enough mana!", 'system'); return; }
+                this.state.player.mp -= cost;
+                this.openPhysicalDoor?.();
+                this.addNarrative(`✨ The lock clicks open magically!`, 'magic');
+                return;
+            }
+            this.addNarrative("There is no locked door here to unlock.", 'system');
+            return;
+        }
+
+        // Handle close door spell
+        if (spell && spell.toLowerCase().includes('close door')) {
+            const loc = WorldData.locations[this.state.location];
+            if (loc?.houseExterior) {
+                this.closePhysicalDoor?.();
+                this.addNarrative(`The door closes.`, 'system');
+                return;
+            }
+            this.addNarrative("There is no door here to close.", 'system');
+            return;
+        }
+
+        // Out-of-combat healing spells
+        if (!this.state.inCombat && spell && ['minor heal', 'heal', 'nature mend', 'mass heal', 'holy light'].includes(spell.toLowerCase())) {
+            const costs = { 'minor heal': 14, 'heal': 20, 'nature mend': 22, 'mass heal': 38, 'holy light': 25 };
+            const cost = costs[spell.toLowerCase()] || 20;
+            if (this.state.player.mp < cost) { this.addNarrative("Not enough mana!", 'system'); return; }
+            const baseDamage = { 'minor heal': 18, 'heal': 34, 'nature mend': 40, 'mass heal': 30, 'holy light': 35 };
+            const healAmount = (baseDamage[spell.toLowerCase()] || 20) + this.state.player.level * 2 + Math.floor(this.state.player.wis / 3);
+            const p = this.state.player;
+            if (p.hp >= p.maxHp) { this.addNarrative("You are already at full health.", 'system'); return; }
+            this.state.player.mp -= cost;
+            const newHp = Math.min(p.maxHp, p.hp + healAmount);
+            const applied = newHp - p.hp;
+            p.hp = newHp;
+            this.addNarrative(`✨ You cast ${spell}. Healed ${applied} HP!`, 'magic');
+            MusicSystem.playSFX('heal');
+            // Also heal companions
+            const companions = this.state.companions?.filter(c => c.hp > 0 && c.hp < c.maxHp) || [];
+            for (const comp of companions.slice(0, 3)) {
+                const compHeal = Math.floor(healAmount * 0.5);
+                comp.hp = Math.min(comp.maxHp, comp.hp + compHeal);
+                this.addNarrative(`${comp.name} heals for ${compHeal} HP. (${comp.hp}/${comp.maxHp})`, 'magic');
+            }
+            this.updateHUD();
+            this.save();
+            return;
+        }
 
         if (!spell) {
             this.addNarrative(`You don't know that spell. Available: ${this.state.player.spells.join(', ')}`, 'system');
@@ -2908,6 +2989,60 @@ const Game = {
 
         map.textContent = mapArt;
         panel.classList.remove('hidden');
+    },
+
+    showSpellBook() {
+        const p = this.state.player;
+        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
+        const spells = p.spells || [];
+        const mana = p.mp || 0;
+        const maxMana = p.maxMp || 0;
+        const outOfCombat = {
+            'minor heal': { cost: 14, desc: 'Heal yourself for ~18+ HP' },
+            'heal': { cost: 20, desc: 'Stronger heal ~34+ HP' },
+            'nature mend': { cost: 22, desc: 'Druid heal ~40+ HP' },
+            'mass heal': { cost: 38, desc: 'Heal all companions too' },
+            'holy light': { cost: 25, desc: 'Paladin heal ~35+ HP' },
+            'alohomora': { cost: 20, desc: 'Unlock magical doors' },
+            'open door': { cost: 10, desc: 'Open physical doors' },
+            'close door': { cost: 5, desc: 'Close doors behind you' },
+            'blessing': { cost: 15, desc: 'Buff yourself or companions' }
+        };
+        const inCombat = {
+            'power strike': { cost: 15, desc: 'Physical power attack' },
+            'multi strike': { cost: 24, desc: 'Multi-hit attack' },
+            'fireball': { cost: 25, desc: 'Fire damage' },
+            'ice storm': { cost: 30, desc: 'Ice damage' },
+            'lightning bolt': { cost: 35, desc: 'Lightning damage' },
+            'backstab': { cost: 15, desc: 'Sneak attack' },
+            'battle cry': { cost: 20, desc: 'Buff attack power' },
+            'hammer smite': { cost: 22, desc: 'Holy hammer strike' },
+            'piercing volley': { cost: 28, desc: 'Arrow volley' },
+            'chi burst': { cost: 24, desc: 'Monk energy blast' },
+            'thorn storm': { cost: 30, desc: 'Druid thorn damage' }
+        };
+        let text = `📖 Spell Book — MP: ${mana}/${maxMana}\n\n`;
+        text += `✨ Spells you know: ${spells.join(', ') || 'None'}\n\n`;
+        text += `🏠 Out-of-combat spells (can cast anytime):\n`;
+        for (const [name, info] of Object.entries(outOfCombat)) {
+            if (spells.some(s => s.toLowerCase().includes(name))) {
+                text += `  • ${name} (${info.cost} MP) — ${info.desc}\n`;
+            }
+        }
+        text += `\n⚔️ Combat spells (only in battle):\n`;
+        for (const [name, info] of Object.entries(inCombat)) {
+            if (spells.some(s => s.toLowerCase().includes(name))) {
+                text += `  • ${name} (${info.cost} MP) — ${info.desc}\n`;
+            }
+        }
+        text += `\n💡 Type "cast [spell name]" to cast. Type "alohomora" to unlock doors.`;
+        this.addNarrative(text, 'magic');
+        // Also add alohomora to spell list if mage/paladin
+        if (!spells.some(s => s.toLowerCase().includes('alohomora')) && ['mage', 'paladin', 'druid', 'monk'].includes(p.class?.toLowerCase())) {
+            spells.push('Alohomora');
+            p.spells = spells;
+            this.addNarrative('✨ You learned Alohomora — the door unlocking spell!', 'treasure');
+        }
     },
 
     showQuests() {

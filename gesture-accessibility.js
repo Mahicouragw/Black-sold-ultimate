@@ -42,7 +42,14 @@
     const oldNarrative = G.addNarrative;
     G.addNarrative = function(text, type) {
         const result = oldNarrative.call(this, text, type);
-        if (!this._audioNarrationHandled && settings.narration && !UI.suppressLocation && !(UI.walking && (type === 'location' || /^Available directions:/.test(String(text))))) speak(text, /you have died|you awaken|health is low|^You encountered /i.test(String(text)) ? true : type === 'combat' ? 'high' : false, type === 'location' ? 'location' : '');
+        if (!this._audioNarrationHandled && settings.narration && !UI.suppressLocation && !(UI.walking && (type === 'location' || /^Available directions:/.test(String(text))))) {
+            // Cancel old queued speech when new movement/location events happen
+            // so TalkBack/TTS only reads the current event, not old ones.
+            if (type === 'location' || type === 'system') {
+                try { window.speechSynthesis?.cancel(); } catch {}
+            }
+            speak(text, /you have died|you awaken|health is low|^You encountered /i.test(String(text)) ? true : type === 'combat' ? 'high' : false, type === 'location' ? 'location' : '');
+        }
         return result;
     };
 
@@ -535,13 +542,13 @@
     };
 
     const oldEnter = G.enterLocation;
-    G.enterLocation = function(id) {
+    G.enterLocation = function(id, alreadyVisited) {
         const p = this.state.player; if (p?.gesturePosture?.location !== id && p) p.gesturePosture = null;
-        const result = oldEnter.call(this, id);
+        const result = oldEnter.call(this, id, alreadyVisited);
         if (settings.narration && UI.active()) {
-            if (!UI.walking) speak(`Current location: ${loc()?.name}. ${loc()?.description || ''}`, false, 'location');
+            // Only speak location name — NOT the description. User can use Look Around for details.
+            if (!UI.walking) speak(`Current location: ${loc()?.name}.`, false, 'location');
             else if (!UI.lastWalkSpoken || Date.now() - UI.lastWalkSpoken > 1500) { UI.lastWalkSpoken = Date.now(); speak(`Reached ${loc()?.name}.`, false, 'location'); }
-
         }
         if (UI.destination === this.state.location) { speak('Destination reached.'); UI.destination = null; Gestures.stop(); }
         return result;
