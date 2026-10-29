@@ -230,6 +230,88 @@ const Game = {
         this._prefillSuggestedName();
     },
 
+    // Auto-create a hero without the creation screen (used after Google login).
+    // Uses the given name, defaults to human warrior, and starts the adventure.
+    autoCreateHero(heroName) {
+        const name = (heroName || 'Hero').trim().slice(0, 30);
+        const race = 'human';
+        const cls = 'warrior';
+        const background = 'soldier';
+        const mode = 'single';
+
+        this.resetHeroRuntime();
+        this.state.activeHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+        this.state.pendingHeroId = this.state.activeHeroId;
+
+        // Base stats
+        const base = { hp: 130, mp: 30, str: 15, dex: 12, int: 8, wis: 10 };
+        const bonus = { hp: 1, mp: 1, gold: 1.15 }; // human
+
+        this.state.player = {
+            name,
+            race,
+            class: cls,
+            mode,
+            permadead: false,
+            level: 1,
+            xp: 0,
+            xpToNext: 100,
+            hp: Math.floor(base.hp * bonus.hp),
+            maxHp: Math.floor(base.hp * bonus.hp),
+            mp: Math.floor(base.mp * bonus.mp),
+            maxMp: Math.floor(base.mp * bonus.mp),
+            str: base.str,
+            dex: base.dex,
+            int: base.int,
+            wis: base.wis,
+            gold: 50,
+            diamonds: 0,
+            rubies: 0,
+            weapon: 'Iron Sword',
+            weaponDamage: 14,
+            armor: 'Leather Armor',
+            defense: 4,
+            extraSpells: 0,
+            mapRevealed: false
+        };
+
+        // Initialize spells
+        this.state.player.spells = this.getClassSpells ? this.getClassSpells(cls, 0) : ['Power Strike'];
+
+        // Initialize inventory
+        this.state.inventory = [
+            { ...WorldData.items['gold coin'], id: 'gold coin', quantity: 5 },
+            { ...WorldData.items['healing potion'], id: 'healing potion', quantity: 2 },
+            { ...WorldData.items['bread'], id: 'bread', quantity: 3 },
+            { ...WorldData.items['iron sword'], id: 'iron sword', quantity: 1 },
+            { ...WorldData.items['leather armor'], id: 'leather armor', quantity: 1 }
+        ];
+
+        // Initialize quests
+        this.state.quests = WorldData.quests ? [WorldData.quests[0]] : [];
+
+        this.state.location = 'kaliwasch';
+        this.state.visited = ['kaliwasch'];
+        this.state.kills = 0;
+        this.state.companions = [];
+        this.state.combatGroup = [];
+
+        // Save to roster
+        const roster = this.getRoster();
+        roster.heroes[this.state.activeHeroId] = { player: this.state.player, inventory: this.state.inventory, location: this.state.location, visited: this.state.visited, kills: 0, companions: [], combatGroup: [] };
+        roster.activeHeroId = this.state.activeHeroId;
+        this.storeRoster(roster);
+        localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[this.state.activeHeroId]));
+
+        // Start the game
+        this.showScreen('game-screen');
+        this.enterLocation('kaliwasch');
+        this.look();
+        this.save();
+
+        return this.state.activeHeroId;
+    },
+
     showHeroRoster() {
         const roster = this.getRoster();
         const container = document.getElementById('hero-roster');

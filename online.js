@@ -230,13 +230,27 @@ const OnlineSystem = {
         if (!this.ready || !this.user) return;
         const player = window.Game?.state?.player;
         const heroName = player?.name?.trim() || this.profile?.display_name || 'Wandering Hero';
-        const { error } = await this.client.from('profiles').update({
+        const updateData = {
             display_name: heroName,
             level: player?.level || this.profile?.level || 1,
             current_location: window.WorldData?.locations?.[window.Game?.state?.location]?.name || this.profile?.current_location || 'Kaliwasch City',
             last_seen: new Date().toISOString()
-        }).eq('id', this.user.id);
-        if (error) { console.warn('Hero-name sync failed:', error.message); return; }
+        };
+        // Sync stats if available (columns may not exist in older schemas)
+        if (player) {
+            if (player.str !== undefined) updateData.str = player.str;
+            if (player.dex !== undefined) updateData.dex = player.dex;
+            if (player.int !== undefined) updateData.int = player.int;
+            if (player.wis !== undefined) updateData.wis = player.wis;
+            if (player.hp !== undefined) updateData.hp = player.hp;
+            if (player.maxHp !== undefined) updateData.max_hp = player.maxHp;
+            if (player.weapon) updateData.weapon = player.weapon;
+            if (player.armor) updateData.armor = player.armor;
+            if (player.class) updateData.hero_class = player.class;
+            if (player.race) updateData.hero_race = player.race;
+        }
+        const { error } = await this.client.from('profiles').update(updateData).eq('id', this.user.id);
+        if (error) { console.warn('Hero sync failed:', error.message); return; }
         await this.loadProfile(false).catch(() => {});
         this.updateIndicators();
     },
@@ -609,10 +623,21 @@ const OnlineSystem = {
             return;
         }
         // ---- Brand-new Google account ----
-        this.status='Online — Google linked; create your first hero';
+        // Auto-create hero using Google display name. No creation screen needed.
+        const googleName = this.user?.displayName || this.profile?.display_name || 'Hero';
+        const safeName = googleName.replace(/[^\w\s'-]/g, '').trim().slice(0, 30) || 'Hero';
+        this.status='Online — Google linked; creating your hero…';
         this.updateIndicators();
-        this.announceToPlayer('Welcome to Black Sword! Your Google account is connected — no codes or emails needed. Now choose your hero name, race and class to begin your adventure.');
-        if(window.Game){try{window.MusicSystem?.playTrack?.('intro');}catch{}window.Game.startNewHero();}
+        this.announceToPlayer(`Welcome to Black Sword! Creating your hero ${safeName}. Your adventure begins now.`);
+        if(window.Game){
+            try{window.MusicSystem?.playTrack?.('intro');}catch{}
+            const heroId = window.Game.autoCreateHero(safeName);
+            if(heroId){
+                // Save to cloud immediately
+                const roster = window.Game.getRoster();
+                this.saveGame(roster).catch(()=>{});
+            }
+        }
     },
 
     // Last-resort path when the cloud cannot be reached after Google sign-in:
@@ -620,16 +645,22 @@ const OnlineSystem = {
     onboardingFallback(err) {
         const reason=(err?.message||'the cloud is unreachable').toString();
         let localHeroes=0;try{localHeroes=Object.keys(window.Game?.getRoster?.().heroes||{}).length;}catch{}
-        this.status='Google connected — cloud sync is slow, continuing on this device';
+        this.status='Online — playing on this device';
         this.updateIndicators();
         if(localHeroes>0){
-            this.announceToPlayer(`You signed in again. Thank you! Cloud sync is slow (${reason}), so your heroes on this device will be used. They will re-sync later.`);
+            this.announceToPlayer(`Welcome back! Using your saved heroes. They will sync to the cloud when connection is available.`);
             try{const roster=window.Game.getRoster();const id=roster.activeHeroId&&roster.heroes[roster.activeHeroId]?roster.activeHeroId:Object.keys(roster.heroes)[0];if(id){window.Game.playHero(id);return;}}catch{}
             window.Game?.showHeroRoster?.();
             return;
         }
-        this.announceToPlayer('Welcome to Black Sword! The cloud is slow right now, but you can still create your hero — it will sync automatically when the connection recovers. Choose your hero name, race and class.');
-        if(window.Game){try{window.MusicSystem?.playTrack?.('intro');}catch{}window.Game.startNewHero();}
+        // New account — auto-create hero from Google name
+        const googleName = this.user?.displayName || this.profile?.display_name || 'Hero';
+        const safeName = googleName.replace(/[^\w\s'-]/g, '').trim().slice(0, 30) || 'Hero';
+        this.announceToPlayer(`Welcome to Black Sword! Creating your hero ${safeName}. Your adventure begins now.`);
+        if(window.Game){
+            try{window.MusicSystem?.playTrack?.('intro');}catch{}
+            window.Game.autoCreateHero(safeName);
+        }
     },
 
     // Speak + narrate so TalkBack players hear the welcome, sighted players see it.
@@ -996,10 +1027,11 @@ const OnlineSystem = {
     // Public hero projection. Only these fields may ever leave the server for
     // another player: no account ids, emails, player codes, PINs, tokens,
     // recovery answers or internal UUIDs.
-    PUBLIC_HERO_FIELDS: Object.freeze(['display_name','level','current_location','last_seen','hero_class','hero_race','titles','achievements']),
+    PUBLIC_HERO_FIELDS: Object.freeze(['display_name','level','current_location','last_seen','hero_class','hero_race','titles','achievements','str','dex','int','wis','hp','max_hp','weapon','armor']),
     toPublicHero(row) {
         const safe={};
         for(const field of this.PUBLIC_HERO_FIELDS) if(row&&row[field]!==undefined) safe[field]=row[field];
+        // Never include: id, email, player_code, pin, tokens, or any internal UUIDs
         return safe;
     },
 
@@ -1157,8 +1189,21 @@ const OnlineSystem = {
         if (code) code.textContent = this.getPlayerCode();
         const heroName = document.getElementById('settings-hero-name');
         if (heroName) heroName.textContent = activeName;
+        // Account status row — hide entirely after login (user doesn't need to see it)
         const account = document.getElementById('settings-account-status');
-        if (account) account.textContent = this.linked ? 'Google linked' : (this.ready ? 'Guest account' : 'Local/offline guest');
+        if (account) {
+            if (this.linked) {
+                account.parentElement.hidden = true; // Hide the entire row
+            } else {
+                account.textContent = this.ready ? 'Guest account' : 'Local/offline guest';
+            }
+        }
+        // Player ID row — hide after login
+        const codeRow = document.getElementById('settings-player-code')?.parentElement;
+        if (codeRow) codeRow.hidden = Boolean(this.linked);
+        // Account note — hide after login
+        const accountNote = document.getElementById('settings-account-note');
+        if (accountNote) accountNote.hidden = Boolean(this.linked);
         const google = document.getElementById('btn-link-google');
         if (google) { google.disabled = true; google.hidden = true; }
         const merge = document.getElementById('btn-google-merge');
@@ -1169,6 +1214,16 @@ const OnlineSystem = {
         if (linkedBox) linkedBox.classList.toggle('hidden', !this.linked);
         const pinLogin = document.getElementById('settings-pin-login');
         if (pinLogin) pinLogin.classList.toggle('hidden', this.linked);
+        // Copy Player ID button — hide after login
+        const copyIdBtn = document.getElementById('btn-copy-player-id');
+        if (copyIdBtn) copyIdBtn.hidden = Boolean(this.linked);
+        // PIN setup section — hide after login
+        const pinSetup = document.getElementById('btn-set-pin')?.parentElement;
+        if (pinSetup) pinSetup.hidden = Boolean(this.linked);
+        const pinLabel = document.querySelector('label[for="settings-pin-input"]');
+        if (pinLabel) pinLabel.hidden = Boolean(this.linked);
+        const pinInput = document.getElementById('settings-pin-input');
+        if (pinInput) pinInput.hidden = Boolean(this.linked);
         const signOut = document.getElementById('btn-account-signout');
         if (signOut) signOut.hidden = false;
         this.populateVoiceSelectors();
