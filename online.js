@@ -437,11 +437,29 @@ const OnlineSystem = {
             const isFirebase = String(window.BLACK_SWORD_BACKEND_CONFIG?.provider || '') === 'firebase';
             if (isFirebase) {
                 // Firebase: simple popup, stays on the page.
-                const { error } = await this.client.auth.signInWithOAuth({
+                const { data, error } = await this.client.auth.signInWithOAuth({
                     provider: 'google',
                     options: { queryParams: { prompt: 'select_account' } }
                 });
                 if (error) throw error;
+                if (!data?.session) return; // User cancelled popup — no action needed.
+                // Popup succeeded — handle the signed-in user directly.
+                this._googleAuthCallback = true;
+                try {
+                    this.user = data.session.user;
+                    this.linked = true;
+                    this.ready = true;
+                    if (status) status.textContent = '✅ Successfully logged in! Preparing your adventure…';
+                    document.getElementById('google-login-panel')?.classList.add('hidden');
+                    // Auto-clear the success message after 4 seconds.
+                    setTimeout(() => { if (status) status.textContent = ''; }, 4000);
+                    await this.welcomeSignedInPlayer().catch(welcomeErr => {
+                        console.warn('Welcome flow issue:', welcomeErr);
+                        this.onboardingFallback(welcomeErr);
+                    });
+                } finally {
+                    this._googleAuthCallback = false;
+                }
             } else {
                 // Neon legacy: full-page redirect.
                 const back=new URL(location.href);

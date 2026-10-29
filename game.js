@@ -270,6 +270,30 @@ const Game = {
         return this.commitHeroDeletion(id);
     },
 
+    renameHero(newName) {
+        const p = this.state.player;
+        if (!p) return;
+        const oldName = p.name;
+        p.name = newName;
+        // Update the roster copy too.
+        const roster = this.getRoster();
+        const id = this.state.activeHeroId || roster.activeHeroId;
+        if (id && roster.heroes[id]) {
+            roster.heroes[id].player = roster.heroes[id].player || {};
+            roster.heroes[id].player.name = newName;
+            this.storeRoster(roster);
+        }
+        // Sync cloud if online.
+        if (window.OnlineSystem?.ready) {
+            window.OnlineSystem.saveGame(this.getCloudData()).catch(() => {});
+            window.OnlineSystem.updatePresence?.().catch(() => {});
+        }
+        this.addNarrative(`Hero renamed from "${oldName}" to "${newName}".`, 'system');
+        this.save();
+        // Update the settings display.
+        window.OnlineSystem?.updateIndicators?.();
+    },
+
     async commitHeroDeletion(id) {
         let roster=this.getRoster();
         if(!roster.heroes[id])return false;
@@ -451,6 +475,13 @@ const Game = {
         document.getElementById('btn-settings-manage-heroes')?.addEventListener('click', () => {
             document.getElementById('settings-panel')?.classList.add('hidden');
             this.showHeroRoster();
+        });
+        document.getElementById('btn-settings-rename-hero')?.addEventListener('click', () => {
+            const p = this.state.player;
+            if (!p) { this.addNarrative('No hero is active.', 'system'); return; }
+            const newName = window.prompt(`Rename your hero (current: ${p.name}):`, p.name);
+            if (!newName || newName.trim() === '' || newName.trim() === p.name) return;
+            this.renameHero(newName.trim());
         });
         document.getElementById('btn-settings-delete-hero')?.addEventListener('click', () => {
             const id = this.state.activeHeroId || this.getRoster().activeHeroId;
@@ -839,7 +870,7 @@ const Game = {
         this.addNarrative(loc.description, 'location');
 
         // Show the actual finite-world exits in a stable compass order.
-        const directionOrder = ['northwest','north','northeast','west','east','southwest','south','southeast','up','down'];
+        const directionOrder = ['north','south','east','west','up','down'];
         const exits = directionOrder.filter(direction => loc.exits[direction]);
         this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
         this.updateDirectionButtons(loc.exits);
@@ -922,9 +953,9 @@ const Game = {
 
         let c = cmd.toLowerCase().trim();
 
-        // Movement
-        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'northeast', 'ne', 'northwest', 'nw', 'southeast', 'se', 'southwest', 'sw', 'up', 'u', 'down', 'd'].includes(c)) {
-            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west', ne: 'northeast', nw: 'northwest', se: 'southeast', sw: 'southwest', u: 'up', d: 'down' };
+        // Movement (N/S/E/W/Up/Down only — no diagonals)
+        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
+            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
             this.move(dirMap[c] || c);
             return;
         }
@@ -932,6 +963,12 @@ const Game = {
         // Look
         if (c === 'look' || c === 'l') {
             this.look();
+            return;
+        }
+
+        // Look Around - shows location + distance to key landmarks
+        if (c === 'look around' || c === 'lookaround' || c === 'where am i' || c === 'whereami') {
+            this.lookAround();
             return;
         }
 
@@ -1120,7 +1157,7 @@ const Game = {
         this.showLocationArt(this.state.location);
         const loc = WorldData.locations[this.state.location];
         this.addNarrative(loc.description, 'location');
-        const directionOrder = ['northwest','north','northeast','west','east','southwest','south','southeast','up','down'];
+        const directionOrder = ['north','south','east','west','up','down'];
         const exits = directionOrder.filter(direction => loc.exits[direction]);
         this.addNarrative(`Available directions: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
         this.updateDirectionButtons(loc.exits);
@@ -1136,6 +1173,62 @@ const Game = {
         const pack = this.getAreaMonsterPool(this.state.location);
         if (pack.length) {
             this.addNarrative(`🐾 Monsters roam here: ${pack.join(', ')}. Combat begins when an enemy encounters you, a quest requires it, or an NPC initiates it.`, 'system');
+        }
+    },
+
+    lookAround() {
+        const loc = WorldData.locations[this.state.location];
+        if (!loc) { this.addNarrative("You're not sure where you are.", 'system'); return; }
+
+        // BFS to find nearest landmarks
+        const bfs = (targetIds) => {
+            if (!targetIds || targetIds.length === 0) return -1;
+            if (targetIds.includes(this.state.location)) return 0;
+            const visited = new Set([this.state.location]);
+            let queue = [this.state.location];
+            let depth = 0;
+            while (queue.length > 0 && depth < 100) {
+                const next = [];
+                depth++;
+                for (const locId of queue) {
+                    const l = WorldData.locations[locId];
+                    if (!l) continue;
+                    for (const [dir, target] of Object.entries(l.exits)) {
+                        if (!target || visited.has(target)) continue;
+                        if (targetIds.includes(target)) return depth;
+                        visited.add(target);
+                        next.push(target);
+                    }
+                }
+                queue = next;
+            }
+            return -1;
+        };
+
+        const dist = (ids) => { const d = bfs(Array.isArray(ids) ? ids : [ids]); return d === -1 ? 'unknown' : d; };
+
+        const market = dist(['market_square', 'town_market', 'black_market']);
+        const forestEntrance = dist(['dark_forest_entrance', 'forest_entrance', 'forest_path', 'whispering_woods', 'dark_forest']);
+        const caveEntrance = dist(['mystic_cave_entrance', 'cave_entrance', 'abandoned_mine_entrance', 'dragon_cave_entrance']);
+        const village = dist(['peaceful_village', 'mountain_village', 'ancient_ruins', 'abandoned_village']);
+
+        this.addNarrative(`📍 You are at: ${loc.name}`, 'location');
+
+        const dists = [];
+        if (market !== 'unknown' && typeof market === 'number' && market > 0) dists.push(`Market Square: ${market} rooms away`);
+        if (forestEntrance !== 'unknown' && typeof forestEntrance === 'number' && forestEntrance > 0) dists.push(`Forest: ${forestEntrance} rooms away`);
+        if (caveEntrance !== 'unknown' && typeof caveEntrance === 'number' && caveEntrance > 0) dists.push(`Cave: ${caveEntrance} rooms away`);
+        if (village !== 'unknown' && typeof village === 'number' && village > 0) dists.push(`Village: ${village} rooms away`);
+
+        if (dists.length > 0) {
+            this.addNarrative(`🧭 Nearby: ${dists.join(' • ')}`, 'system');
+        } else {
+            this.addNarrative(`You are at the center of it all.`, 'system');
+        }
+
+        const exits = Object.entries(loc.exits).filter(([_, v]) => v).map(([d]) => d[0].toUpperCase() + d.slice(1));
+        if (exits.length > 0) {
+            this.addNarrative(`🚪 Exits: ${exits.join(', ')}`, 'system');
         }
     },
 
@@ -1274,6 +1367,11 @@ const Game = {
         if (!item) { this.addNarrative("You do not carry that item.", 'system'); return null; }
         const parts = [`${item.name}`, `type ${item.type || 'general'}`, `quantity ${item.quantity}`];
         if (item.damage) parts.push(`damage ${item.damage}`);
+        if (item.minDamage !== undefined) parts.push(`min damage ${item.minDamage}`);
+        if (item.maxDamage !== undefined) parts.push(`max damage ${item.maxDamage}`);
+        if (item.strength) parts.push(`STR +${item.strength}`);
+        if (item.waterDamage) parts.push(`💧 water damage ${item.waterDamage}`);
+        if (item.earthDamage) parts.push(`🌍 earth damage ${item.earthDamage}`);
         if (item.defense) parts.push(`defense ${item.defense}`);
         if (item.value && ['heal', 'mana', 'both'].includes(item.effect)) parts.push(`restores ${item.value}`);
         else if (item.value) parts.push(`worth ${item.value} gold`);
@@ -1292,7 +1390,14 @@ const Game = {
         if (item.type === 'weapon') {
             p.weapon = item.name;
             p.weaponDamage = item.damage || p.weaponDamage;
-            this.addNarrative(`Equipped ${item.name} (${p.weaponDamage} damage).`, 'item');
+            const extras = [];
+            if (item.minDamage !== undefined) extras.push(`min ${item.minDamage}`);
+            if (item.maxDamage !== undefined) extras.push(`max ${item.maxDamage}`);
+            if (item.strength) extras.push(`STR +${item.strength}`);
+            if (item.waterDamage) extras.push(`💧 water ${item.waterDamage}`);
+            if (item.earthDamage) extras.push(`🌍 earth ${item.earthDamage}`);
+            const detail = extras.length ? `${p.weaponDamage} dmg, ${extras.join(', ')}` : `${p.weaponDamage} damage`;
+            this.addNarrative(`Equipped ${item.name} (${detail}).`, 'item');
         } else if (item.type === 'armor') {
             p.armor = item.name;
             p.defense = item.defense || 0;
@@ -1730,8 +1835,18 @@ const Game = {
             const p = this.state.player, e = this.state.enemy;
             if (!e || e.hp <= 0 || !p) return;
 
-            const baseDamage = Math.max(1, p.weaponDamage || 8);
-            const strBonus = Math.floor(p.str / 2);
+            // Effective STR includes weapon strength bonus (base STR + weapon STR).
+            const weaponItem = this.state.inventory?.find(i => i.name === p.weapon && i.type === 'weapon');
+            const weaponStr = weaponItem?.strength || 0;
+            const effectiveStr = p.str + weaponStr;
+            // Use weapon min/max damage range if available, else flat weaponDamage.
+            let baseDamage;
+            if (weaponItem?.minDamage !== undefined && weaponItem?.maxDamage !== undefined) {
+                baseDamage = weaponItem.minDamage + Math.floor(Math.random() * (weaponItem.maxDamage - weaponItem.minDamage + 1));
+            } else {
+                baseDamage = Math.max(1, p.weaponDamage || 8);
+            }
+            const strBonus = Math.floor(effectiveStr / 2);
             const critChance = Math.floor(p.dex / 4);
             const isCrit = Math.random() * 100 < critChance;
             // v7.17.0: dodge chance so misses are possible (sounds + narration).
@@ -2412,6 +2527,25 @@ const Game = {
         const stats = document.getElementById('char-stats');
         const p = this.state.player;
 
+        // Compute effective STR: base STR + weapon strength bonus.
+        const weaponItem = this.state.inventory?.find(i => i.name === p.weapon && i.type === 'weapon');
+        const weaponStr = weaponItem?.strength || 0;
+        const effectiveStr = p.str + weaponStr;
+        const strDisplay = weaponStr > 0 ? `${effectiveStr} (${p.str} base + ${weaponStr} weapon)` : `${p.str}`;
+
+        // Build weapon line with conditional stats (only show what the weapon has).
+        let weaponLine = `${p.weapon} (${p.weaponDamage || 0} damage)`;
+        const wData = WorldData.items[p.weapon?.toLowerCase()] || weaponItem;
+        if (wData) {
+            const extras = [];
+            if (wData.minDamage !== undefined) extras.push(`min ${wData.minDamage}`);
+            if (wData.maxDamage !== undefined) extras.push(`max ${wData.maxDamage}`);
+            if (wData.strength) extras.push(`STR +${wData.strength}`);
+            if (wData.waterDamage) extras.push(`💧 water ${wData.waterDamage}`);
+            if (wData.earthDamage) extras.push(`🌍 earth ${wData.earthDamage}`);
+            if (extras.length) weaponLine = `${p.weapon} (${p.weaponDamage || 0} dmg, ${extras.join(', ')})`;
+        }
+
         stats.innerHTML = `
             <div class="stat-row"><span>Name:</span><span>${p.name}</span></div>
             <div class="stat-row"><span>Level:</span><span>${p.level}</span></div>
@@ -2419,14 +2553,14 @@ const Game = {
             <div class="stat-row"><span>Race:</span><span>${p.race}</span></div>
             <div class="stat-row"><span>HP:</span><span>${p.hp}/${p.maxHp}</span></div>
             <div class="stat-row"><span>MP:</span><span>${p.mp}/${p.maxMp}</span></div>
-            <div class="stat-row"><span>STR:</span><span>${p.str}</span></div>
+            <div class="stat-row"><span>STR:</span><span>${strDisplay}</span></div>
             <div class="stat-row"><span>DEX:</span><span>${p.dex}</span></div>
             <div class="stat-row"><span>INT:</span><span>${p.int}</span></div>
             <div class="stat-row"><span>WIS:</span><span>${p.wis}</span></div>
             <div class="stat-row"><span>VIT:</span><span>${p.vit || Math.max(10, Math.floor(p.maxHp / 10))}</span></div>
             <div class="stat-row"><span>XP:</span><span>${p.xp}/${p.xpToNext}</span></div>
             <div class="stat-row"><span>Gold:</span><span>${p.gold}</span></div>
-            <div class="stat-row"><span>Weapon:</span><span>${p.weapon} (${p.weaponDamage || 0} damage)</span></div>
+            <div class="stat-row"><span>Weapon:</span><span>${weaponLine}</span></div>
             <div class="stat-row"><span>Armor:</span><span>${p.armor || 'None'} (${p.defense || 0} defense)</span></div>
             <div class="stat-row"><span>Helmet:</span><span>${p.helmet || 'None'}</span></div>
             <div class="stat-row"><span>Gloves:</span><span>${p.gloves || 'None'}</span></div>

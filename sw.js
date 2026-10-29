@@ -1,4 +1,4 @@
-const CACHE='black-sword-v7.30.0';
+const CACHE='black-sword-v7.31.0';
 const BASE=new URL('./',self.registration.scope);
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',

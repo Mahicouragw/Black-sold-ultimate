@@ -512,7 +512,7 @@ kbd {
 
 .dpad {
     display: grid;
-    grid-template-columns: repeat(4, minmax(60px, 1fr));
+    grid-template-columns: repeat(3, minmax(70px, 1fr));
     grid-template-rows: repeat(3, auto);
     gap: 5px;
     align-items: stretch;
@@ -521,28 +521,22 @@ kbd {
 .dpad-center {
     display: grid;
     place-items: center;
-    min-height: 42px;
+    min-height: 46px;
     color: var(--primary);
     border: 1px dashed var(--border);
     border-radius: 8px;
 }
-/* Row 1: NW, N, NE, Up */
-.dir-nw { grid-column: 1; grid-row: 1; }
+/* 3x3 grid: N/Up top, W/center/E middle, Down/S bottom */
 .dir-n  { grid-column: 2; grid-row: 1; }
-.dir-ne { grid-column: 3; grid-row: 1; }
-.dir-up { grid-column: 4; grid-row: 1; }
-/* Row 2: W, center, E, Down */
-.dir-w    { grid-column: 1; grid-row: 2; }
-.dpad-center { grid-column: 2 / 4; grid-row: 2; }
-.dir-e    { grid-column: 4; grid-row: 2; }
-.dir-down { grid-column: 4; grid-row: 3; }
-/* Row 3: SW, S, SE */
-.dir-sw { grid-column: 1; grid-row: 3; }
+.dir-up { grid-column: 3; grid-row: 1; }
+.dir-w  { grid-column: 1; grid-row: 2; }
+.dpad-center { grid-column: 2; grid-row: 2; }
+.dir-e  { grid-column: 3; grid-row: 2; }
+.dir-down { grid-column: 1; grid-row: 3; }
 .dir-s  { grid-column: 2; grid-row: 3; }
-.dir-se { grid-column: 3; grid-row: 3; }
 
 @media (max-width: 430px) {
-    .dpad { grid-template-columns: repeat(4, minmax(55px, 1fr)); width: 100%; }
+    .dpad { grid-template-columns: repeat(3, minmax(60px, 1fr)); width: 100%; }
     .dir-btn { min-width: 0; font-size: .72rem; overflow-wrap: anywhere; }
 }
 
