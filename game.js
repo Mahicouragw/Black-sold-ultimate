@@ -500,6 +500,76 @@ const Game = {
             this.deleteHero(id);
         });
 
+        // === Social Hub buttons ===
+        document.getElementById('btn-hub-create-group')?.addEventListener('click', () => {
+            document.getElementById('hub-panel')?.classList.add('hidden');
+            document.getElementById('combat-group-create-dialog')?.classList.remove('hidden');
+        });
+        document.getElementById('btn-hub-manage-group')?.addEventListener('click', () => {
+            if (!this.activeCombatGroup || !this.combatGroups[this.activeCombatGroup]) {
+                this.addNarrative('You are not in a combat group.', 'system'); return;
+            }
+            const g = this.combatGroups[this.activeCombatGroup];
+            this.addNarrative(`⚔️ "${g.name}" — Members: ${g.members.join(', ')}. Location: ${WorldData.locations[g.location]?.name || 'Unknown'}.`, 'system');
+        });
+        document.getElementById('btn-hub-invite-group')?.addEventListener('click', () => {
+            this.showInviteCombatGroup();
+        });
+        document.getElementById('btn-hub-send-trade')?.addEventListener('click', () => {
+            document.getElementById('hub-panel')?.classList.add('hidden');
+            document.getElementById('trade-dialog')?.classList.remove('hidden');
+        });
+        document.getElementById('btn-hub-send-gift')?.addEventListener('click', () => {
+            document.getElementById('hub-panel')?.classList.add('hidden');
+            document.getElementById('gift-dialog')?.classList.remove('hidden');
+        });
+        document.getElementById('btn-hub-friends')?.addEventListener('click', () => {
+            document.getElementById('hub-panel')?.classList.add('hidden');
+            document.getElementById('social-panel')?.classList.remove('hidden');
+        });
+        document.getElementById('btn-hub-chat-rooms')?.addEventListener('click', () => {
+            document.getElementById('hub-panel')?.classList.add('hidden');
+            document.getElementById('chat-rooms-panel')?.classList.remove('hidden');
+        });
+        document.getElementById('btn-hub-players-online')?.addEventListener('click', () => {
+            this.showInviteCombatGroup();
+        });
+
+        // Combat group create confirm
+        document.getElementById('btn-cg-confirm')?.addEventListener('click', () => {
+            const name = document.getElementById('cg-name')?.value || '';
+            const desc = document.getElementById('cg-desc')?.value || '';
+            this.createCombatGroup(name, desc);
+        });
+
+        // Trade send
+        document.getElementById('btn-trade-send')?.addEventListener('click', () => {
+            const target = document.getElementById('trade-target')?.value || '';
+            const gold = parseInt(document.getElementById('trade-offer-gold')?.value) || 0;
+            const item = document.getElementById('trade-offer-item')?.value || '';
+            this.sendTradeRequest(target, gold, item);
+        });
+
+        // Gift send
+        document.getElementById('btn-gift-send')?.addEventListener('click', () => {
+            const target = document.getElementById('gift-target')?.value || '';
+            const gold = parseInt(document.getElementById('gift-gold')?.value) || 0;
+            const item = document.getElementById('gift-item')?.value || '';
+            this.sendGift(target, gold, item);
+        });
+
+        // Voice command execute
+        document.getElementById('btn-voice-execute')?.addEventListener('click', () => {
+            const input = document.getElementById('voice-command-input');
+            this.executeVoiceCommand(input?.value || '');
+        });
+        document.getElementById('voice-command-input')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.executeVoiceCommand(e.target.value || '');
+            }
+        });
+
         // Close buttons
         document.querySelectorAll('.close-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -2048,6 +2118,18 @@ const Game = {
                 this.addNarrative(`${e.name} hits you for ${damage} damage!`, 'combat');
             }
 
+            // Enemy also strikes a companion (if any alive) with reduced damage
+            const aliveCompanions = this.state.companions.filter(c => c.hp > 0);
+            if (aliveCompanions.length > 0 && !isMiss && Math.random() < 0.4) {
+                const target = aliveCompanions[Math.floor(Math.random() * aliveCompanions.length)];
+                const compDamage = Math.max(1, Math.floor(e.attack * 0.6) + Math.floor(Math.random() * 3));
+                target.hp = Math.max(0, target.hp - compDamage);
+                this.addNarrative(`${e.name} also hits ${target.name} for ${compDamage} damage! (${target.name} HP: ${target.hp}/${target.maxHp})`, 'combat');
+                if (target.hp <= 0) {
+                    this.addNarrative(`${target.name} has fallen in battle!`, 'combat');
+                }
+            }
+
             this.updateHUD();
             if (p.hp <= 0) {
                 this.gameOver();
@@ -3023,6 +3105,198 @@ const Game = {
         window.OnlineSystem?.syncActiveHero();
         return true;
     },
+
+    // ============================================
+    // SOCIAL HUB, NOTIFICATIONS, VOICE COMMANDS
+    // ============================================
+
+    combatGroups: {},
+    activeCombatGroup: null,
+    pendingNotifications: { friendRequests: [], combatInvites: [], gifts: [], trades: [] },
+
+    refreshNotifications() {
+        const el = (id) => document.getElementById(id);
+        const fr = el('notif-friend-requests');
+        const ci = el('notif-combat-invites');
+        const gi = el('notif-gifts');
+        const tr = el('notif-trades');
+        const n = this.pendingNotifications;
+        if (fr) fr.innerHTML = n.friendRequests.length
+            ? n.friendRequests.map((r, i) => `<div class="shop-row"><span>${this.escapeHTML(r.from)}</span><button onclick="Game.respondFriendRequest(${i},'accepted')">Accept</button> <button onclick="Game.respondFriendRequest(${i},'rejected')">Decline</button></div>`).join('')
+            : '<p class="muted">No pending friend requests.</p>';
+        if (ci) ci.innerHTML = n.combatInvites.length
+            ? n.combatInvites.map((r, i) => `<div class="shop-row"><span>${this.escapeHTML(r.groupName)} (from ${this.escapeHTML(r.from)})</span><button onclick="Game.respondCombatInvite(${i},'accepted')">Accept</button> <button onclick="Game.respondCombatInvite(${i},'rejected')">Decline</button></div>`).join('')
+            : '<p class="muted">No pending combat group invites.</p>';
+        if (gi) gi.innerHTML = n.gifts.length
+            ? n.gifts.map((g, i) => `<div class="shop-row"><span>🎁 ${this.escapeHTML(g.from)} sent ${g.gold || 0} gold${g.item ? ' + ' + this.escapeHTML(g.item) : ''}</span><button onclick="Game.acceptGift(${i})">Accept</button></div>`).join('')
+            : '<p class="muted">No gifts received.</p>';
+        if (tr) tr.innerHTML = n.trades.length
+            ? n.trades.map((t, i) => `<div class="shop-row"><span>${this.escapeHTML(t.from)} offers ${t.gold || 0} gold${t.wants ? ' for ' + this.escapeHTML(t.wants) : ''}</span><button onclick="Game.acceptTrade(${i})">Accept</button> <button onclick="Game.rejectTrade(${i})">Decline</button></div>`).join('')
+            : '<p class="muted">No pending trade requests.</p>';
+    },
+
+    respondFriendRequest(idx, status) {
+        const r = this.pendingNotifications.friendRequests[idx];
+        if (!r) return;
+        this.addNarrative(`Friend request from ${r.from} ${status}.`, 'npc');
+        this.pendingNotifications.friendRequests.splice(idx, 1);
+        this.refreshNotifications();
+    },
+
+    respondCombatInvite(idx, status) {
+        const r = this.pendingNotifications.combatInvites[idx];
+        if (!r) return;
+        if (status === 'accepted') {
+            this.activeCombatGroup = r.groupId;
+            this.addNarrative(`⚔️ Combat Group Invite Link Accepted! You joined "${r.groupName}". You can now fight together with ${r.from}.`, 'treasure');
+        } else {
+            this.addNarrative(`You declined the combat group invite from ${r.from}.`, 'system');
+        }
+        this.pendingNotifications.combatInvites.splice(idx, 1);
+        this.refreshNotifications();
+    },
+
+    acceptGift(idx) {
+        const g = this.pendingNotifications.gifts[idx];
+        if (!g) return;
+        if (g.gold) { this.state.player.gold += g.gold; this.addNarrative(`🎁 Accepted ${g.gold} gold from ${g.from}!`, 'treasure'); }
+        if (g.item) { this.addNarrative(`🎁 Accepted ${g.item} from ${g.from}!`, 'treasure'); }
+        this.pendingNotifications.gifts.splice(idx, 1);
+        this.updateHUD();
+        this.refreshNotifications();
+        this.save();
+    },
+
+    acceptTrade(idx) {
+        const t = this.pendingNotifications.trades[idx];
+        if (!t) return;
+        if (t.gold) { this.state.player.gold += t.gold; }
+        this.addNarrative(`💰 Trade accepted! You received ${t.gold || 0} gold from ${t.from}.`, 'treasure');
+        this.pendingNotifications.trades.splice(idx, 1);
+        this.updateHUD();
+        this.refreshNotifications();
+        this.save();
+    },
+
+    rejectTrade(idx) {
+        const t = this.pendingNotifications.trades[idx];
+        if (!t) return;
+        this.addNarrative(`Trade request from ${t.from} declined.`, 'system');
+        this.pendingNotifications.trades.splice(idx, 1);
+        this.refreshNotifications();
+    },
+
+    refreshHub() {
+        const groupName = this.activeCombatGroup ? (this.combatGroups[this.activeCombatGroup]?.name || 'Your Group') : null;
+        const manageBtn = document.getElementById('btn-hub-manage-group');
+        const inviteBtn = document.getElementById('btn-hub-invite-group');
+        if (manageBtn) manageBtn.style.display = groupName ? '' : 'none';
+        if (inviteBtn) inviteBtn.style.display = groupName ? '' : 'none';
+    },
+
+    executeVoiceCommand(text) {
+        const result = document.getElementById('voice-command-result');
+        if (!text || !text.trim()) { if (result) result.textContent = 'Please type a command first.'; return; }
+        const cmd = text.trim().toLowerCase();
+        // Map voice-style commands to game commands
+        let gameCmd = cmd;
+        if (cmd.startsWith('say ') || cmd.startsWith('chat ')) {
+            // NPC chat: "say hello" → "talk hello"
+            gameCmd = 'talk ' + cmd.replace(/^(say|chat)\s+/, '');
+        } else if (cmd.startsWith('eat ')) {
+            gameCmd = 'use ' + cmd.replace(/^eat\s+/, '');
+        } else if (cmd.startsWith('drink ')) {
+            gameCmd = 'use ' + cmd.replace(/^drink\s+/, '');
+        } else if (cmd.startsWith('go ')) {
+            gameCmd = cmd.replace(/^go\s+/, '');
+        }
+        // Close voice panel and execute
+        document.getElementById('voice-command-panel')?.classList.add('hidden');
+        this.processCommand(gameCmd);
+        if (result) result.textContent = `Executed: "${gameCmd}"`;
+    },
+
+    createCombatGroup(name, description) {
+        if (!name || !name.trim()) { this.addNarrative('Please enter a group name.', 'system'); return; }
+        const id = 'cg_' + Date.now().toString(36);
+        this.combatGroups[id] = {
+            id, name: name.trim(), description: (description || '').trim(),
+            owner: this.state.player?.name || 'Unknown',
+            members: [this.state.player?.name || 'Unknown'],
+            location: this.state.location,
+            createdAt: new Date().toISOString()
+        };
+        this.activeCombatGroup = id;
+        this.addNarrative(`⚔️ Combat group "${name.trim()}" created! Use "Invite to Combat Group" to add members.`, 'treasure');
+        document.getElementById('combat-group-create-dialog')?.classList.add('hidden');
+    },
+
+    showInviteCombatGroup() {
+        const dialog = document.getElementById('combat-group-invite-dialog');
+        const list = document.getElementById('cg-invite-list');
+        const status = document.getElementById('cg-invite-status');
+        if (!dialog) return;
+        // Show online players at same location (simulated — in real game, this comes from OnlineSystem)
+        const myLoc = this.state.location;
+        const myLocName = WorldData.locations[myLoc]?.name || 'Unknown';
+        // Check OnlineSystem for online heroes
+        if (window.OnlineSystem?.ready && window.OnlineSystem.listOnlineHeroes) {
+            window.OnlineSystem.listOnlineHeroes().then(heroes => {
+                const atLocation = heroes.filter(h => h.current_location === myLocName);
+                if (atLocation.length === 0) {
+                    if (list) list.innerHTML = '<p class="muted">No one is online at your location right now.</p>';
+                    if (status) status.textContent = `Scanned heroes at ${myLocName}.`;
+                } else {
+                    if (list) list.innerHTML = atLocation.map(h =>
+                        `<div class="shop-row"><span>${this.escapeHTML(h.display_name)} (Lv.${h.level})</span><button onclick="Game.inviteToCombatGroup('${this.escapeJS(h.display_name)}')">Invite</button></div>`
+                    ).join('');
+                    if (status) status.textContent = `${atLocation.length} hero(es) online at ${myLocName}.`;
+                }
+            }).catch(() => {
+                if (list) list.innerHTML = '<p class="muted">Could not load online heroes.</p>';
+            });
+        } else {
+            if (list) list.innerHTML = '<p class="muted">Connect Google to see other players online.</p>';
+            if (status) status.textContent = 'Guest mode — connect Google to invite players.';
+        }
+        dialog.classList.remove('hidden');
+    },
+
+    inviteToCombatGroup(heroName) {
+        if (!this.activeCombatGroup || !this.combatGroups[this.activeCombatGroup]) {
+            this.addNarrative('Create a combat group first.', 'system'); return;
+        }
+        const group = this.combatGroups[this.activeCombatGroup];
+        // Simulate sending invite (in real game, this goes through OnlineSystem)
+        this.addNarrative(`⚔️ Combat group invite sent to ${heroName} for "${group.name}".`, 'treasure');
+        group.members.push(heroName);
+    },
+
+    sendTradeRequest(targetName, gold, itemName) {
+        if (!targetName?.trim()) { this.addNarrative('Enter a hero name.', 'system'); return; }
+        if (!gold && !itemName) { this.addNarrative('Offer gold or request an item.', 'system'); return; }
+        if (gold > (this.state.player?.gold || 0)) { this.addNarrative(`You only have ${this.state.player?.gold || 0} gold.`, 'system'); return; }
+        this.addNarrative(`💰 Trade request sent to ${targetName}: ${gold || 0} gold${itemName ? ' for ' + itemName : ''}.`, 'treasure');
+        if (gold) this.state.player.gold -= gold;
+        this.updateHUD();
+        this.save();
+        document.getElementById('trade-dialog')?.classList.add('hidden');
+    },
+
+    sendGift(targetName, gold, itemName) {
+        if (!targetName?.trim()) { this.addNarrative('Enter a hero name.', 'system'); return; }
+        if (!gold && !itemName) { this.addNarrative('Enter gold or an item to gift.', 'system'); return; }
+        if (gold > (this.state.player?.gold || 0)) { this.addNarrative(`You only have ${this.state.player?.gold || 0} gold.`, 'system'); return; }
+        this.addNarrative(`🎁 Gift sent to ${targetName}: ${gold || 0} gold${itemName ? ' + ' + itemName : ''}.`, 'treasure');
+        if (gold) this.state.player.gold -= gold;
+        this.updateHUD();
+        this.save();
+        document.getElementById('gift-dialog')?.classList.add('hidden');
+    },
+
+    // ============================================
+    // COMBAT COMPANION DAMAGE DISPLAY
+    // ============================================
 
     updateUI() {
         // Update music button states
