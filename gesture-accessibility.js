@@ -6,7 +6,7 @@
     const $ = id => document.getElementById(id);
     const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
     const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
-    const KEY = 'black_sword_gestures_v1';
+    const KEY = 'black_sword_gestures_v2';
     const defaults = Object.freeze({ up: 'north', down: 'south', left: 'west', right: 'east',
         'down-right': 'notifications', 'up-right': 'voice', 'up-left': 'interact', 'down-left': 'hub',
         double: 'interact', 'two-tap': 'inventory', hold: 'sit', 'two-hold': 'lie' });
@@ -590,6 +590,98 @@
         UI.sync(); UI.render();
         if (settings.narration) { A.setVoiceEnabled(true); if (!read('black_sword_gesture_tutorial_v1', false)) UI.open('Optional gesture tutorial', [option('Learn gestures', () => UI.tutorial(0)), option('Skip', () => { write('black_sword_gesture_tutorial_v1', true); UI.controls(); })]); }
     }
-    window.GestureAccessibility = { UI, Gestures, settings, defaults, furniture, spellInfo };
+    // ============================================
+    // Global swipe detection for diagonal and two-finger gestures
+    // Works regardless of whether the gesture overlay is visible
+    // ============================================
+    const GlobalSwipes = {
+        points: new Map(),
+        maxPointers: 0,
+        threshold: 50,
+
+        init() {
+            document.addEventListener('pointerdown', (e) => this.down(e), { passive: false });
+            document.addEventListener('pointermove', (e) => this.move(e), { passive: false });
+            document.addEventListener('pointerup', (e) => this.up(e), { passive: false });
+            document.addEventListener('pointercancel', () => this.reset(), { passive: false });
+        },
+
+        direction(dx, dy) {
+            if (Math.hypot(dx, dy) < this.threshold) return null;
+            const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+            return ({ 0: 'right', 1: 'down-right', 2: 'down', 3: 'down-left', 4: 'left', '-4': 'left', '-3': 'up-left', '-2': 'up', '-1': 'up-right' })[angle];
+        },
+
+        down(e) {
+            // Only track if game is active and we're not already in the gesture pad (let it handle its own)
+            if (e.target?.closest?.('#gesture-pad')) return;
+            if (e.target?.closest?.('#gesture-interface')) return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            if (!G.state?.player || G.state.screen !== 'game-screen') return;
+            this.points.set(e.pointerId, { x: e.clientX, y: e.clientY, dx: 0, dy: 0 });
+            this.maxPointers = Math.max(this.maxPointers, this.points.size);
+        },
+
+        move(e) {
+            const p = this.points.get(e.pointerId);
+            if (!p) return;
+            p.dx = e.clientX - p.x;
+            p.dy = e.clientY - p.y;
+        },
+
+        up(e) {
+            const p = this.points.get(e.pointerId);
+            if (!p) return;
+            p.dx = e.clientX - p.x;
+            p.dy = e.clientY - p.y;
+            const token = this.direction(p.dx, p.dy);
+            const count = this.maxPointers;
+            this.points.delete(e.pointerId);
+
+            if (this.points.size > 0) return; // Wait for all fingers to lift
+
+            // Only handle diagonal swipes and two-finger vertical swipes
+            const isDiagonal = ['down-right', 'up-right', 'down-left', 'up-left'].includes(token);
+            const isTwoFingerVertical = count === 2 && (token === 'up' || token === 'down');
+
+            if (isTwoFingerVertical) {
+                // Two-finger swipe up = go up, two-finger swipe down = go down
+                if (token === 'up') {
+                    if (G.processCommand) G.processCommand('up');
+                } else if (token === 'down') {
+                    if (G.processCommand) G.processCommand('down');
+                }
+                this.reset();
+                return;
+            }
+
+            if (isDiagonal && !G.state.inCombat) {
+                // Diagonal swipes open panels
+                if (token === 'down-right' && UI.notifications) UI.notifications();
+                else if (token === 'up-right' && UI.voiceCommands) UI.voiceCommands();
+                else if (token === 'down-left' && UI.hub) UI.hub();
+                // up-left → interact (existing context menu)
+                else if (token === 'up-left' && UI.context) UI.context();
+                this.reset();
+                return;
+            }
+
+            this.reset();
+        },
+
+        reset() {
+            this.points.clear();
+            this.maxPointers = 0;
+        }
+    };
+
+    // Initialize global swipes after DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => GlobalSwipes.init(), { once: true });
+    } else {
+        GlobalSwipes.init();
+    }
+
+    window.GestureAccessibility = { UI, Gestures, settings, defaults, furniture, spellInfo, GlobalSwipes };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
 })();
