@@ -1183,6 +1183,8 @@ const Game = {
         if (c === 'chat' || c === 'social' || c === 'friends' || c === 'companions') { this.showSocial(); return; }
         if (c === 'guild' || c === 'group') { this.showGuild(); return; }
         if (c === 'shop' || c === 'buy') { this.showShop(); return; }
+        if (c === 'sell') { this.showInventory(); return; }
+        if (c.startsWith('sell ')) { this.sellItem(c.slice(5)); return; }
         if (c === 'premium shop' || c === 'premium' || c === 'diamond shop') { this.showPremiumShop(); return; }
         if (c === 'settings' || c === 'account' || c === 'player id') { OnlineSystem.showSettings(); return; }
         if (c.startsWith('request ')) { this.sendFriendRequest(c.slice(8)); return; }
@@ -1772,6 +1774,15 @@ const Game = {
 
         if (this.state.player.mp < cost) {
             this.addNarrative("Not enough mana!", 'system');
+            return;
+        }
+
+        // Spell fail chance — spells sometimes fail (10% base, higher for expensive spells)
+        const failChance = Math.min(0.25, 0.08 + (cost / 200));
+        if (Math.random() < failChance) {
+            this.state.player.mp -= Math.floor(cost / 2); // Still costs some mana on fail
+            this.addNarrative(`✨ Your ${spell} fizzles and fails! The magic slips away. (-${Math.floor(cost / 2)} MP)`, 'combat');
+            MusicSystem.playSFX('miss');
             return;
         }
 
@@ -2660,6 +2671,32 @@ const Game = {
         this.save();
     },
 
+    sellItem(itemName) {
+        const q = String(itemName || '').toLowerCase().trim();
+        const item = (this.state.inventory || []).find(i => {
+            const name = String(i?.name || '').toLowerCase();
+            return name === q || name.includes(q);
+        });
+        if (!item) { this.addNarrative(`You don't have ${q} to sell.`, 'system'); return; }
+        // Sell price is 40% of base value, or a minimum of 1 gold
+        const baseValue = item.value || item.damage || item.defense || 5;
+        const sellPrice = Math.max(1, Math.floor(baseValue * 0.4));
+        const qty = item.quantity || 1;
+        // Remove item from inventory
+        if (qty <= 1) {
+            this.state.inventory = this.state.inventory.filter(i => i !== item);
+        } else {
+            item.quantity--;
+        }
+        this.state.player.gold += sellPrice;
+        const text = `Sold ${item.name} for ${sellPrice} gold.`;
+        if (this.emitGameEvent) this.emitGameEvent(text, 'item', { sfx: ['coin'] });
+        else { this.addNarrative(text, 'item'); MusicSystem.playSFX('coin'); }
+        this.updateHUD();
+        this.showInventory();
+        this.save();
+    },
+
     showPremiumShop() {
         const panel = document.getElementById('shop-panel');
         const content = document.getElementById('shop-content');
@@ -2776,6 +2813,7 @@ const Game = {
                     : canUse ? `<button onclick="Game.useItem('${safeName}')">Use</button>` : '';
                 div.innerHTML = `<span>${this.escapeHTML(item.name)} <small>${this.escapeHTML(item.type || 'item')}</small></span>`
                     + `<span>x${item.quantity} ${primary}`
+                    + `<button onclick="Game.sellItem('${safeName}')">Sell</button>`
                     + `<button onclick="Game.examineInventoryItem('${safeName}')">Examine</button>`
                     + `<button onclick="Game.showInventoryItemDetails('${safeName}')">Details</button></span>`;
                 list.appendChild(div);

@@ -146,6 +146,9 @@
         },
         handle(token) {
             if (!this.active()) return;
+            // When a panel or dialog is open, let the panel handle its own interactions.
+            // Only 'cancel' (two-finger swipe) still works to close panels.
+            if (token !== 'cancel' && token !== 'go_up' && token !== 'go_down' && [...document.querySelectorAll('.panel:not(.hidden),[role="dialog"]:not(.hidden)')].some(visible)) return;
             if (token !== 'tap') this.playSwipeSound();
             if (token === 'cancel') { this.back(); return; }
             // Direct go_up / go_down from two-finger swipes (bypasses settings.map)
@@ -265,7 +268,7 @@
             for (const btn of document.querySelectorAll('#context-actions button, #ceremony-actions button')) if (visible(btn) && !btn.disabled && !/door|shop|list items|rest/i.test(btn.textContent)) choices.push(option(btn.textContent, () => this.execute(() => btn.click())));
             choices.push(option('Quests and objective hints', () => this.open('Quests', [option('Read quests', () => { command('quests')(); speak($('quest-list').textContent); }), option('Next objective hint', command('hint'))])),
                 option('Search location for undiscovered objects', command('search location')), option('Inspect public ground loot', () => this.execute(() => G.showPublicLoot())),
-                option('All visible controls', () => this.controls()), option('Gesture reference', () => this.reference()), option('Narrator and interface settings', () => this.preferences()));
+                option('All visible controls', () => this.controls()), option('Gesture reference', () => this.reference()));
             this.open(`Actions at ${l.name}`, choices);
         },
         combatDescription() {
@@ -358,7 +361,7 @@
                 if (!String(label).trim()) continue;
                 choices.push(option(String(label).trim(), () => this.activateControl(el)));
             }
-            choices.push(option('Narrator and interface settings', () => this.preferences()), option('Gesture reference', () => this.reference()));
+            choices.push(option('Gesture reference', () => this.reference()));
             this.open([...(scope?.querySelectorAll('h1,h2,h3') || [])].find(visible)?.textContent || 'Visible game controls', choices);
             if (dialog) this.screenDetails(dialog);
         },
