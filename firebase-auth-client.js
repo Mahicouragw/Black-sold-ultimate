@@ -112,6 +112,28 @@
                                     order: () => ({ limit: async () => ({ data: [], error: null }) }) }) };
                             }
                             return neonRestClient(config.dataApiUrl, table);
+                        },
+
+                        // RPC calls — forwards to Neon REST API for stored procedures (PIN, etc.)
+                        async rpc(fnName, params = {}) {
+                            if (!config.dataApiUrl) {
+                                return { data: null, error: { message: 'No data API configured' } };
+                            }
+                            try {
+                                const res = await fetch(`${config.dataApiUrl}/rpc/${fnName}`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                                    body: JSON.stringify(params)
+                                });
+                                if (!res.ok) {
+                                    const text = await res.text();
+                                    return { data: null, error: { message: `RPC ${fnName} failed: ${res.status} ${text}` } };
+                                }
+                                const data = await res.json();
+                                return { data, error: null };
+                            } catch (e) {
+                                return { data: null, error: { message: e.message || 'Network error' } };
+                            }
                         }
                     };
 
