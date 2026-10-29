@@ -304,19 +304,16 @@
             <!-- Action Bar -->
             <div class="action-bar">
                 <div class="dpad" aria-label="Available directions">
-                    <button class="dir-btn dir-nw" data-cmd="northwest" title="Northwest (T / 1)">↖ NW</button>
-                    <button class="dir-btn dir-n" data-cmd="north" title="North (W / ↑ / 2)">↑ N</button>
-                    <button class="dir-btn dir-ne" data-cmd="northeast" title="Northeast (Y / 3)">↗ NE</button>
+                    <button class="dir-btn dir-n" data-cmd="north" title="North (W / ↑)">↑ N</button>
                     <button class="dir-btn dir-up" data-cmd="up" title="Up (U)">▲ Up</button>
-                    <button class="dir-btn dir-w" data-cmd="west" title="West (A / ← / 4)">← W</button>
+                    <button class="dir-btn dir-w" data-cmd="west" title="West (A / ←)">← W</button>
                     <span class="dpad-center" aria-hidden="true">◆</span>
-                    <button class="dir-btn dir-e" data-cmd="east" title="East (D / → / 6)">→ E</button>
+                    <button class="dir-btn dir-e" data-cmd="east" title="East (D / →)">→ E</button>
                     <button class="dir-btn dir-down" data-cmd="down" title="Down (J)">▼ Down</button>
-                    <button class="dir-btn dir-sw" data-cmd="southwest" title="Southwest (G / 7)">↙ SW</button>
-                    <button class="dir-btn dir-s" data-cmd="south" title="South (S / ↓ / 8)">↓ S</button>
-                    <button class="dir-btn dir-se" data-cmd="southeast" title="Southeast (H / 9)">↘ SE</button>
+                    <button class="dir-btn dir-s" data-cmd="south" title="South (S / ↓)">↓ S</button>
                 </div>
                 <div class="action-btns">
+                    <button class="action-btn" id="btn-look-around" data-cmd="look around">🧭 Look Around</button>
                     <button class="action-btn" data-cmd="look">👁️ Look</button>
                     <button class="action-btn" data-cmd="inventory">🎒 Items</button>
                     <button class="action-btn" data-cmd="stats">📊 Stats</button>
@@ -479,13 +476,14 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.30.0</span></div>
-                    <p id="settings-account-note" class="settings-note">Your Player ID is a private login/recovery credential. Never share it in chat or friend requests. Other players see only your active hero name.</p>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.31.0</span></div>
+                    <p id="settings-account-note" class="settings-note">Player ID is private. Never share it in chat. Others see only your hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
                     <h4>Heroes</h4>
                     <button id="btn-settings-create-hero" class="menu-btn primary" type="button">Create new hero</button>
                     <button id="btn-settings-manage-heroes" class="menu-btn" type="button">Manage heroes</button>
+                    <button id="btn-settings-rename-hero" class="menu-btn" type="button">Rename hero</button>
                     <button id="btn-settings-delete-hero" class="menu-btn danger-btn" type="button">Delete hero</button>
                     <div id="settings-guest-google" class="hidden" hidden>
                     <button id="btn-link-google" class="menu-btn" type="button" hidden>Link this guest with Google</button>
