@@ -221,7 +221,7 @@
     function hungerState(game) {
         const p = game.state.player;
         if (!p) return null;
-        if (!Number.isFinite(p.satiety)) p.satiety = 72;
+        if (!Number.isFinite(p.satiety)) p.satiety = 100;
         if (!Number.isFinite(p.hungerStrPenalty)) p.hungerStrPenalty = 0;
         return p;
     }
@@ -244,7 +244,7 @@
         applyHungerPenalty(game);
         const now = Date.now();
         game._lastHungerLine = game._lastHungerLine || 0;
-        if (now - game._lastHungerLine < 20000) return;
+        if (now - game._lastHungerLine < 120000) return;
         if (p.satiety <= 0) {
             game._lastHungerLine = now;
             game.emitGameEvent?.('You are starving. Strength is failing. Eat a meal.', 'system') || game.addNarrative('You are starving. Strength is failing. Eat a meal.', 'system');
@@ -440,7 +440,7 @@
         const prevMove = G.move.bind(G);
         G.move = function (dir) {
             const r = prevMove(dir);
-            hungerTick(this, 3);
+            hungerTick(this, 1);
             return r;
         };
 
@@ -465,7 +465,7 @@
             return prevCmd(raw);
         };
 
-        setInterval(() => { if (G.state?.player && G.state.screen === 'game-screen') hungerTick(G, 1); }, 45000);
+        setInterval(() => { if (G.state?.player && G.state.screen === 'game-screen') hungerTick(G, 1); }, 180000);
 
         window.ItemHunger = { describeItem, guessCommand, hungerTick, eatFood, findCarriedItem, NEW_ITEMS, SLOTS };
         console.log('v30 hunger, real gear slots, thorium spear, silver arrows, fuzzy commands');
