@@ -294,15 +294,54 @@
             G.processCommand(dir);
         },
         notifications() {
-            // Open notifications panel (trade requests, gifts, combat group invites, friend requests)
-            const panel = $('notifications-panel');
-            if (panel) {
-                panel.classList.remove('hidden');
-                speak('Notifications opened. Check trade requests, gifts, combat group invites, and friend requests.');
-                G.refreshNotifications?.();
+            // Open notifications as a navigable menu (like inventory)
+            const choices = [];
+            
+            // Get pending notifications from game state
+            const notifications = G.state.notifications || [];
+            
+            if (notifications.length === 0) {
+                choices.push(option('No notifications', () => speak('No new notifications.')));
             } else {
-                speak('Notifications panel is loading.');
+                notifications.forEach((notif, i) => {
+                    if (notif.type === 'trade') {
+                        choices.push(option(`Trade request from ${notif.from}`, () => {
+                            this.open('Trade request', [
+                                option('Accept trade', command(`accept trade ${notif.id}`)),
+                                option('Decline trade', command(`decline trade ${notif.id}`)),
+                                option('Back to notifications', () => this.notifications())
+                            ]);
+                        }));
+                    } else if (notif.type === 'friend') {
+                        choices.push(option(`Friend request from ${notif.from}`, () => {
+                            this.open('Friend request', [
+                                option('Accept friend request', command(`accept friend ${notif.from}`)),
+                                option('Decline friend request', command(`decline friend ${notif.from}`)),
+                                option('Back to notifications', () => this.notifications())
+                            ]);
+                        }));
+                    } else if (notif.type === 'gift') {
+                        choices.push(option(`Gift from ${notif.from}: ${notif.item}`, () => {
+                            this.open('Gift received', [
+                                option('Accept gift', command(`accept gift ${notif.id}`)),
+                                option('Decline gift', command(`decline gift ${notif.id}`)),
+                                option('Back to notifications', () => this.notifications())
+                            ]);
+                        }));
+                    } else if (notif.type === 'combat_invite') {
+                        choices.push(option(`Combat invite from ${notif.from}`, () => {
+                            this.open('Combat invitation', [
+                                option('Join combat group', command(`join group ${notif.groupId}`)),
+                                option('Decline invite', command(`decline invite ${notif.id}`)),
+                                option('Back to notifications', () => this.notifications())
+                            ]);
+                        }));
+                    }
+                });
             }
+            
+            choices.push(option('Refresh notifications', () => { G.refreshNotifications?.(); this.notifications(); }));
+            this.open('Notifications', choices);
         },
         voiceCommands() {
             // Open voice command panel
@@ -317,15 +356,48 @@
             }
         },
         hub() {
-            // Open social hub (combat groups, trades, gifts, friends, chat rooms)
-            const panel = $('hub-panel');
-            if (panel) {
-                panel.classList.remove('hidden');
-                speak('Social hub opened. Create or manage combat groups, send trades and gifts, friend requests, and chat rooms.');
-                G.refreshHub?.();
-            } else {
-                speak('Social hub is loading.');
-            }
+            // Open social hub as a navigable menu (like inventory)
+            const choices = [
+                option('Send trade request', () => {
+                    const players = G.getOnlinePlayers?.() || [];
+                    if (players.length === 0) {
+                        speak('No other players online.');
+                        this.hub();
+                    } else {
+                        this.open('Send trade to', players.map(p => option(p.name, command(`trade ${p.name}`))).concat([
+                            option('Back to hub', () => this.hub())
+                        ]));
+                    }
+                }),
+                option('Send gift', () => {
+                    const players = G.getOnlinePlayers?.() || [];
+                    if (players.length === 0) {
+                        speak('No other players online.');
+                        this.hub();
+                    } else {
+                        this.open('Send gift to', players.map(p => option(p.name, command(`gift ${p.name}`))).concat([
+                            option('Back to hub', () => this.hub())
+                        ]));
+                    }
+                }),
+                option('Send friend request', () => {
+                    const players = G.getOnlinePlayers?.() || [];
+                    if (players.length === 0) {
+                        speak('No other players online.');
+                        this.hub();
+                    } else {
+                        this.open('Send friend request to', players.map(p => option(p.name, command(`friend ${p.name}`))).concat([
+                            option('Back to hub', () => this.hub())
+                        ]));
+                    }
+                }),
+                option('View friends list', command('friends list')),
+                option('Create combat group', command('create group')),
+                option('View combat groups', command('list groups')),
+                option('Join combat group', command('join group')),
+                option('Open chat room', command('chat'))
+            ];
+            this.open('Social hub', choices);
         },
         context() {
             if (!G.state.player || G.state.screen !== 'game-screen') return this.controls();
