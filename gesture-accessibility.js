@@ -537,7 +537,15 @@
             pad.addEventListener('lostpointercapture', e => { if (this.points.has(e.pointerId)) this.reset(); });
             pad.addEventListener('contextmenu', e => e.preventDefault());
             window.addEventListener('blur', () => this.reset()); window.addEventListener('pagehide', () => this.reset());
-            document.addEventListener('visibilitychange', () => { if (document.hidden) this.reset(); });
+            document.addEventListener('visibilitychange', () => { 
+                if (document.hidden) {
+                    this.reset(); 
+                } else if (UI.active() && settings.narration) {
+                    // Resume voice after TalkBack toggle or page visibility change
+                    A.resumeVoice();
+                    speak('Game resumed.', false, 'system');
+                }
+            });
         }
     };
 

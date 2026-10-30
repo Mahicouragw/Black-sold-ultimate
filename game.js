@@ -2960,9 +2960,11 @@ const Game = {
         if (this.state.inventory.length === 0) {
             list.innerHTML = '<p class="system">Your inventory is empty.</p>';
             this.addNarrative('Your bag is empty.', 'system');
+            window.AudioManager?.playVoice?.('Inventory opened. Your bag is empty.', { channel: 'system' });
         } else {
             const spoken = this.state.inventory.map(i => `${i.name} times ${i.quantity}`).join('; ');
             this.addNarrative(`In your bag: ${spoken}.`, 'item');
+            window.AudioManager?.playVoice?.(`Inventory opened. In your bag: ${spoken}.`, { channel: 'system' });
             this.state.inventory.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'inv-item';
@@ -3039,6 +3041,10 @@ const Game = {
         `;
 
         panel.classList.remove('hidden');
+        
+        // Speak stats for screen readers and gesture mode
+        const speechText = `Character stats. ${p.name}, level ${p.level} ${p.race} ${p.class}. HP ${p.hp} of ${p.maxHp}. MP ${p.mp} of ${p.maxMp}. Strength ${p.str}${weaponStr > 0 ? ` plus ${weaponStr} from weapon` : ''}. Dexterity ${p.dex}. Intelligence ${p.int}. Wisdom ${p.wis}. ${p.weapon}. ${p.armor || 'No armor'}. Gold ${p.gold}.`;
+        window.AudioManager?.playVoice?.(speechText, { channel: 'system' });
     },
 
     showMap() {
@@ -3119,6 +3125,9 @@ const Game = {
         }
         text += `\n💡 Type "cast [spell name]" to cast. Type "alohomora" to unlock doors.`;
         this.addNarrative(text, 'magic');
+        // Speak spell book for accessibility
+        const knownSpells = spells.join(', ') || 'None';
+        window.AudioManager?.playVoice?.(`Spell book opened. Mana ${mana} of ${maxMana}. Spells you know: ${knownSpells}.`, { channel: 'magic' });
         // Also add alohomora to spell list if mage/paladin
         if (!spells.some(s => s.toLowerCase().includes('alohomora')) && ['mage', 'paladin', 'druid', 'monk'].includes(p.class?.toLowerCase())) {
             spells.push('Alohomora');

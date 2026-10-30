@@ -220,7 +220,14 @@ class AudioManagerController {
 
     clamp(value) { return Math.max(0, Math.min(1, Number(value) || 0)); }
 
-    isDocumentHidden() { return typeof document === 'undefined' || !document || document.hidden; }
+    isDocumentHidden() { 
+        // Don't block speech when TalkBack or other screen readers are active.
+        // Only block when document is truly hidden (page in background tab).
+        if (typeof document === 'undefined' || !document) return true;
+        // Check if we're in a background tab (not just TalkBack active)
+        if (document.hidden && document.visibilityState === 'hidden') return true;
+        return false;
+    }
 
     loadSettings() {
         try {
