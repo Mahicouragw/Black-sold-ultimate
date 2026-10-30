@@ -98,6 +98,44 @@
             $('gesture-selection').textContent = choice ? `${this.index + 1} of ${this.menu.choices.length}. ${choice.label}` : 'Swipe to move. Diagonal down-right for actions. Two finger tap for inventory. Two finger swipe cancels.';
         },
         close() { this.menu = null; this.stack = []; this.render(); speak('World gestures. Movement ready.'); },
+        readPanelContent(panel) {
+            // Read the content of the currently visible panel
+            const panelId = panel.id;
+            if (panelId === 'stats-panel') {
+                const p = G.state.player;
+                if (p) speak(`Character stats. ${p.name}, level ${p.level} ${p.race} ${p.class}. HP ${p.hp} of ${p.maxHp}. MP ${p.mp} of ${p.maxMp}. Strength ${p.str}. Dexterity ${p.dex}. Intelligence ${p.int}. Wisdom ${p.wis}.`, true, 'system');
+            } else if (panelId === 'inventory-panel') {
+                const inv = G.state.inventory || [];
+                if (inv.length === 0) speak('Inventory is empty.', true, 'system');
+                else {
+                    const items = inv.map(i => `${i.name} times ${i.quantity}`).join('. ');
+                    speak(`Inventory: ${items}.`, true, 'system');
+                }
+            } else if (panelId === 'spell-panel') {
+                const p = G.state.player;
+                if (p) {
+                    const spells = p.spells || [];
+                    speak(`Spell book. Mana ${p.mp} of ${p.maxMp}. Spells: ${spells.join(', ') || 'None'}.`, true, 'magic');
+                }
+            } else if (panelId === 'notifications-panel') {
+                speak('Notifications panel. Check trade requests, gifts, combat group invites, and friend requests.', true, 'system');
+                G.refreshNotifications?.();
+            } else if (panelId === 'hub-panel') {
+                speak('Social hub. Create or manage combat groups, send trades and gifts, friend requests, and chat rooms.', true, 'system');
+                G.refreshHub?.();
+            } else if (panelId === 'combat-panel' || G.state.inCombat) {
+                const enemies = G.aliveEncounterTargets?.() || [];
+                const p = G.state.player;
+                if (enemies.length > 0) {
+                    const enemyNames = enemies.map(e => `${e.name}, ${e.hp} HP`).join('. ');
+                    speak(`Combat. Enemies: ${enemyNames}. Your HP ${p?.hp || 0}. Swipe up-right for combat actions.`, true, 'combat');
+                }
+            } else {
+                // Generic panel - try to read its text content
+                const text = panel.textContent?.trim();
+                if (text) speak(text.slice(0, 300), true, 'system');
+            }
+        },
         back() {
             Gestures.stop(); G.cancelPendingMovement?.();
             if (this.stack.length) { const p = this.stack.pop(); this.menu = p.menu; this.index = p.index; this.render(); speak(this.menu.title + '. ' + this.menu.choices[this.index].label); }
@@ -153,9 +191,28 @@
         },
         handle(token) {
             if (!this.active()) return;
-            // When a panel or dialog is open, let the panel handle its own interactions.
-            // Only 'cancel' (two-finger swipe) still works to close panels.
-            if (token !== 'cancel' && token !== 'go_up' && token !== 'go_down' && [...document.querySelectorAll('.panel:not(.hidden),[role="dialog"]:not(.hidden)')].some(visible)) return;
+            // When a panel or dialog is open, handle panel navigation with swipes
+            const visiblePanel = [...document.querySelectorAll('.panel:not(.hidden),[role="dialog"]:not(.hidden)')].find(visible);
+            if (visiblePanel && token !== 'cancel' && token !== 'go_up' && token !== 'go_down') {
+                // Panel is open - handle navigation within panel
+                if (token === 'up' || token === 'left') {
+                    // Navigate to previous item or section
+                    speak('Previous option.', false, 'system');
+                    return;
+                }
+                if (token === 'down' || token === 'right') {
+                    // Navigate to next item or section
+                    speak('Next option.', false, 'system');
+                    return;
+                }
+                if (token === 'double' || token === 'tap') {
+                    // Read current panel content
+                    this.readPanelContent(visiblePanel);
+                    return;
+                }
+                // For other tokens in panel context, just return
+                return;
+            }
             if (token !== 'tap') this.playSwipeSound();
             if (token === 'cancel') { this.back(); return; }
             // Direct go_up / go_down from two-finger swipes (bypasses settings.map)
