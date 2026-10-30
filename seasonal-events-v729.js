@@ -141,6 +141,18 @@
         if (!hall) return;
         if (!/cemetery/i.test(String(locId || game.state.location || ''))) return;
         const st = seasonalState(game).halloween || {};
+        
+        // Halloween voice narration
+        if (window.HalloweenNarration) {
+            if (hall.climax && !st.narratedClimax) {
+                window.HalloweenNarration.narrateClimaxIntro();
+                st.narratedClimax = true;
+            } else if (!hall.climax && !st.narratedIntro) {
+                window.HalloweenNarration.narrateEnterCemetery();
+                st.narratedIntro = true;
+            }
+        }
+        
         game.addNarrative?.(hall.climax
             ? 'The cemetery is loud with unseen steps. Do not look. Listen for the last bell.'
             : 'October fog hangs in the cemetery. Lantern fragments only fall here.', 'system');
@@ -155,8 +167,20 @@
         const st = seasonalState(game);
         st.halloween = st.halloween || {};
         st.halloween.kills = (st.halloween.kills || 0) + 1;
+        
+        // Halloween voice narration for kills
+        if (window.HalloweenNarration) {
+            window.HalloweenNarration.narrateKill(hall.climax, st.halloween.kills);
+        }
+        
         if (!hall.climax && Math.random() < 0.35) {
             st.halloween.lanterns = (st.halloween.lanterns || 0) + 1;
+            
+            // Narrate fragment collection
+            if (window.HalloweenNarration) {
+                window.HalloweenNarration.narrateFragmentCollected();
+            }
+            
             game.addNarrative?.('A lantern fragment rings once, then goes dark. You keep it without naming it.', 'treasure');
         }
         if (hall.climax && st.halloween.kills >= 8 && !st.halloween.completedYear) {
@@ -166,6 +190,12 @@
                 p.xp = (p.xp || 0) + 420;
             }
             st.halloween.completedYear = parts(new Date()).y;
+            
+            // Narrate victory
+            if (window.HalloweenNarration) {
+                window.HalloweenNarration.narrateVictory();
+            }
+            
             game.addNarrative?.('The last bell falls silent. The procession has passed. You kept the year.', 'treasure');
             game.save?.();
         }
@@ -176,6 +206,12 @@
         if (!hall?.climax) return false;
         if (!/cemetery/i.test(String(game.state.location || ''))) return false;
         if (!/^(look|examine|inspect|see)\b/i.test(String(raw || '').trim())) return false;
+        
+        // Narrate refusal to look
+        if (window.HalloweenNarration) {
+            window.HalloweenNarration.narrateRefuseLook();
+        }
+        
         game.addNarrative?.('The lantern blinds the living eye. Listen. Do not look.', 'system');
         return true;
     }
