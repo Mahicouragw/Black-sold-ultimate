@@ -99,41 +99,65 @@
         },
         close() { this.menu = null; this.stack = []; this.render(); speak('World gestures. Movement ready.'); },
         readPanelContent(panel) {
-            // Read the content of the currently visible panel
+            // Read the available actions/options in the currently visible panel
             const panelId = panel.id;
+            
+            // Get all buttons/links in the panel and read their text
+            const buttons = panel.querySelectorAll('button:not([style*="display: none"]):not([style*="display:none"])');
+            const options = [];
+            buttons.forEach(btn => {
+                const text = btn.textContent?.trim();
+                if (text && !text.includes('Sell') && !text.includes('Details') && !text.includes('Examine')) {
+                    options.push(text);
+                }
+            });
+            
             if (panelId === 'stats-panel') {
                 const p = G.state.player;
-                if (p) speak(`Character stats. ${p.name}, level ${p.level} ${p.race} ${p.class}. HP ${p.hp} of ${p.maxHp}. MP ${p.mp} of ${p.maxMp}. Strength ${p.str}. Dexterity ${p.dex}. Intelligence ${p.int}. Wisdom ${p.wis}.`, true, 'system');
+                if (p) speak(`Stats panel. ${p.name}, level ${p.level}. Swipe left to close, swipe right to return to game.`, true, 'system');
             } else if (panelId === 'inventory-panel') {
                 const inv = G.state.inventory || [];
-                if (inv.length === 0) speak('Inventory is empty.', true, 'system');
-                else {
-                    const items = inv.map(i => `${i.name} times ${i.quantity}`).join('. ');
-                    speak(`Inventory: ${items}.`, true, 'system');
+                if (inv.length === 0) {
+                    speak('Inventory empty. Swipe left to close.', true, 'system');
+                } else {
+                    const items = inv.slice(0, 5).map(i => i.name).join(', ');
+                    speak(`Inventory: ${items}${inv.length > 5 ? ` and ${inv.length - 5} more` : ''}. Swipe left to close.`, true, 'system');
                 }
             } else if (panelId === 'spell-panel') {
                 const p = G.state.player;
                 if (p) {
                     const spells = p.spells || [];
-                    speak(`Spell book. Mana ${p.mp} of ${p.maxMp}. Spells: ${spells.join(', ') || 'None'}.`, true, 'magic');
+                    speak(`Spells: ${spells.join(', ') || 'none'}. Swipe left to close.`, true, 'magic');
                 }
             } else if (panelId === 'notifications-panel') {
-                speak('Notifications panel. Check trade requests, gifts, combat group invites, and friend requests.', true, 'system');
-                G.refreshNotifications?.();
+                if (options.length > 0) {
+                    speak(`Notifications: ${options.join('. ')}. Swipe left to close.`, true, 'system');
+                } else {
+                    speak('No notifications. Swipe left to close.', true, 'system');
+                }
             } else if (panelId === 'hub-panel') {
-                speak('Social hub. Create or manage combat groups, send trades and gifts, friend requests, and chat rooms.', true, 'system');
-                G.refreshHub?.();
+                if (options.length > 0) {
+                    speak(`Social hub: ${options.join('. ')}. Swipe left to close.`, true, 'system');
+                } else {
+                    speak('Social hub. Swipe left to close.', true, 'system');
+                }
             } else if (panelId === 'combat-panel' || G.state.inCombat) {
                 const enemies = G.aliveEncounterTargets?.() || [];
                 const p = G.state.player;
                 if (enemies.length > 0) {
-                    const enemyNames = enemies.map(e => `${e.name}, ${e.hp} HP`).join('. ');
-                    speak(`Combat. Enemies: ${enemyNames}. Your HP ${p?.hp || 0}. Swipe up-right for combat actions.`, true, 'combat');
+                    const enemyNames = enemies.map(e => e.name).join(', ');
+                    speak(`Enemies: ${enemyNames}. Your HP ${p?.hp || 0}. Swipe up-right for combat actions: attack, defend, flee.`, true, 'combat');
                 }
             } else {
-                // Generic panel - try to read its text content
-                const text = panel.textContent?.trim();
-                if (text) speak(text.slice(0, 300), true, 'system');
+                // Generic panel - read the buttons/options
+                if (options.length > 0) {
+                    speak(`Options: ${options.join('. ')}. Swipe left to close.`, true, 'system');
+                } else {
+                    // Try to read any text content
+                    const text = panel.querySelector('.panel-body, .content, p')?.textContent?.trim();
+                    if (text) speak(text.slice(0, 200) + '. Swipe left to close.', true, 'system');
+                    else speak('Panel open. Swipe left to close, swipe right to return to game.', true, 'system');
+                }
             }
         },
         back() {
@@ -195,14 +219,21 @@
             const visiblePanel = [...document.querySelectorAll('.panel:not(.hidden),[role="dialog"]:not(.hidden)')].find(visible);
             if (visiblePanel && token !== 'cancel' && token !== 'go_up' && token !== 'go_down') {
                 // Panel is open - handle navigation within panel
-                if (token === 'up' || token === 'left') {
-                    // Navigate to previous item or section
-                    speak('Previous option.', false, 'system');
+                if (token === 'left') {
+                    // Close panel / go back
+                    visiblePanel.classList.add('hidden');
+                    speak('Panel closed. Return to game.', false, 'system');
                     return;
                 }
-                if (token === 'down' || token === 'right') {
-                    // Navigate to next item or section
-                    speak('Next option.', false, 'system');
+                if (token === 'right') {
+                    // Return to game controls
+                    visiblePanel.classList.add('hidden');
+                    speak('Return to game controls.', false, 'system');
+                    return;
+                }
+                if (token === 'up' || token === 'down') {
+                    // Read the panel's available actions/options
+                    this.readPanelContent(visiblePanel);
                     return;
                 }
                 if (token === 'double' || token === 'tap') {
@@ -339,6 +370,36 @@
             const e = G.state.enemy;
             // Encounters are co-located entities, not a spatial arena. Never fabricate bearings.
             return `${G.battleStatusText?.() || ''} ${e ? `${e.name} is in your current location. Enemy compass position is not supplied by this game.` : 'The next enemy may be advancing.'}`;
+        },
+        combatActions() {
+            // Auto-open combat actions menu when battle starts
+            if (!G.state.inCombat || !G.state.enemy) return;
+            const e = G.state.enemy;
+            const p = G.state.player;
+            const targets = G.aliveEncounterTargets?.() || [];
+            const choices = [
+                option('Attack ' + e.name, command('attack')),
+                option('Defend', command('defend')),
+                option('Flee', command('flee'))
+            ];
+            // Add spells if player has mana
+            if (p.mp >= 15) {
+                const combatSpells = (p.spells || []).filter(s => 
+                    ['power strike', 'multi strike', 'fireball', 'ice storm', 'lightning bolt', 
+                     'backstab', 'battle cry', 'hammer smite', 'piercing volley', 'chi burst', 'thorn storm']
+                    .some(cs => s.toLowerCase().includes(cs))
+                );
+                combatSpells.slice(0, 3).forEach(spell => {
+                    choices.push(option('Cast ' + spell, command('cast ' + spell)));
+                });
+            }
+            // Add healing if wounded
+            if (p.hp < p.maxHp && p.mp >= 14) {
+                choices.push(option('Heal yourself', command('cast minor heal')));
+            }
+            // Add inventory option
+            choices.push(option('Use item from inventory', () => this.inventory()));
+            this.open('Combat actions', choices);
         },
         inventory() {
             if (!G.state.player) return this.controls();
@@ -622,7 +683,7 @@
     const oldMove = G.move;
     G.move = function(dir) { if (this.state.player?.gesturePosture) { speak('Stand up before walking.'); return; } return oldMove.call(this, dir); };
     const oldStart = G.startCombat;
-    G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); UI.render(); if (settings.narration) speak(UI.combatDescription()); return r; };
+    G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); UI.render(); if (settings.narration) { speak(UI.combatDescription()); setTimeout(() => UI.combatActions(), 1500); } return r; };
     const oldHUD = G.updateHUD;
     G.updateHUD = function(...args) { const r = oldHUD.apply(this, args), p = this.state.player; const low = p && p.hp > 0 && p.hp <= p.maxHp * .25; if (low && !UI.lowHealth) speak('Your health is low. Open inventory for healing items or up-right for known healing magic.', true); UI.lowHealth = low; return r; };
     const oldCommand = G.processCommand;
