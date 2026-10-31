@@ -245,7 +245,9 @@ const WorldData = {
         forest_path_23: { name: "Rocky Outcrop", description: "Rocky ground here.", exits: { east: "forest_path_18" }, features: ["forest"], enemies: ["mountain lion"], safe: false },
         forest_path_24: { name: "Wildflower Field", description: "Colorful wildflowers bloom.", exits: { west: "forest_path_6" }, features: ["forest"], enemies: [], safe: true },
         forest_path_25: { name: "Dark Canopy", description: "The canopy blocks all light.", exits: { west: "forest_path_7" }, features: ["forest"], enemies: ["wraith"], safe: false }
-    }
+    },
+    items: {},
+    enemies: {}
 };
 
 window.WorldData = WorldData;
