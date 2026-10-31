@@ -462,8 +462,17 @@
             };
         }
 
+        // Add missing critical items
+        W.items['healing potion'] = { name: 'healing potion', type: 'consumable', effect: 'heal', power: 50, value: 25 };
+        W.items['iron sword'] = { name: 'iron sword', type: 'weapon', damage: 14, value: 50 };
+        W.items['leather armor'] = { name: 'leather armor', type: 'armor', defense: 4, value: 40 };
+
+        // Add quests
+        W.quests = [{ id: 'first_quest', name: 'First Steps', description: 'Explore the city and learn the controls.' }];
+
         console.log('World completely rebuilt with proper connections, fishing, NPCs, caves, tunnels');
     };
 
     buildWorld();
 })();
+
