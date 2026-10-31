@@ -14,13 +14,13 @@ const Game = {
         players: [],
         currentPlayer: 0,
         isMultiplayer: false,
-        location: 'kaliwasch',
+        location: 'market_square',
         inCombat: false,
         enemy: null,
         inventory: [],
         quests: [],
         completedQuests: [],
-        visited: ['kaliwasch'],
+        visited: ['market_square'],
         kills: 0,
         slainEnemies: {},
         musicEnabled: true,
@@ -148,7 +148,7 @@ const Game = {
             players: [],
             currentPlayer: 0,
             isMultiplayer: false,
-            location: 'kaliwasch',
+            location: 'market_square',
             inCombat: false,
             enemy: null,
             encounterTargets: [],
@@ -162,7 +162,7 @@ const Game = {
             inventory: [],
             quests: [],
             completedQuests: [],
-            visited: ['kaliwasch'],
+            visited: ['market_square'],
             kills: 0,
             slainEnemies: {},
             defending: false,
@@ -290,8 +290,8 @@ const Game = {
         // Initialize quests
         this.state.quests = WorldData.quests ? [WorldData.quests[0]] : [];
 
-        this.state.location = 'kaliwasch';
-        this.state.visited = ['kaliwasch'];
+        this.state.location = 'market_square';
+        this.state.visited = ['market_square'];
         this.state.kills = 0;
         this.state.companions = [];
         this.state.combatGroup = [];
@@ -305,7 +305,7 @@ const Game = {
 
         // Start the game
         this.showScreen('game-screen');
-        this.enterLocation('kaliwasch');
+        this.enterLocation('market_square');
         this.look();
         this.save();
 
@@ -999,8 +999,8 @@ const Game = {
             // For now, just use single player with multiplayer label
         }
 
-        this.state.location = 'kaliwasch';
-        this.state.visited = ['kaliwasch'];
+        this.state.location = 'market_square';
+        this.state.visited = ['market_square'];
         this.state.kills = 0;
         this.state.friends = [];
         this.state.friendRequests = [
@@ -1017,7 +1017,7 @@ const Game = {
         this.state.pendingHeroId = null;
 
         this.showScreen('game-screen');
-        this.enterLocation('kaliwasch');
+        this.enterLocation('market_square');
         this.look(); // Show initial location description on game start
         this.save();
         window.OnlineSystem?.syncActiveHero();
@@ -3373,7 +3373,7 @@ const Game = {
         localStorage.setItem(this.state.saveKey, JSON.stringify(data));
         this.state.player = data.player;
         this.state.inventory = Array.isArray(data.inventory) ? data.inventory : [];
-        this.state.location = data.location || 'kaliwasch';
+        this.state.location = data.location || 'market_square';
         this.state.visited = Array.isArray(data.visited) ? data.visited : [this.state.location];
         this.state.quests = Array.isArray(data.quests) ? data.quests : [];
         this.state.completedQuests = Array.isArray(data.completedQuests) ? data.completedQuests : [];
