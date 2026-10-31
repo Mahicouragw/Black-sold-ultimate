@@ -444,11 +444,26 @@
             return `${G.battleStatusText?.() || ''} ${e ? `${e.name} is in your current location. Enemy compass position is not supplied by this game.` : 'The next enemy may be advancing.'}`;
         },
         combatActions() {
-            // Auto-open combat actions menu when battle starts
+            // Open combat actions menu - stays open until user closes it
             if (!G.state.inCombat || !G.state.enemy) return;
             const e = G.state.enemy;
             const p = G.state.player;
-            const targets = G.aliveEncounterTargets?.() || [];
+            const enemies = G.aliveEncounterTargets?.() || [];
+            
+            // First, read current status
+            let statusText = '';
+            if (enemies.length > 1) {
+                statusText = `${enemies.length} enemies. `;
+                enemies.forEach((enemy, i) => {
+                    statusText += `${enemy.name}: ${enemy.hp} HP. `;
+                });
+            } else {
+                statusText = `${e.name}: ${e.hp} of ${e.maxHp} HP. `;
+            }
+            statusText += `Your HP: ${p?.hp || 0} of ${p?.maxHp || 0}. Mana: ${p?.mp || 0}.`;
+            speak(statusText, true, 'combat');
+            
+            // Then open menu with actions
             const choices = [
                 option('Attack ' + e.name, command('attack')),
                 option('Defend', command('defend')),
@@ -471,7 +486,8 @@
             }
             // Add inventory option
             choices.push(option('Use item from inventory', () => this.inventory()));
-            this.open('Combat actions', choices);
+            choices.push(option('Repeat combat status', () => this.combatActions()));
+            this.open('Combat actions - swipe up/down to browse, double-tap to choose', choices);
         },
         inventory() {
             if (!G.state.player) return this.controls();
@@ -755,7 +771,24 @@
     const oldMove = G.move;
     G.move = function(dir) { if (this.state.player?.gesturePosture) { speak('Stand up before walking.'); return; } return oldMove.call(this, dir); };
     const oldStart = G.startCombat;
-    G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); UI.render(); if (settings.narration) { speak(UI.combatDescription()); setTimeout(() => UI.combatActions(), 1500); } return r; };
+    G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); UI.render(); if (settings.narration) { 
+        // Read combat status clearly - monster count, HP, etc.
+        const enemies = G.aliveEncounterTargets?.() || [];
+        const e = this.state.enemy;
+        const p = this.state.player;
+        let statusText = '';
+        if (enemies.length > 1) {
+            statusText = `Combat begins! You face ${enemies.length} enemies. `;
+            enemies.forEach((enemy, i) => {
+                statusText += `Enemy ${i+1}: ${enemy.name}, ${enemy.hp} HP. `;
+            });
+        } else if (e) {
+            statusText = `Combat begins! You face ${e.name} with ${e.hp} HP. `;
+        }
+        statusText += `Your HP: ${p?.hp || 0} of ${p?.maxHp || 0}. Mana: ${p?.mp || 0}. `;
+        statusText += `Swipe diagonal up-right or say "combat actions" to see your options. Menu stays open until you close it.`;
+        speak(statusText, true, 'combat');
+    } return r; };
     const oldHUD = G.updateHUD;
     G.updateHUD = function(...args) { const r = oldHUD.apply(this, args), p = this.state.player; const low = p && p.hp > 0 && p.hp <= p.maxHp * .25; if (low && !UI.lowHealth) speak('Your health is low. Open inventory for healing items or up-right for known healing magic.', true); UI.lowHealth = low; return r; };
     const oldCommand = G.processCommand;
