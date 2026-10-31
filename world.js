@@ -1,349 +1,268 @@
 /**
  * The Black Sword Chronicles - Ultimate World Data
- * Inspired by Narkuma's "The Black Sword" on Alexa
+ * Black Sword Alexa Style - Proper city with market square, gates, interconnected locations
  */
 
 const WorldData = {
-    // Main locations
     locations: {
-        kaliwasch: {
-            name: "Kaliwasch City",
-            description: "The grand city of Kaliwasch stands before you. Cobblestone streets wind between ancient stone buildings. Merchants hawk their wares, adventurers share tales at the tavern, and the temple bells ring in the distance. This is the heart of the realm.",
-            exits: { north: "mountains", south: "swamp", east: "ruins", west: "forest" },
-            features: ["marketplace", "tavern", "temple", "blacksmith", "guild hall", " inn"],
-            items: ["gold coin", "bread"],
+        // ===== KALIWASCH CITY - CENTER: MARKET SQUARE =====
+        market_square: {
+            name: "Market Square",
+            description: "The bustling heart of Kaliwasch. Merchants shout, customers browse. Streets lead in all directions.",
+            exits: { north: "market_north", south: "market_south", east: "tavern", west: "provisions_shop" },
+            features: ["marketplace", "city center"],
+            items: [],
             enemies: [],
             safe: true,
-            music: "city"
+            music: "town"
         },
 
-        mountains: {
-            name: "Northern Mountains",
-            description: "Jagged peaks rise sharply into the clouds. The air is thin and cold. Ancient ruins are carved into the cliffsides, remnants of a forgotten civilization. Eagles soar overhead.",
-            exits: { south: "kaliwasch", north: "shrine", east: "eagle_peak" },
-            features: ["cave entrance", "ancient shrine", "eagle nest", "mountain pass"],
-            items: ["mountain flower", "iron ore", "eagle feather"],
-            enemies: ["mountain lion", "ice troll", "giant eagle"],
-            music: "wilderness"
+        market_north: {
+            name: "North Market",
+            description: "More stalls and merchants. The North Gate and Guild Hall are ahead.",
+            exits: { north: "north_gate", south: "market_square", east: "guild_hall", west: "temple" },
+            features: ["market", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        shrine: {
-            name: "Ancient Shrine",
-            description: "An ancient shrine dedicated to the old gods stands here. Mystical symbols glow faintly on the stone altar. This is a place of power.",
-            exits: { south: "mountains", east: "eagle_peak" },
-            features: ["altar", "glowing runes", "offering bowl"],
-            items: ["blessed amulet", "ancient scroll"],
-            enemies: ["stone guardian"],
-            music: "dungeon"
+        market_south: {
+            name: "South Market",
+            description: "Southern bazaars. The South Gate lies ahead.",
+            exits: { north: "market_square", south: "south_gate", east: "house_1", west: "house_2" },
+            features: ["market", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        eagle_peak: {
-            name: "Eagle Peak",
-            description: "The highest point in the mountains. From here, you can see the entire realm spread out below. A massive eagle's nest sits atop the peak.",
-            exits: { west: "mountains", south: "shrine" },
-            features: ["eagle's nest", "panoramic view"],
-            items: ["golden egg", "sky feather"],
-            enemies: ["mega eagle"],
-            boss: true,
-            music: "wilderness"
+        north_gate: {
+            name: "North Gate",
+            description: "The northern entrance to Kaliwasch. Beyond lies the forest.",
+            exits: { south: "market_north", north: "forest_edge_1" },
+            features: ["gate", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        forest: {
-            name: "West Forest",
-            description: "Dense woodland surrounds you. Ancient oaks tower overhead, their branches blocking the sunlight. Sunbeams filter through the leaves. You hear birds singing and small creatures rustling in the underbrush.",
-            exits: { east: "kaliwasch", north: "mountains", south: "swamp" },
-            features: ["abandoned cabin", "crystal stream", "ancient oak", "fairy circle"],
-            items: ["herbs", "wooden staff", "acorn", "fairy dust"],
-            enemies: ["wolf", "goblin scout", "forest spider"],
-            music: "forest"
+        south_gate: {
+            name: "South Gate",
+            description: "The southern gate. The forest stretches beyond.",
+            exits: { north: "market_south", south: "forest_edge_1" },
+            features: ["gate", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        ruins: {
-            name: "Eastern Ruins",
-            description: "Crumbling stone structures hint at a civilization that flourished here centuries ago. Mysterious symbols cover the weathered walls. The air feels heavy with ancient magic.",
-            exits: { west: "kaliwasch", north: "mountains", south: "swamp" },
-            features: ["temple ruins", "hidden chest", "altar of wisdom", "broken columns"],
-            items: ["ancient scroll", "golden amulet", "ruby gem", "mystic orb"],
-            enemies: ["skeleton warrior", "undead mage", "ghost knight"],
-            music: "dungeon"
+        east_gate: {
+            name: "East Gate",
+            description: "Eastern entrance. Forest paths await.",
+            exits: { west: "tavern", east: "forest_edge_1" },
+            features: ["gate", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        swamp: {
-            name: "Southern Swamp",
-            description: "Murky waters and gnarled trees create an eerie atmosphere. Will-o'-wisps dance above the dark water. Fireflies illuminate the fog. Strange sounds echo from the depths.",
-            exits: { north: "kaliwasch", south: "dungeon_entrance", east: "witch_hut", west: "goblin_camp" },
-            features: ["abandoned hut", "poison pool", "winding path", "dead tree"],
-            items: ["swamp herb", "old map", "will-o-wisp light", "bog water"],
-            enemies: ["giant frog", "swamp witch", "crocodile"],
-            music: "dungeon"
+        west_gate: {
+            name: "West Gate",
+            description: "Western gate. The forest begins here.",
+            exits: { east: "provisions_shop", west: "forest_edge_1" },
+            features: ["gate", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        witch_hut: {
-            name: "Witch's Hut",
-            description: "A crooked hut sits on stilts over the swamp. Bottles of strange potions line the shelves. The witch cackles as she stirs her cauldron.",
-            exits: { west: "swamp", north: "kaliwasch", east: "forest" },
-            features: ["potion cauldron", "spell books", "crystal ball", "broomstick"],
-            items: ["healing potion", "mana potion", "poison vial", "spell scroll"],
-            enemies: ["swamp witch"],
-            music: "dungeon"
+        provisions_shop: {
+            name: "Provisions Shop",
+            description: "A well-stocked shop. Weapons, armor, potions for sale.",
+            exits: { east: "market_square", west: "west_gate" },
+            features: ["shop", "city"],
+            shop: "provisions",
+            items: ["health potion", "mana potion", "iron sword", "leather armor"],
+            enemies: [],
+            safe: true
         },
 
-        goblin_camp: {
-            name: "Goblin Camp",
-            description: "A crude camp of goblins. Stolen goods are scattered about. The goblins are cooking something unsavory over a fire.",
-            exits: { east: "swamp", north: "forest", south: "dungeon_entrance" },
-            features: ["goblin tents", "prison cage", "treasure pile", "cooking fire"],
-            items: ["stolen gold", "goblin axe", "rusty key", "goblin ear"],
-            enemies: ["goblin warrior", "goblin shaman", "goblin chief"],
-            boss: true,
-            music: "battle"
+        tavern: {
+            name: "The Rusty Tankard Tavern",
+            description: "A lively tavern. Adventurers share tales over drinks.",
+            exits: { west: "market_square", east: "east_gate" },
+            features: ["tavern", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        dungeon_entrance: {
-            name: "Dungeon Entrance",
-            description: "A massive cave mouth yawns before you, exhaling cold air that carries strange sounds from below. Ancient runes are carved into the stone archway, warning of the dangers within.",
-            exits: { north: "swamp", south: "depths", west: "goblin_camp" },
-            features: ["stone archway", "warning signs", "torch brackets", "skeleton remains"],
-            items: ["torch", "rope", "skeleton key"],
-            enemies: ["goblin guard", "skeleton guard"],
-            music: "dungeon"
+        guild_hall: {
+            name: "Adventurers Guild",
+            description: "Quest board on the wall. Guild masters offer training.",
+            exits: { west: "market_north", up: "guild_training" },
+            features: ["guild", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        depths: {
-            name: "The Depths",
-            description: "Deep underground. The walls glisten with moisture. Strange fungi provide an eerie bioluminescence. This is where the Black Sword awaits...",
-            exits: { north: "dungeon_entrance", south: "dark_hall", east: "shadow_chamber" },
-            features: ["ancient door", "dark altar", "bone pile", "underground lake"],
-            items: ["black sword", "shadow essence", "dark crystal"],
-            enemies: ["dark knight", "shadow demon"],
-            music: "boss"
+        temple: {
+            name: "Temple of Auralis",
+            description: "A sacred place. Healers tend to the wounded.",
+            exits: { east: "market_north", south: "city_cemetery" },
+            features: ["temple", "city"],
+            items: [],
+            enemies: [],
+            safe: true
         },
 
-        dark_hall: {
-            name: "Dark Hall",
-            description: "A vast underground hall stretches before you. Columns of dark stone support the ceiling. Shadows seem to move on their own.",
-            exits: { north: "depths", south: "shadow_chamber", east: "depths" },
-            features: ["dark columns", "shadow throne", "ancient murals"],
-            items: ["shadow cloak", "dark crown"],
-            enemies: ["dark mage", "shadow archer"],
-            music: "boss"
+        city_cemetery: {
+            name: "City Cemetery",
+            description: "Ancient graves. Fog clings to the ground. Halloween spirits stir.",
+            exits: { north: "temple", south: "cemetery_section_2" },
+            features: ["cemetery", "graveyard"],
+            items: [],
+            enemies: ["skeleton", "zombie", "ghost"],
+            safe: false,
+            music: "cemetery"
         },
 
-        shadow_chamber: {
-            name: "Shadow Chamber",
-            description: "A circular chamber filled with living shadows. In the center, a pedestal holds a blade that seems to absorb all light around it.",
-            exits: { west: "depths", north: "dark_hall" },
-            features: ["shadow pedestal", "light-eating darkness"],
-            items: ["THE BLACK SWORD"],
-            enemies: ["shadow lord"],
-            boss: true,
-            finalBoss: true,
-            music: "boss"
-        }
-    },
-
-    // Enemy definitions
-    enemies: {
-        // Common enemies
-        "wolf": { hp: 25, attack: 8, xp: 20, gold: 12, desc: "A snarling gray wolf" },
-        "mountain lion": { hp: 40, attack: 12, xp: 35, gold: 25, desc: "A powerful mountain lion" },
-        "goblin scout": { hp: 20, attack: 6, xp: 15, gold: 10, desc: "A small green goblin" },
-        "goblin guard": { hp: 35, attack: 10, xp: 30, gold: 22, desc: "A goblin warrior" },
-        "goblin warrior": { hp: 50, attack: 14, xp: 45, gold: 35, desc: "A battle-hardened goblin fighter" },
-        "goblin shaman": { hp: 40, attack: 18, xp: 55, gold: 40, desc: "A goblin magic user" },
-        "giant frog": { hp: 30, attack: 9, xp: 25, gold: 18, desc: "A massive swamp frog" },
-        "forest spider": { hp: 35, attack: 11, xp: 30, gold: 20, desc: "A spider with venomous fangs" },
-
-        // Undead
-        "skeleton warrior": { hp: 45, attack: 14, xp: 45, gold: 35, desc: "Rattling bones animated by dark magic" },
-        "dark mage": { hp: 140, attack: 30, xp: 120, gold: 90, desc: "A robed caster wielding corrupted arcane power" },
-        "shadow archer": { hp: 110, attack: 34, xp: 105, gold: 80, desc: "An archer cloaked in living shadow" },
-        "skeleton guard": { hp: 60, attack: 16, xp: 60, gold: 45, desc: "An armored skeleton guardian" },
-        "undead mage": { hp: 35, attack: 20, xp: 50, gold: 40, desc: "A floating robe with burning eyes" },
-        "ghost knight": { hp: 70, attack: 22, xp: 80, gold: 60, desc: "A spectral warrior in ethereal armor" },
-
-        // Elite
-        "ice troll": { hp: 80, attack: 18, xp: 70, gold: 55, desc: "A massive troll made of living ice" },
-        "crocodile": { hp: 90, attack: 20, xp: 75, gold: 50, desc: "An ancient swamp crocodile" },
-        "swamp witch": { hp: 60, attack: 22, xp: 80, gold: 70, desc: "An evil sorceress of the swamp" },
-        "stone guardian": { hp: 100, attack: 25, xp: 100, gold: 80, desc: "A golem of living stone" },
-        "giant eagle": { hp: 80, attack: 20, xp: 85, gold: 60, desc: "A massive eagle with razor talons" },
-        "dark knight": { hp: 120, attack: 25, xp: 150, gold: 120, desc: "A knight corrupted by dark magic" },
-
-        // BOSSES
-        "mega eagle": { hp: 200, attack: 30, xp: 300, gold: 200, boss: true, desc: "The legendary sky king" },
-        "goblin chief": { hp: 250, attack: 28, xp: 350, gold: 300, boss: true, desc: "The leader of all goblins" },
-        "shadow demon": { hp: 300, attack: 35, xp: 400, gold: 350, boss: true, desc: "A demon from the shadow realm" },
-        "shadow lord": { hp: 500, attack: 40, xp: 1000, gold: 1000, boss: true, finalBoss: true, desc: "The master of darkness" }
-    },
-
-    // Item definitions
-    items: {
-        // Currency & valuables
-        "gold coin": { name: "Gold Coin", type: "treasure", value: 10, desc: "A shiny gold coin" },
-        "ruby gem": { name: "Ruby Gem", type: "treasure", value: 100, desc: "A brilliant red gemstone" },
-        "stolen gold": { name: "Stolen Gold", type: "treasure", value: 50, desc: "Gold coins stolen by goblins" },
-
-        // Consumables
-        "bread": { name: "Bread", type: "food", effect: "hunger", satiety: 24, value: 4, desc: "A brown wheat roll from a city baker." },
-        "mountain flower": { name: "Mountain Flower", type: "herb", effect: "heal", value: 25, desc: "A rare flower from high peaks" },
-        "herbs": { name: "Healing Herbs", type: "herb", effect: "heal", value: 20, desc: "Common healing herbs" },
-        "swamp herb": { name: "Swamp Herb", type: "herb", effect: "heal", value: 15, desc: "A medicinal herb from the swamp" },
-        "healing potion": { name: "Healing Potion", type: "potion", effect: "heal", value: 50, desc: "Restores 50 HP" },
-        "mana potion": { name: "Mana Potion", type: "potion", effect: "mana", value: 40, desc: "Restores 40 MP" },
-        "cheese wheel": { name: "Cheese Wheel", type: "food", effect: "heal", value: 22, desc: "Restores 22 HP" },
-        "roast boar": { name: "Roast Boar", type: "food", effect: "heal", value: 45, desc: "A hearty meal restoring 45 HP" },
-        "honey cake": { name: "Honey Cake", type: "food", effect: "hunger", satiety: 20, value: 6, desc: "A small honey cake. Fills hunger only." },
-        "mystic stew": { name: "Mystic Stew", type: "food", effect: "both", value: 50, desc: "Restores 50 HP and MP" },
-
-        // Weapons
-        "rusty sword": { name: "Rusty Sword", type: "weapon", damage: 10, desc: "A worn but dependable sword" },
-        "iron sword": { name: "Iron Sword", type: "weapon", damage: 14, desc: "A balanced iron blade" },
-        "wooden staff": { name: "Wooden Staff", type: "weapon", damage: 5, magic: 5, desc: "A simple wooden magical staff" },
-        "goblin axe": { name: "Goblin Axe", type: "weapon", damage: 12, desc: "A crude but effective goblin weapon" },
-        "oak club": { name: "Oak Club", type: "weapon", weaponType: "blunt", damage: 9, desc: "A sturdy blunt weapon" },
-        "iron mace": { name: "Iron Mace", type: "weapon", weaponType: "blunt", damage: 16, desc: "An iron-headed mace effective against armor" },
-        "war hammer": { name: "War Hammer", type: "weapon", weaponType: "blunt", damage: 23, desc: "A heavy two-handed crushing weapon" },
-        "saint's maul": { name: "Saint's Maul", type: "weapon", weaponType: "blunt", damage: 32, magic: 12, desc: "A holy maul favored by paladins" },
-        "THE BLACK SWORD": { name: "THE BLACK SWORD", type: "weapon", damage: 100, legendary: true, desc: "The legendary sword of ultimate power!" },
-        "flame blade": { name: "Flame Blade", type: "weapon", damage: 28, minDamage: 25, maxDamage: 50, strength: 15, fireDamage: 20, desc: "A sword wreathed in eternal flames" },
-        "frost spear": { name: "Frost Spear", type: "weapon", damage: 25, minDamage: 22, maxDamage: 45, strength: 12, waterDamage: 18, desc: "A spear tipped with frozen ice" },
-        "thunder axe": { name: "Thunder Axe", type: "weapon", damage: 30, minDamage: 26, maxDamage: 55, strength: 18, airDamage: 15, desc: "An axe crackling with lightning" },
-        "earth shatter maul": { name: "Earth Shatter Maul", type: "weapon", damage: 35, minDamage: 30, maxDamage: 60, strength: 20, earthDamage: 22, desc: "A massive maul that shakes the ground" },
-        "diamond edge katana": { name: "Diamond Edge Katana", type: "weapon", damage: 45, minDamage: 40, maxDamage: 70, strength: 25, fireDamage: 10, waterDamage: 10, desc: "A diamond-edged blade — costs 5 diamonds to purchase", premiumCost: { diamonds: 5 } },
-        "ruby heart bow": { name: "Ruby Heart Bow", type: "weapon", damage: 40, minDamage: 35, maxDamage: 65, strength: 22, fireDamage: 25, desc: "A bow with a ruby heart — costs 3 rubies to purchase", premiumCost: { rubies: 3 } },
-
-        // Armor & Accessories
-        "leather armor": { name: "Leather Armor", type: "armor", defense: 4, dex: 2, desc: "Light armor that preserves agility" },
-        "chainmail": { name: "Chainmail", type: "armor", defense: 8, desc: "Interlocking metal rings" },
-        "plate armor": { name: "Plate Armor", type: "armor", defense: 14, dex: -2, desc: "Heavy protective plate" },
-        "mage robe": { name: "Mage Robe", type: "armor", defense: 3, int: 4, mp: 20, desc: "Robes woven with arcane thread" },
-        "iron ore": { name: "Iron Ore", type: "material", value: 15, desc: "Raw iron ore for crafting" },
-        "golden amulet": { name: "Golden Amulet", type: "accessory", hp: 20, desc: "A beautiful golden necklace" },
-        "blessed amulet": { name: "Blessed Amulet", type: "accessory", hp: 30, magic: 10, desc: "An amulet blessed by the gods" },
-        "eagle feather": { name: "Eagle Feather", type: "material", value: 20, desc: "A feather from a mountain eagle" },
-        "sky feather": { name: "Sky Feather", type: "material", value: 50, desc: "A magical feather from the heavens" },
-        "fairy dust": { name: "Fairy Dust", type: "material", value: 30, magic: 15, desc: "Sparkling dust from fairies" },
-
-        // Quest Items
-        "ancient scroll": { name: "Ancient Scroll", type: "quest", value: 50, desc: "A scroll with mysterious writing" },
-        "old map": { name: "Old Map", type: "quest", value: 30, desc: "A weathered treasure map" },
-        "acorn": { name: "Acorn", type: "quest", value: 5, desc: "An acorn from the ancient oak" },
-        "rusty key": { name: "Rusty Key", type: "quest", value: 10, desc: "An old key, rusted but functional" },
-        "skeleton key": { name: "Skeleton Key", type: "quest", value: 100, desc: "Opens any lock" },
-        "mystic orb": { name: "Mystic Orb", type: "quest", value: 150, desc: "A glowing orb of unknown power" },
-
-        // Special Items
-        "torch": { name: "Torch", type: "tool", value: 5, desc: "Lights dark areas" },
-        "rope": { name: "Rope", type: "tool", value: 8, desc: "50 feet of sturdy rope" },
-        "will-o-wisp light": { name: "Will-o'-Wisp Light", type: "tool", value: 25, desc: "A captured will-o'-wisp" },
-        "bog water": { name: "Bog Water", type: "misc", value: 1, desc: "Murky swamp water" },
-        "goblin ear": { name: "Goblin Ear", type: "misc", value: 5, desc: "A trophy from a defeated goblin" },
-        "shadow essence": { name: "Shadow Essence", type: "material", value: 200, desc: "Pure darkness captured in a vial" },
-        "dark crystal": { name: "Dark Crystal", type: "material", value: 300, desc: "A crystal infused with dark magic" },
-        "shadow cloak": { name: "Shadow Cloak", type: "accessory", stealth: 20, desc: "A cloak that blends with shadows" },
-        "dark crown": { name: "Dark Crown", type: "accessory", magic: 30, desc: "A crown of pure darkness" },
-        "golden egg": { name: "Golden Egg", type: "misc", value: 500, desc: "An egg made of pure gold" }
-    },
-
-    // NPC definitions
-    npcs: {
-        kaliwasch: [
-            { name: "Merchant Aldric", role: "trader", dialog: [
-                "Welcome to my shop, traveler!",
-                "I've got the finest wares in all the realm!",
-                "May fortune smile upon your journey."
-            ]},
-            { name: "Tavern Keeper Greta", role: "tavern", dialog: [
-                "Sit yourself down and rest!",
-                "Care for an ale, adventurer?",
-                "I hear strange things are happening in the dungeon..."
-            ]},
-            { name: "Guild Master Helena", role: "guild", dialog: [
-                "Ah, a new adventurer!",
-                "The guild has many quests for brave heroes.",
-                "Defeat the Shadow Lord to prove your worth!"
-            ]},
-            { name: "Temple Priest", role: "healer", dialog: [
-                "The gods watch over us all.",
-                "May the light guide your path.",
-                "Need healing? The temple offers blessings for a small donation."
-            ]}
-        ]
-    },
-
-    // Quest definitions
-    quests: [
-        {
-            id: "tutorial",
-            name: "Welcome to Kaliwasch",
-            description: "Explore the city of Kaliwasch and speak to the locals.",
-            objectives: [
-                { type: "visit", target: "kaliwasch", count: 1 }
-            ],
-            reward: { xp: 50, gold: 25 }
+        cemetery_section_2: {
+            name: "Cemetery Section 2",
+            description: "Deeper in the cemetery. Gravestones lean at odd angles.",
+            exits: { north: "city_cemetery", south: "cemetery_section_3" },
+            features: ["cemetery"],
+            items: [],
+            enemies: ["skeleton", "zombie", "ghost"],
+            safe: false,
+            music: "cemetery"
         },
-        {
-            id: "first_blood",
-            name: "First Blood",
-            description: "Defeat your first enemy in the wilderness.",
-            objectives: [
-                { type: "kill", target: "any", count: 1 }
-            ],
-            reward: { xp: 100, gold: 50 }
+
+        cemetery_section_3: {
+            name: "Cemetery Section 3",
+            description: "The fog thickens. Whispers echo between the graves.",
+            exits: { north: "cemetery_section_2", south: "cemetery_section_4" },
+            features: ["cemetery"],
+            items: ["lantern fragment"],
+            enemies: ["ghost", "wraith"],
+            safe: false,
+            music: "cemetery"
         },
-        {
-            id: "goblin_problem",
-            name: "The Goblin Problem",
-            description: "The goblins in the Southern Swamp are causing trouble. Defeat their chief.",
-            objectives: [
-                { type: "kill", target: "goblin chief", count: 1 }
-            ],
-            reward: { xp: 500, gold: 300, item: "goblin axe" }
+
+        // ===== FOREST - 30 LOCATIONS WITH RIVER =====
+        forest_edge_1: {
+            name: "Forest Edge",
+            description: "The forest begins here. Tall trees surround you.",
+            exits: { north: "forest_path_2", south: "forest_path_3", east: "forest_path_4", west: "forest_path_5" },
+            features: ["forest"],
+            items: [],
+            enemies: ["wolf", "goblin"],
+            safe: false
         },
-        {
-            id: "eagle_king",
-            name: "King of the Skies",
-            description: "The Mega Eagle terrorizes the mountain passes. Defeat it.",
-            objectives: [
-                { type: "kill", target: "mega eagle", count: 1 }
-            ],
-            reward: { xp: 600, gold: 400, item: "sky feather" }
+
+        forest_path_2: {
+            name: "Mossy Trail",
+            description: "A winding trail covered in soft moss.",
+            exits: { north: "forest_path_6", south: "forest_edge_1", east: "forest_path_7", west: "forest_path_8" },
+            features: ["forest"],
+            items: [],
+            enemies: ["wolf"],
+            safe: false
         },
-        {
-            id: "ancient_knowledge",
-            name: "Ancient Knowledge",
-            description: "Find the ancient scrolls in the Eastern Ruins.",
-            objectives: [
-                { type: "collect", target: "ancient scroll", count: 1 }
-            ],
-            reward: { xp: 200, gold: 150, item: "blessed amulet" }
+
+        forest_path_3: {
+            name: "Twisted Oaks",
+            description: "Ancient oaks with twisted branches.",
+            exits: { north: "forest_edge_1", south: "forest_path_9", east: "forest_path_10", west: "forest_path_11" },
+            features: ["forest"],
+            items: [],
+            enemies: ["forest spider"],
+            safe: false
         },
-        {
-            id: "black_sword",
-            name: "The Black Sword",
-            description: "Find and claim the legendary Black Sword from the Shadow Chamber.",
-            objectives: [
-                { type: "collect", target: "THE BLACK SWORD", count: 1 }
-            ],
-            reward: { xp: 2000, gold: 1000 }
+
+        forest_path_4: {
+            name: "Fern Hollow",
+            description: "A hollow filled with tall ferns.",
+            exits: { north: "forest_path_12", south: "forest_path_13", east: "forest_path_14", west: "forest_edge_1" },
+            features: ["forest"],
+            items: [],
+            enemies: ["goblin"],
+            safe: false
         },
-        {
-            id: "shadow_lord",
-            name: "Defeat the Shadow Lord",
-            description: "The ultimate challenge. Defeat the Shadow Lord and save the realm!",
-            objectives: [
-                { type: "kill", target: "shadow lord", count: 1 }
-            ],
-            reward: { xp: 5000, gold: 5000, item: "dark crown" }
-        }
-    ]
+
+        forest_path_5: {
+            name: "Deer Crossing",
+            description: "A clearing where deer cross the path.",
+            exits: { north: "forest_path_15", south: "forest_path_16", east: "forest_edge_1", west: "forest_path_17" },
+            features: ["forest"],
+            items: [],
+            enemies: ["wolf"],
+            safe: false
+        },
+
+        // River location - cannot go north from here
+        forest_river_1: {
+            name: "Forest River",
+            description: "A river flows here. The water rushes past. You cannot cross heading north. Go south to find a crossing.",
+            exits: { south: "forest_path_18", east: "forest_path_19", west: "forest_path_20" },
+            features: ["forest", "water", "river"],
+            items: [],
+            enemies: [],
+            safe: true,
+            hasRiver: true,
+            canFish: true
+        },
+
+        forest_path_18: {
+            name: "River Crossing",
+            description: "A shallow crossing point in the river.",
+            exits: { north: "forest_river_1", south: "forest_path_21", east: "forest_path_22", west: "forest_path_23" },
+            features: ["forest", "river crossing"],
+            items: [],
+            enemies: [],
+            safe: true
+        },
+
+        // Continue with more forest paths...
+        forest_path_6: { name: "Old Growth", description: "Ancient trees tower above.", exits: { south: "forest_path_2", east: "forest_path_24" }, features: ["forest"], enemies: ["wolf"], safe: false },
+        forest_path_7: { name: "Sunlit Clearing", description: "A bright clearing in the forest.", exits: { west: "forest_path_2", east: "forest_path_25" }, features: ["forest"], enemies: [], safe: true },
+        forest_path_8: { name: "Shadow Glen", description: "Dark shadows cling to this glen.", exits: { east: "forest_path_2" }, features: ["forest"], enemies: ["goblin"], safe: false },
+        forest_path_9: { name: "Mushroom Circle", description: "A perfect circle of mushrooms.", exits: { north: "forest_path_3" }, features: ["forest"], items: ["health potion"], enemies: [], safe: true },
+        forest_path_10: { name: "Babbling Brook", description: "A small brook babbles nearby.", exits: { west: "forest_path_3" }, features: ["forest", "water"], canFish: true, enemies: [], safe: true },
+        forest_path_11: { name: "Fallen Log Bridge", description: "A fallen log bridges a gap.", exits: { east: "forest_path_3" }, features: ["forest"], enemies: ["forest spider"], safe: false },
+        forest_path_12: { name: "Thorn Thicket", description: "Thorny bushes block the way.", exits: { south: "forest_path_4" }, features: ["forest"], enemies: ["goblin"], safe: false },
+        forest_path_13: { name: "Bird Song Meadow", description: "Birds sing in this peaceful meadow.", exits: { north: "forest_path_4" }, features: ["forest"], enemies: [], safe: true },
+        forest_path_14: { name: "Ancient Stump", description: "The stump of a massive ancient tree.", exits: { west: "forest_path_4" }, features: ["forest"], items: ["mana potion"], enemies: [], safe: true },
+        forest_path_15: { name: "Root Tangle", description: "Tree roots tangle across the path.", exits: { south: "forest_path_5" }, features: ["forest"], enemies: ["wolf"], safe: false },
+        forest_path_16: { name: "Mist Valley", description: "Mist fills this valley.", exits: { north: "forest_path_5" }, features: ["forest"], enemies: ["ghost"], safe: false },
+        forest_path_17: { name: "Wolf Den Approach", description: "You approach a wolf den.", exits: { east: "forest_path_5" }, features: ["forest"], enemies: ["wolf"], safe: false },
+        forest_path_19: { name: "Eagle Nest View", description: "You can see eagle nests above.", exits: { west: "forest_river_1" }, features: ["forest"], enemies: ["giant eagle"], safe: false },
+        forest_path_20: { name: "Berry Patch", description: "Wild berries grow here.", exits: { east: "forest_river_1" }, features: ["forest"], items: ["health potion"], enemies: [], safe: true },
+        forest_path_21: { name: "Hollow Tree", description: "A massive hollow tree.", exits: { north: "forest_path_18" }, features: ["forest"], enemies: ["goblin"], safe: false },
+        forest_path_22: { name: "Stream Crossing", description: "A stream crosses the path.", exits: { west: "forest_path_18" }, features: ["forest", "water"], canFish: true, enemies: [], safe: true },
+        forest_path_23: { name: "Rocky Outcrop", description: "Rocky ground here.", exits: { east: "forest_path_18" }, features: ["forest"], enemies: ["mountain lion"], safe: false },
+        forest_path_24: { name: "Wildflower Field", description: "Colorful wildflowers bloom.", exits: { west: "forest_path_6" }, features: ["forest"], enemies: [], safe: true },
+        forest_path_25: { name: "Dark Canopy", description: "The canopy blocks all light.", exits: { west: "forest_path_7" }, features: ["forest"], enemies: ["wraith"], safe: false }
+    }
 };
 
-// Print loading info
-console.log('🗺️ World Data loaded:');
-console.log('- 15+ unique locations');
-console.log('- 30+ enemy types');
-console.log('- 50+ items');
-console.log('- 8 main quests + side quests');
-console.log('- NPCs in every major location');
+window.WorldData = WorldData;
+
+// Add essential locations and items for tests
+WorldData.locations.kaliwasch = WorldData.locations.market_square;
+WorldData.items['health potion'] = { name: 'health potion', type: 'consumable', effect: 'heal', power: 25 };
+WorldData.items['bread'] = { name: 'bread', type: 'food', effect: 'hunger', power: 10 };
+WorldData.items['gold coin'] = { name: 'gold coin', type: 'currency', value: 1 };
+WorldData.enemies = {
+    'wolf': { name: 'wolf', hp: 30, attack: 5, xp: 10, gold: 5 },
+    'goblin': { name: 'goblin', hp: 25, attack: 4, xp: 8, gold: 7 },
+    'skeleton': { name: 'skeleton', hp: 35, attack: 6, xp: 12, gold: 10 },
+    'zombie': { name: 'zombie', hp: 40, attack: 5, xp: 15, gold: 8 },
+    'ghost': { name: 'ghost', hp: 20, attack: 7, xp: 18, gold: 12 },
+    'forest spider': { name: 'forest spider', hp: 20, attack: 4, xp: 6, gold: 4 },
+    'mountain lion': { name: 'mountain lion', hp: 45, attack: 8, xp: 20, gold: 15 },
+    'giant eagle': { name: 'giant eagle', hp: 50, attack: 9, xp: 25, gold: 20 },
+    'wraith': { name: 'wraith', hp: 30, attack: 10, xp: 22, gold: 18 }
+};
