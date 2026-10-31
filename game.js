@@ -234,69 +234,37 @@ const Game = {
     // Uses the given name, defaults to human warrior, and starts the adventure.
     autoCreateHero(heroName) {
         const name = (heroName || 'Hero').trim().slice(0, 30);
-        const race = 'human';
-        const cls = 'warrior';
-        const background = 'soldier';
-        const mode = 'single';
-
-        this.resetHeroRuntime();
-        this.state.activeHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
-        this.state.pendingHeroId = this.state.activeHeroId;
-
-        // Base stats - Human Warrior (low starting stats as requested)
-        const base = { hp: 80, mp: 20, str: 8, dex: 6, int: 4, wis: 5, vit: 7, luck: 5 };
-        const bonus = { hp: 1, mp: 1, gold: 1 }; // human - no bonus
-
-        this.state.player = {
-            name,
-            race,
-            class: cls,
-            mode,
-            permadead: false,
-            level: 1,
-            xp: 0,
-            xpToNext: 100,
-            hp: Math.floor(base.hp * bonus.hp),
-            maxHp: Math.floor(base.hp * bonus.hp),
-            mp: Math.floor(base.mp * bonus.mp),
-            maxMp: Math.floor(base.mp * bonus.mp),
-            str: base.str,
-            dex: base.dex,
-            int: base.int,
-            wis: base.wis,
-            vit: base.vit,
-            luck: base.luck,
-            gold: 50,
-            diamonds: 0,
-            rubies: 0,
-            weapon: 'Iron Sword',
-            weaponDamage: 14,
-            armor: 'Leather Armor',
-            defense: 4,
-            extraSpells: 0,
-            mapRevealed: false
-        };
-
-        // Initialize spells
-        this.state.player.spells = this.getClassSpells ? this.getClassSpells(cls, 0) : ['Power Strike'];
-
-        // Initialize inventory
-        this.state.inventory = [
-            { ...WorldData.items['gold coin'], id: 'gold coin', quantity: 5 },
-            { ...WorldData.items['healing potion'], id: 'healing potion', quantity: 2 },
-            { ...WorldData.items['bread'], id: 'bread', quantity: 3 },
-            { ...WorldData.items['iron sword'], id: 'iron sword', quantity: 1 },
-            { ...WorldData.items['leather armor'], id: 'leather armor', quantity: 1 }
-        ];
-
-        // Initialize quests
-        this.state.quests = WorldData.quests ? [WorldData.quests[0]] : [];
-
-        this.state.location = 'market_square';
-        this.state.visited = ['market_square'];
-        this.state.kills = 0;
-        this.state.companions = [];
-        this.state.combatGroup = [];
+        
+        // Use clean hero creation if available
+        if (window.createCleanHero) {
+            const hero = window.createCleanHero(name);
+            this.state.activeHeroId = hero.hero_id;
+            this.state.player = hero;
+            this.state.location = hero.location;
+            this.state.inventory = hero.inventory.map(inv => {
+                const item = window.WorldData?.items?.[inv.item_id];
+                return item ? { ...item, quantity: inv.quantity } : null;
+            }).filter(Boolean);
+        } else {
+            // Fallback to old creation
+            this.state.activeHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+            this.state.player = {
+                hero_name: name,
+                level: 1,
+                xp: 0,
+                health_points: 80,
+                max_health_points: 80,
+                magic_points: 30,
+                max_magic_points: 30,
+                strength: 8,
+                intelligence: 5,
+                dexterity: 6,
+                armor: 4,
+                gold: 50
+            };
+            this.state.location = 'palace_throne_room';
+            this.state.inventory = [];
+        }
 
         // Save to roster
         const roster = this.getRoster();
@@ -3104,52 +3072,50 @@ const Game = {
         const stats = document.getElementById('char-stats');
         const p = this.state.player;
 
-        // Compute effective STR: base STR + weapon strength bonus.
-        const weaponItem = this.state.inventory?.find(i => i.name === p.weapon && i.type === 'weapon');
-        const weaponStr = weaponItem?.strength || 0;
-        const effectiveStr = p.str + weaponStr;
-        const strDisplay = weaponStr > 0 ? `${effectiveStr} (${p.str} base + ${weaponStr} weapon)` : `${p.str}`;
+        // Support both old and new stat systems
+        const name = p.hero_name || p.name || 'Hero';
+        const level = p.level || 1;
+        const characterClass = p.character_class || p.class || 'Not chosen yet';
+        const healthPoints = p.health_points ?? p.hp ?? 80;
+        const maxHealthPoints = p.max_health_points ?? p.maxHp ?? 80;
+        const magicPoints = p.magic_points ?? p.mp ?? 30;
+        const maxMagicPoints = p.max_magic_points ?? p.maxMp ?? 30;
+        const strength = p.strength ?? p.str ?? 8;
+        const intelligence = p.intelligence ?? p.int ?? 5;
+        const dexterity = p.dexterity ?? p.dex ?? 6;
+        const armor = p.armor ?? p.defense ?? 4;
+        const gold = p.gold ?? 0;
+        const xp = p.xp ?? 0;
+        const xpToNext = p.xp_to_next ?? p.xpToNext ?? 100;
 
-        // Build weapon line with conditional stats (only show what the weapon has).
-        let weaponLine = `${p.weapon} (${p.weaponDamage || 0} damage)`;
-        const wData = WorldData.items[p.weapon?.toLowerCase()] || weaponItem;
-        if (wData) {
-            const extras = [];
-            if (wData.minDamage !== undefined) extras.push(`min ${wData.minDamage}`);
-            if (wData.maxDamage !== undefined) extras.push(`max ${wData.maxDamage}`);
-            if (wData.strength) extras.push(`STR +${wData.strength}`);
-            if (wData.fireDamage) extras.push(`🔥 fire ${wData.fireDamage}`);
-            if (wData.airDamage) extras.push(`🌪️ air ${wData.airDamage}`);
-            if (wData.waterDamage) extras.push(`💧 water ${wData.waterDamage}`);
-            if (wData.earthDamage) extras.push(`🌍 earth ${wData.earthDamage}`);
-            if (extras.length) weaponLine = `${p.weapon} (${p.weaponDamage || 0} dmg, ${extras.join(', ')})`;
-        }
+        // Compute effective Strength: base + weapon bonus
+        const equippedWeapon = p.equipment?.right_hand || p.weapon;
+        const weaponItem = this.state.inventory?.find(i => i.item_id === equippedWeapon || i.item_name === equippedWeapon || i.name === equippedWeapon);
+        const weaponStrength = weaponItem?.strength_bonus || 0;
+        const effectiveStrength = strength + weaponStrength;
+        const strengthDisplay = weaponStrength > 0 ? `${effectiveStrength} (${strength} base + ${weaponStrength} weapon)` : `${strength}`;
+
+        // Build weapon line
+        let weaponLine = equippedWeapon ? `${weaponItem?.item_name || weaponItem?.name || equippedWeapon} (${weaponItem?.damage || 0} damage)` : 'Basic Dagger (10 damage)';
 
         stats.innerHTML = `
-            <div class="stat-row"><span>Name:</span><span>${p.name}</span></div>
-            <div class="stat-row"><span>Level:</span><span>${p.level}</span></div>
-            <div class="stat-row"><span>Class:</span><span>${p.class}</span></div>
-            <div class="stat-row"><span>Race:</span><span>${p.race}</span></div>
-            <div class="stat-row"><span>HP:</span><span>${p.hp}/${p.maxHp}</span></div>
-            <div class="stat-row"><span>MP:</span><span>${p.mp}/${p.maxMp}</span></div>
-            <div class="stat-row"><span>STR:</span><span>${strDisplay}</span></div>
-            <div class="stat-row"><span>DEX:</span><span>${p.dex}</span></div>
-            <div class="stat-row"><span>INT:</span><span>${p.int}</span></div>
-            <div class="stat-row"><span>WIS:</span><span>${p.wis}</span></div>
-            <div class="stat-row"><span>VIT:</span><span>${p.vit || Math.max(10, Math.floor(p.maxHp / 10))}</span></div>
-            <div class="stat-row"><span>XP:</span><span>${p.xp}/${p.xpToNext}</span></div>
-            <div class="stat-row"><span>Gold:</span><span>${p.gold}</span></div>
-            <div class="stat-row"><span>💎 Diamonds:</span><span>${p.diamonds || 0}</span></div>
-            <div class="stat-row"><span>🔴 Rubies:</span><span>${p.rubies || 0}</span></div>
+            <div class="stat-row"><span>Name:</span><span>${name}</span></div>
+            <div class="stat-row"><span>Level:</span><span>${level}</span></div>
+            <div class="stat-row"><span>Class:</span><span>${characterClass}</span></div>
+            <div class="stat-row"><span>Health Points:</span><span>${healthPoints}/${maxHealthPoints}</span></div>
+            <div class="stat-row"><span>Magic Points:</span><span>${magicPoints}/${maxMagicPoints}</span></div>
+            <div class="stat-row"><span>Strength:</span><span>${strengthDisplay}</span></div>
+            <div class="stat-row"><span>Intelligence:</span><span>${intelligence}</span></div>
+            <div class="stat-row"><span>Dexterity:</span><span>${dexterity}</span></div>
+            <div class="stat-row"><span>Armor:</span><span>${armor}</span></div>
+            <div class="stat-row"><span>Experience:</span><span>${xp}/${xpToNext}</span></div>
+            <div class="stat-row"><span>Gold:</span><span>${gold}</span></div>
             <div class="stat-row"><span>Weapon:</span><span>${weaponLine}</span></div>
-            <div class="stat-row"><span>Armor:</span><span>${p.armor || 'None'} (${p.defense || 0} defense)</span></div>
-            <div class="stat-row"><span>Helmet:</span><span>${p.helmet || 'None'}</span></div>
-            <div class="stat-row"><span>Gloves:</span><span>${p.gloves || 'None'}</span></div>
-            <div class="stat-row"><span>Boots:</span><span>${p.boots || 'None'}</span></div>
-            <div class="stat-row"><span>Accessory:</span><span>${p.accessory || 'None'}</span></div>
-            <div class="stat-row"><span>Active Sets:</span><span>${p.activeSets?.join(', ') || 'None'}</span></div>
-            <div class="stat-row"><span>Spells:</span><span>${p.spells.join(', ')}</span></div>
         `;
+
+        // Voice announcement with complete names
+        const announcement = `Stats: ${name}, level ${level}. Health Points ${healthPoints} of ${maxHealthPoints}. Magic Points ${magicPoints} of ${maxMagicPoints}. Strength ${effectiveStrength}. Intelligence ${intelligence}. Dexterity ${dexterity}. Armor ${armor}. Gold ${gold}.`;
+        window.AudioManager?.playVoice?.(announcement, { channel: 'system' });
 
         panel.classList.remove('hidden');
         
