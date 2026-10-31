@@ -88,14 +88,14 @@ const Game = {
         const active = roster.activeHeroId && roster.heroes[roster.activeHeroId];
         if (active) {
             this.state.activeHeroId = roster.activeHeroId;
-            localStorage.setItem(this.state.saveKey, JSON.stringify(active));
+            localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(active));
             document.getElementById('btn-continue').disabled = false;
         }
     },
 
     getRoster() {
         let roster;
-        try { roster = JSON.parse(localStorage.getItem(this.state.rosterKey)); } catch { roster = null; }
+        try { roster = JSON.parse(localStorage.getItem(this.getAccountKey(this.state.rosterKey))); } catch { roster = null; }
         if (!roster || typeof roster !== 'object' || Array.isArray(roster)) roster = {};
         const source = roster.heroes && typeof roster.heroes === 'object' && !Array.isArray(roster.heroes) ? roster.heroes : {};
         const heroes = {};
@@ -111,14 +111,14 @@ const Game = {
         // Migrate the original one-hero save without deleting it. An active ID is
         // never guessed here: after deleting a hero the player explicitly chooses
         // which remaining hero to play.
-        const legacy = localStorage.getItem(this.state.saveKey);
+        const legacy = localStorage.getItem(this.getAccountKey(this.state.saveKey));
         if (!Object.keys(roster.heroes).length && legacy) {
             try {
                 const data = JSON.parse(legacy);
                 if (data?.player) {
                     roster.activeHeroId = 'hero_legacy';
                     roster.heroes.hero_legacy = data;
-                    localStorage.setItem(this.state.rosterKey, JSON.stringify(roster));
+                    localStorage.setItem(this.getAccountKey(this.state.rosterKey), JSON.stringify(roster));
                 }
             } catch {}
         }
@@ -136,8 +136,13 @@ const Game = {
             stored.revision = Math.max(0, Number(roster?.revision) || 0) + 1;
             stored.updatedAt = new Date().toISOString();
         }
-        localStorage.setItem(this.state.rosterKey, JSON.stringify(stored));
+        localStorage.setItem(this.getAccountKey(this.state.rosterKey), JSON.stringify(stored));
         return stored;
+
+    getAccountKey(baseKey) {
+        const userId = window.OnlineManager?.user?.id;
+        return userId ? `${baseKey}:${userId}` : baseKey;
+    },
     },
 
     // Clear every per-hero runtime field before creating or loading another slot.
@@ -199,7 +204,7 @@ const Game = {
         roster.activeHeroId = id;
         roster.heroes[id] = data;
         const stored = this.storeRoster(roster);
-        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
+        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(data));
         return stored;
     },
 
@@ -214,7 +219,7 @@ const Game = {
         this.resetHeroRuntime();
         this.state.activeHeroId = null;
         this.state.creatingHero = false;
-        localStorage.removeItem(this.state.saveKey);
+        localStorage.removeItem(this.getAccountKey(this.state.saveKey));
         // No application/UI roster cap. The backend still owns authentication,
         // payload, rate, and resource protections for cloud saves and names.
         this.state.pendingHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
@@ -271,7 +276,7 @@ const Game = {
         roster.heroes[this.state.activeHeroId] = { player: this.state.player, inventory: this.state.inventory, location: this.state.location, visited: this.state.visited, kills: 0, companions: [], combatGroup: [] };
         roster.activeHeroId = this.state.activeHeroId;
         this.storeRoster(roster);
-        localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[this.state.activeHeroId]));
+        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(roster.heroes[this.state.activeHeroId]));
 
         // Start the game
         this.showScreen('game-screen');
@@ -328,7 +333,7 @@ const Game = {
         this.storeRoster(roster);
         this.state.activeHeroId = id;
         this.state.pendingHeroId = null;
-        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
+        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(data));
         const loaded = this.continueGame();
         if (loaded === false) return false;
         window.OnlineSystem?.saveGame?.(this.getRoster());
@@ -390,11 +395,11 @@ const Game = {
             this.resetHeroRuntime();
             this.state.activeHeroId=null;
             this.state.pendingHeroId=null;
-            localStorage.removeItem(this.state.saveKey);
+            localStorage.removeItem(this.getAccountKey(this.state.saveKey));
         }else{
             this.state.activeHeroId=stored.activeHeroId;
-            if(stored.activeHeroId)localStorage.setItem(this.state.saveKey,JSON.stringify(stored.heroes[stored.activeHeroId]));
-            else localStorage.removeItem(this.state.saveKey);
+            if(stored.activeHeroId)localStorage.setItem(this.getAccountKey(this.state.saveKey),JSON.stringify(stored.heroes[stored.activeHeroId]));
+            else localStorage.removeItem(this.getAccountKey(this.state.saveKey));
         }
         document.getElementById('btn-continue').disabled=!stored.activeHeroId;
         // Snapshot the exact post-deletion roster before any later hero action.
@@ -3427,7 +3432,7 @@ const Game = {
         roster.activeHeroId = id;
         roster.heroes[id] = saveData;
         const stored = this.storeRoster(roster);
-        localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
+        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(saveData));
         window.OnlineSystem?.saveGame?.(stored);
         document.getElementById('btn-continue').disabled = false;
         return true;
@@ -3439,7 +3444,7 @@ const Game = {
         const data = id ? roster.heroes[id] : null;
         if (!id || !data?.player) {
             this.state.activeHeroId = null;
-            localStorage.removeItem(this.state.saveKey);
+            localStorage.removeItem(this.getAccountKey(this.state.saveKey));
             document.getElementById('btn-continue').disabled = true;
             this.showHeroRoster();
             return false;
@@ -3447,7 +3452,7 @@ const Game = {
         this.resetHeroRuntime();
         this.state.activeHeroId = id;
         this.state.pendingHeroId = null;
-        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
+        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(data));
         this.state.player = data.player;
         this.state.inventory = Array.isArray(data.inventory) ? data.inventory : [];
         this.state.location = data.location || 'market_square';
