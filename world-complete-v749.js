@@ -476,3 +476,30 @@
     buildWorld();
 })();
 
+
+// Add grand_temple (required for prayer/revival)
+if (typeof window !== 'undefined' && window.WorldData) {
+    const W = window.WorldData;
+    W.locations['grand_temple'] = {
+        name: 'Grand Temple of Auralis',
+        description: 'A magnificent temple dedicated to Auralis, goddess of light. Divine energy fills the air. Here you can pray for blessings and revival.',
+        exits: { south: 'temple' },
+        features: ['temple', 'shrine', 'altar', 'grand_temple'],
+        items: [],
+        enemies: [],
+        safe: true,
+        music: 'temple',
+        isTemple: true,
+        canPray: true,
+        canRevive: true
+    };
+    
+    // Ensure temple connects to grand_temple
+    if (W.locations['temple']) {
+        W.locations['temple'].exits.up = 'grand_temple';
+        W.locations['temple'].isTemple = true;
+        W.locations['temple'].canPray = true;
+    }
+    
+    console.log('✓ Added grand_temple and temple prayer support');
+}

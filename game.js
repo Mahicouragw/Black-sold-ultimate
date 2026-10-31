@@ -243,9 +243,9 @@ const Game = {
         this.state.activeHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
         this.state.pendingHeroId = this.state.activeHeroId;
 
-        // Base stats
-        const base = { hp: 130, mp: 30, str: 15, dex: 12, int: 8, wis: 10 };
-        const bonus = { hp: 1, mp: 1, gold: 1.15 }; // human
+        // Base stats - Human Warrior (low starting stats as requested)
+        const base = { hp: 80, mp: 20, str: 8, dex: 6, int: 4, wis: 5, vit: 7, luck: 5 };
+        const bonus = { hp: 1, mp: 1, gold: 1 }; // human - no bonus
 
         this.state.player = {
             name,
@@ -264,6 +264,8 @@ const Game = {
             dex: base.dex,
             int: base.int,
             wis: base.wis,
+            vit: base.vit,
+            luck: base.luck,
             gold: 50,
             diamonds: 0,
             rubies: 0,
@@ -1136,12 +1138,33 @@ const Game = {
     },
 
     processCommand(cmd) {
+        let c = cmd.toLowerCase().trim();
+        
+        // Allow prayer commands even during combat
+        if (c === 'pray' || c === 'pray auralis' || c === 'battle prayer' || c === 'pray revive' || c === 'revive' || c.startsWith('pray ')) {
+            if (c === 'pray' || c === 'pray auralis' || c === 'battle prayer') {
+                this.pray();
+                return;
+            }
+            if (c === 'pray revive' || c === 'revive') {
+                this.prayRevive();
+                return;
+            }
+            if (c.startsWith('pray ')) {
+                const attr = c.slice(5).trim();
+                if (['strength', 'dexterity', 'intelligence', 'wisdom', 'vitality', 'luck'].includes(attr)) {
+                    this.prayForBlessing(attr);
+                } else {
+                    this.addNarrative(`You can pray for: strength, dexterity, intelligence, wisdom, vitality, luck. Or "pray revive" for revival.`, 'system');
+                }
+                return;
+            }
+        }
+        
         if (this.state.inCombat) {
-            this.addNarrative("You're in combat! Use attack, spell, item, defend, or flee.", 'system');
+            this.addNarrative("You're in combat! Use attack, spell, item, defend, flee, or pray.", 'system');
             return;
         }
-
-        let c = cmd.toLowerCase().trim();
 
         // Movement (N/S/E/W/Up/Down only — no diagonals)
         if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
@@ -2624,6 +2647,94 @@ const Game = {
      * one and is in a safe zone), then plays a synchronized heal sound
      * and announces the new HP via the a11y layer.
      */
+
+    // Prayer system - works in temples and during battle
+    pray() {
+        const p = this.state.player;
+        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
+        
+        const loc = WorldData.locations[this.state.location];
+        const inTemple = loc && (loc.isTemple || loc.canPray || /temple|shrine|altar/i.test(this.state.location || ''));
+        
+        if (this.state.inCombat) {
+            // Battle prayer - heals and buffs
+            const healAmount = Math.floor(p.maxHp * 0.3);
+            p.hp = Math.min(p.maxHp, p.hp + healAmount);
+            const mpCost = 10;
+            if (p.mp >= mpCost) {
+                p.mp -= mpCost;
+                this.addNarrative(`⚔️ Battle Prayer! Auralis blesses you. Healed ${healAmount} HP. (${mpCost} MP used)`, 'magic');
+                // Add temporary buff
+                p.battlePrayerBuff = { str: 5, dex: 5, turns: 3 };
+                this.addNarrative(`Strength +5, Dexterity +5 for 3 turns.`, 'system');
+            } else {
+                this.addNarrative("Not enough mana for battle prayer. Need 10 MP.", 'system');
+            }
+        } else if (inTemple) {
+            // Temple prayer - full heal and blessing
+            p.hp = p.maxHp;
+            p.mp = p.maxMp;
+            this.addNarrative("🙏 You pray at the temple. Auralis restores you to full health and mana!", 'magic');
+            // Random blessing
+            const blessings = ['strength', 'dexterity', 'intelligence', 'wisdom'];
+            const blessing = blessings[Math.floor(Math.random() * blessings.length)];
+            p[blessing] = (p[blessing] || 10) + 1;
+            this.addNarrative(`✨ Blessing received: ${blessing} +1 (permanent)`, 'treasure');
+        } else {
+            this.addNarrative("You can only pray in a temple or during battle. Find the Grand Temple or Temple of Auralis.", 'system');
+        }
+        this.save?.();
+    },
+
+    prayRevive() {
+        const p = this.state.player;
+        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
+        
+        const loc = WorldData.locations[this.state.location];
+        const inTemple = loc && (loc.isTemple || loc.canPray || /temple|shrine|altar/i.test(this.state.location || ''));
+        
+        if (!inTemple) {
+            this.addNarrative("You must be in a temple to pray for revival. Go to the Grand Temple.", 'system');
+            return;
+        }
+        
+        if (p.hp > 0) {
+            this.addNarrative("You are not dead! No need for revival prayer.", 'system');
+            return;
+        }
+        
+        // Revive at temple
+        p.hp = Math.floor(p.maxHp * 0.5);
+        p.mp = Math.floor(p.maxMp * 0.5);
+        p.permadead = false;
+        p.pendingTempleRevival = false;
+        this.addNarrative("🙏 Auralis hears your prayer! You are revived with 50% health and mana.", 'magic');
+        this.save?.();
+    },
+
+    prayForBlessing(attr) {
+        const p = this.state.player;
+        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
+        
+        const loc = WorldData.locations[this.state.location];
+        const inTemple = loc && (loc.isTemple || loc.canPray || /temple|shrine|altar/i.test(this.state.location || ''));
+        
+        if (!inTemple) {
+            this.addNarrative("You must be in a temple to pray for blessings.", 'system');
+            return;
+        }
+        
+        if (p.mp < 15) {
+            this.addNarrative("Need 15 MP to pray for a blessing.", 'system');
+            return;
+        }
+        
+        p.mp -= 15;
+        p[attr] = (p[attr] || 10) + 2;
+        this.addNarrative(`✨ Prayer answered! ${attr} +2 (permanent). 15 MP used.`, 'treasure');
+        this.save?.();
+    },
+
     quickHeal() {
         if(window.GameSpellSystem)return window.GameSpellSystem.castHealing(this);
         const p = this.state.player;
