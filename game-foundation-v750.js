@@ -131,14 +131,15 @@ function createCleanHero(heroName, mode = 'non_hardcore') {
         level: 1,
         xp: 0,
         xp_to_next: 100,
-        health_points: 80,
-        max_health_points: 80,
-        magic_points: 30,
-        max_magic_points: 30,
-        strength: 8,
-        intelligence: 5,
-        dexterity: 6,
-        armor: 4,
+        health_points: 30,        // FIXED: Starting HP per Master Prompt
+        max_health_points: 30,    // FIXED: Starting max HP
+        magic_points: 20,         // FIXED: Starting MP per Master Prompt
+        max_magic_points: 20,     // FIXED: Starting max MP
+        strength: 10,             // FIXED: Starting STR per Master Prompt
+        intelligence: 10,         // FIXED: Starting INT per Master Prompt
+        dexterity: 10,            // FIXED: Starting DEX per Master Prompt
+        defense: 10,              // FIXED: Starting DEF per Master Prompt
+        armor: 10,                // FIXED: Starting armor per Master Prompt
         gold: 50,
         diamonds: 0,
         rubies: 0,
@@ -148,6 +149,15 @@ function createCleanHero(heroName, mode = 'non_hardcore') {
         companions: [],
         character_class: null, // Will be chosen at Guild after 3 quests
         mode: mode, // 'hardcore' or 'non_hardcore'
+        
+        // Blessing tracking
+        permanentBlessingClaimed: false,
+        permanentBlessingType: null,
+        permanentBlessingTimestamp: null,
+        dailyPrayerBlessingActive: false,
+        dailyPrayerBlessingStart: null,
+        dailyPrayerBlessingEnd: null,
+        lastPrayerIntervention: null,
         equipment: {
             right_hand: 'basic_dagger',
             left_hand: null,
@@ -163,7 +173,15 @@ function createCleanHero(heroName, mode = 'non_hardcore') {
             { item_id: 'mana_potion', quantity: 2 },
             { item_id: 'bread', quantity: 5 }
         ],
-        spells: ['healing_spell', 'alohomora', 'phantom_blade_dance'],
+        spells: [
+            'alohomora',
+            'shock_spell',
+            'multi_strike',
+            'healing_self',
+            'healing_party',
+            'healing_companions',
+            'healing_all'
+        ],
         stats: {
             kills: 0,
             deaths: 0,
