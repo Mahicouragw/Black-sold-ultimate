@@ -218,10 +218,17 @@
     const n = 60;
     let s = cfg.seed;
     const rnd = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    // Each circuit keeps its own seeded irregularity, but it is smoothed so the
+    // road has real curves instead of a zigzag between neighbouring points.
+    // A road that changes direction every 30 metres cannot be driven by ear,
+    // and spoken turn calls would be meaningless on it.
+    let wobble = [];
+    for (let i = 0; i < n; i++) wobble.push((rnd() - 0.5) * cfg.jitter * 2);
+    for (let pass = 0; pass < 3; pass++) wobble = wobble.map((_, i) => { let sum = 0; for (let k = -3; k <= 3; k++) sum += wobble[(i + k + n) % n]; return sum / 7; });
     const pts = [];
     for (let i = 0; i < n; i++) {
       const t = (i / n) * Math.PI * 2;
-      const r = cfg.baseRadius * (1 + cfg.sharpness * Math.sin(cfg.lobes * t + cfg.seed * 0.37) + (rnd() - 0.5) * cfg.jitter * 2);
+      const r = cfg.baseRadius * (1 + cfg.sharpness * Math.sin(cfg.lobes * t + cfg.seed * 0.37) + wobble[i] * 3);
       pts.push({ x: Math.cos(t) * r, y: Math.sin(t) * r });
     }
     // cumulative distances along the loop
@@ -303,6 +310,92 @@
   /* =====================================================================
    * 4. ANNOUNCE (centralised TTS with priority & dedup)
    * =================================================================== */
+
+  /* Racing lines that have Telugu and Hindi text. Everything goes through the
+   * shared narration layer, so the log and the narrator stay in one language. */
+  const RACE_TEXT = {
+    'race.turn.left': ['left turn', 'ఎడమ మలుపు', 'बायाँ मोड़'], 'race.turn.right': ['right turn', 'కుడి మలుపు', 'दायाँ मोड़'],
+    'race.turn.sharpLeft': ['sharp left turn', 'తీవ్రమైన ఎడమ మలుపు', 'तीखा बायाँ मोड़'], 'race.turn.sharpRight': ['sharp right turn', 'తీవ్రమైన కుడి మలుపు', 'तीखा दायाँ मोड़'],
+    'race.turn.slightLeft': ['gentle left bend', 'స్వల్ప ఎడమ వంపు', 'हल्का बायाँ घुमाव'], 'race.turn.slightRight': ['gentle right bend', 'స్వల్ప కుడి వంపు', 'हल्का दायाँ घुमाव'],
+    'race.turn.far': ['In {m} meters, {turn}.', '{m} మీటర్లలో {turn}.', '{m} मीटर में {turn}।'],
+    'race.turn.near': ['{Turn} in {m} meters.', '{m} మీటర్లలో {turn}.', '{m} मीटर में {turn}।'],
+    'race.turn.short': ['{m} meters.', '{m} మీటర్లు.', '{m} मीटर।'],
+    'race.turn.nearSlow': ['{Turn} in {m} meters. Slow down.', '{m} మీటర్లలో {turn}. వేగం తగ్గించండి.', '{m} मीटर में {turn}। गति कम करें।'],
+    'race.turn.now.left': ['Turn left now.', 'ఇప్పుడు ఎడమకు తిప్పండి.', 'अब बाएँ मुड़ें।'], 'race.turn.now.right': ['Turn right now.', 'ఇప్పుడు కుడికి తిప్పండి.', 'अब दाएँ मुड़ें।'],
+    'race.turn.steady.left': ['Keep steering left.', 'ఎడమ వైపే తిప్పుతూ ఉండండి.', 'बाएँ मोड़ते रहें।'], 'race.turn.steady.right': ['Keep steering right.', 'కుడి వైపే తిప్పుతూ ఉండండి.', 'दाएँ मोड़ते रहें।'],
+    'race.off.left': ['Off the road. Steer left.', 'రోడ్డు దాటి వెళ్లారు. ఎడమకు తిప్పండి.', 'सड़क से बाहर हैं। बाएँ मोड़ें।'],
+    'race.off.right': ['Off the road. Steer right.', 'రోడ్డు దాటి వెళ్లారు. కుడికి తిప్పండి.', 'सड़क से बाहर हैं। दाएँ मोड़ें।'],
+    'race.bend.hold': ['Long {turn}. The car is holding the road.', 'పొడవైన {turn}. కారు రోడ్డుపైనే ఉంది.', 'लंबा {turn}। कार सड़क पर बनी हुई है।'],
+    'race.off.back': ['Back on the road.', 'మళ్లీ రోడ్డుపైకి వచ్చారు.', 'वापस सड़क पर आ गए।'],
+    'race.turn.end': ['Straighten up.', 'స్టీరింగ్ నేరుగా ఉంచండి.', 'स्टीयरिंग सीधा करें।'],
+    'race.straight': ['Straight ahead for {m} meters.', '{m} మీటర్ల వరకు నేరుగా వెళ్లండి.', '{m} मीटर तक सीधे चलें।'],
+    'race.speed': ['Speed {kmh} kilometers per hour.', 'వేగం గంటకు {kmh} కిలోమీటర్లు.', 'गति {kmh} किलोमीटर प्रति घंटा।'],
+    'race.throttle.on': ['Accelerating. The car keeps accelerating until you tap Forward again or brake.', 'వేగం పెంచుతున్నారు. మళ్లీ ఫార్వర్డ్ నొక్కే వరకు లేదా బ్రేక్ వేసే వరకు కారు వేగం పెరుగుతూనే ఉంటుంది.', 'गति बढ़ रही है। दोबारा फ़ॉरवर्ड दबाने या ब्रेक लगाने तक कार तेज़ होती रहेगी।'],
+    'race.throttle.off': ['Throttle released. Coasting.', 'యాక్సిలరేటర్ వదిలేశారు. కారు నెమ్మదిస్తోంది.', 'एक्सेलरेटर छोड़ा। कार धीमी हो रही है।'],
+    'race.reverse.on': ['Reversing. Tap Reverse again to stop.', 'వెనక్కి వెళ్తున్నారు. ఆపడానికి మళ్లీ రివర్స్ నొక్కండి.', 'पीछे जा रहे हैं। रोकने के लिए फिर रिवर्स दबाएँ।'],
+    'race.braking': ['Braking.', 'బ్రేక్ వేస్తున్నారు.', 'ब्रेक लग रहा है।'],
+    'race.stopped': ['The car has stopped.', 'కారు ఆగింది.', 'कार रुक गई है।'],
+    'race.steer.left': ['Steering left.', 'ఎడమకు తిప్పుతున్నారు.', 'बाएँ मोड़ रहे हैं।'], 'race.steer.right': ['Steering right.', 'కుడికి తిప్పుతున్నారు.', 'दाएँ मोड़ रहे हैं।'],
+    'race.steer.through.left': ['Steering left through the turn.', 'మలుపు పూర్తయ్యే వరకు ఎడమకు తిప్పుతున్నారు.', 'मोड़ पूरा होने तक बाएँ मोड़ रहे हैं।'],
+    'race.steer.through.right': ['Steering right through the turn.', 'మలుపు పూర్తయ్యే వరకు కుడికి తిప్పుతున్నారు.', 'मोड़ पूरा होने तक दाएँ मोड़ रहे हैं।'],
+    'race.engineFirst': ['The engine is off. Starting the engine first.', 'ఇంజిన్ ఆఫ్‌లో ఉంది. ముందుగా ఇంజిన్ స్టార్ట్ చేస్తున్నాం.', 'इंजन बंद है। पहले इंजन चालू कर रहे हैं।'],
+    'race.fuel.status': ['Fuel {pct} percent.', 'ఇంధనం {pct} శాతం.', 'ईंधन {pct} प्रतिशत।'],
+    'race.fuel.low': ['Fuel low: {pct} percent. Use Pit to refuel.', 'ఇంధనం తక్కువగా ఉంది: {pct} శాతం. ఇంధనం నింపడానికి పిట్ వాడండి.', 'ईंधन कम है: {pct} प्रतिशत। ईंधन भरने के लिए पिट का उपयोग करें।'],
+    'race.fuel.critical': ['Fuel critical: {pct} percent. Refuel now.', 'ఇంధనం చాలా తక్కువ: {pct} శాతం. వెంటనే నింపండి.', 'ईंधन बहुत कम है: {pct} प्रतिशत। अभी भरें।'],
+    'race.fuel.empty': ['Out of fuel. The engine has stopped. Use Pit to refuel.', 'ఇంధనం అయిపోయింది. ఇంజిన్ ఆగిపోయింది. ఇంధనం నింపడానికి పిట్ వాడండి.', 'ईंधन खत्म हो गया। इंजन बंद हो गया है। ईंधन भरने के लिए पिट का उपयोग करें।'],
+    'race.fuel.full': ['The tank is already full.', 'ట్యాంక్ ఇప్పటికే నిండుగా ఉంది.', 'टंकी पहले से भरी है।'],
+    'race.fuel.filling': ['Refuelling.', 'ఇంధనం నింపుతున్నారు.', 'ईंधन भरा जा रहा है।'],
+    'race.fuel.done': ['Tank filled to {pct} percent. {cost} rupees paid.', 'ట్యాంక్ {pct} శాతం వరకు నిండింది. {cost} రూపాయలు చెల్లించారు.', 'टंकी {pct} प्रतिशत तक भर गई। {cost} रुपये चुकाए।'],
+    'race.fuel.free': ['You cannot afford fuel, so the pit crew gives you an emergency can. Fuel {pct} percent.', 'ఇంధనానికి డబ్బు సరిపోదు, కాబట్టి పిట్ సిబ్బంది అత్యవసర డబ్బా ఇచ్చారు. ఇంధనం {pct} శాతం.', 'ईंधन के पैसे नहीं हैं, इसलिए पिट दल ने आपातकालीन कैन दी। ईंधन {pct} प्रतिशत।'],
+    'race.fuel.slow': ['Slow down to refuel. Braking for the pit.', 'ఇంధనం నింపడానికి వేగం తగ్గించండి. పిట్ కోసం బ్రేక్ వేస్తున్నాం.', 'ईंधन भरने के लिए धीमे हों। पिट के लिए ब्रेक लगा रहे हैं।']
+  };
+  /* Turn zones of a track. A zone is a stretch of road that bends one way:
+   * { start, end (vertex indexes), startCum, length, deg, side, kind, loop }.
+   * Positive heading change is a turn to the driver's right: the track view has
+   * y pointing down, and the Right control increases the heading. */
+  const zoneCache = new WeakMap();
+  function trackZones(track) {
+    if (zoneCache.has(track)) return zoneCache.get(track);
+    const pts = track.points, n = pts.length, sign = [], deg = [], curve = [];
+    for (let i = 0; i < n; i++) {
+      const a = pts[(i - 1 + n) % n], b = pts[i], c = pts[(i + 1) % n];
+      let d = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(b.y - a.y, b.x - a.x);
+      while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+      d = d * 180 / Math.PI;
+      const k = d / Math.max(1, (Math.hypot(b.x - a.x, b.y - a.y) + Math.hypot(c.x - b.x, c.y - b.y)) / 2);   // degrees per metre
+      deg.push(d); curve.push(Math.abs(k)); sign.push(Math.abs(k) < 0.12 ? 0 : Math.sign(k));
+    }
+    const zones = [];
+    const make = (start, count) => {
+      let total = 0, peak = 0;
+      for (let k = 0; k < count; k++) { const i = (start + k) % n; total += deg[i]; peak = Math.max(peak, curve[i]); }
+      const end = (start + count - 1) % n;
+      let length = pts[end].cum - pts[start].cum; if (length < 0) length += track.total;
+      zones.push({ start, end, startCum: pts[start].cum, length, deg: total, side: total > 0 ? 'right' : 'left', kind: peak >= 0.8 ? 'sharp' : peak >= 0.35 ? 'normal' : 'slight', loop: count >= n });
+    };
+    let first = -1;
+    for (let i = 0; i < n; i++) if (sign[i] !== sign[(i - 1 + n) % n]) { first = i; break; }
+    if (first < 0) { if (sign[0]) make(0, n); }
+    else {
+      for (let step = 0; step < n;) {
+        const i = (first + step) % n;
+        let count = 1;
+        while (step + count < n && sign[(i + count) % n] === sign[i]) count++;
+        if (sign[i]) make(i, count);
+        step += count;
+      }
+    }
+    zoneCache.set(track, zones);
+    return zones;
+  }
+
+  let raceTextReady = false;
+  function rt(key, params = {}) {
+    const N = window.Narration;
+    if (N && !raceTextReady) { N.add(RACE_TEXT); raceTextReady = true; }
+    let text = N ? N.t(key, params) : RACE_TEXT[key][0].replace(/\{(\w+)\}/g, (w, k) => params[k] === undefined ? '' : String(params[k]));
+    return text;
+  }
 
   function say(text, opts = {}) {
     const G = window.Game;
@@ -396,6 +489,8 @@
     setEngineRpm(rpm) {
       this._rpm = Math.max(0, Math.min(1, Number(rpm) || 0));
       const low = this._loops.get('engine-low'), high = this._loops.get('engine-high');
+      // Two real engine recordings, cross-faded: the idle recording carries low
+      // revs and the high-rev recording takes over as the engine works harder.
       low?.setVolume(0.10 + (1 - this._rpm) * 0.18);
       low?.setPlaybackRate(0.82 + this._rpm * 0.48);
       high?.setVolume(this._rpm * 0.24);
@@ -414,8 +509,10 @@
     stopEngineSequence(onDone) {
       this.engineOn = false;
       ++this._engineToken;
+      const wasRunning = this._loops.has('engine-low') || this._loops.has('engine-high');
       this._stopLoop('engine-low'); this._stopLoop('engine-high');
       this.engine = null;
+      if (wasRunning) this._effect('car-stop');          // recorded engine shutdown
       queueMicrotask(() => onDone?.());
     }
 
@@ -440,7 +537,15 @@
     collision(intensity) {
       // The recording is a real metal impact; gameplay still applies intensity
       // to damage. The queue serializes it with the matching collision speech.
-      this._effect('car-collision');
+      this._effect(Number(intensity) >= 0.6 ? 'car-crash' : 'car-collision');
+    }
+
+    gearShift() { this._effect('gear-shift'); }
+
+    /** Fuel cap, then fuel pouring. Resolves when the pour has finished. */
+    async refuelSequence() {
+      await this._effect('fuel-cap', true);
+      await this._effect('fuel-pour', true);
     }
 
     skid(on) {
@@ -529,6 +634,15 @@
       this.speed = 0; // m/s along heading (signed: + forward, - reverse)
       this.steer = 0; this.throttle = 0; this.brakeOn = false; this.clutch = false; this.handbrake = false;
       this.boostOn = false; this.boostFuel = 1;
+      // Fuel is kept per car, in percent of a full tank, and is saved with the car.
+      const savedFuel = Number(ensureState().ownedCars?.[this.carId]?.fuel);
+      this.fuel = Number.isFinite(savedFuel) ? Math.max(0, Math.min(100, savedFuel)) : 100;
+      this._fuelWarned = this.fuel <= 10 ? 2 : this.fuel <= 25 ? 1 : 0;
+      this._refuelling = false;
+      this.swipeSteer = 0;                 // -1..1 from dragging on the track view
+      this.latch = { forward: false, back: false };
+      this.turnIntent = null;              // { side, id, at, entered }: steering held for one called turn
+      this._turnCalls = new Map();
       this.gear = 1;
       this.rpm = 0;
       this.engineOn = false;
@@ -615,10 +729,21 @@
       const j = (best + 1) % n;
       return pts[best].cum + bestSeg * (pts[j].cum >= pts[best].cum ? (pts[j].cum - pts[best].cum) : (this.track.total - pts[best].cum + pts[j].cum));
     }
-    distanceOffTrack(x, y) {
-      const i = this.nearestIndex(x, y);
-      return Math.hypot(this.track.points[i].x - x, this.track.points[i].y - y);
+    /** Closest point of the road's centre line: { x, y, distance, side }.
+     *  side is +1 when the car is right of centre, -1 when left of it. */
+    closestOnTrack(x, y) {
+      const pts = this.track.points, n = pts.length;
+      let best = null;
+      for (let i = 0; i < n; i++) {
+        const a = pts[i], b = pts[(i + 1) % n], abx = b.x - a.x, aby = b.y - a.y, len2 = abx * abx + aby * aby || 1;
+        const t = Math.max(0, Math.min(1, ((x - a.x) * abx + (y - a.y) * aby) / len2));
+        const cx = a.x + abx * t, cy = a.y + aby * t, d = Math.hypot(cx - x, cy - y);
+        if (!best || d < best.distance) best = { x: cx, y: cy, distance: d, side: ((x - a.x) * -aby + (y - a.y) * abx) >= 0 ? 1 : -1 };
+      }
+      return best;
     }
+    /** Distance from the centre of the road (measured to the road itself, not to its corner points). */
+    distanceOffTrack(x, y) { return this.closestOnTrack(x, y).distance; }
 
     start() {
       this.audio.startTerrain(this.track.cfg.surface);
@@ -648,27 +773,51 @@
       let steerDir = 0;
       if (inp.left) steerDir -= 1;
       if (inp.right) steerDir += 1;
-      this.steer += (steerDir - this.steer) * Math.min(1, dt * 10); // smoothing
-
-      // --- assist steering (accessible mode): gently pull toward track centerline ---
-      let assist = 0;
-      if (this.mode === 'race' && ensureState().settings.assistSteering && this.speed > 1) {
-        const i = this.nearestIndex(this.px, this.py);
-        const j = (i + 1) % this.track.points.length;
-        const ax = this.track.points[i].x, ay = this.track.points[i].y, bx = this.track.points[j].x, by = this.track.points[j].y;
-        // signed offset from the segment
-        const abx = bx - ax, aby = by - ay, len = Math.hypot(abx, aby) || 1;
-        const nx = -aby / len, ny = abx / len;
-        const off = (this.px - ax) * nx + (this.py - ay) * ny;
-        assist = Math.max(-0.6, Math.min(0.6, -off * 0.02));
-      }
+      if (!steerDir && this.swipeSteer) steerDir = Math.max(-1, Math.min(1, this.swipeSteer));
+      // --- steering assist (accessible driving) ---
+      // Without sight a driver cannot judge how far to turn the wheel, so with
+      // the assist on the car works out the amount and the driver supplies the
+      // decision: which way, and when.
+      //   straight or gentle bend, no input   -> the car holds the road
+      //   real turn, steering the called way  -> the car follows the turn
+      //   real turn, not steering             -> the car runs wide
+      //   steering the wrong way              -> the car goes the wrong way
+      // Taking a turn too fast still skids and understeers.
+      let assist = 0, steerCmd = steerDir;
+      if (ensureState().settings.assistSteering && this.speed > 1) {
+        const look = Math.max(14, Math.min(45, 12 + this.speed * 0.9));
+        const target = this._pointAhead(this.px, this.py, look);
+        let dh = Math.atan2(target.y - this.py, target.x - this.px) - this.heading;
+        while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
+        const lowSpeedFactor = Math.max(0.25, 1 - (Math.abs(this.speed) / p.maxSpeed) * 0.75);
+        const ideal = Math.max(-1, Math.min(1, dh * 2.6 / (p.turnRate * lowSpeedFactor)));
+        const zone = this.currentTurn();
+        const realTurn = zone && zone.kind !== 'slight' ? zone : null;
+        // A tap on Left or Right for a called turn holds that steering through the
+        // turn, so a screen-reader user never has to keep a button held down.
+        if (this.turnIntent) {
+          const it = this.turnIntent;
+          if (realTurn && realTurn.start === it.id) it.entered = true;
+          else if (it.entered || this._t - it.at > 8) this.turnIntent = null;
+          if (this.turnIntent && !steerDir) steerDir = it.side === 'right' ? 1 : -1;
+        }
+        const way = Math.sign(steerDir);
+        const next = realTurn ? null : this.upcomingTurn(40);
+        const called = realTurn || (next && next.kind !== 'slight' ? next : null);
+        if (!way) steerCmd = realTurn ? 0 : ideal;                    // nobody steering through a real turn: the car goes straight on
+        else if (called && way === (called.side === 'right' ? 1 : -1)) steerCmd = Math.max(-1, Math.min(1, ideal + (realTurn ? steerDir * 0.1 : 0)));
+        else steerCmd = Math.max(-1, Math.min(1, ideal * 0.5 + steerDir * 0.6));
+      } else this.turnIntent = null;
+      this.steer += (steerCmd - this.steer) * Math.min(1, dt * 10); // smoothing
 
       // --- longitudinal ---
       let accelInput = 0;
-      if (this.engineOn && !this.clutch) {
-        if (inp.forward) accelInput = 1;
-        else if (inp.back) accelInput = -1;
+      if (this.engineOn && !this.clutch && !this._refuelling && this.fuel > 0) {
+        if (inp.forward || this.latch.forward) accelInput = 1;
+        else if (inp.back || this.latch.back) accelInput = -1;
       }
+      if (inp.brake && (this.latch.forward || this.latch.back)) this.latch.forward = this.latch.back = false;
+      this._burnFuel(dt, accelInput);
       if (inp.brake) {
         if (this.speed > 0.2) { this.speed = Math.max(0, this.speed - p.braking * dt); this.audio.brake(true); }
         else if (this.speed < -0.2) { this.speed = Math.min(0, this.speed + p.braking * dt); this.audio.brake(true); }
@@ -695,7 +844,9 @@
 
       // --- gear & rpm ---
       const absSpeed = Math.abs(this.speed);
+      const previousGear = this.gear;
       this.gear = Math.max(1, Math.min(5, Math.floor(absSpeed / (p.maxSpeed / 5)) + 1));
+      if (this.gear !== previousGear && this.engineOn && this._t - (this._lastShiftAt || 0) > 0.8) { this._lastShiftAt = this._t; this.audio.gearShift(); }
       if (this.engineOn) {
         const speedRpm = (absSpeed / p.maxSpeed);
         const clutchRpm = this.clutch || accelInput > 0 ? 0.85 : speedRpm * 0.9 + 0.12;
@@ -723,8 +874,18 @@
       this.py += Math.sin(this.heading) * this.speed * dt;
 
       // --- terrain / off-track ---
-      const offDist = this.distanceOffTrack(this.px, this.py);
+      const nearest = this.closestOnTrack(this.px, this.py);
+      const offDist = nearest.distance;
       const halfWidth = 26;
+      if (offDist > halfWidth && absSpeed > 2 && this._t - (this._offRoadSaidAt ?? -99) > 4) {
+        this._offRoadSaidAt = this._t; this._offRoad = true;
+        say(rt(nearest.side > 0 ? 'race.off.left' : 'race.off.right'), { critical: true });
+      } else if (this._offRoad && offDist < halfWidth - 6) {
+        this._offRoad = false; this._offRoadSaidAt = -99;
+        const zone = this.currentTurn();
+        say(rt('race.off.back') + ' ' + rt(zone && zone.kind !== 'slight' ? 'race.turn.steady.' + zone.side : 'race.turn.end'));
+        if (this._g) { this._g.turnAt = this._t * 1000; this._g.steadyAt = this._t * 1000; this._g.inside = zone; }
+      }
       let surface = this.track.cfg.surface;
       if (offDist > halfWidth) {
         surface = this.track.cfg.surface === 'asphalt' ? 'grass' : 'mud';
@@ -732,11 +893,9 @@
         if (this.speed > 6) this.speed *= (1 - 1.6 * dt);
         if (offDist > halfWidth + 40) {
           // pushed back onto track edge (soft wall)
-          const i = this.nearestIndex(this.px, this.py);
-          const wp = this.track.points[i];
-          const ang = Math.atan2(this.py - wp.y, this.px - wp.x);
-          this.px = wp.x + Math.cos(ang) * (halfWidth + 40);
-          this.py = wp.y + Math.sin(ang) * (halfWidth + 40);
+          const ang = Math.atan2(this.py - nearest.y, this.px - nearest.x);
+          this.px = nearest.x + Math.cos(ang) * (halfWidth + 40);
+          this.py = nearest.y + Math.sin(ang) * (halfWidth + 40);
           this.speed *= 0.6;
           if (absSpeed > 6) { this._damage(1); this.audio.collision(0.25); say('Off track. Wall.'); }
         }
@@ -798,6 +957,9 @@
         this._updatePosition();
 
         // guidance + status announcements
+        this._guidance(dt);
+      } else if (this.mode !== 'race') {
+        // Practice gets the same spoken turn calls, so a blind driver can learn them without pressure.
         this._guidance(dt);
       }
     }
@@ -939,43 +1101,148 @@
       }
     }
 
+    /** Fuel use: a little at idle, more under throttle, most with boost. */
+    _burnFuel(dt, accelInput) {
+      if (!this.engineOn || this.fuel <= 0) return;
+      const rate = 0.02 + (accelInput ? 0.26 : 0) + (this.boostOn && accelInput > 0 ? 0.30 : 0);   // percent per second
+      this.fuel = Math.max(0, this.fuel - rate * dt);
+      if (this.fuel <= 0) {
+        this.latch.forward = this.latch.back = false;
+        this.engineOn = false;
+        this.audio.stopEngineSequence();
+        say(rt('race.fuel.empty'), { critical: true });
+      } else if (this.fuel <= 10 && this._fuelWarned < 2) { this._fuelWarned = 2; say(rt('race.fuel.critical', { pct: Math.ceil(this.fuel) }), { critical: true }); }
+      else if (this.fuel <= 25 && this._fuelWarned < 1) { this._fuelWarned = 1; say(rt('race.fuel.low', { pct: Math.ceil(this.fuel) })); }
+    }
+
+    /** Fill the tank. Costs one rupee per percent; a player with no money still
+     *  gets an emergency can so a blind driver is never stranded mid-track. */
+    refuel() {
+      if (this._refuelling) return false;
+      if (this.fuel >= 99.5) { say(rt('race.fuel.full')); return false; }
+      this.latch.forward = this.latch.back = false;
+      if (Math.abs(this.speed) > 4) { say(rt('race.fuel.slow')); this.speed = Math.sign(this.speed) * 4; }
+      const G = window.Game, player = G?.state?.player;
+      const gold = Math.max(0, Math.floor(Number(player?.gold) || 0));
+      const wanted = Math.ceil(100 - this.fuel);
+      const paid = Math.min(wanted, gold);
+      const target = paid >= 1 ? Math.min(100, this.fuel + paid) : Math.max(this.fuel, 15);
+      this._refuelling = true;
+      say(rt('race.fuel.filling'));
+      const finish = () => {
+        if (!this._refuelling) return;
+        this._refuelling = false;
+        if (paid >= 1 && player) { player.gold = gold - paid; G.updateHUD?.(); }
+        this.fuel = target;
+        this._fuelWarned = this.fuel <= 10 ? 2 : this.fuel <= 25 ? 1 : 0;
+        const car = ensureState().ownedCars?.[this.carId];
+        if (car) car.fuel = Math.round(this.fuel);
+        persist();
+        say(paid >= 1 ? rt('race.fuel.done', { pct: Math.round(this.fuel), cost: paid }) : rt('race.fuel.free', { pct: Math.round(this.fuel) }));
+      };
+      // Never wait on audio that cannot play (sound off, hidden page).
+      const timer = setTimeout(finish, 3200);
+      Promise.resolve(this.audio.refuelSequence()).then(() => { clearTimeout(timer); finish(); }, () => { clearTimeout(timer); finish(); });
+      return true;
+    }
+
+    /** The next turn ahead of the car: { id, distance, deg, side, kind, length }. */
+    upcomingTurn(maxDistance = 700) {
+      const here = this._progressAt(this.px, this.py), total = this.track.total;
+      let best = null;
+      for (const zone of trackZones(this.track)) {
+        if (zone.loop) continue;
+        let distance = zone.startCum - here; if (distance < 0) distance += total;
+        if (distance <= maxDistance && (!best || distance < best.distance)) best = { id: zone.start, distance, deg: zone.deg, side: zone.side, kind: zone.kind, length: zone.length };
+      }
+      return best;
+    }
+    /** The turn the car is inside right now, or null on a straight. */
+    currentTurn() {
+      const here = this._progressAt(this.px, this.py), total = this.track.total;
+      for (const zone of trackZones(this.track)) {
+        if (zone.loop) return zone;
+        let into = here - zone.startCum; if (into < 0) into += total;
+        if (zone.length > 0 && into <= zone.length) return zone;
+      }
+      return null;
+    }
+    _turnName(turn) {
+      const key = turn.kind === 'sharp' ? (turn.side === 'left' ? 'sharpLeft' : 'sharpRight') : turn.kind === 'slight' ? (turn.side === 'left' ? 'slightLeft' : 'slightRight') : turn.side;
+      return rt('race.turn.' + key);
+    }
+
+    /** Spoken guidance. Every turn is called at about 500 metres, at 50 metres
+     *  and at 30 metres, then "turn now" at the turn itself. Each call is made
+     *  once per turn, so the narrator never repeats or talks over itself.
+     *  Inside a long turn the driver is reminded to keep steering, and told to
+     *  straighten up when the turn ends. Time is race time, so a pause never
+     *  swallows a call. */
     _guidance(dt) {
       const rs = ensureState();
       if (!rs.settings.voiceGuidance) return;
-      const now = performance.now();
-      // speed announcement
+      const now = this._t * 1000;
+      const g = this._g || (this._g = { turnAt: -1e9, speedAt: 0, steadyAt: 0, inside: null });
       const interval = rs.settings.speedAnnounce === 'often' ? 6000 : rs.settings.speedAnnounce === 'off' ? Infinity : 12000;
-      if (interval !== Infinity && now - this._lastSpeedAnnounce > interval && this.speed > 3) {
-        const kmh = Math.round(this.speed * 3.6);
-        say(`Speed ${kmh} kilometers per hour.`);
-        this._lastSpeedAnnounce = now;
+      const moving = this.speed > 1;
+      const turn = moving ? this.upcomingTurn() : null;
+      const inside = moving ? this.currentTurn() : null;
+
+      // Leaving a turn: always tell the driver to centre the wheel, even when the
+      // next turn is close, unless that turn starts within a car length or two.
+      if (g.inside && g.inside !== inside && !g.inside.loop) {
+        const wasReal = g.inside.kind !== 'slight';
+        g.inside = inside;
+        if (wasReal && !inside && !(turn && turn.distance <= 12)) { g.turnAt = now; g.steadyAt = now; say(rt('race.turn.end')); return; }
       }
-      // upcoming turn guidance
-      const look = 45 + this.speed * 1.2;
-      const cur = this._pointAhead(this.px, this.py, 8);
-      const ahead = this._pointAhead(this.px, this.py, look);
-      const far = this._pointAhead(this.px, this.py, look + 25);
-      const d1 = Math.atan2(ahead.y - cur.y, ahead.x - cur.x);
-      const d2 = Math.atan2(far.y - ahead.y, far.x - ahead.x);
-      let dh = d2 - d1;
-      while (dh > Math.PI) dh -= Math.PI * 2; while (dh < -Math.PI) dh += Math.PI * 2;
-      const deg = dh * 180 / Math.PI;
-      let kind;
-      const adeg = Math.abs(deg);
-      if (adeg < 10) kind = 'straight';
-      else if (adeg < 22) kind = 'slight ' + (deg > 0 ? 'left' : 'right');
-      else if (adeg < 50) kind = (deg > 0 ? 'left' : 'right');
-      else if (adeg < 90) kind = 'sharp ' + (deg > 0 ? 'left' : 'right');
-      else kind = 'u-turn ahead';
-      if (kind !== this._lastTurnAnnounce || now - this._lastTurnAnnounceAt > 9000) {
-        const distM = Math.round(look);
-        let msg;
-        if (kind === 'straight') msg = 'Continue forward.';
-        else if (kind === 'u-turn ahead') msg = 'U-turn ahead.';
-        else msg = `${kind[0].toUpperCase() + kind.slice(1)} in ${distM} meters.`;
-        say(msg);
-        this._lastTurnAnnounce = kind;
-        this._lastTurnAnnounceAt = now;
+
+      if (turn) {
+        let calls = this._turnCalls.get(turn.id);
+        if (!calls || now - calls.seen > 20000 && turn.distance > 100) {            // a new lap: call the turn again
+          if (this._turnCalls.size > 24) this._turnCalls.delete(this._turnCalls.keys().next().value);
+          calls = { far: false, m50: false, m30: false, now: false, at: -1e9, seen: now };
+          this._turnCalls.set(turn.id, calls);
+        }
+        calls.seen = now;
+        const name = this._turnName(turn), Name = name.charAt(0).toUpperCase() + name.slice(1);
+        const quiet = now - calls.at > 1100;         // let the previous call finish
+        const fast = this.speed > (turn.kind === 'sharp' ? 14 : turn.kind === 'slight' ? 40 : 22);
+        let line = '', critical = false;
+        // With the assist on, a gentle bend needs nothing from the driver, so it
+        // gets one short notice instead of the full set of calls.
+        if (turn.kind === 'slight' && rs.settings.assistSteering) { calls.far = calls.m30 = calls.now = true; }
+        const nowAt = Math.max(9, this.speed * 0.45);       // leave the driver time to react
+        if (turn.distance <= nowAt && !calls.now) { calls.now = calls.m30 = calls.m50 = calls.far = true; critical = true; line = rt('race.turn.now.' + turn.side); g.steadyAt = now; }
+        else if (turn.distance <= 30 && turn.distance > nowAt && !calls.m30) {
+          // At speed the 50 and 30 metre calls are under two seconds apart, so the
+          // second one is shortened to fit: it must be finished before the turn.
+          const soon = now - calls.at < 1500;
+          calls.m30 = calls.m50 = calls.far = true; critical = !soon;
+          line = soon ? rt('race.turn.short', { m: 30 }) : rt('race.turn.near', { m: 30, turn: name, Turn: Name });
+        }
+        else if (turn.distance <= 50 && turn.distance > 30 && !calls.m50 && quiet) { calls.m50 = calls.far = true; critical = true; line = rt(fast ? 'race.turn.nearSlow' : 'race.turn.near', { m: 50, turn: name, Turn: Name }); }
+        else if (turn.distance <= 520 && turn.distance > 60 && !calls.far && (now - g.turnAt > 2500 || turn.distance < 130)) {
+          calls.far = true;
+          const m = turn.distance >= 450 ? 500 : Math.max(100, Math.round(turn.distance / 50) * 50);
+          line = rt('race.turn.far', { m, turn: name, Turn: Name });
+        }
+        if (line) { calls.at = now; g.turnAt = now; this._lastTurnAnnounce = turn.side; this._lastTurnAnnounceAt = now; say(line, { critical }); g.inside = inside; return; }
+      }
+
+      const turnDue = Boolean(turn && turn.distance < 70);
+      g.inside = inside;
+      // Reminders, only when no turn call is due and the narrator has been quiet.
+      if (moving && this.speed > 3 && !turnDue && now - g.turnAt > 2500) {
+        if (inside && inside.kind !== 'slight' && now - g.steadyAt > 7000) { g.steadyAt = now; g.turnAt = now; say(rt('race.turn.steady.' + inside.side)); return; }
+        if ((!inside || inside.kind === 'slight') && now - g.steadyAt > 15000) {
+          if (inside && rs.settings.assistSteering) { g.steadyAt = now; g.turnAt = now; say(rt('race.bend.hold', { turn: this._turnName(inside) })); return; }
+          if (inside) { g.steadyAt = now; g.turnAt = now; say(rt('race.turn.steady.' + inside.side)); return; }
+          const next = this.upcomingTurn(this.track.total);
+          g.steadyAt = now; g.turnAt = now;
+          say(rt('race.straight', { m: Math.max(50, Math.round((next ? next.distance : 700) / 50) * 50) }));
+          return;
+        }
+        if (interval !== Infinity && now - g.speedAt > interval) { g.speedAt = now; g.turnAt = now - 1500; say(rt('race.speed', { kmh: Math.round(this.speed * 3.6) })); }
       }
     }
 
@@ -1041,6 +1308,7 @@
       this.stats.condition = this.condition;
       this.physics = physicsFrom({ ...this.stats, condition: this.condition });
       say('Pit stop. Condition restored a little. Boost refilled. You lost some time.');
+      if (this.fuel < 99.5) this.refuel();
     }
 
     statusReport() {
@@ -1050,6 +1318,7 @@
       } else {
         say(`Practice status. Speed ${kmh} kilometers per hour. Gear ${this.gear}. Engine ${this.engineOn ? 'on' : 'off'}. Condition ${Math.round(this.condition)} percent.`);
       }
+      say(rt('race.fuel.status', { pct: Math.round(this.fuel) }));
     }
 
     restart() {
@@ -1059,6 +1328,8 @@
       this.speed = 0; this.progress = 0; this.lastProgress = 0; this.lap = 0; this.nextCp = 0;
       this.finished = false; this.disabled = false; this.condition = 100; this.stats.condition = 100; this.physics = physicsFrom(this.stats);
       this.position = 1; this._finishOrderCounter = 0;
+      this.latch.forward = this.latch.back = false; this.swipeSteer = 0; this._turnCalls.clear(); this._g = null; this.turnIntent = null; this._offRoad = false;
+      if (this.fuel <= 0) this.fuel = 15;          // a restart never leaves the driver stranded
       this.ai.forEach(a => { a.finished = false; a.progress = 0; a.speed = 0; });
       say('Race restarted.');
     }
@@ -1138,6 +1409,8 @@
         .bsu-car-controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;background:#141a24;border-top:1px solid #2a3342}
         .bsu-car-btn{min-height:56px;font-size:17px;font-weight:700;border-radius:10px;border:1px solid #3b4657;background:#1f2937;color:#fff;cursor:pointer}
         .bsu-car-btn:active,.bsu-car-btn.pressed{background:#3b82f6}
+        .bsu-car-btn.latched{background:#15803d;border-color:#22c55e}
+        .bsu-car-btn{touch-action:none;user-select:none;-webkit-user-select:none}
         .bsu-car-btn.ghost{background:transparent;border-color:#334155;font-size:14px;font-weight:600}
         .bsu-car-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
         .bsu-car-panel{position:fixed;inset:0;z-index:9998;background:rgba(8,10,15,.96);color:#fff;overflow:auto;padding:16px;font-family:system-ui,sans-serif}
@@ -1165,19 +1438,19 @@
           <button class="bsu-car-btn ghost" id="bsu-car-exit" style="width:auto;min-height:44px;padding:0 12px">Exit</button>
           <div class="bsu-car-hud" id="bsu-car-hud" aria-live="polite">Not started</div>
         </div>
-        <canvas class="bsu-car-canvas" id="bsu-car-canvas"></canvas>
+        <canvas class="bsu-car-canvas" id="bsu-car-canvas" role="img" aria-label="Track view. Drag left or right here to steer, swipe up to accelerate, swipe down to brake."></canvas>
         <div class="bsu-car-controls">
-          <button class="bsu-car-btn" id="bsu-car-left" aria-label="Turn left (A)">Left</button>
-          <button class="bsu-car-btn" id="bsu-car-forward" aria-label="Forward (W)">Forward</button>
-          <button class="bsu-car-btn" id="bsu-car-right" aria-label="Turn right (D)">Right</button>
-          <button class="bsu-car-btn" id="bsu-car-reverse" aria-label="Reverse (S)">Reverse</button>
-          <button class="bsu-car-btn" id="bsu-car-brake" aria-label="Brake (Space)">Brake</button>
+          <button class="bsu-car-btn" id="bsu-car-left" aria-label="Steer left. Tap once when a left turn is called to steer through it, or hold. Key A.">Left</button>
+          <button class="bsu-car-btn" id="bsu-car-forward" aria-pressed="false" aria-label="Accelerate. Hold to accelerate, or tap once to keep accelerating and tap again to coast. Key W.">Forward</button>
+          <button class="bsu-car-btn" id="bsu-car-right" aria-label="Steer right. Tap once when a right turn is called to steer through it, or hold. Key D.">Right</button>
+          <button class="bsu-car-btn" id="bsu-car-reverse" aria-pressed="false" aria-label="Reverse. Hold, or tap once to keep reversing. Key S.">Reverse</button>
+          <button class="bsu-car-btn" id="bsu-car-brake" aria-label="Brake. Hold to brake, or tap to brake for a moment. Releases the accelerator. Key Space.">Brake</button>
           <button class="bsu-car-btn" id="bsu-car-horn" aria-label="Horn">Horn</button>
           <button class="bsu-car-btn ghost" id="bsu-car-engine" aria-label="Toggle engine (E)">Engine</button>
           <button class="bsu-car-btn" id="bsu-car-boost" aria-label="Boost">Boost</button>
           <button class="bsu-car-btn ghost" id="bsu-car-status" aria-label="Race status (I)">Status</button>
           <button class="bsu-car-btn ghost" id="bsu-car-map" aria-label="Track map">Map</button>
-          <button class="bsu-car-btn ghost" id="bsu-car-pit" aria-label="Pit stop">Pit</button>
+          <button class="bsu-car-btn ghost" id="bsu-car-pit" aria-label="Pit stop and refuel">Pit / Refuel</button>
           <button class="bsu-car-btn ghost" id="bsu-car-restart" aria-label="Restart (R)">Restart</button>
         </div>
         <div class="bsu-car-sr" id="bsu-car-announcer" role="status" aria-live="assertive"></div>
@@ -1189,22 +1462,91 @@
       this._bindOverlayControls();
     },
 
+    /* Driving controls work three ways, so they work with a finger, a mouse, a
+     * keyboard and a screen reader:
+     *   hold  - the control is active for as long as it is held;
+     *   tap   - Forward/Reverse stay on until tapped again (or until Brake);
+     *           Left/Right/Brake act for a moment;
+     *   click - what a screen reader or the Enter key sends: treated as a tap.
+     * A hold never "sticks": losing the pointer for any reason releases it. */
     _bindOverlayControls() {
+      const TAP_MS = 280;
+      const sim = () => CarRacing.activeSim;
+      const mark = (id, on) => { const el = document.getElementById(id); if (!el) return; el.classList.toggle('latched', on); el.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+      this._markLatches = () => { const s = sim(); mark('bsu-car-forward', Boolean(s?.latch.forward)); mark('bsu-car-reverse', Boolean(s?.latch.back)); };
+      const tap = key => CarRacing.tapControl(key);
       const press = (id, key) => {
         const el = document.getElementById(id);
         if (!el) return;
-        const on = () => { el.classList.add('pressed'); if (CarRacing.activeSim) CarRacing.activeSim.setInput(key, true); };
-        const off = () => { el.classList.remove('pressed'); if (CarRacing.activeSim) CarRacing.activeSim.setInput(key, false); };
-        el.addEventListener('pointerdown', e => { e.preventDefault(); on(); });
-        el.addEventListener('pointerup', off); el.addEventListener('pointerleave', off); el.addEventListener('pointercancel', off);
+        let downAt = 0, pointerId = null, handledAt = -Infinity;
+        const release = () => { el.classList.remove('pressed'); sim()?.setInput(key, false); pointerId = null; };
+        el.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          downAt = performance.now(); pointerId = e.pointerId;
+          try { el.setPointerCapture(e.pointerId); } catch (error) { /* not capturable */ }
+          el.classList.add('pressed');
+          const s = sim();
+          if (!s) return;
+          if ((key === 'forward' || key === 'back') && !s.engineOn) return;      // the tap handler explains and starts the engine
+          s.setInput(key, true);
+        });
+        const up = e => {
+          if (pointerId === null || (e.pointerId !== undefined && e.pointerId !== pointerId)) return;
+          const held = performance.now() - downAt;
+          release();
+          handledAt = performance.now();
+          if (held < TAP_MS) tap(key);
+          else if (key === 'forward' || key === 'back') { const s = sim(); if (s) { s.latch.forward = s.latch.back = false; this._markLatches(); } }
+        };
+        el.addEventListener('pointerup', up);
+        el.addEventListener('pointercancel', () => { if (pointerId !== null) { release(); handledAt = performance.now(); } });
+        el.addEventListener('lostpointercapture', () => { if (pointerId !== null) { release(); handledAt = performance.now(); } });
+        // Screen readers and the keyboard activate a button with "click" and no pointer events.
+        el.addEventListener('click', e => { e.preventDefault(); if (performance.now() - handledAt < 500) return; tap(key); });
+        el.addEventListener('contextmenu', e => e.preventDefault());
       };
       press('bsu-car-forward', 'forward');
       press('bsu-car-reverse', 'back');
       press('bsu-car-left', 'left');
       press('bsu-car-right', 'right');
       press('bsu-car-brake', 'brake');
-      document.getElementById('bsu-car-horn').addEventListener('pointerdown', () => CarRacing.activeSim && CarRacing.activeSim.audio.horn(true));
-      document.getElementById('bsu-car-horn').addEventListener('pointerup', () => CarRacing.activeSim && CarRacing.activeSim.audio.horn(false));
+
+      const horn = document.getElementById('bsu-car-horn');
+      let hornTimer = null;
+      const hornOff = () => { clearTimeout(hornTimer); sim()?.audio.horn(false); };
+      horn.addEventListener('pointerdown', e => { try { horn.setPointerCapture(e.pointerId); } catch (error) { /* ignore */ } sim()?.audio.horn(true); horn._at = performance.now(); });
+      horn.addEventListener('pointerup', hornOff); horn.addEventListener('pointercancel', hornOff); horn.addEventListener('lostpointercapture', hornOff);
+      horn.addEventListener('click', () => { if (performance.now() - (horn._at ?? -Infinity) < 500) return; sim()?.audio.horn(true); clearTimeout(hornTimer); hornTimer = setTimeout(hornOff, 700); });
+
+      // Steering by dragging on the track view. Drag sideways to steer (the
+      // further the drag, the harder the turn), swipe up to accelerate, swipe
+      // down to brake. Lifting the finger centres the wheel.
+      const canvas = this.canvas;
+      if (canvas) {
+        let drag = null;
+        const end = () => {
+          const s = sim();
+          if (drag && s) { s.swipeSteer = 0; if (drag.braking) s.setInput('brake', false); }
+          drag = null;
+        };
+        canvas.addEventListener('pointerdown', e => { e.preventDefault(); try { canvas.setPointerCapture(e.pointerId); } catch (error) { /* ignore */ } drag = { id: e.pointerId, x: e.clientX, y: e.clientY, at: performance.now(), vertical: false, braking: false, side: 0 }; });
+        canvas.addEventListener('pointermove', e => {
+          const s = sim();
+          if (!drag || !s || e.pointerId !== drag.id) return;
+          const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+          if (!drag.vertical && Math.abs(dx) >= 12 && Math.abs(dx) >= Math.abs(dy)) {
+            s.swipeSteer = Math.max(-1, Math.min(1, dx / 90));
+            const side = dx < 0 ? -1 : 1;
+            if (side !== drag.side) { drag.side = side; say(rt(side < 0 ? 'race.steer.left' : 'race.steer.right')); }
+          } else if (!drag.side && Math.abs(dy) >= 40 && Math.abs(dy) > Math.abs(dx) * 1.3 && !drag.vertical) {
+            drag.vertical = true;
+            if (dy < 0) CarRacing.setThrottle(true);
+            else { drag.braking = true; CarRacing.setThrottle(false, { quiet: true }); s.setInput('brake', true); say(rt('race.braking')); }
+          }
+        });
+        canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end); canvas.addEventListener('lostpointercapture', end);
+      }
+
       document.getElementById('bsu-car-engine').addEventListener('click', () => CarRacing.toggleEngine());
       document.getElementById('bsu-car-boost').addEventListener('click', () => CarRacing.handleCommand('boost'));
       document.getElementById('bsu-car-status').addEventListener('click', () => CarRacing.activeSim && CarRacing.activeSim.statusReport());
@@ -1228,10 +1570,14 @@
       if (!el) return;
       const kmh = Math.round(Math.abs(sim.speed) * 3.6);
       if (sim.mode === 'race') {
-        el.textContent = `Lap ${Math.min(sim.lap + 1, sim.lapsTotal)}/${sim.lapsTotal} · Pos ${sim.position} · ${kmh} km/h · Gear ${sim.gear} · ${Math.round(sim.condition)}%`;
+        el.textContent = `Lap ${Math.min(sim.lap + 1, sim.lapsTotal)}/${sim.lapsTotal} · Pos ${sim.position} · ${kmh} km/h · Gear ${sim.gear} · Fuel ${Math.round(sim.fuel)}% · Car ${Math.round(sim.condition)}%`;
       } else {
-        el.textContent = `Practice · ${kmh} km/h · Gear ${sim.gear} · Engine ${sim.engineOn ? 'ON' : 'OFF'} · ${Math.round(sim.condition)}%`;
+        el.textContent = `Practice · ${kmh} km/h · Gear ${sim.gear} · Engine ${sim.engineOn ? 'ON' : 'OFF'} · Fuel ${Math.round(sim.fuel)}% · Car ${Math.round(sim.condition)}%`;
       }
+      // A visual HUD only: it changes many times a second, so it must not be a
+      // live region. Speech comes from the guidance calls instead.
+      if (el.getAttribute('aria-live') !== 'off') el.setAttribute('aria-live', 'off');
+      this._markLatches?.();
     },
 
     _panel(title, bodyHTML, { onMount } = {}) {
@@ -1254,6 +1600,7 @@
    * =================================================================== */
 
   window.CarRacing = {
+    trackZones, buildTrack: buildTrackPoints,
     activeSim: null,
     renderCtx: null, renderW: 0, renderH: 0, renderScale: 6,
     _countdownTimer: null,
@@ -1450,7 +1797,7 @@
       UI._panel('Racing Settings & Accessibility', `
         <p>These settings make driving accessible for blind players using TalkBack or a screen reader.</p>
         <label><input type="checkbox" id="bsu-set-voice" ${s.voiceGuidance ? 'checked' : ''}> Voice guidance (turns, speed, direction)</label>
-        <label><input type="checkbox" id="bsu-set-assist" ${s.assistSteering ? 'checked' : ''}> Steering assist (keeps you near the track)</label>
+        <label><input type="checkbox" id="bsu-set-assist" ${s.assistSteering ? 'checked' : ''}> Steering assist (the car works out how far to turn; you choose which way and when)</label>
         <label><input type="checkbox" id="bsu-set-opp" ${s.announceOpponents ? 'checked' : ''}> Announce nearby opponents</label>
         <label><input type="checkbox" id="bsu-set-rubber" ${s.rubberBand ? 'checked' : ''}> Rubber-banding (optional: opponents catch up if far ahead)</label>
         <label for="bsu-set-speed">Speed announcements</label>
@@ -1473,7 +1820,7 @@
     },
 
     playTutorial() {
-      say('Welcome to racing. Commands: accelerate, brake, left, right, boost, status, position, map, pause, quit race. You can also use the buttons. Type tutorial any time to hear this again.', { critical: true });
+      say('Welcome to racing. Tap Forward once and the car keeps accelerating; tap it again to coast. When a turn is called, tap Left or Right once to steer through it, or hold the button, or drag sideways on the track view. Brake releases the accelerator. Turns are called at about 500, 50 and 30 meters. Watch your fuel and use Pit to refuel. Commands: accelerate, coast, brake, stop, left, right, boost, fuel, refuel, status, position, map, pause, quit race. Type tutorial any time to hear this again.', { critical: true });
     },
 
     handleCommand(raw) {
@@ -1490,10 +1837,16 @@
       if (c === 'help' || c === 'racing help' || c === 'race rules' || c === 'controls') { this.openHelp(); return true; }
       if (c === 'quit race' || c === 'exit race' || c === 'leave race') { if (sim) this.exitDriving(); else say('You are not in a race.'); return true; }
       if (!sim) return false;
-      if (c === 'accelerate' || c === 'gas' || c === 'throttle') { pulse('forward', 900); say('Accelerating.'); return true; }
-      if (c === 'brake') { pulse('brake', 700); say('Braking.'); return true; }
-      if (c === 'left') { pulse('left', 500); say('Steering left.'); return true; }
-      if (c === 'right') { pulse('right', 500); say('Steering right.'); return true; }
+      if (c === 'accelerate' || c === 'gas' || c === 'throttle' || c === 'forward' || c === 'go') { pulse('forward', 900); this.setThrottle(true); return true; }
+      if (c === 'coast' || c === 'release' || c === 'ease off' || c === 'lift') { this.setThrottle(false); return true; }
+      if (c === 'reverse' || c === 'back up') { this.tapControl('back'); return true; }
+      if (c === 'brake') { this.tapControl('brake'); return true; }
+      if (c === 'stop' || c === 'stop car' || c === 'full stop') { this.setThrottle(false, { quiet: true }); sim.setInput('brake', true); say(rt('race.braking')); const hold = setInterval(() => { const live = this.activeSim; if (!live || live !== sim || Math.abs(sim.speed) < 0.3) { clearInterval(hold); if (live === sim) { sim.setInput('brake', false); say(rt('race.stopped')); } } }, 150); return true; }
+      if (c === 'left') { this.tapControl('left'); return true; }
+      if (c === 'right') { this.tapControl('right'); return true; }
+      if (c === 'hard left' || c === 'hard right') { const key = c.endsWith('left') ? 'left' : 'right'; pulse(key, 1100); say(rt('race.steer.' + key)); return true; }
+      if (c === 'refuel' || c === 'fill up' || c === 'fill tank') { sim.refuel(); return true; }
+      if (c === 'fuel' || c === 'fuel level') { say(rt('race.fuel.status', { pct: Math.round(sim.fuel) })); return true; }
       if (c === 'boost') {
         if (sim.boostFuel <= 0.05) { say('Boost not ready.'); return true; }
         sim.boostOn = !sim.boostOn;
@@ -1503,7 +1856,7 @@
       if (c === 'status') { sim.statusReport(); return true; }
       if (c === 'position') { sim.positionReport(); return true; }
       if (c === 'map') { sim.mapReport(); return true; }
-      if (c === 'pit') { sim.enterPit(); return true; }
+      if (c === 'pit' || c === 'pit stop') { if (sim.mode === 'race') sim.enterPit(); else sim.refuel(); return true; }
       if (c === 'pause') { sim._paused = true; say('Paused.'); return true; }
       if (c === 'resume') { sim._paused = false; say('Resumed.'); return true; }
       return false;
@@ -1511,8 +1864,16 @@
 
     openHelp() {
       UI._panel('How to Drive', `
-        <h3>TalkBack and text commands</h3>
-        <p>accelerate · brake · left · right · boost · status · position · map · pit · pause · resume · quit race · tutorial</p>
+        <h3>Touch and screen reader</h3>
+        <p>Forward: hold to accelerate, or tap once to keep accelerating and tap again to coast. With TalkBack or VoiceOver, double-tap works the same as a tap.</p>
+        <p>Left and Right: when a turn is called, tap the matching side once and the car steers through that turn for you; or hold the button and let go when you hear "Straighten up". With steering assist on, the car works out how far to turn, and it holds gentle bends by itself. If you do not steer for a real turn, the car runs wide and leaves the road. You can also drag sideways on the track view; the further you drag, the harder the turn. Swipe up on the track view to accelerate, swipe down to brake.</p>
+        <p>Brake: hold to brake, or tap to brake for a moment. Braking always releases the accelerator.</p>
+        <h3>Text and voice commands</h3>
+        <p>accelerate · coast · brake · stop · left · right · hard left · hard right · reverse · boost · fuel · refuel · status · position · map · pit · pause · resume · quit race · tutorial</p>
+        <h3>Fuel</h3>
+        <p>Driving uses fuel. You are warned at 25 and 10 percent. Use Pit / Refuel to fill the tank: one rupee per percent. If you cannot pay, the pit crew gives you a free emergency can.</p>
+        <h3>Turn calls</h3>
+        <p>Each turn is announced about 500 meters ahead, again at 50 meters and at 30 meters, and then "turn now" at the turn.</p>
         <h3>Keyboard</h3>
         <p>W / Up = Forward · S / Down = Reverse · A / Left = steer left · D / Right = steer right</p>
         <p>Space = Brake · C = Clutch · H = Handbrake · E = Engine on/off · R = Restart · P = Pause · I = Race status · Escape = Exit</p>
@@ -1576,10 +1937,60 @@
       this._countdownTimer = setTimeout(step, 1200);
     },
 
+    /** Keep accelerating (or stop) without holding anything down. */
+    setThrottle(on, { quiet = false } = {}) {
+      const sim = this.activeSim;
+      if (!sim) return false;
+      if (on && !sim.engineOn) {
+        if (sim.fuel <= 0) { say(rt('race.fuel.empty'), { critical: true }); return false; }
+        say(rt('race.engineFirst'));
+        sim.latch.forward = true; sim.latch.back = false;
+        this.toggleEngine();
+        UI._markLatches?.();
+        return true;
+      }
+      const was = sim.latch.forward;
+      sim.latch.forward = Boolean(on); if (on) sim.latch.back = false;
+      UI._markLatches?.();
+      if (!quiet && was !== sim.latch.forward) say(rt(on ? 'race.throttle.on' : 'race.throttle.off'));
+      return true;
+    },
+
+    /** A tap (or a screen-reader activation) of a driving control. */
+    tapControl(key) {
+      const sim = this.activeSim;
+      if (!sim) return false;
+      const pulse = (name, ms) => { sim.setInput(name, true); setTimeout(() => { if (this.activeSim === sim) sim.setInput(name, false); }, ms); };
+      if (key === 'forward') return this.setThrottle(!sim.latch.forward);
+      if (key === 'back') {
+        if (!sim.engineOn) { say(rt('race.engineFirst')); this.toggleEngine(); }
+        sim.latch.back = !sim.latch.back; sim.latch.forward = false;
+        UI._markLatches?.();
+        say(rt(sim.latch.back ? 'race.reverse.on' : 'race.throttle.off'));
+        return true;
+      }
+      if (key === 'brake') { const had = sim.latch.forward || sim.latch.back; sim.latch.forward = sim.latch.back = false; UI._markLatches?.(); pulse('brake', 1200); say(rt('race.braking') + (had ? ' ' + rt('race.throttle.off') : '')); return true; }
+      if (key === 'left' || key === 'right') {
+        const inside = sim.currentTurn(), ahead = sim.upcomingTurn(80);
+        const turn = inside && inside.kind !== 'slight' && inside.side === key ? inside : ahead && ahead.kind !== 'slight' && ahead.side === key ? ahead : null;
+        if (turn && ensureState().settings.assistSteering) {
+          sim.turnIntent = { side: key, id: turn.start ?? turn.id, at: sim._t, entered: turn === inside };
+          say(rt('race.steer.through.' + key));
+        } else {
+          if (sim.turnIntent && sim.turnIntent.side !== key) sim.turnIntent = null;      // tapping the other way cancels a held turn
+          pulse(key, 550); say(rt('race.steer.' + key));
+        }
+        return true;
+      }
+      return false;
+    },
+
     toggleEngine() {
       const sim = this.activeSim;
       if (!sim) return;
+      if (!sim.engineOn && sim.fuel <= 0) { say(rt('race.fuel.empty'), { critical: true }); return; }
       if (sim.engineOn) {
+        sim.latch.forward = sim.latch.back = false;
         sim.engineOn = false;
         say('Engine stopped.');
         sim.audio.stopEngineSequence();
@@ -1600,7 +2011,7 @@
       if (sim) {
         sim.stop();
         const rs = ensureState();
-        if (rs.ownedCars[sim.carId]) rs.ownedCars[sim.carId].condition = Math.max(0, Math.round(sim.condition));
+        if (rs.ownedCars[sim.carId]) { rs.ownedCars[sim.carId].condition = Math.max(0, Math.round(sim.condition)); rs.ownedCars[sim.carId].fuel = Math.max(0, Math.round(sim.fuel)); }
         persist();
         say('You step out of the car. Vehicle secured.');
         sim.audio.doorSequence();
