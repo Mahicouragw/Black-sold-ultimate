@@ -1,4 +1,4 @@
-const CACHE='black-sword-v7.55.0';
+const CACHE='black-sword-v7.56.0';
 const BASE=new URL('./',self.registration.scope);
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',
@@ -8,7 +8,7 @@ const CORE=[
   'cemetery-spellfield-combat-v11.js','cemetery-city-expansion-v23.js','astral-dragon-realm-v25.js','black-sword-alexa-multiplayer-v26.js','professional-audio-combat-v24.js','battle-summary-cleantext-v12.js',
   'expansive-forest-multitarget-v13.js','fair-group-combat-v14.js','wayfinder-battle-actions-v15.js','security-privacy-v16.js','resource-recovery-forest-exit-v17.js','companion-economy-arena-v18.js',
   'hunt-clear-v19.js','hunt-achievements-v20.js','hunt-wayfinder-v21.js','horse-racing-v22.js','world-navigation-v27.js','stabilization-v7211.js','chat-notice-feedback-v7221.js','healer-monsters-v7222.js','ai-npc-v7223.js','trading-v7224.js','car-racing-v28.js','game-tutorials-v29.js','items-hunger-v30.js','black-sword-features-v31.js','class-spells-v726.js','summon-allegiance-rings-v727.js','world-guide-rewards-v728.js','seasonal-events-v729.js','privacy.html','terms.html','game-hall.js','assets/vendor/chess.js',
-  'narration-v755.js','bsu-server.js','survival-v755.js','palace-rooms-v755.js','prayer-angels-v755.js','chess-ai-v755.js','game-hall-v755.js','pwa.js','backend-config.js','firebase-auth-client.js','neon-game-client.js','assets/vendor/neon-0.9.0-beta.js','assets/vendor/NEON-LICENSE.txt','icons/icon-192.png','assets/audio/music/Fantasy-Choir-1.mp3','assets/audio/music/Fantasy-Choir-2.mp3',
+  'narration-v755.js','bsu-server.js','survival-v755.js','palace-rooms-v755.js','prayer-angels-v755.js','screen-reader-v756.js','chess-ai-v755.js','game-hall-v755.js','pwa.js','backend-config.js','firebase-auth-client.js','neon-game-client.js','assets/vendor/neon-0.9.0-beta.js','assets/vendor/NEON-LICENSE.txt','icons/icon-192.png','assets/audio/music/Fantasy-Choir-1.mp3','assets/audio/music/Fantasy-Choir-2.mp3',
   'assets/audio/music/Fantasy-Choir-3.mp3','assets/audio/music/adventure-intro.wav','assets/audio/music/battle-fast.mp3','assets/audio/music/battle.ogg','assets/audio/music/boss.mp3','assets/audio/music/dark-forest.mp3',
   'assets/audio/music/determined-pursuit.mp3','assets/audio/music/town-theme-rpg.mp3','assets/audio/music/natural-forest-theme.mp3','assets/audio/music/battle-theme-a.mp3','assets/audio/music/boss-battle-theme.mp3','assets/audio/music/final-boss-theme.ogg','assets/audio/music/dungeon.ogg','assets/audio/music/exploration.mp3','assets/audio/music/inn.mp3','assets/audio/music/town.mp3','assets/audio/music/victory.mp3',
   'assets/audio/sfx/attack-fast.wav','assets/audio/sfx/attack-heavy.wav','assets/audio/sfx/attack.wav','assets/audio/sfx/board-dice.wav','assets/audio/sfx/board-error.wav','assets/audio/sfx/board-piece.wav',

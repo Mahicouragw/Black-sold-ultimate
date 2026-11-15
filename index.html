@@ -596,7 +596,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.55.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.56.0</span></div>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
@@ -743,6 +743,9 @@
         </div>
     </div>
 
+    <!-- Spoken by TalkBack / VoiceOver: panels opening and closing, location actions. -->
+    <div id="sr-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
     <script src="version.js"></script>
     <!-- Firebase SDK for simple Google sign-in (CDN, no build step). -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -818,5 +821,6 @@
 <script defer src="survival-v755.js"></script>
 <script defer src="palace-rooms-v755.js"></script>
 <script defer src="prayer-angels-v755.js"></script>
+<script defer src="screen-reader-v756.js"></script>
 </body>
 </html>
