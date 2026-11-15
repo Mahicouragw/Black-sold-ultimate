@@ -21,3 +21,4 @@ TOKEN-HERE.txt
 .env.local
 .env.*.local
 .neon/
+.cache/

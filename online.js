@@ -811,6 +811,8 @@ const OnlineSystem = {
         catch(error){console.warn('Sign-out cleanup warning:',error?.message||error);}
         this.authRevision++;
         this.ready=false;this.user=null;this.profile=null;this.linked=false;
+        // The signed-out device goes back to the guest saves; this account's heroes stay under its own key.
+        window.Game?.forgetAccount?.();
         this.clearGoogleFlow();
         try{localStorage.removeItem('black_sword_recovered_by_id');}catch{}
         if(reload)location.reload();

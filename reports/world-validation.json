@@ -1,21 +1,21 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-10-29T03:31:32.745Z",
+  "generatedAt": "2026-11-15T09:03:46.212Z",
   "finite": true,
-  "locations": 1158,
+  "locations": 1164,
   "regions": 99,
-  "edges": 3072,
-  "reachable": 798,
+  "edges": 3084,
+  "reachable": 804,
   "conditionalLockedLocations": 360,
   "unexpectedUnreachableLocations": 0,
   "directionCounts": {
-    "north": 624,
+    "north": 627,
     "northeast": 49,
-    "east": 648,
+    "east": 651,
     "southeast": 34,
-    "south": 624,
+    "south": 627,
     "southwest": 49,
-    "west": 652,
+    "west": 655,
     "northwest": 34,
     "up": 155,
     "down": 203
@@ -127,7 +127,7 @@
     }
   },
   "loopClassification": {
-    "INTENTIONAL_LOOP": 1510,
+    "INTENTIONAL_LOOP": 1516,
     "VALID_ROUTE": 377,
     "ACCIDENTAL_LOOP": 0
   },

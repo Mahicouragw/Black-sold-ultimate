@@ -14,13 +14,13 @@ const Game = {
         players: [],
         currentPlayer: 0,
         isMultiplayer: false,
-        location: 'market_square',
+        location: 'kaliwasch',
         inCombat: false,
         enemy: null,
         inventory: [],
         quests: [],
         completedQuests: [],
-        visited: ['market_square'],
+        visited: ['kaliwasch'],
         kills: 0,
         slainEnemies: {},
         musicEnabled: true,
@@ -35,8 +35,11 @@ const Game = {
         messages: [],
         guild: null,
         combatGroup: [],
-        saveKey: 'black_sword_ultimate_save',
-        rosterKey: 'black_sword_hero_roster_v2',
+        // Per-account storage keys. Every reader and writer in the game asks for
+        // state.saveKey / state.rosterKey, so the account suffix is applied in
+        // one place (see Game.getAccountKey below).
+        get saveKey() { return Game.getAccountKey('black_sword_ultimate_save'); },
+        get rosterKey() { return Game.getAccountKey('black_sword_hero_roster_v2'); },
         activeHeroId: null,
         pendingHeroId: null,
         creatingHero: false,
@@ -88,14 +91,77 @@ const Game = {
         const active = roster.activeHeroId && roster.heroes[roster.activeHeroId];
         if (active) {
             this.state.activeHeroId = roster.activeHeroId;
-            localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(active));
+            localStorage.setItem(this.state.saveKey, JSON.stringify(active));
             document.getElementById('btn-continue').disabled = false;
         }
     },
 
+    // ---- saves kept apart for each Google account ---------------------------
+    // Heroes saved on this device belong to the Google account that was signed
+    // in when they were saved. With nobody signed in (guest) the plain keys are
+    // used. The account is remembered on the device, so the right heroes are
+    // there at start-up and offline, before sign-in has been confirmed again.
+    // It is forgotten only when the player signs out.
+    SAVE_BASE_KEY: 'black_sword_ultimate_save',
+    ROSTER_BASE_KEY: 'black_sword_hero_roster_v2',
+    ACCOUNT_MARK_KEY: 'black_sword_local_account',
+
+    accountId() {
+        let remembered = null;
+        try { remembered = localStorage.getItem(this.ACCOUNT_MARK_KEY) || null; } catch { return null; }
+        const online = typeof window !== 'undefined' ? window.OnlineSystem : null;
+        const live = online && online.linked && online.user && online.user.id ? String(online.user.id) : null;
+        if (live && live !== remembered) return this.adoptAccount(live, remembered) ? live : remembered;
+        return remembered;
+    },
+
+    getAccountKey(baseKey) {
+        const id = this.accountId();
+        return id ? `${baseKey}:${id}` : baseKey;
+    },
+
+    /**
+     * Start using the saves of a signed-in account. The first account to sign
+     * in on a device takes the heroes that were already on it (they are moved,
+     * not copied, so they do not show up again after sign-out). An account
+     * that already has saves here, or that follows another account, never
+     * receives someone else's heroes. Nor does a fresh Google login on a
+     * device whose heroes were downloaded for a Google account before: those
+     * may belong to somebody else, so they are left where they are and the
+     * new account gets its own heroes from the cloud.
+     */
+    adoptAccount(id, previous = null) {
+        try {
+            const rosterKey = `${this.ROSTER_BASE_KEY}:${id}`, saveKey = `${this.SAVE_BASE_KEY}:${id}`;
+            const existing = localStorage.getItem(rosterKey) !== null || localStorage.getItem(saveKey) !== null;
+            const foreign = localStorage.getItem('black_sword_roster_was_linked') === 'true'
+                && localStorage.getItem('black_sword_google_login_requested') === 'true';
+            if (!previous && !existing && !foreign) {
+                for (const [base, mine] of [[this.ROSTER_BASE_KEY, rosterKey], [this.SAVE_BASE_KEY, saveKey]]) {
+                    const value = localStorage.getItem(base);
+                    if (value === null) continue;
+                    // Remove first so a nearly full device does not need room for two copies.
+                    localStorage.removeItem(base);
+                    try { localStorage.setItem(mine, value); }
+                    catch (error) { localStorage.setItem(base, value); throw error; }
+                }
+            }
+            localStorage.setItem(this.ACCOUNT_MARK_KEY, id);
+            return true;
+        } catch (error) {
+            console.warn('Could not switch to the account saves; staying on the current ones:', error?.message || error);
+            return false;
+        }
+    },
+
+    /** Called on sign-out: the device goes back to the guest saves. */
+    forgetAccount() {
+        try { localStorage.removeItem(this.ACCOUNT_MARK_KEY); } catch { /* private mode */ }
+    },
+
     getRoster() {
         let roster;
-        try { roster = JSON.parse(localStorage.getItem(this.getAccountKey(this.state.rosterKey))); } catch { roster = null; }
+        try { roster = JSON.parse(localStorage.getItem(this.state.rosterKey)); } catch { roster = null; }
         if (!roster || typeof roster !== 'object' || Array.isArray(roster)) roster = {};
         const source = roster.heroes && typeof roster.heroes === 'object' && !Array.isArray(roster.heroes) ? roster.heroes : {};
         const heroes = {};
@@ -111,14 +177,14 @@ const Game = {
         // Migrate the original one-hero save without deleting it. An active ID is
         // never guessed here: after deleting a hero the player explicitly chooses
         // which remaining hero to play.
-        const legacy = localStorage.getItem(this.getAccountKey(this.state.saveKey));
+        const legacy = localStorage.getItem(this.state.saveKey);
         if (!Object.keys(roster.heroes).length && legacy) {
             try {
                 const data = JSON.parse(legacy);
                 if (data?.player) {
                     roster.activeHeroId = 'hero_legacy';
                     roster.heroes.hero_legacy = data;
-                    localStorage.setItem(this.getAccountKey(this.state.rosterKey), JSON.stringify(roster));
+                    localStorage.setItem(this.state.rosterKey, JSON.stringify(roster));
                 }
             } catch {}
         }
@@ -136,13 +202,8 @@ const Game = {
             stored.revision = Math.max(0, Number(roster?.revision) || 0) + 1;
             stored.updatedAt = new Date().toISOString();
         }
-        localStorage.setItem(this.getAccountKey(this.state.rosterKey), JSON.stringify(stored));
+        localStorage.setItem(this.state.rosterKey, JSON.stringify(stored));
         return stored;
-
-    getAccountKey(baseKey) {
-        const userId = window.OnlineManager?.user?.id;
-        return userId ? `${baseKey}:${userId}` : baseKey;
-    },
     },
 
     // Clear every per-hero runtime field before creating or loading another slot.
@@ -153,7 +214,7 @@ const Game = {
             players: [],
             currentPlayer: 0,
             isMultiplayer: false,
-            location: 'market_square',
+            location: 'kaliwasch',
             inCombat: false,
             enemy: null,
             encounterTargets: [],
@@ -167,7 +228,7 @@ const Game = {
             inventory: [],
             quests: [],
             completedQuests: [],
-            visited: ['market_square'],
+            visited: ['kaliwasch'],
             kills: 0,
             slainEnemies: {},
             defending: false,
@@ -204,7 +265,7 @@ const Game = {
         roster.activeHeroId = id;
         roster.heroes[id] = data;
         const stored = this.storeRoster(roster);
-        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(data));
+        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
         return stored;
     },
 
@@ -219,7 +280,7 @@ const Game = {
         this.resetHeroRuntime();
         this.state.activeHeroId = null;
         this.state.creatingHero = false;
-        localStorage.removeItem(this.getAccountKey(this.state.saveKey));
+        localStorage.removeItem(this.state.saveKey);
         // No application/UI roster cap. The backend still owns authentication,
         // payload, rate, and resource protections for cloud saves and names.
         this.state.pendingHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
@@ -239,48 +300,78 @@ const Game = {
     // Uses the given name, defaults to human warrior, and starts the adventure.
     autoCreateHero(heroName) {
         const name = (heroName || 'Hero').trim().slice(0, 30);
-        
-        // Use clean hero creation if available
-        if (window.createCleanHero) {
-            const hero = window.createCleanHero(name);
-            this.state.activeHeroId = hero.hero_id;
-            this.state.player = hero;
-            this.state.location = hero.location;
-            this.state.inventory = hero.inventory.map(inv => {
-                const item = window.WorldData?.items?.[inv.item_id];
-                return item ? { ...item, quantity: inv.quantity } : null;
-            }).filter(Boolean);
-        } else {
-            // Fallback to old creation
-            this.state.activeHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
-            this.state.player = {
-                hero_name: name,
-                level: 1,
-                xp: 0,
-                health_points: 80,
-                max_health_points: 80,
-                magic_points: 30,
-                max_magic_points: 30,
-                strength: 8,
-                intelligence: 5,
-                dexterity: 6,
-                armor: 4,
-                gold: 50
-            };
-            this.state.location = 'palace_throne_room';
-            this.state.inventory = [];
-        }
+        const race = 'human';
+        const cls = 'warrior';
+        const background = 'soldier';
+        const mode = 'single';
+
+        this.resetHeroRuntime();
+        this.state.activeHeroId = `hero_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,7)}`;
+        this.state.pendingHeroId = this.state.activeHeroId;
+
+        // Base stats
+        const base = { hp: 130, mp: 30, str: 15, dex: 12, int: 8, wis: 10 };
+        const bonus = { hp: 1, mp: 1, gold: 1.15 }; // human
+
+        this.state.player = {
+            name,
+            race,
+            class: cls,
+            mode,
+            permadead: false,
+            level: 1,
+            xp: 0,
+            xpToNext: 100,
+            hp: Math.floor(base.hp * bonus.hp),
+            maxHp: Math.floor(base.hp * bonus.hp),
+            mp: Math.floor(base.mp * bonus.mp),
+            maxMp: Math.floor(base.mp * bonus.mp),
+            str: base.str,
+            dex: base.dex,
+            int: base.int,
+            wis: base.wis,
+            gold: 50,
+            diamonds: 0,
+            rubies: 0,
+            weapon: 'Iron Sword',
+            weaponDamage: 14,
+            armor: 'Leather Armor',
+            defense: 4,
+            extraSpells: 0,
+            mapRevealed: false
+        };
+
+        // Initialize spells
+        this.state.player.spells = this.getClassSpells ? this.getClassSpells(cls, 0) : ['Power Strike'];
+
+        // Initialize inventory
+        this.state.inventory = [
+            { ...WorldData.items['gold coin'], id: 'gold coin', quantity: 5 },
+            { ...WorldData.items['healing potion'], id: 'healing potion', quantity: 2 },
+            { ...WorldData.items['bread'], id: 'bread', quantity: 3 },
+            { ...WorldData.items['iron sword'], id: 'iron sword', quantity: 1 },
+            { ...WorldData.items['leather armor'], id: 'leather armor', quantity: 1 }
+        ];
+
+        // Initialize quests
+        this.state.quests = WorldData.quests ? [WorldData.quests[0]] : [];
+
+        this.state.location = 'kaliwasch';
+        this.state.visited = ['kaliwasch'];
+        this.state.kills = 0;
+        this.state.companions = [];
+        this.state.combatGroup = [];
 
         // Save to roster
         const roster = this.getRoster();
         roster.heroes[this.state.activeHeroId] = { player: this.state.player, inventory: this.state.inventory, location: this.state.location, visited: this.state.visited, kills: 0, companions: [], combatGroup: [] };
         roster.activeHeroId = this.state.activeHeroId;
         this.storeRoster(roster);
-        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(roster.heroes[this.state.activeHeroId]));
+        localStorage.setItem(this.state.saveKey, JSON.stringify(roster.heroes[this.state.activeHeroId]));
 
         // Start the game
         this.showScreen('game-screen');
-        this.enterLocation('market_square');
+        this.enterLocation('kaliwasch');
         this.look();
         this.save();
 
@@ -333,7 +424,7 @@ const Game = {
         this.storeRoster(roster);
         this.state.activeHeroId = id;
         this.state.pendingHeroId = null;
-        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(data));
+        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
         const loaded = this.continueGame();
         if (loaded === false) return false;
         window.OnlineSystem?.saveGame?.(this.getRoster());
@@ -395,11 +486,11 @@ const Game = {
             this.resetHeroRuntime();
             this.state.activeHeroId=null;
             this.state.pendingHeroId=null;
-            localStorage.removeItem(this.getAccountKey(this.state.saveKey));
+            localStorage.removeItem(this.state.saveKey);
         }else{
             this.state.activeHeroId=stored.activeHeroId;
-            if(stored.activeHeroId)localStorage.setItem(this.getAccountKey(this.state.saveKey),JSON.stringify(stored.heroes[stored.activeHeroId]));
-            else localStorage.removeItem(this.getAccountKey(this.state.saveKey));
+            if(stored.activeHeroId)localStorage.setItem(this.state.saveKey,JSON.stringify(stored.heroes[stored.activeHeroId]));
+            else localStorage.removeItem(this.state.saveKey);
         }
         document.getElementById('btn-continue').disabled=!stored.activeHeroId;
         // Snapshot the exact post-deletion roster before any later hero action.
@@ -974,8 +1065,8 @@ const Game = {
             // For now, just use single player with multiplayer label
         }
 
-        this.state.location = 'market_square';
-        this.state.visited = ['market_square'];
+        this.state.location = 'kaliwasch';
+        this.state.visited = ['kaliwasch'];
         this.state.kills = 0;
         this.state.friends = [];
         this.state.friendRequests = [
@@ -992,7 +1083,7 @@ const Game = {
         this.state.pendingHeroId = null;
 
         this.showScreen('game-screen');
-        this.enterLocation('market_square');
+        this.enterLocation('kaliwasch');
         this.look(); // Show initial location description on game start
         this.save();
         window.OnlineSystem?.syncActiveHero();
@@ -1111,33 +1202,12 @@ const Game = {
     },
 
     processCommand(cmd) {
-        let c = cmd.toLowerCase().trim();
-        
-        // Allow prayer commands even during combat
-        if (c === 'pray' || c === 'pray auralis' || c === 'battle prayer' || c === 'pray revive' || c === 'revive' || c.startsWith('pray ')) {
-            if (c === 'pray' || c === 'pray auralis' || c === 'battle prayer') {
-                this.pray();
-                return;
-            }
-            if (c === 'pray revive' || c === 'revive') {
-                this.prayRevive();
-                return;
-            }
-            if (c.startsWith('pray ')) {
-                const attr = c.slice(5).trim();
-                if (['strength', 'dexterity', 'intelligence', 'wisdom', 'vitality', 'luck'].includes(attr)) {
-                    this.prayForBlessing(attr);
-                } else {
-                    this.addNarrative(`You can pray for: strength, dexterity, intelligence, wisdom, vitality, luck. Or "pray revive" for revival.`, 'system');
-                }
-                return;
-            }
-        }
-        
         if (this.state.inCombat) {
-            this.addNarrative("You're in combat! Use attack, spell, item, defend, flee, or pray.", 'system');
+            this.addNarrative("You're in combat! Use attack, spell, item, defend, or flee.", 'system');
             return;
         }
+
+        let c = cmd.toLowerCase().trim();
 
         // Movement (N/S/E/W/Up/Down only — no diagonals)
         if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
@@ -1312,37 +1382,71 @@ const Game = {
         return 'step-stone';
     },
 
+    /** Words for the directions the player can really walk from a location. */
+    describeExits(loc = WorldData.locations[this.state.location]) {
+        const N = window.Narration;
+        const exits = Object.keys(loc?.exits || {}).filter(dir => WorldData.locations[loc.exits[dir]]);
+        if (!N) return exits.length ? `You can go ${exits.join(', ')}.` : 'There is no way out of here on foot.';
+        if (!exits.length) return N.t('move.noExits');
+        return N.t('move.exits', { list: N.list(exits.map(dir => N.dir(dir)), 'or') });
+    },
+
+    /** Why a step in `direction` cannot happen right now, or null when it can.
+     *  Returns { key, text } so every blocked move is explained with its real
+     *  reason and is never worded like a successful move. */
+    movementBlock(direction) {
+        const N = window.Narration;
+        const loc = WorldData.locations[this.state.location];
+        const dest = loc?.exits?.[direction];
+        const target = dest ? WorldData.locations[dest] : null;
+        const say = (key, fallback, params = {}) => ({ key, text: N ? N.t(key, { dir: direction, place: loc?.name || '', ...params }) : fallback });
+        if (this.state.inCombat && this.state.enemy) {
+            return target
+                ? say('move.combat', `You did not move. You are in combat and cannot go ${direction} until the battle ends. Say flee to escape, or keep fighting.`)
+                : say('move.combatNoPath', `You did not move. You are in combat, and there is no path ${direction} from here anyway. Say flee to escape, or keep fighting.`);
+        }
+        if (this.state.player?.gesturePosture) return say('move.posture', 'You did not move. Stand up before walking.');
+        const door = loc?.specialDoor;
+        if (door && !door.open && door.direction === direction) {
+            return say('move.lockedDoor', `You did not move. A locked rune door blocks the way ${direction}. Open it with the Alohomora spell, or break it with Multiple Strike.`);
+        }
+        if (!target) {
+            const block = say('move.noPath', `You did not move. There is no path ${direction} from ${loc?.name || 'here'}.`);
+            block.text += ' ' + this.describeExits(loc);
+            return block;
+        }
+        if (target.privateHouse && !this.state.sacred?.housing?.houses?.[target.privateHouse] && !this.state.housing?.houses?.[target.privateHouse]) {
+            return say('move.houseLocked', 'You did not move. The door of this private house is locked. Buy the house from the estate agent first.');
+        }
+        return null;
+    },
+
     move(direction) {
+        direction = String(direction || '').toLowerCase();
+        const N = window.Narration;
         const loc = WorldData.locations[this.state.location];
         const dest = loc?.exits?.[direction];
 
-        // In combat, movement is refused with a spoken explanation rather than a
-        // dead control. Blind players get the reason and the way out.
-        if (this.state.inCombat && this.state.enemy) {
-            const message = dest
-                ? `You are in combat. You cannot move ${direction} until the battle ends. Type flee to escape, or keep fighting.`
-                : `You are in combat, and there is no path ${direction} from here. Type flee to escape, or keep fighting.`;
-            if (this.emitGameEvent) this.emitGameEvent(message, 'system', { sfx: ['board-error'] });
-            else { this.addNarrative(message, 'system'); MusicSystem.playSFX('board-error'); }
-            return;
-        }
-
-        if (!dest || !WorldData.locations[dest]) {
-            const text = `You cannot move ${direction} from here.`;
-            if (this.emitGameEvent) this.emitGameEvent(text, 'system', { sfx: ['explore'] });
-            else { this.addNarrative(text, 'system'); MusicSystem.playSFX('explore'); }
-            return;
+        // A move that cannot happen is refused with its real reason and a
+        // distinct "blocked" sound. It never uses the wording or the footstep
+        // of a successful move, so a blind player always knows which happened.
+        const block = this.movementBlock(direction);
+        if (block) {
+            this._lastMoveResult = { moved: false, direction, reason: block.key };
+            if (this.emitGameEvent) this.emitGameEvent(block.text, 'system', { sfx: ['board-error'] });
+            else { this.addNarrative(block.text, 'system'); MusicSystem.playSFX('board-error'); }
+            return false;
         }
         // Serialize movement so rapid keyboard/voice input cannot dispatch two
         // logical moves from the same origin or produce duplicate announcements.
-        if (this._movementPending) return;
+        if (this._movementPending) return false;
         this._movementPending = true;
 
         const origin = this.state.location;
 
         // Announce direction being taken
         const dirLabel = direction.charAt(0).toUpperCase() + direction.slice(1);
-        this.addNarrative(`Going ${dirLabel}…`, 'system');
+        this.addNarrative(N ? N.t('move.going', { dir: direction }) : `Going ${dirLabel}…`, 'system');
 
         this._movementTimer = setTimeout(() => {
             try {
@@ -1350,8 +1454,9 @@ const Game = {
                 const target = WorldData.locations[dest];
                 if (!target) return;
                 const alreadyVisited = this.state.visited.includes(dest);
-                const text = `You moved ${direction} to ${target.name}.`;
+                const text = N ? N.t('move.moved', { dir: direction, place: target.name }) : `You moved ${direction} to ${target.name}.`;
                 const footstep = this.getFootstepSFX(target);
+                this._lastMoveResult = { moved: true, direction, from: origin, to: dest };
                 if (this.emitGameEvent) this.emitGameEvent(text, 'location', { sfx: [footstep] });
                 else { this.addNarrative(text, 'location'); MusicSystem.playSFX(footstep); }
                 this.enterLocation(dest, alreadyVisited);
@@ -1359,6 +1464,7 @@ const Game = {
                 this._movementPending = false;
             }
         }, 320);
+        return true;
     },
 
     cancelPendingMovement() {
@@ -2620,94 +2726,6 @@ const Game = {
      * one and is in a safe zone), then plays a synchronized heal sound
      * and announces the new HP via the a11y layer.
      */
-
-    // Prayer system - works in temples and during battle
-    pray() {
-        const p = this.state.player;
-        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
-        
-        const loc = WorldData.locations[this.state.location];
-        const inTemple = loc && (loc.isTemple || loc.canPray || /temple|shrine|altar/i.test(this.state.location || ''));
-        
-        if (this.state.inCombat) {
-            // Battle prayer - heals and buffs
-            const healAmount = Math.floor(p.maxHp * 0.3);
-            p.hp = Math.min(p.maxHp, p.hp + healAmount);
-            const mpCost = 10;
-            if (p.mp >= mpCost) {
-                p.mp -= mpCost;
-                this.addNarrative(`⚔️ Battle Prayer! Auralis blesses you. Healed ${healAmount} HP. (${mpCost} MP used)`, 'magic');
-                // Add temporary buff
-                p.battlePrayerBuff = { str: 5, dex: 5, turns: 3 };
-                this.addNarrative(`Strength +5, Dexterity +5 for 3 turns.`, 'system');
-            } else {
-                this.addNarrative("Not enough mana for battle prayer. Need 10 MP.", 'system');
-            }
-        } else if (inTemple) {
-            // Temple prayer - full heal and blessing
-            p.hp = p.maxHp;
-            p.mp = p.maxMp;
-            this.addNarrative("🙏 You pray at the temple. Auralis restores you to full health and mana!", 'magic');
-            // Random blessing
-            const blessings = ['strength', 'dexterity', 'intelligence', 'wisdom'];
-            const blessing = blessings[Math.floor(Math.random() * blessings.length)];
-            p[blessing] = (p[blessing] || 10) + 1;
-            this.addNarrative(`✨ Blessing received: ${blessing} +1 (permanent)`, 'treasure');
-        } else {
-            this.addNarrative("You can only pray in a temple or during battle. Find the Grand Temple or Temple of Auralis.", 'system');
-        }
-        this.save?.();
-    },
-
-    prayRevive() {
-        const p = this.state.player;
-        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
-        
-        const loc = WorldData.locations[this.state.location];
-        const inTemple = loc && (loc.isTemple || loc.canPray || /temple|shrine|altar/i.test(this.state.location || ''));
-        
-        if (!inTemple) {
-            this.addNarrative("You must be in a temple to pray for revival. Go to the Grand Temple.", 'system');
-            return;
-        }
-        
-        if (p.hp > 0) {
-            this.addNarrative("You are not dead! No need for revival prayer.", 'system');
-            return;
-        }
-        
-        // Revive at temple
-        p.hp = Math.floor(p.maxHp * 0.5);
-        p.mp = Math.floor(p.maxMp * 0.5);
-        p.permadead = false;
-        p.pendingTempleRevival = false;
-        this.addNarrative("🙏 Auralis hears your prayer! You are revived with 50% health and mana.", 'magic');
-        this.save?.();
-    },
-
-    prayForBlessing(attr) {
-        const p = this.state.player;
-        if (!p) { this.addNarrative("No active hero.", 'system'); return; }
-        
-        const loc = WorldData.locations[this.state.location];
-        const inTemple = loc && (loc.isTemple || loc.canPray || /temple|shrine|altar/i.test(this.state.location || ''));
-        
-        if (!inTemple) {
-            this.addNarrative("You must be in a temple to pray for blessings.", 'system');
-            return;
-        }
-        
-        if (p.mp < 15) {
-            this.addNarrative("Need 15 MP to pray for a blessing.", 'system');
-            return;
-        }
-        
-        p.mp -= 15;
-        p[attr] = (p[attr] || 10) + 2;
-        this.addNarrative(`✨ Prayer answered! ${attr} +2 (permanent). 15 MP used.`, 'treasure');
-        this.save?.();
-    },
-
     quickHeal() {
         if(window.GameSpellSystem)return window.GameSpellSystem.castHealing(this);
         const p = this.state.player;
@@ -3077,50 +3095,52 @@ const Game = {
         const stats = document.getElementById('char-stats');
         const p = this.state.player;
 
-        // Support both old and new stat systems
-        const name = p.hero_name || p.name || 'Hero';
-        const level = p.level || 1;
-        const characterClass = p.character_class || p.class || 'Not chosen yet';
-        const healthPoints = p.health_points ?? p.hp ?? 80;
-        const maxHealthPoints = p.max_health_points ?? p.maxHp ?? 80;
-        const magicPoints = p.magic_points ?? p.mp ?? 30;
-        const maxMagicPoints = p.max_magic_points ?? p.maxMp ?? 30;
-        const strength = p.strength ?? p.str ?? 8;
-        const intelligence = p.intelligence ?? p.int ?? 5;
-        const dexterity = p.dexterity ?? p.dex ?? 6;
-        const armor = p.armor ?? p.defense ?? 4;
-        const gold = p.gold ?? 0;
-        const xp = p.xp ?? 0;
-        const xpToNext = p.xp_to_next ?? p.xpToNext ?? 100;
+        // Compute effective STR: base STR + weapon strength bonus.
+        const weaponItem = this.state.inventory?.find(i => i.name === p.weapon && i.type === 'weapon');
+        const weaponStr = weaponItem?.strength || 0;
+        const effectiveStr = p.str + weaponStr;
+        const strDisplay = weaponStr > 0 ? `${effectiveStr} (${p.str} base + ${weaponStr} weapon)` : `${p.str}`;
 
-        // Compute effective Strength: base + weapon bonus
-        const equippedWeapon = p.equipment?.right_hand || p.weapon;
-        const weaponItem = this.state.inventory?.find(i => i.item_id === equippedWeapon || i.item_name === equippedWeapon || i.name === equippedWeapon);
-        const weaponStrength = weaponItem?.strength_bonus || 0;
-        const effectiveStrength = strength + weaponStrength;
-        const strengthDisplay = weaponStrength > 0 ? `${effectiveStrength} (${strength} base + ${weaponStrength} weapon)` : `${strength}`;
-
-        // Build weapon line
-        let weaponLine = equippedWeapon ? `${weaponItem?.item_name || weaponItem?.name || equippedWeapon} (${weaponItem?.damage || 0} damage)` : 'Basic Dagger (10 damage)';
+        // Build weapon line with conditional stats (only show what the weapon has).
+        let weaponLine = `${p.weapon} (${p.weaponDamage || 0} damage)`;
+        const wData = WorldData.items[p.weapon?.toLowerCase()] || weaponItem;
+        if (wData) {
+            const extras = [];
+            if (wData.minDamage !== undefined) extras.push(`min ${wData.minDamage}`);
+            if (wData.maxDamage !== undefined) extras.push(`max ${wData.maxDamage}`);
+            if (wData.strength) extras.push(`STR +${wData.strength}`);
+            if (wData.fireDamage) extras.push(`🔥 fire ${wData.fireDamage}`);
+            if (wData.airDamage) extras.push(`🌪️ air ${wData.airDamage}`);
+            if (wData.waterDamage) extras.push(`💧 water ${wData.waterDamage}`);
+            if (wData.earthDamage) extras.push(`🌍 earth ${wData.earthDamage}`);
+            if (extras.length) weaponLine = `${p.weapon} (${p.weaponDamage || 0} dmg, ${extras.join(', ')})`;
+        }
 
         stats.innerHTML = `
-            <div class="stat-row"><span>Name:</span><span>${name}</span></div>
-            <div class="stat-row"><span>Level:</span><span>${level}</span></div>
-            <div class="stat-row"><span>Class:</span><span>${characterClass}</span></div>
-            <div class="stat-row"><span>Health Points:</span><span>${healthPoints}/${maxHealthPoints}</span></div>
-            <div class="stat-row"><span>Magic Points:</span><span>${magicPoints}/${maxMagicPoints}</span></div>
-            <div class="stat-row"><span>Strength:</span><span>${strengthDisplay}</span></div>
-            <div class="stat-row"><span>Intelligence:</span><span>${intelligence}</span></div>
-            <div class="stat-row"><span>Dexterity:</span><span>${dexterity}</span></div>
-            <div class="stat-row"><span>Armor:</span><span>${armor}</span></div>
-            <div class="stat-row"><span>Experience:</span><span>${xp}/${xpToNext}</span></div>
-            <div class="stat-row"><span>Gold:</span><span>${gold}</span></div>
+            <div class="stat-row"><span>Name:</span><span>${p.name}</span></div>
+            <div class="stat-row"><span>Level:</span><span>${p.level}</span></div>
+            <div class="stat-row"><span>Class:</span><span>${p.class}</span></div>
+            <div class="stat-row"><span>Race:</span><span>${p.race}</span></div>
+            <div class="stat-row"><span>HP:</span><span>${p.hp}/${p.maxHp}</span></div>
+            <div class="stat-row"><span>MP:</span><span>${p.mp}/${p.maxMp}</span></div>
+            <div class="stat-row"><span>STR:</span><span>${strDisplay}</span></div>
+            <div class="stat-row"><span>DEX:</span><span>${p.dex}</span></div>
+            <div class="stat-row"><span>INT:</span><span>${p.int}</span></div>
+            <div class="stat-row"><span>WIS:</span><span>${p.wis}</span></div>
+            <div class="stat-row"><span>VIT:</span><span>${p.vit || Math.max(10, Math.floor(p.maxHp / 10))}</span></div>
+            <div class="stat-row"><span>XP:</span><span>${p.xp}/${p.xpToNext}</span></div>
+            <div class="stat-row"><span>Gold:</span><span>${p.gold}</span></div>
+            <div class="stat-row"><span>💎 Diamonds:</span><span>${p.diamonds || 0}</span></div>
+            <div class="stat-row"><span>🔴 Rubies:</span><span>${p.rubies || 0}</span></div>
             <div class="stat-row"><span>Weapon:</span><span>${weaponLine}</span></div>
+            <div class="stat-row"><span>Armor:</span><span>${p.armor || 'None'} (${p.defense || 0} defense)</span></div>
+            <div class="stat-row"><span>Helmet:</span><span>${p.helmet || 'None'}</span></div>
+            <div class="stat-row"><span>Gloves:</span><span>${p.gloves || 'None'}</span></div>
+            <div class="stat-row"><span>Boots:</span><span>${p.boots || 'None'}</span></div>
+            <div class="stat-row"><span>Accessory:</span><span>${p.accessory || 'None'}</span></div>
+            <div class="stat-row"><span>Active Sets:</span><span>${p.activeSets?.join(', ') || 'None'}</span></div>
+            <div class="stat-row"><span>Spells:</span><span>${p.spells.join(', ')}</span></div>
         `;
-
-        // Voice announcement with complete names
-        const announcement = `Stats: ${name}, level ${level}. Health Points ${healthPoints} of ${maxHealthPoints}. Magic Points ${magicPoints} of ${maxMagicPoints}. Strength ${effectiveStrength}. Intelligence ${intelligence}. Dexterity ${dexterity}. Armor ${armor}. Gold ${gold}.`;
-        window.AudioManager?.playVoice?.(announcement, { channel: 'system' });
 
         panel.classList.remove('hidden');
         
@@ -3303,7 +3323,9 @@ const Game = {
         this.addNarrative("wayfinder / distance - Miles, steps and route to city, forest and cave entrances", 'system');
         this.addNarrative("exit forest / next exit step - Walk one calculated step toward the city", 'system');
         this.addNarrative("game hall / board games - Route to accessible Ludo, Snakes, Chess, Carrom and Blackjack", 'system');
-        this.addNarrative("battle prayer / take everything - Direct combat prayer and loot actions", 'system');
+        this.addNarrative("pray (in battle) - Once per battle, restores a fifth of your health and magic and uses your turn", 'system');
+        this.addNarrative("pray / emergency prayer (health at 15 percent or lower) - Four angels restore you fully and fight beside you for five turns", 'system');
+        this.addNarrative("take everything - Pick up all loot", 'system');
         this.addNarrative("search location - Discover hidden physical rewards without revealing them early", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
@@ -3432,7 +3454,7 @@ const Game = {
         roster.activeHeroId = id;
         roster.heroes[id] = saveData;
         const stored = this.storeRoster(roster);
-        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(saveData));
+        localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
         window.OnlineSystem?.saveGame?.(stored);
         document.getElementById('btn-continue').disabled = false;
         return true;
@@ -3444,7 +3466,7 @@ const Game = {
         const data = id ? roster.heroes[id] : null;
         if (!id || !data?.player) {
             this.state.activeHeroId = null;
-            localStorage.removeItem(this.getAccountKey(this.state.saveKey));
+            localStorage.removeItem(this.state.saveKey);
             document.getElementById('btn-continue').disabled = true;
             this.showHeroRoster();
             return false;
@@ -3452,10 +3474,10 @@ const Game = {
         this.resetHeroRuntime();
         this.state.activeHeroId = id;
         this.state.pendingHeroId = null;
-        localStorage.setItem(this.getAccountKey(this.state.saveKey), JSON.stringify(data));
+        localStorage.setItem(this.state.saveKey, JSON.stringify(data));
         this.state.player = data.player;
         this.state.inventory = Array.isArray(data.inventory) ? data.inventory : [];
-        this.state.location = data.location || 'market_square';
+        this.state.location = data.location || 'kaliwasch';
         this.state.visited = Array.isArray(data.visited) ? data.visited : [this.state.location];
         this.state.quests = Array.isArray(data.quests) ? data.quests : [];
         this.state.completedQuests = Array.isArray(data.completedQuests) ? data.completedQuests : [];

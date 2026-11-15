@@ -218,18 +218,41 @@
         }
     }
 
+    /* Hunger follows real elapsed time, not steps or screen time. A full hero
+     * becomes hungry after HUNGER.hours without a meal, wherever the hours were
+     * spent: walking, fighting, racing, in menus, or with the game closed. The
+     * game server keeps the authoritative clock (see survival-v755.js); this
+     * file uses the same formula so the hero feels identical when offline. */
+    const HUNGER = { hours: 3.5, threshold: 40, meal: 25 };
+    const clock = () => window.BSUServer?.now?.() ?? Date.now();
+    const T = (key, params, fallback) => window.Narration?.has?.(key) ? window.Narration.t(key, params) : fallback;
+
     function hungerState(game) {
         const p = game.state.player;
         if (!p) return null;
         if (!Number.isFinite(p.satiety)) p.satiety = 100;
+        if (!Number.isFinite(p.satietyAt)) p.satietyAt = clock();
         if (!Number.isFinite(p.hungerStrPenalty)) p.hungerStrPenalty = 0;
+        return p;
+    }
+
+    /** Bring satiety up to date with the time that has really passed. */
+    function settleHunger(game) {
+        const p = hungerState(game);
+        if (!p) return null;
+        const now = clock(), elapsed = now - p.satietyAt;
+        if (elapsed >= 1000) {
+            const perMs = (100 - HUNGER.threshold) / (HUNGER.hours * 3600000);
+            p.satiety = Math.max(0, p.satiety - perMs * elapsed);
+            p.satietyAt = now;
+        } else if (elapsed < 0) p.satietyAt = now;      // device clock moved backwards
         return p;
     }
 
     function applyHungerPenalty(game) {
         const p = hungerState(game);
         if (!p) return;
-        const want = p.satiety < 15 ? 6 : p.satiety < 30 ? 4 : p.satiety < 45 ? 2 : 0;
+        const want = p.satiety < 15 ? 6 : p.satiety < 30 ? 4 : p.satiety <= HUNGER.threshold ? 2 : 0;
         const delta = want - p.hungerStrPenalty;
         if (delta) {
             p.str = Math.max(1, (p.str || 10) - delta);
@@ -237,25 +260,37 @@
         }
     }
 
-    function hungerTick(game, amount = 2) {
-        const p = hungerState(game);
+    function hoursSinceMeal(p) {
+        if (!Number.isFinite(p.lastMealAt)) return null;
+        return Math.max(0, Math.round((clock() - p.lastMealAt) / 360000) / 10);
+    }
+
+    function hungerLine(p) {
+        const hours = hoursSinceMeal(p);
+        const since = hours === null ? '' : ' ' + T('hunger.since', { hours }, `It has been about ${hours} hours since your last meal.`);
+        if (p.satiety <= 0) return T('hunger.starving', {}, 'You are starving. Your strength is failing. Eat a meal now.');
+        if (p.satiety < 20) return T('hunger.weak', {}, 'You are hungry and growing weak. Your strength is reduced. Eat a meal soon.') + since;
+        if (p.satiety <= HUNGER.threshold) return T('hunger.hungry', {}, 'You are hungry. Eat a meal to keep your strength.') + since;
+        return '';
+    }
+
+    /** Called on a timer and after server updates. `amount` is accepted for
+     *  older callers but ignored: only elapsed time makes a hero hungry. */
+    function hungerTick(game, amount = 0, { force = false } = {}) {
+        const p = settleHunger(game);
         if (!p) return;
-        p.satiety = Math.max(0, p.satiety - amount);
         applyHungerPenalty(game);
         const now = Date.now();
         game._lastHungerLine = game._lastHungerLine || 0;
-        if (now - game._lastHungerLine < 120000) return;
-        if (p.satiety <= 0) {
-            game._lastHungerLine = now;
-            game.emitGameEvent?.('You are starving. Strength is failing. Eat a meal.', 'system') || game.addNarrative('You are starving. Strength is failing. Eat a meal.', 'system');
-        } else if (p.satiety < 20) {
-            game._lastHungerLine = now;
-            game.emitGameEvent?.('You are hungry. You feel weak, angry, and stirring. Eat food to restore strength.', 'system')
-                || game.addNarrative('You are hungry. You feel weak, angry, and stirring. Eat food to restore strength.', 'system');
-        } else if (p.satiety < 40) {
-            game._lastHungerLine = now;
-            game.emitGameEvent?.('You are hungry.', 'system') || game.addNarrative('You are hungry.', 'system');
-        }
+        // Speak when the hero crosses into a worse stage, otherwise at most every ten minutes.
+        const stage = p.satiety <= 0 ? 3 : p.satiety < 20 ? 2 : p.satiety <= HUNGER.threshold ? 1 : 0;
+        const worse = stage > (game._lastHungerStage || 0);
+        game._lastHungerStage = stage;
+        if (!stage || (!force && !worse && now - game._lastHungerLine < 600000)) return;
+        if (game.state.inCombat && !force) return;      // never talk over a fight
+        game._lastHungerLine = now;
+        const line = hungerLine(p);
+        game.emitGameEvent?.(line, 'system') || game.addNarrative(line, 'system');
     }
 
     function itemMatches(item, query) {
@@ -277,21 +312,32 @@
     }
 
     function eatFood(game, item) {
-        const p = hungerState(game);
-        const gain = Number(item.satiety || item.value || 15);
-        if (p.satiety >= 100) {
-            game.addNarrative('You are already full. The meal would be wasted.', 'system');
+        const p = settleHunger(game);
+        const gain = Math.max(1, Math.min(100, Number(item.satiety || item.value || 15)));
+        if (p.satiety >= 99.5) {
+            const text = T('eat.full', { item: item.name }, `You are already full. Keep the ${item.name} for later.`);
+            game.addNarrative(text, 'system');
             return false;
         }
-        p.satiety = Math.min(100, p.satiety + gain);
+        // A real meal fills the hero completely; a snack only takes the edge off.
+        const meal = gain >= HUNGER.meal;
+        p.satiety = meal ? 100 : Math.min(100, p.satiety + gain);
+        p.satietyAt = clock();
+        p.lastMealAt = p.satietyAt;
+        game._lastHungerStage = 0;
         applyHungerPenalty(game);
         item.quantity--;
         if (item.quantity <= 0) game.state.inventory = game.state.inventory.filter(i => i !== item);
-        const text = `You eat ${item.name}.`;
+        const after = meal ? T('eat.meal', { hours: HUNGER.hours }, `A proper meal. You will not be hungry for about ${HUNGER.hours} hours.`)
+            : p.satiety > HUNGER.threshold ? T('eat.snack', {}, 'That takes the edge off your hunger.')
+                : T('eat.stillHungry', {}, 'It helps a little, but you are still hungry.');
+        const text = `${T('eat.ate', { item: item.name }, `You eat ${item.name}.`)} ${after}`;
         if (game.emitGameEvent) game.emitGameEvent(text, 'item', { sfx: ['eat'] });
         else { game.addNarrative(text, 'item'); window.MusicSystem?.playSFX?.('eat'); }
         game.updateHUD?.();
         game.save?.();
+        // The server records the meal against its own clock (no-op when offline).
+        window.dispatchEvent(new CustomEvent('bsu-ate', { detail: { satiety: gain, item: item.name } }));
         return true;
     }
 
@@ -439,18 +485,20 @@
 
         const prevMove = G.move.bind(G);
         G.move = function (dir) {
-            const r = prevMove(dir);
-            hungerTick(this, 1);
-            return r;
+            // Hunger is driven by elapsed time, not by steps (see survival-v755.js).
+            return prevMove(dir);
         };
 
         const prevCmd = G.processCommand.bind(G);
         G.processCommand = function (raw) {
             const c = String(raw || '').trim().toLowerCase();
             if (c === 'hunger' || c === 'satiety') {
-                const p = hungerState(this);
-                const full = p.satiety >= 80 ? 'You are full.' : p.satiety >= 45 ? 'You are not hungry.' : p.satiety >= 20 ? 'You are getting hungry.' : 'You are hungry. Eat food to restore strength.';
-                this.addNarrative(full, 'system');
+                const p = settleHunger(this);
+                applyHungerPenalty(this);
+                const hours = hoursSinceMeal(p);
+                const full = p.satiety >= 80 ? T('hunger.full', {}, 'You are full.') : p.satiety > HUNGER.threshold ? T('hunger.fine', {}, 'You are not hungry.') : hungerLine(p);
+                const since = p.satiety > HUNGER.threshold && hours !== null ? ' ' + T('hunger.since', { hours }, `It has been about ${hours} hours since your last meal.`) : '';
+                if (this.emitGameEvent) this.emitGameEvent(full + since, 'system'); else this.addNarrative(full + since, 'system');
                 return;
             }
             if (c === 'shoot' || c.startsWith('shoot ') || c === 'fire arrow' || c === 'loose arrow') {
@@ -465,9 +513,9 @@
             return prevCmd(raw);
         };
 
-        setInterval(() => { if (G.state?.player && G.state.screen === 'game-screen') hungerTick(G, 1); }, 180000);
+        setInterval(() => { if (G.state?.player && G.state.screen === 'game-screen') hungerTick(G); }, 60000);
 
-        window.ItemHunger = { describeItem, guessCommand, hungerTick, eatFood, findCarriedItem, NEW_ITEMS, SLOTS };
+        window.ItemHunger = { describeItem, guessCommand, hungerTick, settleHunger, applyHungerPenalty, hungerLine, eatFood, findCarriedItem, NEW_ITEMS, SLOTS, HUNGER };
         console.log('v30 hunger, real gear slots, thorium spear, silver arrows, fuzzy commands');
         return true;
     }
