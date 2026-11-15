@@ -63,7 +63,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.jso
 - 👥 Select 1–5 players before Ludo or Snakes & Ladders, with AI opponents or local pass-and-play
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
-- 🔐 Player ID + six-digit PIN continuation with corrected Supabase `extensions.pgcrypto` resolution
+- 🔐 Player ID + six-digit PIN continuation
+- ☁️ Online features run on one free Firebase project — see [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
 - 🔒 Private Player IDs plus globally unique, case-insensitive hero-name reservations with live availability checks
 - 🗣 Actual installed Android/Windows/Google system voice names; internal voice codes are hidden from chat
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes

@@ -1,4 +1,4 @@
-/** Neon-backed guest identity, cloud saves, friends and chat. */
+/** Firebase-backed sign-in (guest or Google), cloud saves, friends and chat. */
 const OnlineSystem = {
     client: null,
     user: null,
@@ -50,9 +50,11 @@ const OnlineSystem = {
         }
         try {
             // createClient may return a Promise (Firebase) or sync object (Neon).
-            const maybePromise = window.BlackSwordBackend.createClient(config);
-            this.client = maybePromise && typeof maybePromise.then === 'function'
-                ? await maybePromise : maybePromise;
+            if (!this.client) {
+                const maybePromise = window.BlackSwordBackend.createClient(config);
+                this.client = maybePromise && typeof maybePromise.then === 'function'
+                    ? await maybePromise : maybePromise;
+            }
             if (!this.client) throw new Error('No auth provider configured');
             console.log('Auth: client created, attempting session...');
             const { data: { session } } = await this.client.auth.getSession();
@@ -65,8 +67,28 @@ const OnlineSystem = {
                 activeSession = result.data.session;
             }
             this.user = activeSession.user;
-            await this.loadProfile();
+            // Who is signed in comes from the sign-in itself, never from the
+            // database: a Google player must not be shown as a guest because a
+            // database request failed.
             await this.refreshIdentityStatus();
+            let slowTimer;
+            try {
+                // Never wait forever on "Connecting…": after 15 seconds play from the device.
+                await Promise.race([this.loadProfile(), new Promise((_, reject) => { slowTimer = setTimeout(() => reject(new Error('The online database did not answer in time.')), 15000); })]);
+                clearTimeout(slowTimer);
+            }
+            catch (profileError) {
+                clearTimeout(slowTimer);
+                console.error('Online database is not reachable:', profileError);
+                this.ensureLocalCode();
+                this.status = this.linked ? this.pick(
+                    'Signed in with Google. The online database cannot be reached right now, so you are playing on this device.',
+                    'Google తో సైన్ ఇన్ అయ్యారు. ఆన్‌లైన్ డేటాబేస్ ఇప్పుడు అందుబాటులో లేదు, కాబట్టి మీరు ఈ పరికరంలో ఆడుతున్నారు.',
+                    'Google से साइन इन हो गया। ऑनलाइन डेटाबेस अभी नहीं मिल रहा, इसलिए आप इसी डिवाइस पर खेल रहे हैं।') : 'Guest mode';
+                this.updateIndicators();
+                this.registerAuthListener();
+                return;
+            }
             this.ready = true;
             this.status = this.linked ? 'Online — Google linked' : 'Online guest — link Google for social actions';
             const oauthParams = new URLSearchParams(`${location.search || ''}&${(location.hash || '').replace(/^#/, '')}`);
@@ -86,14 +108,10 @@ const OnlineSystem = {
             this.subscribe();
             this.updateIndicators();
             this.registerAuthListener();
-            console.log('Neon: fully connected as', this.user?.id);
+            console.log('Online: connected.');
         } catch (error) {
             // All technical details go to console only — never to the game UI.
             console.error('Online initialization failed:', error);
-            const msg = String(error?.message || '');
-            if (/Neon SDK|NeonBackend|createClient|SupabaseAuthAdapter/i.test(msg)) {
-                console.warn('Neon SDK failed to load. The game will run in local/offline mode.');
-            }
             this.status = 'Guest mode';
             this.ensureLocalCode();
             this.updateIndicators();
@@ -110,6 +128,7 @@ const OnlineSystem = {
                 const accountChanged=Boolean(previousUserId&&previousUserId!==newSession.user.id);
                 if(accountChanged)this.authRevision++;
                 this.user=newSession.user;
+                if(accountChanged&&this.ready)this.resubscribe();
                 await this.loadProfile().catch(()=>{});
                 await this.refreshIdentityStatus();
                 this.status=this.linked?'Online — Google linked':'Online guest — link Google for social actions';
@@ -125,6 +144,20 @@ const OnlineSystem = {
                 if(window.Game?.state?.player)this.saveGame(window.Game.getCloudData());
             }catch(authListenerError){console.warn('Auth listener issue:',authListenerError?.message||authListenerError);}
         });
+    },
+
+    /** One line in the player's narration language (English, Telugu or Hindi). */
+    pick(en, te, hi) {
+        let lang = 'en';
+        try { lang = String(window.Narration?.lang?.() || 'en').slice(0, 2); } catch { /* English */ }
+        return lang === 'te' ? te : lang === 'hi' ? hi : en;
+    },
+
+    /** Live updates belong to one account: start them again when the account changes. */
+    resubscribe() {
+        try { if (this.subscription) this.client?.removeChannel?.(this.subscription); } catch { /* already closed */ }
+        this.subscription = null;
+        return this.subscribe().catch(() => {});
     },
 
     defaultDisplayName() {
@@ -218,8 +251,7 @@ const OnlineSystem = {
             || providers.some(p => p && p !== 'anonymous' && p !== 'credential')
             || this.user?.app_metadata?.provider === 'google'
             || this.user?.is_anonymous === false;
-        // Neon session responses do not embed provider identities. The
-        // owner-only RPC reads neon_auth.account without exposing credentials.
+        // Fallback for a sign-in that does not list its providers.
         if(!this.linked&&this.client&&this.user){
             const {data,error}=await this.client.rpc('has_linked_identity');
             if(!error&&typeof data==='boolean')this.linked=data;
@@ -273,7 +305,7 @@ const OnlineSystem = {
         const currentRequest=request??++this.nameCheckRequest;
         const isCurrent=()=>currentRequest===this.nameCheckRequest;
         if(clean.length<2){if(isCurrent()){this.heroNameAvailable=null;if(status){status.textContent='Enter at least two characters.';status.className='name-status';}}return false;}
-        if(!this.ready){if(isCurrent()){this.heroNameAvailable=true;if(status){status.textContent='Guest mode — name saved locally.';status.className='name-status available';}}return true;}
+        if(!this.ready){if(isCurrent()){this.heroNameAvailable=true;if(status){status.textContent=this.linked?'Name saved on this device. It will be checked online when the connection returns.':'Guest mode — name saved locally.';status.className='name-status available';}}return true;}
         let result;
         try{result=await this.client.rpc('hero_name_available',{desired_name:clean,current_slot:slot});}
         catch(error){result={data:null,error};}
@@ -339,6 +371,8 @@ const OnlineSystem = {
     async signInGoogle() {
         if (!this.client) await this.init();
         if (!this.client) { this.status = 'Guest mode'; this.updateIndicators(); return; }
+        // Signed in, but the database did not answer when the game started: try again.
+        if(this.linked&&!this.ready){this.status='Connecting…';this.updateIndicators();await this.init();return;}
         if(this.linked){localStorage.setItem('black_sword_google_login_requested','true');this.status=`Restoring ${this.profile?.display_name||'your Google account'} heroes…`;this.updateIndicators();await this.cacheCloudSave(true);return;}
         this.openGoogleDialog(this.shouldMergeGuestHeroes());
     },
@@ -460,9 +494,12 @@ const OnlineSystem = {
                 // Popup succeeded — handle the signed-in user directly.
                 this._googleAuthCallback = true;
                 try {
+                    const switched = Boolean(this.user?.id && this.user.id !== data.session.user.id);
+                    if (switched) this.authRevision++;
                     this.user = data.session.user;
                     this.linked = true;
                     this.ready = true;
+                    if (switched) this.resubscribe();
                     if (status) status.textContent = '✅ Successfully logged in! Preparing your adventure…';
                     document.getElementById('google-login-panel')?.classList.add('hidden');
                     // Auto-clear the success message after 4 seconds.
@@ -903,7 +940,9 @@ const OnlineSystem = {
                     this.updateHeroEntryPoints(true);this.updateIndicators();
                     await this.saveGame(localRoster);
                 }else{
-                    this.status=this.linked?'Google account connected; no cloud heroes were found. Create the first hero.':'No cloud heroes were found.';
+                    // A guest who never asked to restore anything keeps the normal guest status.
+                    if(this.linked)this.status='Google account connected; no cloud heroes were found. Create the first hero.';
+                    else if(loginRequested)this.status='No cloud heroes were found.';
                     this.updateHeroEntryPoints(localCount>0);this.updateIndicators();
                 }
                 return false;

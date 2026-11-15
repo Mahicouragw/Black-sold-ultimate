@@ -45,8 +45,9 @@ test('Neon schema covers every backend feature without Supabase-only dependencie
         assert.doesNotMatch(sql, forbidden);
     }
     const html = readFileSync('index.html', 'utf8');
-    assert.ok(html.includes('assets/vendor/neon-0.9.0-beta.js'));
-    assert.ok(html.includes('neon-game-client.js'));
+    // v7.57: the page runs on Firebase. The Neon client stays in the repository as a
+    // legacy option but is no longer loaded by the game.
+    assert.ok(!html.includes('neon-game-client.js'));
     assert.ok(html.includes('backend-config.js'));
     assert.doesNotMatch(html, /supabase/i);
     assert.doesNotMatch(html, /accounts\.google\.com\/gsi\/client/i);

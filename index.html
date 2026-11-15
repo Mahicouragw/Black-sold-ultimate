@@ -80,10 +80,10 @@
             </p>
         </div>
 
-        <!-- Managed Google OAuth through Neon Auth -->
+        <!-- Google sign-in (Firebase popup) -->
         <div id="google-login-panel" class="panel hidden" aria-label="Google account sign in">
             <h3>Continue to Black Soul Multiplayer</h3>
-            <p class="settings-note">Choose the Google account linked to your cloud heroes. Neon Auth securely manages the Google sign-in and returns you to this game.</p>
+            <p class="settings-note">Choose the Google account linked to your cloud heroes. Google sign-in opens in a small window and then brings you straight back to this game.</p>
             <div id="google-signin-render" class="google-render"></div>
             <p id="google-login-status" aria-live="polite"></p>
             <button id="btn-close-google-login" class="menu-btn">Cancel</button>
@@ -596,7 +596,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.56.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.57.0</span></div>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
@@ -747,13 +747,11 @@
     <div id="sr-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <script src="version.js"></script>
-    <!-- Firebase SDK for simple Google sign-in (CDN, no build step). -->
+    <!-- Firebase: Google sign-in and the Cloud Firestore database (saves, chat, friends, groups, feedback). -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-    <script src="firebase-auth-client.js"></script>
-    <!-- Neon Data API SDK (for cloud saves, chat, multiplayer tables). -->
-    <script src="assets/vendor/neon-0.9.0-beta.js"></script>
-    <script src="neon-game-client.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <script src="firebase-backend.js"></script>
     <script src="backend-config.js"></script>
     <!-- v7.17.0: critical core first (sync), then expansions deferred so the
          title screen paints before the 30+ patches parse. -->
