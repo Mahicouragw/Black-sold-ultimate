@@ -32,7 +32,12 @@
     const option = (label, run) => ({ label, run });
     const command = text => () => UI.execute(() => G.processCommand(text));
     const speak = (text, critical = false, channel = '') => {
-        if (!settings.narration) return Promise.resolve(false);
+        if (!settings.narration) {
+            // The built-in voice is off: hand the line to TalkBack / VoiceOver
+            // through the status region, so gesture menus are never silent.
+            if (window.InterfaceMode?.current === 'blind') window.ScreenReader?.announce(String(text), { voice: false });
+            return Promise.resolve(false);
+        }
         return A.playVoice(String(text), { channel, priority: critical === true ? 'critical' : critical === 'high' ? true : false });
     };
 

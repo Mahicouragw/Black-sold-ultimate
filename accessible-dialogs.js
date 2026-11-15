@@ -22,7 +22,7 @@
     }
     if(!modal)return;
     for(let n=modal;n&&n.parentElement&&n!==document.body;n=n.parentElement){
-      for(const sibling of n.parentElement.children){if(sibling.inert||sibling.getAttribute('aria-hidden')==='true'||sibling===n||['gesture-interface','gesture-launch'].includes(sibling.id)||['SCRIPT','STYLE','LINK'].includes(sibling.tagName))continue;restores.push([sibling,sibling.inert,sibling.getAttribute('aria-hidden')]);sibling.inert=true;sibling.setAttribute('aria-hidden','true');}
+      for(const sibling of n.parentElement.children){if(sibling.inert||sibling.getAttribute('aria-hidden')==='true'||sibling===n||['gesture-interface','gesture-launch','sr-announcer'].includes(sibling.id)||['SCRIPT','STYLE','LINK'].includes(sibling.tagName))continue;restores.push([sibling,sibling.inert,sibling.getAttribute('aria-hidden')]);sibling.inert=true;sibling.setAttribute('aria-hidden','true');}
     }
     if(!modal.contains(document.activeElement)&&!document.activeElement?.closest?.('#gesture-interface,#gesture-launch')){if(!modal.hasAttribute('tabindex'))modal.tabIndex=-1;focus(focusables(modal)[0]||modal);}
   }
