@@ -93,9 +93,9 @@
             const targets=(game.aliveEncounterTargets?.()||[{name:game.state.enemy.name,active:true}]).slice(0,this.config.multipleStrike.maxTargets);if(!targets.length){game.addNarrative('There is no valid target.','system');return false;}
             const cost=this.config.multipleStrike.cost;if(p.mp<cost){game.addNarrative('You do not have enough mana.','system');return false;}
             p.mp-=cost;setCooldown(game,'multipleStrike',this.config.multipleStrike.cooldownMs);
-            if(this.random()<this.config.multipleStrike.failureChance){recordMastery(game,spell,{mp:cost});event(game,'Your multiple strike failed.','combat',{eventId:`multi-fail:${Date.now()}`});game.updateHUD();game.save();game.enemyGroupTurn?.();return false;}
+            if(this.random()<this.config.multipleStrike.failureChance){recordMastery(game,spell,{mp:cost});event(game,'Your multiple strike failed.','combat',{eventId:`multi-fail:${Date.now()}`});game.updateHUD();game.save();game.enemyAttack();return false;}
             let hits=0,total=0;for(const target of targets){const data=WorldData.enemies[target.name]||{},block=Math.max(.08,Math.min(.5,.14+(data.defense||0)/700));if(this.random()<block)continue;const damage=Math.max(8,Math.floor((p.weaponDamage||16)/3+(p.str||10)/4+this.random()*8));target.damage=(target.damage||0)+damage;if(target.active){game.state.enemy.hp=Math.max(0,game.state.enemy.hp-damage);target.hp=game.state.enemy.hp;}else target.hp=Math.max(1,(target.hp??target.maxHp??damage+1)-damage);hits++;total+=damage;}
-            recordMastery(game,spell,{mp:cost,damage:total});MusicSystem.playSFX('magic');const text=hits?`The light from your hands strikes for ${total} damage.`:(targets.length>1?'The monsters block your spell.':`${targets[0].name} blocks the spell.`);event(game,text,'magic',{eventId:`multi:${Date.now()}`});game.updateHUD();game.updateEnemyHUD();game.updateEnemyGroupHUD?.();game.save();if(game.state.enemy.hp<=0)game.enemyDefeated();else game.enemyGroupTurn?.();return true;
+            recordMastery(game,spell,{mp:cost,damage:total});MusicSystem.playSFX('magic');const text=hits?`The light from your hands strikes for ${total} damage.`:(targets.length>1?'The monsters block your spell.':`${targets[0].name} blocks the spell.`);event(game,text,'magic',{eventId:`multi:${Date.now()}`});game.updateHUD();game.updateEnemyHUD();game.updateEnemyGroupHUD?.();game.save();if(game.state.enemy.hp<=0)game.enemyDefeated();else game.enemyAttack();return true;
         },
         breakSpecialDoor(game,door,spell){
             const p=game.state.player,wait=remaining(game,'multipleStrike');if(wait){game.addNarrative('Multiple Strike is still recovering.','system');return false;}const cost=this.config.multipleStrike.cost;if(p.mp<cost){game.addNarrative('You do not have enough mana.','system');return false;}if(door.open||game.state.specialDoors?.[door.id]?.open){game.addNarrative('The door is already open.','system');return false;}p.mp-=cost;setCooldown(game,'multipleStrike',this.config.multipleStrike.cooldownMs);game.state.specialDoors[door.id]={open:true,method:'multiple-strike'};applyDoorState(game);recordMastery(game,spell,{mp:cost});MusicSystem.playSFX('magic');MusicSystem.playSFX('door');event(game,'Multiple Strike shatters the special runed door. The passage is open.','magic',{eventId:`door:${door.id}`});game.updateDirectionButtons(WorldData.locations[game.state.location].exits);game.updateHUD();game.save();return true;
@@ -114,20 +114,20 @@
             if(this.random()<this.config.shock.failureChance){
                 recordMastery(game,spell,{mp:cost});
                 event(game,'Your shock spell failed.','combat',{eventId:`shock-fail:${Date.now()}`});
-                game.updateHUD();game.save();game.enemyGroupTurn?.()||game.enemyAttack();return false;
+                game.updateHUD();game.save();game.enemyAttack();return false;
             }
             const data=WorldData.enemies[enemy.name]||{},block=Math.max(.05,Math.min(.4,.10+(data.magic||0)/900+(data.defense||0)/1200));
             if(this.random()<block){
                 recordMastery(game,spell,{mp:cost});
                 event(game,`${enemy.name} blocks your shock spell.`,'combat',{eventId:`shock-block:${Date.now()}`});
-                game.updateHUD();game.save();game.enemyGroupTurn?.()||game.enemyAttack();return false;
+                game.updateHUD();game.save();game.enemyAttack();return false;
             }
             const damage=Math.max(10,20+Math.floor((p.int||10)/2)+Math.floor(this.random()*12));
             enemy.hp=Math.max(0,enemy.hp-damage);
             recordMastery(game,spell,{mp:cost,damage});
             event(game,`Your shock spell hits ${enemy.name} for ${damage} damage.`,'magic',{eventId:`shock:${Date.now()}`});
             game.updateHUD();game.updateEnemyHUD();game.updateEnemyGroupHUD?.();game.save();
-            if(enemy.hp<=0)game.enemyDefeated();else game.enemyGroupTurn?.()||game.enemyAttack();
+            if(enemy.hp<=0)game.enemyDefeated();else game.enemyAttack();
             return true;
         },
         castOpeningDoors(game){

@@ -405,7 +405,7 @@
                 const targets = G.aliveEncounterTargets?.() || [];
                 return this.open('Combat actions. ' + this.combatDescription(), [
                     option('Attack current enemy', command('attack')), option('Defend', command('defend')),
-                    option('Flee', command('flee')), option('Magic and healing', () => this.magic()), option('Inventory', () => this.inventory()),
+                    option('Flee', command('flee')), option('Pray', command('pray')), option('Magic and healing', () => this.magic()), option('Inventory', () => this.inventory()),
                     ...targets.map(t => option(`Attack ${t.name}`, command(`attack ${t.name}`))),
                     option('Repeat health and enemy status', () => speak(this.combatDescription()))
                 ]);
@@ -467,7 +467,8 @@
             const choices = [
                 option('Attack ' + e.name, command('attack')),
                 option('Defend', command('defend')),
-                option('Flee', command('flee'))
+                option('Flee', command('flee')),
+                option('Pray', command('pray'))
             ];
             // Add spells if player has mana
             if (p.mp >= 15) {

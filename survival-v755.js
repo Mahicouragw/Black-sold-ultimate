@@ -97,7 +97,11 @@
     const catalogEntry = id => CATALOG.find(q => q.quest_id === id);
     const questName = id => N.has('quest.name.' + id) ? N.t('quest.name.' + id) : id;
     const questDesc = id => N.has('quest.desc.' + id) ? N.t('quest.desc.' + id) : '';
-    const inTemple = G => G.state.location === 'grand_temple' || /temple$/.test(G.state.location || '');
+    // A temple, or a room marked as a place of prayer (the palace chapel).
+    const inTemple = G => G.state.location === 'grand_temple' || /temple$/.test(G.state.location || '') || Boolean(window.WorldData?.locations?.[G.state.location]?.prayerPlace);
+    // The King gives and receives palace quests in person as well as at the quest board.
+    const QUEST_ROOMS = new Set(['royal_palace', 'kaliwasch_palace_throne_room']);
+    const atQuestRoom = G => QUEST_ROOMS.has(G.state.location);
     const say = (G, text, type = 'system', options = {}) => G.emitGameEvent ? G.emitGameEvent(text, type, options) : G.addNarrative(text, type);
     const sacred = G => G.state.sacred || (G.state.sacred = {});
     const palace = G => { const s = sacred(G); if (!s.palace || typeof s.palace !== 'object') s.palace = { active: null, completed: [] }; if (!Array.isArray(s.palace.completed)) s.palace.completed = []; return s.palace; };
@@ -322,6 +326,7 @@
             finishPrayer(prayer, { first, granted, daily: sacred(G).dailyBattleBlessing?.type || PRAYERS[prayer], hoursLeft: Math.max(1, Math.ceil((DAY - (now - last)) / 3600000)) });
             return true;
         };
+        G.isPrayerPlace = function () { return inTemple(this); };
         G.showPrayerChoices = function () { if (sacred(G).firstPrayerDone && !sacred(G).permanentTempleBlessing) showChoices('permanent'); else showChoices('prayer'); };
         G.claimDailyTempleBlessing = function () { return this.pray(''); };
         G.templeHeal = function () { say(this, N.t('temple.heal')); };
@@ -428,7 +433,7 @@
 
         G.palaceQuest = async function () {
             const P = palace(this);
-            if (this.state.location !== 'royal_palace') { say(this, N.t('quest.notHere')); return false; }
+            if (!atQuestRoom(this)) { say(this, N.t('quest.notHere')); return false; }
             if (this._questBusy) { say(this, N.t('quest.busy')); return false; }
             const q = P.active;
             this._questBusy = true;
@@ -498,7 +503,7 @@
                     }
                 }
             }
-            if (this.state.location === 'royal_palace' && !box.querySelector('[data-bsu="palace-quest"]')) {
+            if (atQuestRoom(this) && !box.querySelector('[data-bsu="palace-quest"]')) {
                 if (!box.querySelector('strong')) { const title = document.createElement('strong'); title.textContent = 'Location actions:'; box.prepend(title); }
                 const button = document.createElement('button');
                 button.type = 'button'; button.dataset.bsu = 'palace-quest'; button.textContent = N.t('btn.palaceQuest');
@@ -511,7 +516,7 @@
         G.processCommand = function (raw) {
             const c = String(raw || '').trim().toLowerCase();
             if (c === 'report quest' || c === 'complete quest' || c === 'accept quest' || c === 'quest status' || c === 'palace quest' || c === 'receive quest') {
-                if (this.state.location === 'royal_palace' || c !== 'quest status') { this.palaceQuest(); return; }
+                if (atQuestRoom(this) || c !== 'quest status') { this.palaceQuest(); return; }
                 const q = palace(this).active;
                 if (q) { say(this, N.t(q.progress >= q.target ? 'quest.ready' : 'quest.active', { name: questName(q.quest_id), progress: q.progress, target: q.target, companion: q.companion?.name || '' })); return; }
             }

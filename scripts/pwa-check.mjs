@@ -14,7 +14,7 @@ if (!html.includes('stabilization-v7211.js')) throw Error('v7.21.1 stabilization
 if (!html.includes('chat-notice-feedback-v7221.js')) throw Error('v7.22.1 chat notice / feedback module is not deployed');
 if (!html.includes('seasonal-events-v729.js')) throw Error('v7.25.11 seasonal module is not deployed');
 if (!html.includes('gesture-accessibility.js')) throw Error('Gesture accessibility module is not deployed');
-for (const script of ['narration-v755.js', 'bsu-server.js', 'survival-v755.js', 'game-hall-v755.js']) {
+for (const script of ['narration-v755.js', 'bsu-server.js', 'survival-v755.js', 'palace-rooms-v755.js', 'prayer-angels-v755.js', 'game-hall-v755.js']) {
     if (!html.includes(`src="${script}"`)) throw Error(`v7.55 module is not deployed: ${script}`);
 }
 const version = await readFile('version.js', 'utf8');
@@ -33,7 +33,7 @@ for (const swFile of ['sw.js', 'service-worker.js']) {
         if (path.startsWith('/')) throw Error(`${swFile} escapes deployment base: ${path}`);
         if (path) await access(path);
     }
-    for (const required of ['narration-v755.js', 'bsu-server.js', 'survival-v755.js', 'chess-ai-v755.js', 'game-hall-v755.js', 'game-hall.js', 'assets/vendor/chess.js']) {
+    for (const required of ['narration-v755.js', 'bsu-server.js', 'survival-v755.js', 'palace-rooms-v755.js', 'prayer-angels-v755.js', 'chess-ai-v755.js', 'game-hall-v755.js', 'game-hall.js', 'assets/vendor/chess.js']) {
         if (!paths.includes(required)) throw Error(`${swFile} does not precache ${required}`);
     }
     for (const required of ['gesture-accessibility.js', 'world-navigation-v27.js', 'stabilization-v7211.js', 'chat-notice-feedback-v7221.js', 'assets/audio/audio-manifest.json', 'AUDIO_CREDITS.md', 'music.js', 'assets/audio/music/town-theme-rpg.mp3', 'assets/audio/music/natural-forest-theme.mp3', 'assets/audio/music/battle-theme-a.mp3', 'assets/audio/music/boss-battle-theme.mp3', 'assets/audio/music/final-boss-theme.ogg']) {

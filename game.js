@@ -35,8 +35,11 @@ const Game = {
         messages: [],
         guild: null,
         combatGroup: [],
-        saveKey: 'black_sword_ultimate_save',
-        rosterKey: 'black_sword_hero_roster_v2',
+        // Per-account storage keys. Every reader and writer in the game asks for
+        // state.saveKey / state.rosterKey, so the account suffix is applied in
+        // one place (see Game.getAccountKey below).
+        get saveKey() { return Game.getAccountKey('black_sword_ultimate_save'); },
+        get rosterKey() { return Game.getAccountKey('black_sword_hero_roster_v2'); },
         activeHeroId: null,
         pendingHeroId: null,
         creatingHero: false,
@@ -91,6 +94,69 @@ const Game = {
             localStorage.setItem(this.state.saveKey, JSON.stringify(active));
             document.getElementById('btn-continue').disabled = false;
         }
+    },
+
+    // ---- saves kept apart for each Google account ---------------------------
+    // Heroes saved on this device belong to the Google account that was signed
+    // in when they were saved. With nobody signed in (guest) the plain keys are
+    // used. The account is remembered on the device, so the right heroes are
+    // there at start-up and offline, before sign-in has been confirmed again.
+    // It is forgotten only when the player signs out.
+    SAVE_BASE_KEY: 'black_sword_ultimate_save',
+    ROSTER_BASE_KEY: 'black_sword_hero_roster_v2',
+    ACCOUNT_MARK_KEY: 'black_sword_local_account',
+
+    accountId() {
+        let remembered = null;
+        try { remembered = localStorage.getItem(this.ACCOUNT_MARK_KEY) || null; } catch { return null; }
+        const online = typeof window !== 'undefined' ? window.OnlineSystem : null;
+        const live = online && online.linked && online.user && online.user.id ? String(online.user.id) : null;
+        if (live && live !== remembered) return this.adoptAccount(live, remembered) ? live : remembered;
+        return remembered;
+    },
+
+    getAccountKey(baseKey) {
+        const id = this.accountId();
+        return id ? `${baseKey}:${id}` : baseKey;
+    },
+
+    /**
+     * Start using the saves of a signed-in account. The first account to sign
+     * in on a device takes the heroes that were already on it (they are moved,
+     * not copied, so they do not show up again after sign-out). An account
+     * that already has saves here, or that follows another account, never
+     * receives someone else's heroes. Nor does a fresh Google login on a
+     * device whose heroes were downloaded for a Google account before: those
+     * may belong to somebody else, so they are left where they are and the
+     * new account gets its own heroes from the cloud.
+     */
+    adoptAccount(id, previous = null) {
+        try {
+            const rosterKey = `${this.ROSTER_BASE_KEY}:${id}`, saveKey = `${this.SAVE_BASE_KEY}:${id}`;
+            const existing = localStorage.getItem(rosterKey) !== null || localStorage.getItem(saveKey) !== null;
+            const foreign = localStorage.getItem('black_sword_roster_was_linked') === 'true'
+                && localStorage.getItem('black_sword_google_login_requested') === 'true';
+            if (!previous && !existing && !foreign) {
+                for (const [base, mine] of [[this.ROSTER_BASE_KEY, rosterKey], [this.SAVE_BASE_KEY, saveKey]]) {
+                    const value = localStorage.getItem(base);
+                    if (value === null) continue;
+                    // Remove first so a nearly full device does not need room for two copies.
+                    localStorage.removeItem(base);
+                    try { localStorage.setItem(mine, value); }
+                    catch (error) { localStorage.setItem(base, value); throw error; }
+                }
+            }
+            localStorage.setItem(this.ACCOUNT_MARK_KEY, id);
+            return true;
+        } catch (error) {
+            console.warn('Could not switch to the account saves; staying on the current ones:', error?.message || error);
+            return false;
+        }
+    },
+
+    /** Called on sign-out: the device goes back to the guest saves. */
+    forgetAccount() {
+        try { localStorage.removeItem(this.ACCOUNT_MARK_KEY); } catch { /* private mode */ }
     },
 
     getRoster() {
@@ -3257,7 +3323,9 @@ const Game = {
         this.addNarrative("wayfinder / distance - Miles, steps and route to city, forest and cave entrances", 'system');
         this.addNarrative("exit forest / next exit step - Walk one calculated step toward the city", 'system');
         this.addNarrative("game hall / board games - Route to accessible Ludo, Snakes, Chess, Carrom and Blackjack", 'system');
-        this.addNarrative("battle prayer / take everything - Direct combat prayer and loot actions", 'system');
+        this.addNarrative("pray (in battle) - Once per battle, restores a fifth of your health and magic and uses your turn", 'system');
+        this.addNarrative("pray / emergency prayer (health at 15 percent or lower) - Four angels restore you fully and fight beside you for five turns", 'system');
+        this.addNarrative("take everything - Pick up all loot", 'system');
         this.addNarrative("search location - Discover hidden physical rewards without revealing them early", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
