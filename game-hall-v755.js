@@ -88,7 +88,7 @@ import { chooseMove, describeMove } from './chess-ai-v755.js';
     'hall.reason.insufficient_material': ['Not enough pieces to checkmate.', 'చెక్‌మేట్ చేయడానికి తగిన పావులు లేవు.', 'मात देने के लिए पर्याप्त मोहरे नहीं।'],
     'hall.reason.threefold_repetition': ['The same position was repeated three times.', 'అదే స్థితి మూడుసార్లు పునరావృతమైంది.', 'एक ही स्थिति तीन बार दोहराई गई।'],
     'hall.reason.fifty_move_rule': ['Fifty moves without a capture or a pawn move.', 'పట్టడం లేదా బంటు కదలిక లేకుండా యాభై ఎత్తులు.', 'बिना मारे या प्यादा चले पचास चालें।'],
-    'hall.reward': ['You earned {gold} gold and {xp} experience.', 'మీకు {gold} బంగారం, {xp} అనుభవం లభించాయి.', 'आपको {gold} सोना और {xp} अनुभव मिला।'],
+    'hall.reward': ['You earned {gold} rupees and {xp} experience.', 'మీకు {gold} రూపాయలు, {xp} అనుభవం లభించాయి.', 'आपको {gold} रुपये और {xp} अनुभव मिला।'],
     'hall.reward.capped': ['You have reached today\'s limit for computer-game rewards. No reward this time.', 'ఈ రోజు కంప్యూటర్ ఆటల బహుమతుల పరిమితి చేరుకున్నారు. ఈసారి బహుమతి లేదు.', 'आज कंप्यूटर वाले खेलों के इनाम की सीमा पूरी हो गई। इस बार इनाम नहीं।'],
     'hall.reward.none': ['No reward for this game.', 'ఈ ఆటకు బహుమతి లేదు.', 'इस खेल के लिए कोई इनाम नहीं।'],
     'hall.reward.practice': ['Practice game. No rewards.', 'సాధన ఆట. బహుమతులు లేవు.', 'अभ्यास खेल। कोई इनाम नहीं।'],

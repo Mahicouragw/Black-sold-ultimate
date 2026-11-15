@@ -105,7 +105,7 @@ test('Snakes & Ladders against the computer: the server rolls, every event is sp
     assert.equal(count(a.sounds, 'game-win'), mine.rank === 1 ? 1 : 0);
     assert.ok(a.said.some(line => line.startsWith('The game is over.') && line.includes(`You finished in place ${mine.rank} of 3.`)));
     assert.equal(a.Game.state.player.gold - goldBefore, mine.gold, 'the gold the server awarded is the gold the hero received');
-    if (mine.gold > 0) assert.ok(a.said.includes(`You earned ${mine.gold} gold and ${mine.xp} experience.`));
+    if (mine.gold > 0) assert.ok(a.said.includes(`You earned ${mine.gold} rupees and ${mine.xp} experience.`));
     assert.deepEqual([...a.P.shown.pos], [...a.P.match.state.pos], 'the board shown equals the server board');
 
     // A finished game is left without a question.
@@ -189,8 +189,8 @@ test('Snakes & Ladders online: invite, accept, turns, out-of-turn refusal, and l
     assert.ok(a.said.includes('Ravi (Red) left the game.') || a.said.some(line => /^Ravi \(\w+\) left the game\.$/.test(line)));
     assert.equal(a.P.match.status, 'finished');
     assert.equal(count(a.sounds, 'game-win'), 1);
-    assert.equal(a.Game.state.player.gold - goldBefore, 60, 'first of two players online earns 60 gold');
-    assert.ok(a.said.includes('You earned 60 gold and 40 experience.'));
+    assert.equal(a.Game.state.player.gold - goldBefore, 60, 'first of two players online earns 60 rupees');
+    assert.ok(a.said.includes('You earned 60 rupees and 40 experience.'));
 });
 
 test('Chess against the computer: tap a piece to hear its moves, tap to move, typed moves, refusals with reasons, resign asks first', async t => {
@@ -303,8 +303,8 @@ test('Chess online: both players see and hear the same game; checkmate pays the 
     assert.ok(white.said.includes('The game is over. You lost. Checkmate.'));
     assert.equal(black.Game.state.player.gold - gold.black, 150);
     assert.equal(white.Game.state.player.gold - gold.white, 15);
-    assert.ok(black.said.includes('You earned 150 gold and 100 experience.'));
-    assert.ok(white.said.includes('You earned 15 gold and 10 experience.'));
+    assert.ok(black.said.includes('You earned 150 rupees and 100 experience.'));
+    assert.ok(white.said.includes('You earned 15 rupees and 10 experience.'));
 });
 
 test('without the server: games against the computer still work as practice, with no rewards, and online play says why it cannot start', async t => {
