@@ -71,8 +71,14 @@ const OnlineSystem = {
             // database: a Google player must not be shown as a guest because a
             // database request failed.
             await this.refreshIdentityStatus();
-            try { await this.loadProfile(); }
+            let slowTimer;
+            try {
+                // Never wait forever on "Connecting…": after 15 seconds play from the device.
+                await Promise.race([this.loadProfile(), new Promise((_, reject) => { slowTimer = setTimeout(() => reject(new Error('The online database did not answer in time.')), 15000); })]);
+                clearTimeout(slowTimer);
+            }
             catch (profileError) {
+                clearTimeout(slowTimer);
                 console.error('Online database is not reachable:', profileError);
                 this.ensureLocalCode();
                 this.status = this.linked ? this.pick(
