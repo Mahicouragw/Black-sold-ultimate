@@ -15,6 +15,10 @@ window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
     },
     // Neon Data API still used for cloud saves, chat, multiplayer.
     dataApiUrl: 'https://ep-dark-bread-at1dja9x.apirest.c-9.us-east-1.aws.neon.tech/neondb/rest/v1',
+    // Black Soul Ultimate game server (server-side time, blessings, quests,
+    // board-game matches, rewards and cloud saves). Players are identified by
+    // their Firebase sign-in; nothing secret is stored in this file.
+    gameServerUrl: 'https://tmkpdvljhnlnvbckbnsc.supabase.co/functions/v1/bsu-game',
     authMode: 'popup',
     googleClientId: ''
 });

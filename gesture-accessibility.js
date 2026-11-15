@@ -769,7 +769,7 @@
     };
     // Block normal commands as well as gestures while a posture is active.
     const oldMove = G.move;
-    G.move = function(dir) { if (this.state.player?.gesturePosture) { speak('Stand up before walking.'); return; } return oldMove.call(this, dir); };
+    G.move = function(dir) { return oldMove.call(this, dir); }; // the core move explains a sitting or lying posture itself
     const oldStart = G.startCombat;
     G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); UI.render(); if (settings.narration) { 
         // Read combat status clearly - monster count, HP, etc.

@@ -1316,37 +1316,71 @@ const Game = {
         return 'step-stone';
     },
 
+    /** Words for the directions the player can really walk from a location. */
+    describeExits(loc = WorldData.locations[this.state.location]) {
+        const N = window.Narration;
+        const exits = Object.keys(loc?.exits || {}).filter(dir => WorldData.locations[loc.exits[dir]]);
+        if (!N) return exits.length ? `You can go ${exits.join(', ')}.` : 'There is no way out of here on foot.';
+        if (!exits.length) return N.t('move.noExits');
+        return N.t('move.exits', { list: N.list(exits.map(dir => N.dir(dir)), 'or') });
+    },
+
+    /** Why a step in `direction` cannot happen right now, or null when it can.
+     *  Returns { key, text } so every blocked move is explained with its real
+     *  reason and is never worded like a successful move. */
+    movementBlock(direction) {
+        const N = window.Narration;
+        const loc = WorldData.locations[this.state.location];
+        const dest = loc?.exits?.[direction];
+        const target = dest ? WorldData.locations[dest] : null;
+        const say = (key, fallback, params = {}) => ({ key, text: N ? N.t(key, { dir: direction, place: loc?.name || '', ...params }) : fallback });
+        if (this.state.inCombat && this.state.enemy) {
+            return target
+                ? say('move.combat', `You did not move. You are in combat and cannot go ${direction} until the battle ends. Say flee to escape, or keep fighting.`)
+                : say('move.combatNoPath', `You did not move. You are in combat, and there is no path ${direction} from here anyway. Say flee to escape, or keep fighting.`);
+        }
+        if (this.state.player?.gesturePosture) return say('move.posture', 'You did not move. Stand up before walking.');
+        const door = loc?.specialDoor;
+        if (door && !door.open && door.direction === direction) {
+            return say('move.lockedDoor', `You did not move. A locked rune door blocks the way ${direction}. Open it with the Alohomora spell, or break it with Multiple Strike.`);
+        }
+        if (!target) {
+            const block = say('move.noPath', `You did not move. There is no path ${direction} from ${loc?.name || 'here'}.`);
+            block.text += ' ' + this.describeExits(loc);
+            return block;
+        }
+        if (target.privateHouse && !this.state.sacred?.housing?.houses?.[target.privateHouse] && !this.state.housing?.houses?.[target.privateHouse]) {
+            return say('move.houseLocked', 'You did not move. The door of this private house is locked. Buy the house from the estate agent first.');
+        }
+        return null;
+    },
+
     move(direction) {
+        direction = String(direction || '').toLowerCase();
+        const N = window.Narration;
         const loc = WorldData.locations[this.state.location];
         const dest = loc?.exits?.[direction];
 
-        // In combat, movement is refused with a spoken explanation rather than a
-        // dead control. Blind players get the reason and the way out.
-        if (this.state.inCombat && this.state.enemy) {
-            const message = dest
-                ? `You are in combat. You cannot move ${direction} until the battle ends. Type flee to escape, or keep fighting.`
-                : `You are in combat, and there is no path ${direction} from here. Type flee to escape, or keep fighting.`;
-            if (this.emitGameEvent) this.emitGameEvent(message, 'system', { sfx: ['board-error'] });
-            else { this.addNarrative(message, 'system'); MusicSystem.playSFX('board-error'); }
-            return;
-        }
-
-        if (!dest || !WorldData.locations[dest]) {
-            const text = `You cannot move ${direction} from here.`;
-            if (this.emitGameEvent) this.emitGameEvent(text, 'system', { sfx: ['explore'] });
-            else { this.addNarrative(text, 'system'); MusicSystem.playSFX('explore'); }
-            return;
+        // A move that cannot happen is refused with its real reason and a
+        // distinct "blocked" sound. It never uses the wording or the footstep
+        // of a successful move, so a blind player always knows which happened.
+        const block = this.movementBlock(direction);
+        if (block) {
+            this._lastMoveResult = { moved: false, direction, reason: block.key };
+            if (this.emitGameEvent) this.emitGameEvent(block.text, 'system', { sfx: ['board-error'] });
+            else { this.addNarrative(block.text, 'system'); MusicSystem.playSFX('board-error'); }
+            return false;
         }
         // Serialize movement so rapid keyboard/voice input cannot dispatch two
         // logical moves from the same origin or produce duplicate announcements.
-        if (this._movementPending) return;
+        if (this._movementPending) return false;
         this._movementPending = true;
 
         const origin = this.state.location;
 
         // Announce direction being taken
         const dirLabel = direction.charAt(0).toUpperCase() + direction.slice(1);
-        this.addNarrative(`Going ${dirLabel}…`, 'system');
+        this.addNarrative(N ? N.t('move.going', { dir: direction }) : `Going ${dirLabel}…`, 'system');
 
         this._movementTimer = setTimeout(() => {
             try {
@@ -1354,8 +1388,9 @@ const Game = {
                 const target = WorldData.locations[dest];
                 if (!target) return;
                 const alreadyVisited = this.state.visited.includes(dest);
-                const text = `You moved ${direction} to ${target.name}.`;
+                const text = N ? N.t('move.moved', { dir: direction, place: target.name }) : `You moved ${direction} to ${target.name}.`;
                 const footstep = this.getFootstepSFX(target);
+                this._lastMoveResult = { moved: true, direction, from: origin, to: dest };
                 if (this.emitGameEvent) this.emitGameEvent(text, 'location', { sfx: [footstep] });
                 else { this.addNarrative(text, 'location'); MusicSystem.playSFX(footstep); }
                 this.enterLocation(dest, alreadyVisited);
@@ -1363,6 +1398,7 @@ const Game = {
                 this._movementPending = false;
             }
         }, 320);
+        return true;
     },
 
     cancelPendingMovement() {
