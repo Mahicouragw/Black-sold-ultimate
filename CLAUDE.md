@@ -86,7 +86,19 @@ The user is on a screen-reader/small display. Long dumps make the transcript
 unusable. Pipe through `| tail -5`, never cat whole files, never paste large
 blocks. Prefer one command with a short summary.
 
-## Verified backend state (v7.22.4)
+## Backend since v7.57: Firebase only
+
+* Sign-in and all online data use one Firebase project (free Spark plan):
+  `firebase-backend.js` (query interface on top of Cloud Firestore),
+  `firestore.rules` (access rules), `FIREBASE_SETUP.md` (console steps).
+* Neon and Supabase are no longer loaded by the page. The files under `neon/`,
+  `supabase/`, `server/` and `neon-game-client.js` are legacy.
+* No server code exists: `BSUServer.call()` answers `offline`, callers use their
+  device rule. Player-versus-player board games and player trading are off.
+* `firestore.rules` has not been run against the Firebase rules emulator from
+  this workspace (no network access to it). Tests use `tests/helpers/fake-firebase.mjs`.
+
+## Older backend state (v7.22.4, legacy)
 
 * Supabase migration **v20 player trading is APPLIED** and verified against the
   live project: `trade_offers` exists, RLS returns nothing to anonymous callers,

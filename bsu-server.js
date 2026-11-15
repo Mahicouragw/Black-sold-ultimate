@@ -1,14 +1,16 @@
-/* Black Soul Ultimate — connection to the game server.
+/* Black Sword Ultimate — game clock, rewards and the automatic cloud save.
  *
- * The server owns everything that must not be decided on the player's device:
- * the clock (hunger, HP/MP recovery, blessing cooldowns), permanent and daily
- * blessings, palace quests and their companions, board-game matches, rankings
- * and rewards, and the cloud copy of the save. Every request carries the
- * player's Firebase sign-in token; the server works out who is asking from the
- * token, never from anything this file sends.
+ * The game can talk to an optional game server (config.gameServerUrl) that
+ * owns the clock, blessings, quests and board-game matches. No such server is
+ * configured in this version: the project runs on the free Firebase plan,
+ * which cannot run server code. So `call()` answers "offline" and every caller
+ * uses its own rule on the device (prayer once a day, permanent blessing,
+ * palace quests, board games against the computer).
  *
- * When the server cannot be reached the game keeps working from the device
- * (device clock, local save) and nothing here throws.
+ * The cloud copy of the save does not need a server: it is written straight
+ * to Cloud Firestore through OnlineSystem, at most once every 90 seconds.
+ *
+ * Nothing here throws when the network is missing.
  */
 (function () {
     'use strict';
@@ -151,17 +153,27 @@
             if (!result.ok) throw new Error(result.error || 'cloud save unavailable');
             return result.save ? { save_data: result.save, updated_at: result.updated_at } : null;
         },
+        /** True when a cloud copy can be written: through the game server, or straight to the database. */
+        cloudReady() {
+            const O = window.OnlineSystem;
+            return this.canCall() || Boolean(O?.ready && O?.user && O?.client);
+        },
         /** Called after local saves: at most one cloud write every 90 seconds. */
         scheduleCloud() {
-            if (!this.canCall() || state.cloudTimer) return;
+            if (!this.cloudReady() || state.cloudTimer) return;
             const wait = Math.max(3000, 90000 - (Date.now() - state.lastCloudAt));
             state.cloudTimer = setTimeout(() => { state.cloudTimer = null; this.flushCloud(); }, wait);
         },
         flushCloud() {
             const G = window.Game;
             if (state.cloudTimer) { clearTimeout(state.cloudTimer); state.cloudTimer = null; }
-            if (!G?.state?.player || !this.canCall() || Date.now() - state.lastCloudAt < 5000) return Promise.resolve(false);
-            try { return this.putSave(JSON.parse(JSON.stringify(G.getCloudData()))); } catch { return Promise.resolve(false); }
+            if (!G?.state?.player || !this.cloudReady() || Date.now() - state.lastCloudAt < 5000) return Promise.resolve(false);
+            try {
+                const snapshot = JSON.parse(JSON.stringify(G.getCloudData()));
+                if (this.canCall()) return this.putSave(snapshot);
+                state.lastCloudAt = Date.now();
+                return Promise.resolve(window.OnlineSystem.saveGame(snapshot)).then(saved => saved === true, () => false);
+            } catch { return Promise.resolve(false); }
         }
     };
     window.BSUServer = Server;

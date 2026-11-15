@@ -312,9 +312,9 @@ test('without the server: games against the computer still work as practice, wit
     assert.equal(a.P.serverReady(), false);
     const goldBefore = a.Game.state.player.gold;
     a.hall.select('snakes');
-    assert.match(a.$('h755-players').textContent, /Online games need an internet connection/);
+    assert.match(a.$('h755-players').textContent, /Games against other players are not available in this version/);
     await a.P.createMatch('online');
-    assert.equal(a.said.at(-1), 'Online games need an internet connection and a signed-in account. You can still play against the computer.');
+    assert.equal(a.said.at(-1), 'Games against other players are not available in this version. You can play against the computer.');
     assert.equal(a.P.match, null);
 
     a.$('h755-seats').value = '2';

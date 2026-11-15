@@ -1,7 +1,12 @@
 /* Black Sword Ultimate backend configuration.
- * Provider 'firebase': Google sign-in via Firebase (simple, 1-click setup).
- * Provider 'neon': legacy managed auth (complex OAuth, not recommended).
- * Fill in the firebase config after creating your Firebase project. */
+ *
+ * One free Firebase project does everything online: Google sign-in, guest
+ * accounts and the Cloud Firestore database (cloud saves, chat, chat rooms,
+ * friends, guilds, combat groups, feedback). See FIREBASE_SETUP.md.
+ *
+ * These values identify the project; they are not secrets. Access to the data
+ * is decided by firestore.rules.
+ */
 window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
     provider: 'firebase',
     firebase: {
@@ -13,12 +18,9 @@ window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
         appId: "1:672939027677:web:776a93b7d72f5833b3bf34",
         measurementId: "G-SDY2WG9QT7"
     },
-    // Neon Data API still used for cloud saves, chat, multiplayer.
-    dataApiUrl: 'https://ep-dark-bread-at1dja9x.apirest.c-9.us-east-1.aws.neon.tech/neondb/rest/v1',
-    // Black Soul Ultimate game server (server-side time, blessings, quests,
-    // board-game matches, rewards and cloud saves). Players are identified by
-    // their Firebase sign-in; nothing secret is stored in this file.
-    gameServerUrl: 'https://tmkpdvljhnlnvbckbnsc.supabase.co/functions/v1/bsu-game',
+    // No separate game server: hunger, blessings, quests and board games against
+    // the computer are decided on the device.
+    gameServerUrl: '',
     authMode: 'popup',
     googleClientId: ''
 });
