@@ -2,13 +2,12 @@
  *
  * The game can talk to an optional game server (config.gameServerUrl) that
  * owns the clock, blessings, quests and board-game matches. No such server is
- * configured in this version: the project runs on the free Firebase plan,
- * which cannot run server code. So `call()` answers "offline" and every caller
+ * configured in this version, so `call()` answers "offline" and every caller
  * uses its own rule on the device (prayer once a day, permanent blessing,
  * palace quests, board games against the computer).
  *
- * The cloud copy of the save does not need a server: it is written straight
- * to Cloud Firestore through OnlineSystem, at most once every 90 seconds.
+ * The cloud copy of the save does not go through here: OnlineSystem writes it
+ * to the online database (online-backend.js), at most once every 90 seconds.
  *
  * Nothing here throws when the network is missing.
  */

@@ -64,7 +64,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.jso
 - 🎼 Three-way cinematic battle rotation, epic exploration/intro music, scary cemetery music and terrain-specific footsteps
 - 🔄 Forced Google cloud-roster restoration even when the browser is already signed in, plus guest-hero merge
 - 🔐 Player ID + six-digit PIN continuation
-- ☁️ Online features run on one free Firebase project — see [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+- ☁️ Online features: sign-in with Firebase Authentication, data in a free Supabase database — see [ONLINE_BACKEND.md](ONLINE_BACKEND.md)
 - 🔒 Private Player IDs plus globally unique, case-insensitive hero-name reservations with live availability checks
 - 🗣 Actual installed Android/Windows/Google system voice names; internal voice codes are hidden from chat
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes

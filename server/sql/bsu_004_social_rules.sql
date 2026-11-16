@@ -41,6 +41,21 @@ language sql stable security definer set search_path = bsu_social, pg_temp as $$
   select exists (select 1 from chat_rooms where id = key and (visibility = 'public' or owner_id = uid())) or invited('room', key)
 $$;
 
+-- The small card of a related row that is shown next to a list entry
+-- (the sender of a message, the guild of an invitation, ...). A chat room
+-- shows its name to anyone invited to it, also before the invitation is
+-- accepted; entering it still needs the accepted invitation.
+create or replace function bsu_social.card(tbl text, key text) returns jsonb
+language sql stable security definer set search_path = bsu_social, pg_temp as $$
+  select case tbl
+    when 'profiles' then (select to_jsonb(p) from profiles p where p.id = key)
+    when 'guilds' then (select to_jsonb(g) from guilds g where g.id = key)
+    when 'combat_groups' then (select to_jsonb(c) from combat_groups c where c.id = key)
+    when 'chat_rooms' then (select jsonb_build_object('id', c.id, 'name', c.name, 'visibility', c.visibility, 'language', c.language, 'owner_id', c.owner_id, 'member_limit', c.member_limit)
+      from chat_rooms c where c.id = key and (sees_room(key) or exists (select 1 from chat_room_invites i where i.room_id = key and i.receiver_id = uid())))
+    else null end
+$$;
+
 -- Requests and invitations: one waiting request per pair, friendly refusals.
 create or replace function bsu_social.invite_guard() returns trigger
 language plpgsql security definer set search_path = bsu_social, pg_temp as $$
@@ -263,8 +278,8 @@ begin
 
   if t = 'game_saves' and act <> 'select' then return '[]'::jsonb; end if;   -- do not send the whole save back
   for e in select * from jsonb_array_elements(coalesce(r->'embed', '[]'::jsonb)) loop
-    if (e->>'table') in ('profiles', 'guilds', 'combat_groups', 'chat_rooms') and jsonb_array_length(rows) > 0 then
-      execute format('select coalesce(jsonb_agg(v || jsonb_build_object(%L, (select to_jsonb(y) from bsu_social.%I y where y.id = v->>%L)) order by n), ''[]''::jsonb) from jsonb_array_elements($1) with ordinality as a(v, n)',
+    if e->>'alias' is not null and e->>'col' is not null and jsonb_array_length(rows) > 0 then
+      execute format('select coalesce(jsonb_agg(v || jsonb_build_object(%L, bsu_social.card(%L, v->>%L)) order by n), ''[]''::jsonb) from jsonb_array_elements($1) with ordinality as a(v, n)',
         e->>'alias', e->>'table', e->>'col') using rows into rows;
     end if;
   end loop;

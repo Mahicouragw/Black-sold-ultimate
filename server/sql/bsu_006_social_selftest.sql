@@ -86,6 +86,11 @@ begin
     res := t_chk(res, 'a private room is hidden from others', t_q(b, true, 'chat_rooms', 'select', null, t_eq('id', room))->'data' = '[]' and t_rpc(b, true, 'join_chat_room', jsonb_build_object('target_room', room)) ? 'error');
     res := t_chk(res, 'only the room owner can invite', t_q(b, true, 'chat_room_invites', 'insert', jsonb_build_object('room_id', room, 'sender_id', b, 'receiver_id', g))->'error'->>'code' = '42501');
     r := t_q(a, true, 'chat_room_invites', 'insert', jsonb_build_object('room_id', room, 'sender_id', a, 'receiver_id', b)); inv := r->'data'->0->>'id';
+    r := t_q(b, true, 'chat_room_invites', 'select', null, t_eq('receiver_id', b) || t_eq('status', 'pending'), '{"embed": [{"alias": "room", "table": "chat_rooms", "col": "room_id"}]}');
+    res := t_chk(res, 'a waiting invitation shows the room name, but the room stays closed', r->'data'->0->'room'->>'name' = 'ZZ Private'
+      and t_q(b, true, 'chat_rooms', 'select', null, t_eq('id', room))->'data' = '[]' and t_rpc(b, true, 'join_chat_room', jsonb_build_object('target_room', room)) ? 'error');
+    res := t_chk(res, 'a stranger gets no room card', t_q(g, false, 'messages', 'select', null, '[]', jsonb_build_object('embed', jsonb_build_array(jsonb_build_object('alias', 'room', 'table', 'chat_rooms', 'col', 'sender_id'))))->'data'->0->'room' = 'null'
+      and bsu_social.card('accounts', a) is null);
     perform t_q(b, true, 'chat_room_invites', 'update', '{"status": "accepted"}', t_eq('id', inv) || t_eq('receiver_id', b));
     res := t_chk(res, 'after accepting the invitation the room opens', jsonb_array_length(t_q(b, true, 'chat_rooms', 'select', null, t_eq('id', room))->'data') = 1 and t_rpc(b, true, 'join_chat_room', jsonb_build_object('target_room', room))->'data' = '1');
     res := t_chk(res, 'a room message is read by a member', t_q(b, true, 'chat_room_messages', 'insert', jsonb_build_object('room_id', room, 'sender_id', b, 'body', 'in private')) ? 'data'

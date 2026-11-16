@@ -86,17 +86,30 @@ The user is on a screen-reader/small display. Long dumps make the transcript
 unusable. Pipe through `| tail -5`, never cat whole files, never paste large
 blocks. Prefer one command with a short summary.
 
-## Backend since v7.57: Firebase only
+## Backend since v7.58: Firebase sign-in + Supabase data
 
-* Sign-in and all online data use one Firebase project (free Spark plan):
-  `firebase-backend.js` (query interface on top of Cloud Firestore),
-  `firestore.rules` (access rules), `FIREBASE_SETUP.md` (console steps).
-* Neon and Supabase are no longer loaded by the page. The files under `neon/`,
-  `supabase/`, `server/` and `neon-game-client.js` are legacy.
-* No server code exists: `BSUServer.call()` answers `offline`, callers use their
+* **Sign-in** is Firebase Authentication only (Google popup, guest accounts),
+  project `black-sword-ultimate-43c4d`. Firestore is not used and its library
+  is not loaded.
+* **All online data** is in the Supabase project `tmkpdvljhnlnvbckbnsc`, schema
+  `bsu_social`. The page never holds a database key. `online-backend.js` sends
+  every request to the edge function `bsu-data` (`server/function/bsu-data.ts`)
+  with the Firebase ID token; the function verifies the token and calls
+  `public.bsu_data(uid, claims, request)`, which runs as role `bsu_player`
+  under row-level security.
+* SQL lives in `server/sql/bsu_003` … `bsu_006` and is already applied. After
+  editing a file: push, then apply it on the project, then run
+  `select bsu_social.selftest()` (it rolls back everything it writes).
+* **The Supabase project is shared with another app of the owner.** Never alter
+  or drop anything named `rb_*` / `rb-*` / `RB_*`, and do not change the auth
+  settings.
+* Tests run the same SQL in an in-process PostgreSQL (`@electric-sql/pglite`,
+  `tests/helpers/online-test-backend.mjs`), so rule changes are tested locally.
+* Live updates are polled (`changes` action), not pushed.
+* No game server: `BSUServer.call()` answers `offline`, callers use their
   device rule. Player-versus-player board games and player trading are off.
-* `firestore.rules` has not been run against the Firebase rules emulator from
-  this workspace (no network access to it). Tests use `tests/helpers/fake-firebase.mjs`.
+* Legacy and unused: `neon/`, `supabase/`, `neon-game-client.js`,
+  `server/sql/bsu_001`–`002`, `server/function/bsu-game.ts`.
 
 ## Older backend state (v7.22.4, legacy)
 
