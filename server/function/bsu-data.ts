@@ -91,7 +91,7 @@ export async function guestUid(key) {
 /* Which network a request came from, as a one-way code (the address itself is never stored).
  * The database uses it only to limit how many new guest players one network can create per hour. */
 async function netKey(request) {
-  const address = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+  const address = (request.headers.get('cf-connecting-ip') || request.headers.get('x-real-ip') || (request.headers.get('x-forwarded-for') || '').split(',')[0]).trim();
   return address ? (await sha256('bsu-net:' + address)).slice(0, 24) : '';
 }
 
