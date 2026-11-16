@@ -160,11 +160,31 @@ begin
     res := t_chk(res, 'only the server function may call the entry point', not has_function_privilege('anon', 'public.bsu_data(text,jsonb,jsonb)', 'execute')
       and not has_function_privilege('authenticated', 'public.bsu_data(text,jsonb,jsonb)', 'execute') and has_function_privilege('service_role', 'public.bsu_data(text,jsonb,jsonb)', 'execute')
       and not has_schema_privilege('anon', 'bsu_social', 'usage') and not has_schema_privilege('authenticated', 'bsu_social', 'usage'));
+    -- a guest becomes a Google player
+    perform public.bsu_data('g-zz-test-1', '{"google": false}', '{"kind": "rpc", "name": "get_my_profile"}');
+    perform public.bsu_data('g-zz-test-1', '{"google": false}', '{"kind": "rpc", "name": "reserve_hero_name", "args": {"desired_name": "Zz Guest Hero", "target_slot": "h1"}}');
+    perform public.bsu_data('g-zz-test-1', '{"google": false}', '{"kind": "query", "table": "game_saves", "action": "upsert", "values": {"user_id": "g-zz-test-1", "save_data": {"gold": 5}}}');
+    r := jsonb_build_array(public.bsu_data('zz-test-new', '{"google": true}', '{"kind": "rpc", "name": "adopt_guest", "args": {"guest": "g-zz-test-1"}}')->'data'->'moved',
+      public.bsu_data('g-zz-test-2', '{"google": false, "guest": "g-zz-test-1"}', '{"kind": "rpc", "name": "adopt_guest"}')->'data'->'moved');
+    res := t_chk(res, 'a guest id written in the request moves nothing', r = '[false, false]' and exists (select 1 from game_saves where user_id = 'g-zz-test-1'));
+    r := public.bsu_data(a, '{"google": true, "guest": "g-zz-test-1"}', '{"kind": "rpc", "name": "adopt_guest"}');
+    res := t_chk(res, 'an account that already has heroes keeps them, the guest stays', r->'data'->>'moved' = 'false' and exists (select 1 from game_saves where user_id = 'g-zz-test-1'));
+    r := public.bsu_data('zz-test-new', '{"google": true, "guest": "g-zz-test-1"}', '{"kind": "rpc", "name": "adopt_guest"}');
+    res := t_chk(res, 'a new Google account takes over the guest''s save and hero names', r->'data'->>'moved' = 'true'
+      and (select save_data->>'gold' from game_saves where user_id = 'zz-test-new') = '5' and not exists (select 1 from game_saves where user_id = 'g-zz-test-1')
+      and (select owner_id from hero_names where normalized_name = norm('Zz Guest Hero')) = 'zz-test-new');
+    -- new guests per network
+    insert into guests(user_id, net_key) select 'g-zz-fill-' || n, 'zz-test-net' from generate_series(1, 60) n;
+    res := t_chk(res, 'one network cannot create guests without limit; known guests and Google players are not held back',
+      public.bsu_data('g-zz-test-3', '{"google": false, "net": "zz-test-net"}', '{"kind": "rpc", "name": "get_my_profile"}')->'error'->>'code' = 'slow_down'
+      and public.bsu_data('g-zz-test-1', '{"google": false, "net": "zz-test-net"}', '{"kind": "rpc", "name": "get_my_profile"}') ? 'data'
+      and public.bsu_data(a, '{"google": true, "net": "zz-test-net"}', '{"kind": "rpc", "name": "get_my_profile"}') ? 'data'
+      and public.bsu_data('g-zz-test-4', '{"google": false, "net": "zz-other-net"}', '{"kind": "rpc", "name": "get_my_profile"}') ? 'data');
     raise exception 'bsu-selftest-rollback';
   exception when others then
     if sqlerrm <> 'bsu-selftest-rollback' then crash := sqlstate || ' ' || sqlerrm; end if;
   end;
   return jsonb_build_object('passed', (select count(*) from jsonb_array_elements(res) x where (x->>'ok')::boolean),
     'failed', (select coalesce(jsonb_agg(x->>'n'), '[]'::jsonb) from jsonb_array_elements(res) x where not (x->>'ok')::boolean),
-    'crash', crash, 'left_behind', (select count(*) from profiles where id like 'zz-test-%'));
+    'crash', crash, 'left_behind', (select count(*) from profiles where id like 'zz-test-%' or id like 'g-zz-%') + (select count(*) from guests where user_id like 'g-zz-%'));
 end $$;

@@ -259,6 +259,16 @@ create table if not exists bsu_social.community_map_markers (
 );
 create index if not exists community_map_markers_idx on bsu_social.community_map_markers (location_id, created_at desc);
 
+-- Guest players: a guest is known only by the one-way code of a key kept on the
+-- device. This list says when each guest first appeared and (for one day) from
+-- which network, so that one network cannot create guests without limit.
+create table if not exists bsu_social.guests (
+  user_id text primary key,
+  net_key text,
+  created_at timestamptz not null default now()
+);
+create index if not exists guests_net_idx on bsu_social.guests (net_key, created_at) where net_key is not null;
+
 -- Row level security on every table: with no rule, nothing is allowed.
 do $$ declare t text; begin
   for t in select tablename from pg_tables where schemaname = 'bsu_social' loop

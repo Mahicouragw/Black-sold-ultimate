@@ -28,6 +28,7 @@ language sql security definer set search_path = bsu_social, pg_temp as $$
   delete from world_drops where expires_at < now();
   delete from recovery_attempts where at < now() - interval '1 day';
   delete from chat_room_members where last_seen < now() - interval '1 day';
+  update guests set net_key = null where net_key is not null and created_at < now() - interval '1 day';
 $$;
 
 -- ---------------------------------------------------------------- profile
@@ -336,12 +337,38 @@ begin
   return jsonb_build_object('now', mark, 'events', ev);
 end $$;
 
+-- ------------------------------------------------- guest becomes Google
+-- A guest who signs in with Google for the first time keeps the heroes: the
+-- guest's cloud save and hero names move to the Google account. Both sign-ins
+-- were checked by the server function (the guest id arrives in 'bsu.guest',
+-- never in the request). If the Google account already has heroes, nothing
+-- moves and the guest stays as it was.
+create or replace function bsu_social.rpc_adopt_guest(a jsonb) returns jsonb
+language plpgsql security definer set search_path = bsu_social, pg_temp as $$
+declare me text := need(); g text := nullif(current_setting('bsu.guest', true), ''); n int;
+begin
+  if not is_google() or g is null or g = me or g not like 'g-%' then return jsonb_build_object('moved', false, 'reason', 'no-guest'); end if;
+  perform rpc_get_my_profile('{}'::jsonb);
+  if exists (select 1 from game_saves where user_id = me) or exists (select 1 from hero_names where owner_id = me) then
+    return jsonb_build_object('moved', false, 'reason', 'account-has-heroes');
+  end if;
+  update hero_names set owner_id = me where owner_id = g;
+  get diagnostics n = row_count;
+  update game_saves set user_id = me where user_id = g;
+  delete from player_recovery where owner_id = g;      -- the old PIN pointed at the guest; a new one can be set
+  update profiles p set display_name = o.display_name, level = o.level, current_location = o.current_location
+    from profiles o where p.id = me and o.id = g;
+  return jsonb_build_object('moved', true, 'names', n);
+end $$;
+
+
 -- ---------------------------------------------------------- the entry point
 -- p_uid and p_claims come from the verified sign-in token, never from the
 -- request body. Only the service role (the bsu-data server function) may call.
 create or replace function public.bsu_data(p_uid text, p_claims jsonb, p_req jsonb) returns jsonb
 language plpgsql security definer set search_path = bsu_social, pg_temp as $$
 declare kind text := p_req->>'kind'; fn text := p_req->>'name'; result jsonb;
+  net text := left(coalesce(p_claims->>'net', ''), 40);
 begin
   if kind = 'ping' then return jsonb_build_object('data', jsonb_build_object('ok', true, 'schema', 5)); end if;
   if p_uid is null or length(p_uid) not between 1 and 128 then
@@ -351,6 +378,14 @@ begin
   perform set_config('bsu.google', case when coalesce(p_claims->>'google', '') = 'true' then '1' else '' end, true);
   perform set_config('bsu.email', left(coalesce(p_claims->>'email', ''), 200), true);
   perform set_config('bsu.name', left(coalesce(p_claims->>'name', ''), 80), true);
+  perform set_config('bsu.guest', left(coalesce(p_claims->>'guest', ''), 60), true);
+  -- A guest seen for the first time: at most 60 new guests per network per hour.
+  if p_uid like 'g-%' and not exists (select 1 from guests where user_id = p_uid) then
+    if net <> '' and (select count(*) from guests where net_key = net and created_at > now() - interval '1 hour') >= 60 then
+      return jsonb_build_object('error', jsonb_build_object('code', 'slow_down', 'message', 'Too many new guest players from this network. Please try again later, or sign in with Google.'));
+    end if;
+    insert into guests(user_id, net_key) values (p_uid, nullif(net, '')) on conflict (user_id) do nothing;
+  end if;
   begin
     if kind = 'rpc' then
       if fn is null or fn !~ '^[a-z_]{3,60}$' or to_regprocedure(format('bsu_social.%I(jsonb)', 'rpc_' || fn)) is null then

@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { setTimeout as wait } from 'node:timers/promises';
+import { webcrypto } from 'node:crypto';
 import { createRuntime } from '../scripts/load-world.mjs';
 import { createDatabase, transportFor, createFakeSdk, googleUser } from './helpers/online-test-backend.mjs';
 
@@ -19,6 +20,10 @@ async function start(t, { user, transport = transportFor(db) } = {}) {
     const { window, dom } = runtime;
     t.after(() => dom.window.close());
     const sdk = createFakeSdk(user);
+    // Browsers on https have these; the test page (jsdom) does not bring them along.
+    if (!window.crypto.subtle) Object.defineProperty(window.crypto, 'subtle', { value: webcrypto.subtle, configurable: true });
+    if (!window.TextEncoder) window.TextEncoder = TextEncoder;
+    window.localStorage.removeItem('black_sword_guest_key');
     window.eval(backendSource);
     window.BLACK_SWORD_BACKEND_CONFIG = { provider: 'firebase', firebase: { projectId: 'test' }, firebaseSdk: sdk, transport, pollMs: 3600000, gameServerUrl: '' };
     const O = window.OnlineSystem;

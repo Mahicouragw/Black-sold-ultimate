@@ -71,7 +71,7 @@ export async function verifyFirebaseToken(token, { project = DEFAULT_PROJECT, fe
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info',
+  'Access-Control-Allow-Headers': 'authorization, content-type, apikey, x-client-info, x-guest-key',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   'Access-Control-Max-Age': '86400',
 };
@@ -80,6 +80,21 @@ const json = (body, status = 200) =>
 const refuse = (code, message, status) => json({ data: null, error: { code, message } }, status);
 
 /** db(player, request) calls public.bsu_data(); verify(token) checks the sign-in. */
+/* A guest has no account with anyone: the device makes a long random key once and keeps it.
+ * The player id is a one-way code of that key, so an id cannot be claimed without the key. */
+const hex = (buffer) => [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+const sha256 = async (text) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)));
+export async function guestUid(key) {
+  if (!/^[a-f0-9]{64}$/.test(String(key))) throw new Error('bad guest key');
+  return 'g-' + (await sha256('bsu-guest:' + key)).slice(0, 40);
+}
+/* Which network a request came from, as a one-way code (the address itself is never stored).
+ * The database uses it only to limit how many new guest players one network can create per hour. */
+async function netKey(request) {
+  const address = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+  return address ? (await sha256('bsu-net:' + address)).slice(0, 24) : '';
+}
+
 export function createHandler({ db, verify, limit = 300 }) {
   const hits = new Map();
   const allowed = (uid) => {
@@ -100,9 +115,19 @@ export function createHandler({ db, verify, limit = 300 }) {
     }
     if (request.method !== 'POST') return refuse('method', 'Method not allowed.', 405);
     const header = request.headers.get('authorization') || '';
-    const token = header.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
+    const scheme = header.slice(0, header.indexOf(' ')).toLowerCase(), credential = header.slice(header.indexOf(' ') + 1).trim();
     let player;
-    try { player = await verify(token); } catch (_error) { return refuse('unauthenticated', 'Please sign in again.', 401); }
+    try {
+      if (scheme === 'guest') player = { uid: await guestUid(credential), google: false, email: '', name: '' };
+      else if (scheme === 'bearer') {
+        player = await verify(credential);
+        if (String(player.uid).startsWith('g-')) throw new Error('reserved id');
+        // A Google player may prove that a guest on this device is also theirs, to carry its heroes over.
+        const guestKey = request.headers.get('x-guest-key');
+        if (guestKey && player.google === true) { try { player.guest = await guestUid(guestKey); } catch (_error) { /* ignored */ } }
+      } else throw new Error('no sign-in');
+    } catch (_error) { return refuse('unauthenticated', 'Please sign in again.', 401); }
+    player.net = await netKey(request);
     if (!allowed(player.uid)) return refuse('slow_down', 'Too many requests. Please wait a moment.', 429);
     let body;
     try {
@@ -129,7 +154,7 @@ if (typeof Deno !== 'undefined') {
     const response = await fetch(SUPABASE_URL + '/rest/v1/rpc/bsu_data', {
       method: 'POST',
       headers: { apikey: SERVICE_KEY, Authorization: 'Bearer ' + SERVICE_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ p_uid: player.uid, p_claims: { google: player.google === true, email: player.email || '', name: player.name || '' }, p_req: request }),
+      body: JSON.stringify({ p_uid: player.uid, p_claims: { google: player.google === true, email: player.email || '', name: player.name || '', guest: player.guest || '', net: player.net || '' }, p_req: request }),
     });
     if (!response.ok) throw new Error('database ' + response.status);
     return await response.json();

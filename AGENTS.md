@@ -88,13 +88,17 @@ blocks. Prefer one command with a short summary.
 
 ## Backend since v7.58: Firebase sign-in + Supabase data
 
-* **Sign-in** is Firebase Authentication only (Google popup, guest accounts),
-  project `black-sword-ultimate-43c4d`. Firestore is not used and its library
-  is not loaded.
+* **Google sign-in** is Firebase Authentication (popup), project
+  `black-sword-ultimate-43c4d`. Firestore is not used and its library is not
+  loaded. Anonymous sign-in is switched OFF in that Firebase project, so:
+* **Guests do not use Firebase.** The device keeps a random key
+  (`black_sword_guest_key`); the server function turns it into the id
+  `g-<hash>`. On Google sign-in, `adopt_guest` moves the guest's save and hero
+  names to a Google account that has none.
 * **All online data** is in the Supabase project `tmkpdvljhnlnvbckbnsc`, schema
   `bsu_social`. The page never holds a database key. `online-backend.js` sends
   every request to the edge function `bsu-data` (`server/function/bsu-data.ts`)
-  with the Firebase ID token; the function verifies the token and calls
+  with the Firebase ID token (or `Guest <key>`); the function verifies it and calls
   `public.bsu_data(uid, claims, request)`, which runs as role `bsu_player`
   under row-level security.
 * SQL lives in `server/sql/bsu_003` … `bsu_006` and is already applied. After

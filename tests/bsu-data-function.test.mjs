@@ -105,3 +105,48 @@ test('a database failure becomes a friendly answer, and one player cannot flood 
     for (let i = 0; i < 5; i++) codes.push((await limited.post({ kind: 'rpc', name: 'changes' })).status);
     assert.deepEqual(codes, [200, 200, 200, 429, 429]);
 });
+
+test('a guest is known by the key of the device: same key same player, the id does not give the key away', async () => {
+    const { guestUid } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+    const { handle, calls } = makeHandler();
+    const keyA = 'a'.repeat(64), keyB = 'b'.repeat(64);
+    const post = (headers, body = { kind: 'rpc', name: 'get_my_profile' }) => handle(new Request('https://example.test/bsu-data', { method: 'POST', headers, body: JSON.stringify(body) }));
+    assert.equal((await post({ authorization: 'Guest ' + keyA, 'x-forwarded-for': '203.0.113.7, 10.0.0.1' })).status, 200);
+    assert.equal((await post({ authorization: 'Guest ' + keyA, 'x-forwarded-for': '203.0.113.7' })).status, 200);
+    assert.equal((await post({ authorization: 'Guest ' + keyB })).status, 200);
+    const [first, second, other] = calls.map(call => call.player);
+    assert.match(first.uid, /^g-[a-f0-9]{40}$/);
+    assert.equal(first.uid, await guestUid(keyA));
+    assert.equal(second.uid, first.uid);
+    assert.notEqual(other.uid, first.uid);
+    assert.equal(first.google, false);
+    assert.equal(first.email, '');
+    assert.ok(!first.uid.includes('aaaa'));
+    // The network is passed on only as a one-way code, never as the address.
+    assert.match(first.net, /^[a-f0-9]{24}$/);
+    assert.equal(first.net, second.net);
+    assert.equal(other.net, '');
+    assert.ok(!JSON.stringify(calls).includes('203.0.113.7'));
+    // Short, long or otherwise malformed keys are refused.
+    for (const bad of ['Guest abc', 'Guest ' + 'A'.repeat(64), 'Guest ' + 'a'.repeat(65), 'Guest', 'guest-id-123', 'Basic ' + keyA]) {
+        assert.equal((await post({ authorization: bad })).status, 401, bad);
+    }
+    assert.equal(calls.length, 3);
+});
+
+test('a guest key next to a Google sign-in is passed on as proof; it means nothing for a guest or a non-Google token', async () => {
+    const { guestUid } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+    const { handle, calls } = makeHandler();
+    const key = 'c'.repeat(64);
+    const post = headers => handle(new Request('https://example.test/bsu-data', { method: 'POST', headers, body: JSON.stringify({ kind: 'rpc', name: 'adopt_guest', args: { guest: 'g-someone-else' } }) }));
+    await post({ authorization: 'Bearer ' + token(), 'x-guest-key': key });
+    await post({ authorization: 'Bearer ' + token(), 'x-guest-key': 'not-a-key' });
+    await post({ authorization: 'Bearer ' + token({ firebase: { sign_in_provider: 'anonymous' } }), 'x-guest-key': key });
+    await post({ authorization: 'Guest ' + 'd'.repeat(64), 'x-guest-key': key });
+    await post({ authorization: 'Bearer ' + token() });
+    assert.deepEqual(calls.map(call => call.player.guest), [await guestUid(key), undefined, undefined, undefined, undefined]);
+    // A token can never claim an id from the guest range.
+    assert.equal((await post({ authorization: 'Bearer ' + token({ sub: 'g-' + '0'.repeat(40) }) })).status, 401);
+    const preflight = await handle(new Request('https://example.test/', { method: 'OPTIONS' }));
+    assert.match(preflight.headers.get('access-control-allow-headers'), /x-guest-key/);
+});

@@ -1,11 +1,14 @@
 /* Black Sword Ultimate — online backend.
  *
  * Two free services work together:
- *   - Firebase Authentication signs the player in (Google, or a guest account).
- *     Nothing else from Firebase is used.
+ *   - Firebase Authentication signs a player in with Google. Nothing else
+ *     from Firebase is used.
  *   - A Supabase project stores everything: profiles, hero names, cloud saves,
  *     friends, chat, chat rooms, feedback, guilds, combat groups, shared loot
  *     and map notes.
+ *
+ * A guest needs no account anywhere: the device makes one long random key and
+ * keeps it. The server turns that key into the guest's player id.
  *
  * The browser never talks to the database itself. Every request goes to one
  * small server function (config.dataUrl) together with the player's sign-in
@@ -70,33 +73,29 @@
     }
     const refuse = (message, code = 'invalid') => ({ data: null, error: { message, code, details: '' } });
 
-    function createDataClient(auth, config) {
+    function createDataClient(identity, config) {
         const transport = typeof config.transport === 'function' ? config.transport : null;
         const fast = Number(config.pollMs) > 0 ? Number(config.pollMs) : 4000;
-        const uid = () => auth.currentUser?.uid || null;
-        const guest = () => Boolean(auth.currentUser?.isAnonymous);
+        const uid = () => identity.current()?.uid || null;
+        const guest = () => Boolean(identity.current()?.isAnonymous);
 
         /* ---------- one request to the server function ---------- */
-        async function send(request, { timeout = 15000 } = {}) {
-            const user = auth.currentUser;
+        async function send(request, { timeout = 15000, guestKey = null } = {}) {
+            const user = identity.current();
             if (!user) return refuse('Please sign in first.', 'unauthenticated');
             try {
                 let answer = null;
-                if (transport) answer = await transport(request, user);
+                if (transport) answer = await transport(request, user, { guestKey });
                 else {
                     for (let attempt = 0; attempt < 2; attempt++) {
-                        const token = await user.getIdToken(attempt > 0);
+                        const headers = { 'Content-Type': 'application/json', Authorization: user.guestKey ? 'Guest ' + user.guestKey : 'Bearer ' + await user.getIdToken(attempt > 0) };
+                        if (guestKey) headers['X-Guest-Key'] = guestKey;
                         const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeout);
                         let response;
-                        try {
-                            response = await fetch(config.dataUrl, {
-                                method: 'POST', signal: controller.signal,
-                                headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-                                body: JSON.stringify(request)
-                            });
-                        } finally { clearTimeout(timer); }
+                        try { response = await fetch(config.dataUrl, { method: 'POST', signal: controller.signal, headers, body: JSON.stringify(request) }); }
+                        finally { clearTimeout(timer); }
                         answer = await response.json().catch(() => null);
-                        if (response.status !== 401) break;       // 401: the sign-in token was stale; ask once more with a fresh one
+                        if (response.status !== 401 || user.guestKey) break;       // 401: the sign-in token was stale; ask once more with a fresh one
                     }
                 }
                 if (!answer || typeof answer !== 'object') throw new Error('The server answer could not be read.');
@@ -183,7 +182,7 @@
         }
         async function rpc(name, params = {}) {
             if (UNAVAILABLE.test(name)) return refuse(NOT_HERE, 'unavailable-feature');
-            if (name === 'has_linked_identity') return ok(Boolean(auth.currentUser && !auth.currentUser.isAnonymous));
+            if (name === 'has_linked_identity') return ok(Boolean(identity.current() && !identity.current().isAnonymous));
             // Player ID + PIN login reads the cloud save itself, so there is no second copy to refresh.
             if (name === 'update_recovery_save') return ok(true);
             let args = { ...(params || {}) };
@@ -293,7 +292,7 @@
             try { return await (await fetch(config.dataUrl, { method: 'GET' })).json(); } catch { return { ok: false, database: false }; }
         }
 
-        return { from, rpc, channel, removeChannel: live => live?.unsubscribe?.() || Promise.resolve('ok'), tables: [...TABLES], health, lookNow: look };
+        return { from, rpc, send, channel, removeChannel: live => live?.unsubscribe?.() || Promise.resolve('ok'), tables: [...TABLES], health, lookNow: look };
     }
 
     /* ───────────────────────── sign-in ───────────────────────── */
@@ -313,59 +312,115 @@
     }
     const session = user => (user ? { user: wrapUser(user) } : null);
 
-    function createAuth(sdk, auth) {
+    /* ---------- guests ----------
+     * A guest is this device. The key is made once, kept in the browser's
+     * storage and sent with every request; the player id is a one-way code of
+     * it, worked out the same way by the server (server/function/bsu-data.ts). */
+    const GUEST_KEY = 'black_sword_guest_key';
+    const toHex = bytes => [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    let memoryKey = null;                                   // used when the browser refuses storage (private mode)
+    const readGuestKey = () => {
+        try {
+            const storage = globalThis.localStorage;
+            if (storage) { const kept = storage.getItem(GUEST_KEY); return /^[a-f0-9]{64}$/.test(kept || '') ? kept : null; }
+        } catch { /* storage refused */ }
+        return memoryKey;
+    };
+    const writeGuestKey = key => {
+        memoryKey = key;
+        try { if (key) globalThis.localStorage?.setItem(GUEST_KEY, key); else globalThis.localStorage?.removeItem(GUEST_KEY); } catch { /* storage refused */ }
+    };
+    async function guestUser(key) {
+        const subtle = globalThis.crypto?.subtle;
+        if (!subtle) throw new Error('Online play needs a secure (https) page.');
+        const uid = 'g-' + toHex(await subtle.digest('SHA-256', new TextEncoder().encode('bsu-guest:' + key))).slice(0, 40);
+        return { uid, isAnonymous: true, providerData: [], displayName: null, email: null, guestKey: key, getIdToken: async () => key };
+    }
+
+    /** Who is playing: the Google account when there is one, otherwise the guest of this device. */
+    function createIdentity(firebaseAuth) {
+        let guest = null;
+        const listeners = new Set();
+        const identity = {
+            current: () => firebaseAuth?.currentUser || guest,
+            async becomeGuest() {
+                let key = readGuestKey();
+                if (!key) { key = toHex(globalThis.crypto.getRandomValues(new Uint8Array(32))); writeGuestKey(key); }
+                guest = await guestUser(key);
+                identity.tell();
+                return guest;
+            },
+            leaveGuest() { guest = null; },
+            /** After the guest's heroes moved to a Google account, the device starts a new guest next time. */
+            forgetGuest() { guest = null; writeGuestKey(null); },
+            listen(callback) { listeners.add(callback); return () => listeners.delete(callback); },
+            tell() { for (const callback of [...listeners]) { try { callback(identity.current()); } catch (error) { console.warn('sign-in listener:', error); } } }
+        };
+        return identity;
+    }
+
+    function createAuth(sdk, auth, identity, data) {
+        const noGoogle = () => ({ data: { session: null, user: null }, error: Object.assign(new Error('Google sign-in could not be loaded on this network.'), { code: 'auth/network-request-failed' }) });
         return {
             getSession() {
+                if (!auth) return Promise.resolve({ data: { session: session(identity.current()) } });
                 return new Promise(resolve => {
-                    const stop = auth.onAuthStateChanged(user => { stop(); resolve({ data: { session: session(user) } }); }, () => resolve({ data: { session: null } }));
+                    const stop = auth.onAuthStateChanged(user => { stop(); resolve({ data: { session: session(user || identity.current()) } }); }, () => resolve({ data: { session: session(identity.current()) } }));
                 });
             },
+            /** Guest play: no account is created anywhere, the device itself is the guest. */
             async signInAnonymously() {
-                try { const result = await auth.signInAnonymously(); return { data: { session: session(result.user), user: wrapUser(result.user) }, error: null }; }
+                try { const user = auth?.currentUser || await identity.becomeGuest(); return { data: { session: session(user), user: wrapUser(user) }, error: null }; }
                 catch (error) { return { data: { session: null, user: null }, error }; }
             },
             /**
-             * Google sign-in in a popup. A guest is upgraded in place, so the guest's
-             * profile, hero names and cloud save stay with the same account. If that
-             * Google account already has its own game account, we switch to it instead.
+             * Google sign-in in a popup. If this Google account is new to the game,
+             * the guest's cloud save and hero names move to it (data.upgraded).
+             * If it already has heroes, the game switches to that account and the
+             * guest stays untouched on this device.
              */
-            async signInWithOAuth({ options } = {}) {
+            async signInWithOAuth() {
+                if (!auth || !sdk) return noGoogle();
                 const provider = new sdk.auth.GoogleAuthProvider();
                 provider.setCustomParameters?.({ prompt: 'select_account' });
-                const current = auth.currentUser;
                 try {
-                    let result, upgraded = false;
-                    if (current?.isAnonymous && typeof current.linkWithPopup === 'function') {
-                        try { result = await current.linkWithPopup(provider); upgraded = true; }
-                        catch (error) {
-                            if (error?.code !== 'auth/credential-already-in-use' || !error.credential) throw error;
-                            try { await options?.beforeSwitch?.(); } catch { /* best effort */ }
-                            result = await auth.signInWithCredential(error.credential);
-                        }
-                    } else result = await auth.signInWithPopup(provider);
-                    // The database rules read the sign-in method from the token, so make sure it is current.
-                    try { await result.user.getIdToken(true); } catch { /* the next request refreshes it */ }
+                    const result = await auth.signInWithPopup(provider);
                     const user = auth.currentUser || result.user;
+                    let upgraded = false;
+                    const guestKey = readGuestKey();
+                    if (guestKey && user && !user.isAnonymous) {
+                        const moved = await data.send({ kind: 'rpc', name: 'adopt_guest', args: {} }, { guestKey });
+                        if (moved.data?.moved === true) { upgraded = true; identity.forgetGuest(); }
+                    }
+                    identity.leaveGuest();
                     return { data: { session: session(user), user: wrapUser(user), upgraded }, error: null };
                 } catch (error) {
                     if (error?.code === 'auth/popup-closed-by-user' || error?.code === 'auth/cancelled-popup-request' || error?.code === 'auth/user-cancelled') return { data: { session: null, user: null }, error: null };
                     return { data: { session: null, user: null }, error };
                 }
             },
-            async signOut() { try { await auth.signOut(); return { error: null }; } catch (error) { return { error }; } },
-            onAuthStateChange(callback) { return auth.onAuthStateChanged(user => callback('SIGNED_IN', session(user))); },
+            async signOut() {
+                try { if (auth?.currentUser) await auth.signOut(); identity.leaveGuest(); return { error: null }; }
+                catch (error) { return { error }; }
+            },
+            onAuthStateChange(callback) {
+                const report = () => callback('SIGNED_IN', session(identity.current()));
+                const stopFirebase = auth ? auth.onAuthStateChanged(report) : () => {};
+                const stopGuest = identity.listen(report);
+                return () => { stopFirebase?.(); stopGuest(); };
+            },
             async signInWithPassword() { return { data: { session: null, user: null }, error: null }; },
             async signUp() { return { data: { session: null, user: null }, error: null }; }
         };
     }
 
-    function waitForSdk(pick, timeout = 10000) {
-        return new Promise((resolve, reject) => {
+    function waitForSdk(pick, timeout = 8000) {
+        return new Promise(resolve => {
             const started = Date.now();
             const look = () => {
                 const sdk = pick();
                 if (sdk?.auth) return resolve(sdk);
-                if (Date.now() - started > timeout) return reject(new Error('Firebase could not be loaded on this network.'));
+                if (Date.now() - started > timeout) return resolve(null);      // guests can still play; Google sign-in is offered again next time
                 setTimeout(look, 100);
             };
             look();
@@ -373,11 +428,18 @@
     }
 
     async function createClient(config) {
-        const sdk = await waitForSdk(() => config.firebaseSdk || globalThis.firebase);
-        if (!sdk.apps?.length) sdk.initializeApp(config.firebase);
-        const auth = sdk.auth();
-        try { await auth.setPersistence?.(sdk.auth.Auth.Persistence.LOCAL); } catch { /* default persistence is fine */ }
-        return { auth: createAuth(sdk, auth), ...createDataClient(auth, config), provider: 'firebase' };
+        const sdk = await waitForSdk(() => config.firebaseSdk || globalThis.firebase, config.firebaseSdk === null ? 0 : 8000);
+        let auth = null;
+        if (sdk) {
+            try {
+                if (!sdk.apps?.length) sdk.initializeApp(config.firebase);
+                auth = sdk.auth();
+                try { await auth.setPersistence?.(sdk.auth.Auth.Persistence.LOCAL); } catch { /* default persistence is fine */ }
+            } catch (error) { console.warn('Google sign-in is unavailable:', error?.message || error); auth = null; }
+        }
+        const identity = createIdentity(auth);
+        const data = createDataClient(identity, config);
+        return { auth: createAuth(sdk, auth, identity, data), ...data, provider: 'firebase' };
     }
 
     globalThis.BlackSwordBackend = Object.freeze({

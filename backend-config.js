@@ -1,7 +1,8 @@
 /* Black Sword Ultimate backend configuration.
  *
  * Two free services:
- *   - Firebase Authentication signs players in (Google, or a guest account).
+ *   - Firebase Authentication signs players in with Google. Guests need no
+ *     account: the device keeps a random key (see online-backend.js).
  *   - A Supabase project stores the online data (cloud saves, hero names, chat,
  *     chat rooms, friends, guilds, combat groups, feedback). The page reaches it
  *     only through the server function at `dataUrl`.

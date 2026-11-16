@@ -46,47 +46,165 @@ test('a Google player is recognised as signed in, with the id the game expects',
     assert.equal(good(await client.rpc('has_linked_identity')), true);
 });
 
-test('a guest is a guest, and Google sign-in in the popup switches to the Google account', async () => {
-    const sdk = createFakeSdk(null);
-    const client = await Backend.createClient(config(sdk));
-    assert.equal((await client.auth.getSession()).data.session, null);
-    const guest = await client.auth.signInAnonymously();
-    assert.equal(guest.data.session.user.is_anonymous, true);
-    assert.equal(good(await client.rpc('has_linked_identity')), false);
-    sdk.nextGoogleUser = googleUser('uid-google', 'Mahi');
-    const result = await client.auth.signInWithOAuth({ provider: 'google' });
-    assert.equal(result.error, null);
-    assert.equal(result.data.session.user.id, 'uid-google');
-    assert.equal(result.data.session.user.is_anonymous, false);
+/** A device with its own browser storage, as each phone or computer has. */
+function device() {
+    const kept = new Map();
+    return { getItem: key => (kept.has(key) ? kept.get(key) : null), setItem: (key, value) => kept.set(key, String(value)), removeItem: key => kept.delete(key), kept };
+}
+async function onDevice(storage, work) {
+    const before = globalThis.localStorage;
+    globalThis.localStorage = storage;
+    try { return await work(); } finally { globalThis.localStorage = before; }
+}
+
+test('a guest needs no account anywhere: the device is the guest, and comes back as the same guest', async () => {
+    await world();
+    const phone = device();
+    await onDevice(phone, async () => {
+        const sdk = createFakeSdk(null);
+        const client = await Backend.createClient(config(sdk));
+        assert.equal((await client.auth.getSession()).data.session, null);
+        const guest = await client.auth.signInAnonymously();
+        assert.equal(guest.error, null);
+        assert.equal(guest.data.session.user.is_anonymous, true);
+        assert.match(guest.data.user.id, /^g-[a-f0-9]{40}$/);
+        assert.equal(good(await client.rpc('has_linked_identity')), false);
+        assert.match(phone.getItem('black_sword_guest_key'), /^[a-f0-9]{64}$/, 'the key is kept on the device');
+        assert.ok(!guest.data.user.id.includes(phone.getItem('black_sword_guest_key').slice(0, 16)), 'the player id does not reveal the key');
+        const code = good(await client.rpc('get_my_profile')).player_code;
+        // The game is closed and opened again.
+        const again = await Backend.createClient(config(createFakeSdk(null)));
+        assert.equal((await again.auth.signInAnonymously()).data.user.id, guest.data.user.id);
+        assert.equal(good(await again.rpc('get_my_profile')).player_code, code);
+        // Google sign-in in the popup switches to the Google account.
+        sdk.nextGoogleUser = googleUser('uid-google', 'Mahi');
+        const result = await client.auth.signInWithOAuth({ provider: 'google' });
+        assert.equal(result.error, null);
+        assert.equal(result.data.session.user.id, 'uid-google');
+        assert.equal(result.data.session.user.is_anonymous, false);
+        assert.equal(good(await client.rpc('has_linked_identity')), true);
+    });
+    // Another device is another guest.
+    await onDevice(device(), async () => {
+        const other = await Backend.createClient(config(createFakeSdk(null)));
+        const id = (await other.auth.signInAnonymously()).data.user.id;
+        assert.match(id, /^g-/);
+        good(await other.rpc('get_my_profile'));
+        assert.equal((await sql('select count(*)::int as n from bsu_social.guests'))[0].n, 2);
+    });
 });
 
-test('a guest who signs in with Google keeps the same account when that Google account is new', async () => {
-    const guest = { uid: 'guest-1', isAnonymous: true, providerData: [], displayName: null, getIdToken: async () => 'token' };
-    guest.linkWithPopup = async () => { guest.isAnonymous = false; guest.providerData = [{ providerId: 'google.com', displayName: 'Mahi', email: 'mahi@example.test' }]; return { user: guest }; };
-    const client = await Backend.createClient(config(createFakeSdk(guest)));
-    const result = await client.auth.signInWithOAuth({ provider: 'google' });
-    assert.equal(result.error, null);
-    assert.equal(result.data.upgraded, true);
-    assert.equal(result.data.session.user.id, 'guest-1', 'saves, hero names and the profile stay with the player');
-    assert.equal(result.data.session.user.is_anonymous, false);
-    assert.equal(result.data.session.user.displayName, 'Mahi');
-    assert.equal(result.data.session.user.email, 'mahi@example.test');
+test('guest play works even when the Google sign-in library cannot be loaded', async () => {
+    await world();
+    await onDevice(device(), async () => {
+        const client = await Backend.createClient({ ...config(null), firebaseSdk: null });
+        const guest = await client.auth.signInAnonymously();
+        assert.match(guest.data.user.id, /^g-/);
+        assert.match(good(await client.rpc('get_my_profile')).player_code, /^KND-/);
+        const google = await client.auth.signInWithOAuth({ provider: 'google' });
+        assert.match(google.error.message, /could not be loaded/);
+    });
 });
 
-test('a guest whose Google account already has a game account is switched to that account', async () => {
-    const guest = { uid: 'guest-2', isAnonymous: true, providerData: [], displayName: null, getIdToken: async () => 'token' };
-    guest.linkWithPopup = async () => { throw Object.assign(new Error('in use'), { code: 'auth/credential-already-in-use', credential: { token: 'x' } }); };
-    const sdk = createFakeSdk(guest);
-    sdk.nextGoogleUser = googleUser('old-account', 'Mahi');
-    const client = await Backend.createClient(config(sdk));
-    const result = await client.auth.signInWithOAuth({ provider: 'google' });
-    assert.equal(result.error, null);
-    assert.equal(result.data.session.user.id, 'old-account');
-    // Closing the popup is not an error and changes nothing.
-    const closing = { uid: 'guest-3', isAnonymous: true, providerData: [], linkWithPopup: async () => { throw Object.assign(new Error('closed'), { code: 'auth/popup-closed-by-user' }); } };
-    const closed = await (await Backend.createClient(config(createFakeSdk(closing)))).auth.signInWithOAuth({ provider: 'google' });
-    assert.equal(closed.error, null);
-    assert.equal(closed.data.session, null);
+test('a guest who signs in with a new Google account keeps the heroes: save and hero names move over', async () => {
+    await world();
+    const phone = device();
+    await onDevice(phone, async () => {
+        const sdk = createFakeSdk(null);
+        const client = await Backend.createClient(config(sdk));
+        const guestId = (await client.auth.signInAnonymously()).data.user.id;
+        good(await client.rpc('get_my_profile'));
+        good(await client.rpc('reserve_hero_name', { desired_name: 'Veera the Bold', target_slot: 'h1' }));
+        good(await client.from('game_saves').upsert({ user_id: guestId, save_data: { version: 2, heroes: { h1: { player: { name: 'Veera the Bold' } } } }, updated_at: new Date().toISOString() }));
+        const oldKey = phone.getItem('black_sword_guest_key');
+        sdk.nextGoogleUser = googleUser('uid-new', 'Mahi');
+        const result = await client.auth.signInWithOAuth({ provider: 'google' });
+        assert.equal(result.error, null);
+        assert.equal(result.data.upgraded, true);
+        assert.equal(result.data.session.user.id, 'uid-new');
+        assert.equal(result.data.session.user.displayName, 'Mahi');
+        assert.equal(result.data.session.user.email, 'uid-new@example.test');
+        assert.equal(good(await client.from('game_saves').select('save_data').eq('user_id', 'uid-new').single()).save_data.heroes.h1.player.name, 'Veera the Bold');
+        assert.equal((await sql(`select owner_id from bsu_social.hero_names`))[0].owner_id, 'uid-new', 'the hero name now belongs to the Google account');
+        good(await client.rpc('reserve_hero_name', { desired_name: 'Veera the Bold', target_slot: 'h1' }));
+        assert.equal((await sql(`select count(*)::int as n from bsu_social.game_saves where user_id = $1`, [guestId]))[0].n, 0);
+        // Signing out gives the device a fresh guest, not the old one.
+        await client.auth.signOut();
+        const fresh = (await client.auth.signInAnonymously()).data.user.id;
+        assert.notEqual(fresh, guestId);
+        assert.notEqual(phone.getItem('black_sword_guest_key'), oldKey);
+    });
+});
+
+test('a guest whose Google account already has heroes is switched to it, and the guest stays as it was', async () => {
+    const { asha } = await world();
+    good(await asha.client.from('game_saves').upsert({ user_id: 'asha', save_data: { version: 2, heroes: { a: { player: { name: 'Asha' } } } }, updated_at: new Date().toISOString() }));
+    const phone = device();
+    await onDevice(phone, async () => {
+        const sdk = createFakeSdk(null);
+        const client = await Backend.createClient(config(sdk));
+        const guestId = (await client.auth.signInAnonymously()).data.user.id;
+        good(await client.rpc('reserve_hero_name', { desired_name: 'Guest Hero', target_slot: 'g1' }));
+        good(await client.from('game_saves').upsert({ user_id: guestId, save_data: { version: 2, heroes: { g1: {} } }, updated_at: new Date().toISOString() }));
+        sdk.nextGoogleUser = googleUser('asha', 'Asha');
+        const result = await client.auth.signInWithOAuth({ provider: 'google' });
+        assert.equal(result.error, null);
+        assert.equal(result.data.upgraded, false);
+        assert.equal(result.data.session.user.id, 'asha');
+        assert.deepEqual(Object.keys(good(await client.from('game_saves').select('save_data').eq('user_id', 'asha').single()).save_data.heroes), ['a'], 'the Google account keeps its own heroes');
+        await client.auth.signOut();
+        assert.equal((await client.auth.signInAnonymously()).data.user.id, guestId, 'the guest is still there after signing out');
+        assert.deepEqual(Object.keys(good(await client.from('game_saves').select('save_data').eq('user_id', guestId).single()).save_data.heroes), ['g1']);
+        // Closing the popup is not an error and changes nothing.
+        sdk.auth().signInWithPopup = async () => { throw Object.assign(new Error('closed'), { code: 'auth/popup-closed-by-user' }); };
+        const closed = await client.auth.signInWithOAuth({ provider: 'google' });
+        assert.equal(closed.error, null);
+        assert.equal(closed.data.session, null);
+        assert.equal((await client.auth.getSession()).data.session.user.id, guestId);
+    });
+});
+
+test('nobody can take over a guest: the heroes move only with that guest\'s own key', async () => {
+    await world();
+    const victim = device();
+    let victimId;
+    await onDevice(victim, async () => {
+        const client = await Backend.createClient(config(createFakeSdk(null)));
+        victimId = (await client.auth.signInAnonymously()).data.user.id;
+        good(await client.from('game_saves').upsert({ user_id: victimId, save_data: { version: 2, heroes: { v: {} } }, updated_at: new Date().toISOString() }));
+    });
+    await onDevice(device(), async () => {
+        // A Google player who names the victim's id in the request gets nothing.
+        const thief = await Backend.createClient(config(createFakeSdk(googleUser('thief', 'Thief'))));
+        const tried = await thief.send({ kind: 'rpc', name: 'adopt_guest', args: { guest: victimId, guest_uid: victimId } });
+        assert.equal(tried.data.moved, false);
+        // A guest cannot adopt another guest either, even with a key.
+        const guest = await Backend.createClient(config(createFakeSdk(null)));
+        await guest.auth.signInAnonymously();
+        assert.equal((await guest.send({ kind: 'rpc', name: 'adopt_guest', args: {} }, { guestKey: victim.getItem('black_sword_guest_key') })).data.moved, false);
+        assert.equal((await sql(`select count(*)::int as n from bsu_social.game_saves where user_id = $1`, [victimId]))[0].n, 1);
+        // A guest cannot read or overwrite another guest's save.
+        assert.deepEqual(good(await guest.from('game_saves').select('*').eq('user_id', victimId)), []);
+        assert.ok((await guest.from('game_saves').upsert({ user_id: victimId, save_data: { hacked: true }, updated_at: new Date().toISOString() })).error);
+    });
+});
+
+test('one network cannot create guests without limit', async () => {
+    await world();
+    const limited = sdk => ({ ...config(sdk), transport: transportFor(db, null, { net: 'cafe-network' }) });
+    await sql(`insert into bsu_social.guests(user_id, net_key) select 'g-filler-' || n, 'cafe-network' from generate_series(1, 60) n`);
+    await onDevice(device(), async () => {
+        const client = await Backend.createClient(limited(createFakeSdk(null)));
+        await client.auth.signInAnonymously();
+        assert.match((await client.rpc('get_my_profile')).error.message, /Too many new guest players/);
+        // A Google player on the same network is not affected, and neither is a guest who is already known.
+        const google = await Backend.createClient(limited(createFakeSdk(googleUser('asha', 'Asha'))));
+        good(await google.rpc('get_my_profile'));
+        await sql(`update bsu_social.guests set created_at = now() - interval '2 hours'`);
+        good(await client.rpc('get_my_profile'));
+        await sql(`insert into bsu_social.guests(user_id, net_key) select 'g-more-' || n, 'cafe-network' from generate_series(1, 60) n`);
+        good(await client.rpc('get_my_profile'));
+    });
 });
 
 test('the profile is created on first use and the Player ID stays out of the public profile', async () => {
@@ -359,10 +477,11 @@ test('features that need server code answer clearly instead of failing silently'
     assert.match((await asha.client.rpc('no_such_function')).error.message, /function no_such_function/);
 });
 
-test('guests can play online, and are told kindly what needs a Google sign-in', async () => {
+test('guests can play online, and are told kindly what needs a Google sign-in', async t => {
     const { asha } = await world();
-    const sdk = createFakeSdk(null);
-    const client = await Backend.createClient(config(sdk));
+    globalThis.localStorage = device();
+    t.after(() => { delete globalThis.localStorage; });
+    const client = await Backend.createClient(config(createFakeSdk(null)));
     const guest = (await client.auth.signInAnonymously()).data.user;
     assert.equal(guest.is_anonymous, true);
     assert.match(good(await client.rpc('get_my_profile')).player_code, /^KND-/);
