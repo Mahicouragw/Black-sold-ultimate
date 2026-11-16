@@ -1,11 +1,15 @@
 /* Black Sword Ultimate backend configuration.
  *
- * One free Firebase project does everything online: Google sign-in, guest
- * accounts and the Cloud Firestore database (cloud saves, chat, chat rooms,
- * friends, guilds, combat groups, feedback). See FIREBASE_SETUP.md.
+ * Two free services:
+ *   - Firebase Authentication signs players in with Google. Guests need no
+ *     account: the device keeps a random key (see online-backend.js).
+ *   - A Supabase project stores the online data (cloud saves, hero names, chat,
+ *     chat rooms, friends, guilds, combat groups, feedback). The page reaches it
+ *     only through the server function at `dataUrl`.
  *
- * These values identify the project; they are not secrets. Access to the data
- * is decided by firestore.rules.
+ * Nothing here is a secret. The values identify the projects; the database key
+ * lives only inside the server function, and what each player may read or
+ * write is decided by the rules in server/sql/bsu_004_social_rules.sql.
  */
 window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
     provider: 'firebase',
@@ -18,6 +22,8 @@ window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
         appId: "1:672939027677:web:776a93b7d72f5833b3bf34",
         measurementId: "G-SDY2WG9QT7"
     },
+    // Where the online data is read and written (see server/function/bsu-data.ts).
+    dataUrl: 'https://tmkpdvljhnlnvbckbnsc.supabase.co/functions/v1/bsu-data',
     // No separate game server: hunger, blessings, quests and board games against
     // the computer are decided on the device.
     gameServerUrl: '',

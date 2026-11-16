@@ -596,7 +596,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.57.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.58.0</span></div>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
@@ -747,11 +747,11 @@
     <div id="sr-announcer" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <script src="version.js"></script>
-    <!-- Firebase: Google sign-in and the Cloud Firestore database (saves, chat, friends, groups, feedback). -->
+    <!-- Google sign-in comes from Firebase Authentication; guests need no account. Saves, chat, friends,
+         groups and feedback are stored in the game's own database, reached through online-backend.js. -->
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
-    <script src="firebase-backend.js"></script>
+    <script src="online-backend.js"></script>
     <script src="backend-config.js"></script>
     <!-- v7.17.0: critical core first (sync), then expansions deferred so the
          title screen paints before the 30+ patches parse. -->

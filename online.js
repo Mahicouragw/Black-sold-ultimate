@@ -1,4 +1,4 @@
-/** Firebase-backed sign-in (guest or Google), cloud saves, friends and chat. */
+/** Sign-in (guest or Google), cloud saves, friends and chat. The backend is online-backend.js. */
 const OnlineSystem = {
     client: null,
     user: null,
@@ -532,7 +532,7 @@ const OnlineSystem = {
                 status.textContent = isBlocked
                     ? 'Google sign-in was blocked by your browser. Allow pop-ups for this site and try again. Your guest heroes are safe.'
                     : isNotConfigured
-                        ? 'Google sign-in isn\u2019t set up yet. Your guest heroes are safe \u2014 play as a guest, or finish Firebase setup to enable Google.'
+                        ? 'Google sign-in isn\u2019t set up yet. Your guest heroes are safe \u2014 you can keep playing as a guest.'
                         : 'Google sign-in couldn\u2019t open on this device. Your guest heroes are safe \u2014 try again on Wi-Fi or in Chrome.';
             }
             console.error('Google sign-in failed:', e?.message || e?.code || e);

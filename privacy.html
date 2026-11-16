@@ -23,7 +23,7 @@
 <main>
 <h1>Privacy Policy</h1>
 <p><strong>Application:</strong> Black Sword Ultimate — an accessible fantasy role-playing game.<br>
-<strong>Effective date:</strong> 23 August 2026 · <strong>Version:</strong> 7.25.0</p>
+<strong>Effective date:</strong> 15 November 2026 · <strong>Version:</strong> 7.58.0</p>
 
 <div class="note">
 <p>This policy describes only what the game <strong>actually</strong> collects. We do not use
@@ -58,13 +58,14 @@ acted on. We do not use any of this for advertising or profiling.</p>
 <h2>11. What we collect</h2>
 <table>
 <tr><th>Data</th><th>Why</th><th>Where it is stored</th></tr>
-<tr><td>Account identifier (a random UUID)</td><td>To link your heroes to your account</td><td>Google Firebase (Cloud Firestore)</td></tr>
+<tr><td>Account identifier (for a guest: a one-way code of a random key kept in your browser; for Google sign-in: your sign-in id)</td><td>To link your heroes to your account</td><td>Supabase database (Mumbai, India region); the guest key itself stays on your device</td></tr>
+<tr><td>A one-way code of your network address, for new guest players only</td><td>To stop one network from creating guest players without limit</td><td>Supabase database; removed after one day. The address itself is not stored</td></tr>
 <tr><td>Name and email address from Google Sign-In, if you choose it</td><td>To verify your identity and recover your account and progress on any device</td><td>Google Firebase Authentication</td></tr>
-<tr><td>Player Code, and a recovery copy of your save filed under a one-way code made from your Player Code and PIN (the PIN itself is never stored)</td><td>Alternative sign-in and progress recovery</td><td>Google Firebase (Cloud Firestore)</td></tr>
-<tr><td>Hero name, level, class, current location, last-seen time</td><td>Gameplay, and showing other players your public hero</td><td>Google Firebase (Cloud Firestore)</td></tr>
-<tr><td>Game save data (stats, inventory, quests, currency, racing garage, settings)</td><td>To save your progress, including car-racing garage and horse-racing bets already settled, so it survives device loss or reinstalling</td><td>Google Firebase (Cloud Firestore) and your device</td></tr>
-<tr><td>Chat messages</td><td>To deliver multiplayer chat</td><td>Google Firebase (Cloud Firestore); <strong>hidden from everyone after five minutes and then removed from the database</strong></td></tr>
-<tr><td>Feedback, moderation reports, and AI NPC questions you send</td><td>To fix bugs, enforce chat rules, and generate NPC replies</td><td>Google Firebase (Cloud Firestore)</td></tr>
+<tr><td>Player Code, and a one-way code made from your Player Code and PIN (the PIN itself never leaves your device and is never stored)</td><td>Alternative sign-in and progress recovery</td><td>Supabase database (Mumbai, India region)</td></tr>
+<tr><td>Hero name, level, class, current location, last-seen time</td><td>Gameplay, and showing other players your public hero</td><td>Supabase database (Mumbai, India region)</td></tr>
+<tr><td>Game save data (stats, inventory, quests, currency, racing garage, settings)</td><td>To save your progress, including car-racing garage and horse-racing bets already settled, so it survives device loss or reinstalling</td><td>Supabase database (Mumbai, India region) and your device</td></tr>
+<tr><td>Chat messages</td><td>To deliver multiplayer chat</td><td>Supabase database (Mumbai, India region); <strong>hidden from everyone after five minutes and then removed from the database</strong></td></tr>
+<tr><td>Feedback, moderation reports, and AI NPC questions you send</td><td>To fix bugs, enforce chat rules, and generate NPC replies</td><td>Supabase database (Mumbai, India region)</td></tr>
 <tr><td>Preferences (audio, text-to-speech, interface mode, encounter frequency)</td><td>To remember your settings</td><td>Your device (<code>localStorage</code>)</td></tr>
 <tr><td>Offline game files (PWA cache)</td><td>To let the game work offline</td><td>Your device (service worker cache)</td></tr>
 </table>
@@ -80,7 +81,8 @@ acted on. We do not use any of this for advertising or profiling.</p>
 
 <h2>4. Third-party services we rely on</h2>
 <ul>
-<li><strong>Google Firebase</strong> — sign-in (Firebase Authentication) and the database (Cloud Firestore).</li>
+<li><strong>Google Firebase Authentication</strong> — Google sign-in only. Guest play does not use it.</li>
+<li><strong>Supabase</strong> — the database that stores saves, profiles, chat and feedback (hosted in the Mumbai, India region).</li>
 <li><strong>Google Sign-In</strong> — only if you choose to sign in with Google. It gives us your name and email so we can verify your account.</li>
 <li><strong>AI language provider</strong> — when you talk to an AI NPC, the text of your question is sent to a language-model provider to generate the reply. Do not type personal information into NPC conversations.</li>
 <li><strong>GitHub Pages</strong> and <strong>Vercel</strong> — website hosting. Like virtually all web hosts, they may process connection information such as IP address in their own server logs for security and abuse prevention. We do not receive or store those logs.</li>
@@ -111,9 +113,9 @@ phone number or email in chat. If we learn that a child's personal data has been
 without appropriate consent, we will delete it.</p>
 
 <h2>8. Security</h2>
-<p>Authentication is handled by Google Firebase. Recovery PINs are never stored; only a one-way code made from the Player Code and PIN is kept.
-Database access is restricted with security rules so players cannot read one another's private
-records. Your Player ID and PIN are private credentials — never share them in chat. No online
+<p>Google sign-in is handled by Google Firebase Authentication. Recovery PINs are never stored; only a one-way code made from the Player Code and PIN is kept.
+The game reaches the database only through a server function that checks your sign-in; database rules
+then ensure players cannot read one another's private records. Your Player ID and PIN are private credentials — never share them in chat. No online
 service can promise perfect security, so please use a unique PIN.</p>
 
 <h2>9. Public versus private information</h2>

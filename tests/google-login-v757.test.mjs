@@ -1,29 +1,40 @@
 // v7.57 — a player who signed in with Google must never be shown as "Guest mode",
-// and the cloud save goes straight to the Firebase database.
+// and the cloud save goes to the online database. The whole game runs here against a real
+// in-process PostgreSQL loaded with the live project's SQL (helpers/online-test-backend.mjs).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { setTimeout as wait } from 'node:timers/promises';
+import { webcrypto } from 'node:crypto';
 import { createRuntime } from '../scripts/load-world.mjs';
-import { createFakeFirestore, createFakeSdk, googleUser } from './helpers/fake-firebase.mjs';
+import { createDatabase, transportFor, createFakeSdk, googleUser } from './helpers/online-test-backend.mjs';
 
-const backendSource = readFileSync('firebase-backend.js', 'utf8');
+const backendSource = readFileSync('online-backend.js', 'utf8');
+const db = await createDatabase();
+test.after(() => db.close());
+const sql = async (text, params) => (await db.query(text, params)).rows;
+const unreachable = async () => { throw new Error('fetch failed'); };
 
-async function start(t, { user, shared = createFakeFirestore() } = {}) {
+async function start(t, { user, transport = transportFor(db) } = {}) {
     const runtime = await createRuntime();
     const { window, dom } = runtime;
     t.after(() => dom.window.close());
-    const sdk = createFakeSdk(shared, user);
+    const sdk = createFakeSdk(user);
+    // Browsers on https have these; the test page (jsdom) does not bring them along.
+    if (!window.crypto.subtle) Object.defineProperty(window.crypto, 'subtle', { value: webcrypto.subtle, configurable: true });
+    if (!window.TextEncoder) window.TextEncoder = TextEncoder;
+    window.localStorage.removeItem('black_sword_guest_key');
     window.eval(backendSource);
-    window.BLACK_SWORD_BACKEND_CONFIG = { provider: 'firebase', firebase: { projectId: 'test' }, firebaseSdk: sdk, gameServerUrl: '' };
+    window.BLACK_SWORD_BACKEND_CONFIG = { provider: 'firebase', firebase: { projectId: 'test' }, firebaseSdk: sdk, transport, pollMs: 3600000, gameServerUrl: '' };
     const O = window.OnlineSystem;
     O.ready = false; O.client = null; O.user = null; O.linked = false; O.profile = null; O.subscription = null;
-    return { window, O, sdk, shared };
+    t.after(() => { try { O.client?.removeChannel?.(O.subscription); } catch { /* not subscribed */ } });
+    return { window, O, sdk };
 }
 const statusLine = window => window.document.getElementById('title-account-status').textContent;
 
 test('a returning Google player is shown as signed in with Google, not as a guest', async t => {
-    const { window, O, shared } = await start(t, { user: googleUser('uid-mahi', 'Mahi') });
+    const { window, O } = await start(t, { user: googleUser('uid-mahi', 'Mahi') });
     await O.init();
     assert.equal(O.user.id, 'uid-mahi');
     assert.equal(O.linked, true);
@@ -32,13 +43,11 @@ test('a returning Google player is shown as signed in with Google, not as a gues
     assert.doesNotMatch(statusLine(window), /Guest mode/i);
     assert.equal(window.document.getElementById('btn-google-signin').hidden, true, 'the Google button is not offered again');
     assert.match(O.getPlayerCode(), /^KND-/);
-    assert.equal(shared.store.get('profiles/uid-mahi').id, 'uid-mahi', 'the profile was created in the database');
+    assert.equal((await sql(`select count(*)::int as n from bsu_social.profiles where id = 'uid-mahi'`))[0].n, 1, 'the profile was created in the database');
 });
 
 test('if the database cannot be reached, a Google player is still not called a guest', async t => {
-    const shared = createFakeFirestore();
-    shared.db.collection = () => { throw Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' }); };
-    const { window, O } = await start(t, { user: googleUser('uid-mahi', 'Mahi'), shared });
+    const { window, O } = await start(t, { user: googleUser('uid-mahi', 'Mahi'), transport: unreachable });
     await O.init();
     assert.equal(O.linked, true);
     assert.equal(O.ready, false, 'online features stay off, the game plays from the device');
@@ -50,9 +59,7 @@ test('if the database cannot be reached, a Google player is still not called a g
 });
 
 test('the new status line exists in English, Telugu and Hindi', async t => {
-    const shared = createFakeFirestore();
-    shared.db.collection = () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); };
-    const { window, O } = await start(t, { user: googleUser('uid-mahi', 'Mahi'), shared });
+    const { window, O } = await start(t, { user: googleUser('uid-mahi', 'Mahi'), transport: unreachable });
     const seen = {};
     for (const lang of ['en', 'te', 'hi']) {
         window.Narration.lang = () => lang;
@@ -85,8 +92,8 @@ test('a guest is an online guest; after the Google popup the same player is link
     assert.equal(window.document.getElementById('btn-google-signin').hidden, true);
 });
 
-test('the automatic cloud save is written to the Firebase database and can be read back', async t => {
-    const { window, O, shared } = await start(t, { user: googleUser('uid-mahi', 'Mahi') });
+test('the automatic cloud save is written to the online database and can be read back', async t => {
+    const { window, O } = await start(t, { user: googleUser('uid-mahi', 'Mahi') });
     await O.init();
     const { Game, document, BSUServer } = window;
     Game.startNewHero();
@@ -99,10 +106,10 @@ test('the automatic cloud save is written to the Firebase database and can be re
     assert.equal(BSUServer.cloudReady(), true);
     BSUServer.state.lastCloudAt = 0;
     assert.equal(await BSUServer.flushCloud(), true);
-    assert.ok(shared.store.get('game_saves/uid-mahi').parts >= 1);
+    assert.equal((await sql(`select jsonb_typeof(save_data->'heroes') as kind from bsu_social.game_saves where user_id = 'uid-mahi'`))[0].kind, 'object');
     const cloud = await O.loadCloudSave();
     const heroes = Object.values(cloud.save_data.heroes);
     assert.equal(heroes.length, 1);
     assert.equal(heroes[0].player.name, 'Mahi');
-    assert.equal(shared.store.get('profiles/uid-mahi').display_name, 'Mahi', 'other players see the hero name');
+    assert.equal((await sql(`select display_name from bsu_social.profiles where id = 'uid-mahi'`))[0].display_name, 'Mahi', 'other players see the hero name');
 });
