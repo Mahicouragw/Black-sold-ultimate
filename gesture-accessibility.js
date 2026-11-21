@@ -765,7 +765,7 @@
     G.enterLocation = function(id, alreadyVisited) {
         const p = this.state.player; if (p?.gesturePosture?.location !== id && p) p.gesturePosture = null;
         const result = oldEnter.call(this, id, alreadyVisited);
-        if (settings.narration && UI.active()) {
+        if (settings.narration && UI.active() && this._walkingArrival !== id) {
             // Only speak location name — NOT the description. User can use Look Around for details.
             if (!UI.walking) speak(`Current location: ${loc()?.name}.`, false, 'location');
             else if (!UI.lastWalkSpoken || Date.now() - UI.lastWalkSpoken > 1500) { UI.lastWalkSpoken = Date.now(); speak(`Reached ${loc()?.name}.`, false, 'location'); }

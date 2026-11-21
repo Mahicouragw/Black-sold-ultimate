@@ -26,3 +26,16 @@ The following setup is optional; it is not required by the built-in narrator.
 11. Enable **Speak incoming messages**.
 
 TalkBack basics: swipe right/left to move focus, double-tap to activate, and use two fingers to scroll. Internal voice identifiers are never printed in chat messages.
+
+### Exploring with the compass
+
+In the game screen, find the **Available directions** group. Each usable exit
+has a button named for the direction and destination. Explore the controls
+before choosing a route: focusing an exit does not move the hero. Double-tap
+to travel. Diagonals and vertical passages use the same controls as cardinal
+exits; no typed command or custom touch gesture is required.
+
+Device acceptance check: in Android Chrome and the Capacitor app, enter a room
+with a diagonal exit, listen to its name, activate it, then find the return
+exit. Repeat at a staircase. Confirm the room narrative is intelligible and
+decorative ASCII art is not read. DOM tests cannot verify audible output.

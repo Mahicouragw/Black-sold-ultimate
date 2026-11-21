@@ -505,6 +505,7 @@ const Game = {
     },
 
     bindEvents() {
+        window.CharacterRecordings?.bind();
         // Navigation
         document.querySelectorAll('[data-screen]').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -595,12 +596,7 @@ const Game = {
             input.value = '';
         });
 
-        // Direction buttons
-        document.querySelectorAll('.dir-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.processCommand(e.currentTarget.dataset.cmd);
-            });
-        });
+        window.RoadWalking.bind(this);
 
         // Action buttons
         document.querySelectorAll('.action-btn').forEach(btn => {
@@ -640,10 +636,7 @@ const Game = {
         document.getElementById('chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));
         document.getElementById('settings-chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));
         document.getElementById('chat-auto-speak').addEventListener('change', e => localStorage.setItem('black_sword_auto_speak', e.target.checked ? 'true' : 'false'));
-        document.getElementById('btn-cloud-save').addEventListener('click', async () => {
-            await OnlineSystem.saveGame(this.getCloudData());
-            this.addNarrative('Cloud save requested.', 'system');
-        });
+        document.getElementById('btn-cloud-save').addEventListener('click', () => this.requestCloudBackup());
         document.getElementById('btn-account-signout').addEventListener('click', () => OnlineSystem.signOut());
         document.getElementById('btn-settings-create-hero')?.addEventListener('click', () => {
             document.getElementById('settings-panel')?.classList.add('hidden');
@@ -1122,17 +1115,14 @@ const Game = {
         // Play location music
         MusicSystem.play(loc.music || 'tavern');
 
-        // Never show description during movement. Description only shows via Look / Look Around.
-        // (The initial game start still shows it via a separate flag.)
-
-        // Show the actual finite-world exits in a stable compass order.
-        const directionOrder = ['north','south','east','west','up','down'];
-        const exits = directionOrder.filter(direction => loc.exits[direction]);
-        this.addNarrative(`Exits: ${exits.length ? exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ') : 'None'}`, 'system');
+        // Walking already emitted one arrival with the appropriate level of detail.
         this.updateDirectionButtons(loc.exits);
-        if (loc.shop) this.addNarrative(`🛒 A ${loc.shop} shop is open here. Type "shop" to browse.`, 'item');
-        const localNpcs = WorldData.npcs[locId] || [];
-        if (localNpcs.length) this.addNarrative(`Nearby: ${localNpcs.map(n => n.name).join(', ')}. Type "talk" or "invite [name]".`, 'npc');
+        if (this._walkingArrival !== locId) {
+            this.addNarrative(this.describeExits(loc), 'system');
+            if (loc.shop) this.addNarrative(`A ${loc.shop} shop is open here. Type "shop" to browse.`, 'item');
+            const people = this.roomNpcs(locId);
+            if (people.length) this.addNarrative(`Nearby: ${people.map(n => n.name).join(', ')}. Type "talk" or "invite [name]".`, 'npc');
+        }
 
         // Core fallback roll. The sacred encounter controller loaded below wraps
         // this with movement/time cooldowns; both use the independent roaming
@@ -1202,12 +1192,20 @@ const Game = {
     },
 
     processCommand(cmd) {
+        const panelCommand = /^open (chat rooms|friends|inventory|quests)$/i.exec(cmd.trim());
+        if (panelCommand) { this.processCommand(panelCommand[1].toLowerCase()); return; }
+        if (/^walk (?:the )?(?:story )?road$/i.test(cmd.trim())) {
+            document.getElementById('story-road').open = true;
+            document.getElementById('road-step').click(); return;
+        }
         if (this.state.inCombat) {
             this.addNarrative("You're in combat! Use attack, spell, item, defend, or flee.", 'system');
             return;
         }
 
         let c = cmd.toLowerCase().trim();
+        c = c.replace(/^(?:walk|move|go) (north|south|east|west|left|right|up|down)$/, '$1');
+        c = ({left:'west',right:'east','climb up':'up','climb down':'down'})[c] || c;
 
         // Movement (N/S/E/W/Up/Down only — no diagonals)
         if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
@@ -1453,13 +1451,17 @@ const Game = {
                 if (this.state.location !== origin || this.state.inCombat || document.hidden) return;
                 const target = WorldData.locations[dest];
                 if (!target) return;
-                const alreadyVisited = this.state.visited.includes(dest);
-                const text = N ? N.t('move.moved', { dir: direction, place: target.name }) : `You moved ${direction} to ${target.name}.`;
+                const discoveries = this.state.player?.roadDiscoveries ?? this.state.visited;
+                const alreadyVisited = discoveries.includes(dest);
+                if (!alreadyVisited && discoveries !== this.state.visited) discoveries.push(dest);
+                const arrival = N ? N.t('move.moved', { dir: direction, place: target.name }) : `You moved ${direction} to ${target.name}.`;
+                const text = alreadyVisited ? target.name : [arrival, target.description, this.describeExits(target)].filter(Boolean).join(' ');
                 const footstep = this.getFootstepSFX(target);
                 this._lastMoveResult = { moved: true, direction, from: origin, to: dest };
                 if (this.emitGameEvent) this.emitGameEvent(text, 'location', { sfx: [footstep] });
                 else { this.addNarrative(text, 'location'); MusicSystem.playSFX(footstep); }
-                this.enterLocation(dest, alreadyVisited);
+                this._walkingArrival = dest;
+                try { this.enterLocation(dest, alreadyVisited); } finally { this._walkingArrival = null; }
             } finally {
                 this._movementPending = false;
             }
@@ -1503,10 +1505,16 @@ const Game = {
         this.addNarrative(`📍 ${loc.name}`, 'location');
         this.addNarrative(loc.description, 'location');
 
-        const directionOrder = ['north','south','east','west','up','down'];
-        const exits = directionOrder.filter(d => loc.exits[d]);
+        const people = this.roomNpcs();
+        this.updateSpeakerButtons(people);
+        const names = people.map(npc => npc.name).join(', ');
+        this.addNarrative(people.length
+            ? `People here: ${names}. Open People here to choose a speaker, or type "talk to ${people[0].name}" or use another listed name.`
+            : 'There is no one here to talk to.', 'system');
+
+        const exits = this.describeRoomExits(loc.exits);
         if (exits.length > 0) {
-            this.addNarrative(`Directions: ${exits.map(d => d[0].toUpperCase() + d.slice(1)).join(', ')}`, 'system');
+            this.addNarrative(`Directions: ${exits.map(exit => exit.label).join('; ')}.`, 'system');
         } else {
             this.addNarrative('No exits from here.', 'system');
         }
@@ -1516,52 +1524,32 @@ const Game = {
         const loc = WorldData.locations[this.state.location];
         if (!loc) { this.addNarrative("You're not sure where you are.", 'system'); return; }
 
-        // BFS to find nearest landmarks
-        const bfs = (targetIds) => {
-            if (!targetIds || targetIds.length === 0) return -1;
-            if (targetIds.includes(this.state.location)) return 0;
-            const visited = new Set([this.state.location]);
-            let queue = [this.state.location];
-            let depth = 0;
-            while (queue.length > 0 && depth < 100) {
-                const next = [];
-                depth++;
-                for (const locId of queue) {
-                    const l = WorldData.locations[locId];
-                    if (!l) continue;
-                    for (const [dir, target] of Object.entries(l.exits)) {
-                        if (!target || visited.has(target)) continue;
-                        if (targetIds.includes(target)) return depth;
-                        visited.add(target);
-                        next.push(target);
-                    }
-                }
-                queue = next;
+        const landmarks = new Set(['kaliwasch', 'forest', 'dungeon_entrance']);
+        for (const city of window.CityDirectory?.cities || []) {
+            for (const key of ['marketplace', 'temple', 'palace', 'tavern', 'forest_entrance']) {
+                if (city.targets[key]) landmarks.add(city.targets[key]);
             }
-            return -1;
-        };
-
-        const dist = (ids) => bfs(Array.isArray(ids) ? ids : [ids]);
-
-        // Each room ~= 0.1 miles
-        const toMiles = (rooms) => rooms <= 0 ? 'here' : rooms <= 5 ? `${(rooms * 0.1).toFixed(1)} miles` : `${Math.round(rooms * 0.1)} miles`;
-
-        this.addNarrative(`📍 You are at: ${loc.name}`, 'location');
-
-        const market = dist(['market_square', 'town_market', 'black_market']);
-        const forest = dist(['dark_forest_entrance', 'forest_entrance', 'forest_path', 'whispering_woods', 'dark_forest']);
-        const cave = dist(['mystic_cave_entrance', 'cave_entrance', 'abandoned_mine_entrance', 'dragon_cave_entrance']);
-        const village = dist(['peaceful_village', 'mountain_village', 'ancient_ruins', 'abandoned_village']);
-
-        const dists = [];
-        if (market >= 0) dists.push(`Market Square: ${toMiles(market)}`);
-        if (forest >= 0) dists.push(`Forest: ${toMiles(forest)}`);
-        if (cave >= 0) dists.push(`Cave: ${toMiles(cave)}`);
-        if (village >= 0) dists.push(`Village: ${toMiles(village)}`);
-
-        if (dists.length > 0) {
-            this.addNarrative(`🧭 ${dists.join(' • ')}`, 'system');
         }
+        // Each compass move costs one step. Visit each reachable room at most
+        // once and stop after the three closest landmarks, keeping speech short.
+        const start = this.state.location;
+        const queue = [{ id: start, steps: 0, firstDirection: null }], visited = new Set([start]), nearby = [];
+        for (let i = 0; i < queue.length && nearby.length < 3; i++) {
+            const { id, steps, firstDirection } = queue[i];
+            const room = WorldData.locations[id];
+            if (landmarks.has(id)) {
+                const distance = steps === 0 ? 'here' : `${steps} ${steps === 1 ? 'step' : 'steps'}`;
+                nearby.push(firstDirection ? `${room.name}: ${distance}, start ${firstDirection}` : `${room.name}: ${distance}`);
+            }
+            for (const { direction } of this.describeRoomExits(room.exits)) {
+                const next = room.exits[direction];
+                if (visited.has(next)) continue;
+                visited.add(next);
+                queue.push({ id: next, steps: steps + 1, firstDirection: firstDirection ?? direction });
+            }
+        }
+        this.addNarrative(`📍 You are at: ${loc.name}`, 'location');
+        this.addNarrative(nearby.length ? `Nearby landmarks: ${nearby.join('; ')}.` : 'No mapped landmark is reachable from here.', 'system');
     },
 
     takeItem(itemName) {
@@ -1900,8 +1888,44 @@ const Game = {
 
     // v7.17.0 — smarter NPCs: talk to a named NPC, quest-aware hints, and role
     // actions (healer/trader/guild) so villages feel alive.
+    roomNpcs(roomId = this.state.location) {
+        return (WorldData.npcs[roomId] || []).filter(npc => typeof npc?.name === 'string' && npc.name.trim());
+    },
+
+    updateSpeakerButtons(people = this.roomNpcs()) {
+        const list = document.getElementById('room-speaker-actions');
+        const room = this.state.location;
+        const names = [...new Set(people.map(npc => npc.name))];
+        const key = JSON.stringify([room, names]);
+        if (list.dataset.roster === key) return; // keep focus during ordinary HUD updates
+        const previousSpeaker = list.contains(document.activeElement) ? document.activeElement.dataset.speaker : null;
+        list.dataset.roster = key;
+        list.replaceChildren();
+        if (!names.length) list.textContent = 'There is no one here to talk to.';
+        for (const name of names) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'menu-btn';
+            button.dataset.speaker = name;
+            button.textContent = `Talk to ${name}`;
+            button.addEventListener('click', () => {
+                if (room !== this.state.location || !this.roomNpcs().some(npc => npc.name === name)) {
+                    this.updateSpeakerButtons();
+                    this.addNarrative('That person is no longer here.', 'system');
+                    return;
+                }
+                this.processCommand(`talk to ${name}`);
+            });
+            list.append(button);
+        }
+        if (previousSpeaker) {
+            const remaining = [...list.children].find(node => node.dataset.speaker === previousSpeaker);
+            (remaining || document.querySelector('#room-speakers summary'))?.focus();
+        }
+    },
+
     talkToNPC(name) {
-        const npcs = WorldData.npcs[this.state.location];
+        const npcs = this.roomNpcs();
         if (!npcs || npcs.length === 0) {
             this.addNarrative("There's no one to talk to here.", 'system');
             return;
@@ -1909,7 +1933,7 @@ const Game = {
         let npc = null;
         const query = (name || '').trim().toLowerCase();
         if (query) {
-            npc = npcs.find(n => n.name.toLowerCase().includes(query));
+            npc = npcs.find(n => n.name.toLowerCase() === query) || npcs.find(n => n.name.toLowerCase().includes(query));
             if (!npc) {
                 this.addNarrative(`No one named "${name}" is here. Nearby: ${npcs.map(n => n.name).join(', ')}.`, 'system');
                 return;
@@ -1919,7 +1943,11 @@ const Game = {
         }
 
         const dialog = this.npcDialog(npc);
-        this.addNarrative(`${npc.name} says: "${dialog}"`, 'npc');
+        const previouslyHandled = this._audioNarrationHandled;
+        try {
+            if (window.CharacterRecordings?.play(npc.name, dialog)) this._audioNarrationHandled = true;
+            this.addNarrative(`${npc.name} says: "${dialog}"`, 'npc');
+        } finally { this._audioNarrationHandled = previouslyHandled; }
 
         // Role actions make NPCs useful, not just scenery.
         const loc = WorldData.locations[this.state.location];
@@ -2384,18 +2412,19 @@ const Game = {
             const p = this.state.player, e = this.state.enemy;
             if (!e || e.hp <= 0 || !p || p.hp <= 0) return;
 
+            const attacker = this.attackTargetLabel?.(e) ?? e.name;
             // v7.17.0 enemy AI: a wounded monster may brace (halves incoming
             // damage on its next hit) and bosses may roar (attack buff).
             const pct = e.hp / e.maxHp;
             if (pct < 0.25 && !e.braceTurns && Math.random() < 0.35) {
                 e.braceTurns = 1;
-                this.addNarrative(`${e.name} braces its defenses!`, 'combat');
+                this.addNarrative(`${attacker} braces its defenses!`, 'combat');
                 return; // braced monsters skip their strike this turn
             }
             if (e.boss && !e.roarActive && pct < 0.5 && Math.random() < 0.4) {
                 e.roarActive = true;
                 e.attack = Math.floor(e.attack * 1.25);
-                this.addNarrative(`${e.name} ROARS and its attacks grow stronger!`, 'combat');
+                this.addNarrative(`${attacker} ROARS and its attacks grow stronger!`, 'combat');
                 MusicSystem.playSFX('enemy-hit');
                 return;
             }
@@ -2408,7 +2437,7 @@ const Game = {
             }
 
             if (this._pro) {
-                await this._pro.monsterAttack(e.name, damage, isMiss, Math.max(0, p.hp - damage));
+                await this._pro.monsterAttack(attacker, damage, isMiss, Math.max(0, p.hp - damage));
             } else if (isMiss) {
                 MusicSystem.playSFX('miss');
             } else {
@@ -2416,10 +2445,10 @@ const Game = {
             }
 
             if (isMiss) {
-                this.addNarrative(`${e.name} attacks but you dodge the blow!`, 'combat');
+                this.addNarrative(`${attacker} attacks but you dodge the blow!`, 'combat');
             } else {
                 p.hp = Math.max(0, p.hp - damage);
-                this.addNarrative(`${e.name} hits you for ${damage} damage!`, 'combat');
+                this.addNarrative(`${attacker} hits you for ${damage} damage!`, 'combat');
             }
 
             // Enemy also strikes a companion (if any alive) with reduced damage
@@ -2428,7 +2457,7 @@ const Game = {
                 const target = aliveCompanions[Math.floor(Math.random() * aliveCompanions.length)];
                 const compDamage = Math.max(1, Math.floor(e.attack * 0.6) + Math.floor(Math.random() * 3));
                 target.hp = Math.max(0, target.hp - compDamage);
-                this.addNarrative(`${e.name} also hits ${target.name} for ${compDamage} damage! (${target.name} HP: ${target.hp}/${target.maxHp})`, 'combat');
+                this.addNarrative(`${attacker} also hits ${target.name} for ${compDamage} damage! (${target.name} HP: ${target.hp}/${target.maxHp})`, 'combat');
                 if (target.hp <= 0) {
                     this.addNarrative(`${target.name} has fallen in battle!`, 'combat');
                 }
@@ -3027,12 +3056,21 @@ const Game = {
         }
     },
 
+    describeRoomExits(exits = {}) {
+        const directions = ['north','northeast','east','southeast','south','southwest','west','northwest','up','down'];
+        return directions.flatMap(direction => {
+            const destination = WorldData.locations[exits?.[direction]];
+            return destination ? [{ direction, label: `${direction} to ${destination.name}` }] : [];
+        });
+    },
+
     updateDirectionButtons(exits = {}) {
+        const labels = new Map(this.describeRoomExits(exits).map(exit => [exit.direction, exit.label]));
         document.querySelectorAll('.dir-btn').forEach(button => {
-            const available = Boolean(exits[button.dataset.cmd]);
-            button.disabled = !available;
-            button.classList.toggle('available', available);
-            button.setAttribute('aria-label', `${button.dataset.cmd}${available ? ', available' : ', unavailable'}`);
+            const direction = button.dataset.cmd;
+            button.disabled = !labels.has(direction);
+            button.classList.toggle('available', !button.disabled);
+            button.setAttribute('aria-label', labels.get(direction) || `${direction}, unavailable`);
         });
     },
 
@@ -3047,6 +3085,7 @@ const Game = {
 
         const loc = WorldData.locations[this.state.location];
         document.getElementById('location-name').textContent = loc?.name || 'Unknown';
+        this.updateSpeakerButtons();
 
         if (this.state.isMultiplayer) {
             document.getElementById('turn-info').textContent = `P${this.state.currentPlayer + 1}: ${p.name}`;
@@ -3238,34 +3277,42 @@ const Game = {
         }
     },
 
+    questJournalEntries() {
+        return this.state.quests.map(quest => ({
+            name: quest.name,
+            description: quest.description,
+            steps: quest.objectives.map(obj => {
+                const target = obj.type === 'visit' ? WorldData.locations[obj.target]?.name || obj.target : obj.target;
+                const action = obj.type === 'kill' ? `Defeat ${obj.islandOnly ? 'an island or storm creature on Stormcrown Island' : target === 'any' ? 'any enemy' : target}`
+                    : `${({ visit: 'Visit', collect: 'Collect' })[obj.type] || obj.type} ${target}`;
+                return `${action}: ${obj.current || 0} of ${obj.count}.`;
+            })
+        }));
+    },
+
     showQuests() {
-        const panel = document.getElementById('quests-panel');
         const list = document.getElementById('quest-list');
-
-        list.innerHTML = '';
-
-        if (this.state.quests.length === 0) {
-            list.innerHTML = '<p class="system">No active quests.</p>';
-        } else {
-            this.state.quests.forEach(quest => {
-                const div = document.createElement('div');
-                div.className = 'quest-item';
-
-                let progress = '';
-                quest.objectives.forEach(obj => {
-                    progress += `${obj.current || 0}/${obj.count} `;
-                });
-
-                div.innerHTML = `
-                    <span class="quest-name">${quest.name}</span>
-                    <span class="quest-desc">${quest.description}</span>
-                    <span class="quest-progress">Progress: ${progress}</span>
-                `;
-                list.appendChild(div);
-            });
+        list.replaceChildren();
+        const entries = this.questJournalEntries();
+        const append = (parent, tag, cls, text) => {
+            const node = document.createElement(tag);
+            node.className = cls;
+            node.textContent = text;
+            parent.appendChild(node);
+            return node;
+        };
+        if (!entries.length) append(list, 'p', 'system', 'No active quests. Visit the Royal Palace to ask the court about quests.');
+        for (const entry of entries) {
+            const card = document.createElement('section');
+            card.className = 'quest-item';
+            append(card, 'h4', 'quest-name', entry.name);
+            append(card, 'p', 'quest-desc', entry.description);
+            const steps = document.createElement('ul');
+            for (const step of entry.steps) append(steps, 'li', 'quest-progress', step);
+            card.appendChild(steps);
+            list.appendChild(card);
         }
-
-        panel.classList.remove('hidden');
+        document.getElementById('quests-panel').classList.remove('hidden');
     },
 
     showHelp() {
@@ -3437,7 +3484,44 @@ const Game = {
         return roster;
     },
 
+    async requestCloudBackup() {
+        const button = document.getElementById('btn-cloud-save');
+        const result = document.getElementById('cloud-save-result');
+        if (button.getAttribute('aria-disabled') === 'true') return;
+        button.setAttribute('aria-disabled', 'true');
+        const online = window.OnlineSystem, pick = online.pick.bind(online);
+        let stored;
+        try {
+            stored = this.state.player ? this.persistLocalRoster() : this.getRoster();
+            if (!stored || !Object.keys(stored.heroes).length) {
+                result.textContent = pick('No hero roster to back up.', 'బ్యాకప్ చేయడానికి హీరోలు లేరు.', 'बैकअप के लिए कोई नायक नहीं है।');
+                return;
+            }
+            const id = this.state.activeHeroId, account = online.user?.id, revision = online.authRevision;
+            result.textContent = pick('Saved on this device. Waiting for cloud confirmation…', 'ఈ పరికరంలో సేవ్ అయింది. క్లౌడ్ నిర్ధారణ కోసం వేచి ఉంది…', 'इस डिवाइस पर सेव हुआ। क्लाउड की पुष्टि की प्रतीक्षा है…');
+            let saved;
+            try { saved = await online.saveGame(stored); } catch { saved = false; }
+            if (id !== this.state.activeHeroId || account !== online.user?.id || revision !== online.authRevision) {
+                result.textContent = ''; return;
+            }
+            result.textContent = saved === true
+                ? pick('The server confirmed this roster backup.', 'ఈ హీరోల బ్యాకప్‌ను సర్వర్ నిర్ధారించింది.', 'सर्वर ने इस नायक सूची के बैकअप की पुष्टि की।')
+                : pick('Saved on this device. Cloud backup not confirmed.', 'ఈ పరికరంలో సేవ్ అయింది. క్లౌడ్ బ్యాకప్ నిర్ధారించబడలేదు.', 'इस डिवाइस पर सेव हुआ। क्लाउड बैकअप की पुष्टि नहीं हुई।');
+        } catch {
+            result.textContent = stored
+                ? pick('Cloud backup not confirmed. Your device copy remains.', 'క్లౌడ్ బ్యాకప్ నిర్ధారించబడలేదు. పరికరంలోని కాపీ అలాగే ఉంది.', 'क्लाउड बैकअप की पुष्टि नहीं हुई। डिवाइस की प्रति सुरक्षित है।')
+                : pick('Device save failed. No backup requested.', 'పరికరంలో సేవ్ కాలేదు. బ్యాకప్ కోరలేదు.', 'डिवाइस पर सेव नहीं हुआ। बैकअप का अनुरोध नहीं भेजा गया।');
+        } finally { button.removeAttribute('aria-disabled'); }
+    },
+
     save() {
+        const stored = this.persistLocalRoster();
+        if (!stored) return false;
+        window.OnlineSystem?.saveGame?.(stored);
+        return true;
+    },
+
+    persistLocalRoster() {
         let id = this.state.activeHeroId;
         if (!this.state.player) return false;
         let roster = this.getRoster();
@@ -3455,9 +3539,8 @@ const Game = {
         roster.heroes[id] = saveData;
         const stored = this.storeRoster(roster);
         localStorage.setItem(this.state.saveKey, JSON.stringify(saveData));
-        window.OnlineSystem?.saveGame?.(stored);
         document.getElementById('btn-continue').disabled = false;
-        return true;
+        return stored;
     },
 
     continueGame() {

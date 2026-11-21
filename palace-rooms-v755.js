@@ -124,5 +124,32 @@
     };
     for (const [id, list] of Object.entries(people)) if (WD.locations[id] && !WD.npcs[id]) WD.npcs[id] = list;
 
-    window.PalaceRooms = { rooms: Object.keys(ROOMS), links: LINKS.map(link => link.slice()) };
+    // A local patrol; court services and quest givers stay at their posts.
+    const library = 'kaliwasch_palace_library', entrance = 'royal_palace';
+    const courier = { name: 'Palace Courier', role: 'messenger', dialog: [
+        'I carry dispatches between the entrance hall and the library.',
+        'The Royal Archivist keeps the dispatches on the library shelves.'
+    ] };
+    let courierRoom = library;
+    WD.npcs[library].push(courier);
+    function advanceCourier() {
+        const game = window.Game, hero = game?.state;
+        if (!hero?.player || hero.screen !== 'game-screen' || hero.inCombat || document.hidden ||
+            ![library, entrance].includes(hero.location)) return false;
+        const next = courierRoom === library ? entrance : library;
+        const direction = next === entrance ? 'east' : 'west';
+        if (WD.locations[courierRoom]?.exits?.[direction] !== next) return false;
+        const residents = WD.npcs[courierRoom], index = residents.indexOf(courier);
+        if (index < 0) return false;
+        residents.splice(index, 1);
+        (WD.npcs[next] ||= []).push(courier);
+        courierRoom = next;
+        game.updateSpeakerButtons();
+        game.addNarrative(hero.location === next ? `The Palace Courier arrives from the ${OPPOSITE[direction]}.`
+            : `The Palace Courier walks ${direction} to ${WD.locations[next].name}.`, 'npc');
+        return true;
+    }
+    window.setInterval(advanceCourier, 30000);
+
+    window.PalaceRooms = { advanceCourier, rooms: Object.keys(ROOMS), links: LINKS.map(link => link.slice()) };
 })();

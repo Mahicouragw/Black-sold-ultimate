@@ -21,6 +21,11 @@
             title: 'How to fight',
             text: 'Combat starts when a monster finds you, a quest requires it, or you type hunt. Then use Attack, Healing Spell, Multiple Strike, Shock, Items, Defend or Flee. Typed commands do the same thing as the buttons. You cannot walk away until the fight ends unless you flee. Companions act after you.'
         },
+        practice: {
+            title: 'Practice choosing a target',
+            text: 'Two training goblins have the same name. Find the wounded one, then activate its Attack button. Inspecting a target costs nothing. This exercise does not use your hero or give rewards.'
+        },
+        court: { title: 'Practice returning to court', text: 'Choose Practice the full quest to try targeting, travel and reward collection together, or read quest directions to practice only the return to court.' },
         heal: {
             title: 'How healing works',
             text: 'Healing Spell is always on the action bar, in battle and out of battle. You can heal yourself, one companion, or the whole battle party. The battle party is you, your companions, and every ally in your combat group, including their companions when the game knows them. Healing costs mana. If health is already full, the spell tells you and does nothing.'
@@ -51,6 +56,31 @@
         const body = document.getElementById('tutorial-body');
         if (!body) return;
         body.innerHTML = `<h3>${ch.title}</h3><p>${ch.text}</p>`;
+        if (id === 'court') {
+            const frame = document.createElement('iframe');
+            frame.title = ch.title;
+            frame.src = 'palace-practice.html';
+            frame.style.cssText = 'width:100%;height:28rem;border:0';
+            body.append(frame);
+        }
+        if (id === 'practice') {
+            const health = [12, 4];
+            const result = document.createElement('p');
+            // The tutorial body already announces updates; no second speech queue.
+            for (const [index, hp] of health.entries()) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'menu-btn';
+                button.textContent = `Attack target ${index + 1}: training goblin, ${hp} of 12 health`;
+                button.addEventListener('click', () => {
+                    result.textContent = index === 1
+                        ? 'Practice complete. You hit target 2, the wounded goblin. In a real fight this attack spends one turn.'
+                        : 'Target 1 is at full health. Compare the two health totals and try again.';
+                });
+                body.appendChild(button);
+            }
+            body.appendChild(result);
+        }
         body.focus();
         say(`${ch.title}. ${ch.text}`, 'system');
     }
@@ -61,7 +91,7 @@
         if (body && !body.querySelector('h3')) {
             body.innerHTML = '<p>Choose a chapter. You can replay any chapter any time from the title screen or by typing tutorial.</p>';
         }
-        say('Game tutorial. Choose a chapter: create a hero, where to go, what to do, how to fight, healing, doors, racing, or how to delete.', 'system');
+        say('Game tutorial. Choose a chapter: create a hero, where to go, what to do, how to fight, practice choosing a target, practice returning to court, healing, doors, racing, or how to delete.', 'system');
     }
 
     function confirmAction({ title, body, yesLabel }) {

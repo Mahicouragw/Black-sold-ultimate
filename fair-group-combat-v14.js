@@ -4,26 +4,71 @@
     const oldGet=Game.getSaveData.bind(Game);Game.getSaveData=function(){ensureLight();return oldGet();};
     const oldContinue=Game.continueGame.bind(Game);Game.continueGame=function(){oldContinue();ensureLight();};
     Game.aliveEncounterTargets=function(){const list=this.state.encounterTargets?.filter(t=>!t.defeated)||[];if(!list.length&&this.state.enemy)list.push({name:this.state.enemy.name,active:true,damage:0});return list;};
-    Game.updateEnemyGroupHUD=function(){const box=document.getElementById('enemy-group-list');if(!box)return;const list=this.aliveEncounterTargets();box.innerHTML=list.map((t,i)=>{const current=t.active&&this.state.enemy?.name===t.name,hp=current?`${Math.max(0,this.state.enemy.hp)}/${this.state.enemy.maxHp}`:`${Math.max(0,t.hp??t.maxHp??0)}/${t.maxHp??0} HP`;return `<div class="enemy-group-row ${current?'current':''}"><strong>${Game.escapeHTML(t.name)}</strong><span>${hp}</span></div>`;}).join('');};
+    // Original roster positions remain stable as enemies are defeated.
+    const slotOf = (state, target) => Math.max(1, (state.encounterTargets?.indexOf(target) ?? -1) + 1);
+    Game.attackTargetLabel = function (enemy, rosterTarget, alwaysNumber = false) {
+        const roster = this.state.encounterTargets || [];
+        const target = rosterTarget || roster.find(t => t.active && !t.defeated && t.name === enemy.name);
+        if (!target || (!alwaysNumber && !roster.some(t => t !== target && t.name === target.name))) return enemy.name;
+        return `${target.name} (target ${slotOf(this.state, target)})`;
+    };
+    Game.updateEnemyGroupHUD = function () {
+        const box = document.getElementById('enemy-group-list');
+        if (!box) return;
+        const focusSlot = box.contains(document.activeElement) && document.activeElement.dataset.slot;
+        const rows = this.aliveEncounterTargets().map(target => {
+            const current = target.active && this.state.enemy?.name === target.name;
+            const stats = current ? this.state.enemy : target;
+            const row = document.createElement('li');
+            row.className = `enemy-group-row${current ? ' current' : ''}`;
+            const name = document.createElement('strong');
+            name.textContent = current ? `${target.name}, current target` : target.name;
+            const health = document.createElement('span');
+            health.textContent = Number.isFinite(stats.hp) && Number.isFinite(stats.maxHp)
+                ? `${Math.max(0, stats.hp)} of ${stats.maxHp} health` : 'Health unknown';
+            const slot = slotOf(this.state, target);
+            name.textContent = `Target ${slot}: ${name.textContent}`;
+            const attack = document.createElement('button');
+            attack.type = 'button';
+            attack.dataset.slot = slot;
+            attack.textContent = `Attack target ${slot}: ${target.name}`;
+            attack.disabled = !this.state.inCombat || stats.hp <= 0;
+            attack.addEventListener('click', () => {
+                if (attack.isConnected && this.state.inCombat) this.runCombatCommand(`attack target ${slot}`);
+            });
+            row.append(name, health, attack);
+            return row;
+        });
+        box.replaceChildren(...rows);
+        if (focusSlot) {
+            const replacement = rows.find(row => row.lastChild.dataset.slot === focusSlot)?.lastChild;
+            (replacement && !replacement.disabled ? replacement : document.querySelector('#encounter-roster summary'))?.focus();
+        }
+    };
     const oldStart=Game.startCombat.bind(Game);Game.startCombat=function(name,queued=false){oldStart(name,queued);ensureLight();this.updateEnemyGroupHUD();};
     const oldUpdateEnemy=Game.updateEnemyHUD.bind(Game);Game.updateEnemyHUD=function(){oldUpdateEnemy();this.updateEnemyGroupHUD();};
 
     const singleEnemyAttack=Game.enemyAttack.bind(Game);
     Game.getFairnessBudget=function(){const targets=this.aliveEncounterTargets(),p=this.state.player,raw=targets.reduce((n,t)=>{const d=WorldData.enemies[t.name]||{};return n+(t.active?(this.state.enemy?.attack||d.attack||5):(d.attack||5));},0),budget=Math.max(8,Math.floor(p.maxHp*(.18+Math.min(6,targets.length)*.015))),factor=raw?Math.min(1,budget/raw):1;return{monsters:targets.length,raw,budget,factor};};
     Game.enemyGroupTurn=function(){if(!this.state.inCombat||!this.state.enemy)return;const p=this.state.player,current=this.state.enemy,targets=this.aliveEncounterTargets(),fair=this.getFairnessBudget(),originalAttack=current.attack,originalSpells=current.spells;current.attack=Math.max(1,Math.floor(current.attack*fair.factor));if(current.spells)current.spells=current.spells.map(s=>({...s,power:Math.max(1,Math.floor(s.power*fair.factor))}));singleEnemyAttack();current.attack=originalAttack;current.spells=originalSpells;if(!this.state.inCombat||p.hp<=0)return;
-        for(const target of targets.filter(t=>!t.active&&!t.defeated&&(t.hp??1)>0)){const d=WorldData.enemies[target.name]||{},scale=1+(p.level-1)*.15,accuracy=Math.max(.65,Math.min(.92,.8+((d.dex||8)-p.dex)*.005));if(Math.random()>accuracy){const text=`${target.name} misses you.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');continue;}const spell=d.spells?.length&&Math.random()<.3?d.spells[Math.floor(Math.random()*d.spells.length)]:null;if(spell){if(spell.type==='heal'){const amount=Math.max(1,Math.floor(spell.power*fair.factor));target.damage=Math.max(0,(target.damage||0)-amount);MusicSystem.playSFX('magic');this.addNarrative(`${target.name} casts ${spell.name} and recovers ${amount} pending HP.`,'combat');continue;}if(spell.type==='drain'){const amount=Math.min(p.mp,Math.max(1,Math.floor(spell.power*fair.factor)));p.mp-=amount;MusicSystem.playSFX('magic');this.addNarrative(`${target.name} casts ${spell.name} and drains ${amount} MP.`,'combat');this.updateHUD();continue;}const damage=Math.max(1,Math.floor(spell.power*fair.factor)-Math.floor(p.wis/10));p.hp-=damage;MusicSystem.playSFX('enemy-hit');{const text=`${target.name} casts ${spell.name} and hits you for ${damage} magical damage.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');}}else{const raw=Math.floor((d.attack||5)*scale),damage=Math.max(1,Math.floor(raw*fair.factor)-Math.floor((p.defense||0)/2));p.hp-=damage;MusicSystem.playSFX('enemy-hit');{const text=`${target.name} hits you for ${damage} damage.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');}}if(p.hp<=0){this.gameOver();break;}}
+        for(const target of targets.filter(t=>!t.active&&!t.defeated&&(t.hp??1)>0)){const attacker=this.attackTargetLabel(target,target);const d=WorldData.enemies[target.name]||{},scale=1+(p.level-1)*.15,accuracy=Math.max(.65,Math.min(.92,.8+((d.dex||8)-p.dex)*.005));if(Math.random()>accuracy){const text=`${attacker} misses you.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');continue;}const spell=d.spells?.length&&Math.random()<.3?d.spells[Math.floor(Math.random()*d.spells.length)]:null;if(spell){if(spell.type==='heal'){const amount=Math.max(1,Math.floor(spell.power*fair.factor));target.damage=Math.max(0,(target.damage||0)-amount);MusicSystem.playSFX('magic');this.addNarrative(`${attacker} casts ${spell.name} and recovers ${amount} pending HP.`,'combat');continue;}if(spell.type==='drain'){const amount=Math.min(p.mp,Math.max(1,Math.floor(spell.power*fair.factor)));p.mp-=amount;MusicSystem.playSFX('magic');this.addNarrative(`${attacker} casts ${spell.name} and drains ${amount} MP.`,'combat');this.updateHUD();continue;}const damage=Math.max(1,Math.floor(spell.power*fair.factor)-Math.floor(p.wis/10));p.hp-=damage;MusicSystem.playSFX('enemy-hit');{const text=`${attacker} casts ${spell.name} and hits you for ${damage} magical damage.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');}}else{const raw=Math.floor((d.attack||5)*scale),damage=Math.max(1,Math.floor(raw*fair.factor)-Math.floor((p.defense||0)/2));p.hp-=damage;MusicSystem.playSFX('enemy-hit');{const text=`${attacker} hits you for ${damage} damage.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');}}if(p.hp<=0){this.gameOver();break;}}
         this.updateHUD();};
     Game.enemyAttack=function(){this.enemyGroupTurn();};
 
     Game.attackNamedTarget=function(query){
-        const target=this.aliveEncounterTargets().find(t=>t.name.toLowerCase().includes(query.toLowerCase()));
-        if(!target){this.addNarrative('That monster is not alive in this encounter.','system');return;}
+        const numbered = /^target (\d+)$/i.exec(query.trim());
+        const living = this.aliveEncounterTargets();
+        const target = numbered
+            ? living.find(t => slotOf(this.state, t) === Number(numbered[1]))
+            : living.find(t => t.name.toLowerCase().includes(query.toLowerCase()));
+        if(!target || (numbered && (!this.state.inCombat || (target.active ? this.state.enemy?.hp : target.hp) <= 0))){this.addNarrative('That monster is not alive in this encounter.','system');return;}
         if(target.active){this.playerAttack();return;}
+        const label = this.attackTargetLabel(target, target);
         const p=this.state.player,d=WorldData.enemies[target.name]||{},block=Math.max(.08,Math.min(.55,.15+(d.defense||0)/500+((d.dex||0)-p.dex)/220));
-        if(Math.random()<block){const text=`${target.name} blocks your attack.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');MusicSystem.playSFX('hit');this.enemyGroupTurn();return;}
+        if(Math.random()<block){const text=`${label} blocks your attack.`;this.emitGameEvent?.(text,'combat')||this.addNarrative(text,'combat');MusicSystem.playSFX('hit');this.enemyGroupTurn();return;}
         const damage=Math.max(1,(p.weaponDamage||10)+Math.floor(p.str/2)+Math.floor(Math.random()*8)-Math.floor((d.defense||0)/4));
         target.damage=(target.damage||0)+damage;target.hp=Math.max(0,(target.hp??target.maxHp??damage)-damage);
-        const goblin=/goblin/i.test(target.name),text=goblin?`You hit ${target.name} for ${damage} damage.`:`You strike ${target.name} for ${damage} damage.`;
+        const goblin=/goblin/i.test(target.name),text=goblin?`You hit ${label} for ${damage} damage.`:`You strike ${label} for ${damage} damage.`;
         const effects=goblin?['weapon-hit']:['hit'],reaction=goblin?['goblin-reaction']:[];
         if(this.emitGameEvent)this.emitGameEvent(text,'combat',{sfx:effects,reaction});
         else{this.addNarrative(text,'combat');[...effects,...reaction].forEach(effect=>MusicSystem.playSFX(effect));}

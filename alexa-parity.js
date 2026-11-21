@@ -17,6 +17,26 @@
         const armorTypes=['armor','helmet','gloves','boots'];const categories={weapon:i=>i.type==='weapon',weapons:i=>i.type==='weapon',armor:i=>armorTypes.includes(i.type),armour:i=>armorTypes.includes(i.type),potion:i=>i.type==='potion',potions:i=>i.type==='potion',food:i=>i.type==='food',items:i=>!['weapon','armor','helmet','gloves','boots','potion','food'].includes(i.type),all:()=>true};
         if(filter==='gold'){this.addNarrative(`You carry ${this.state.player.gold} rupees.`,'treasure');return;}
         const pred=categories[filter]||categories.all,items=this.state.inventory.filter(pred),list=document.getElementById('inv-list');list.innerHTML=items.length?items.map(i=>`<div class="inv-item"><span>${this.escapeHTML(i.name)} — ${this.escapeHTML(i.desc||'')}</span><span>x${i.quantity}</span></div>`).join(''):'<p>No matching items.</p>';document.getElementById('inventory-panel').classList.remove('hidden');
+        items.forEach((item, index) => {
+            if (item.type !== 'food') return;
+            const count = list.children[index].lastElementChild;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = `Eat ${item.name}`;
+            button.onclick = () => {
+                if (!this.state.inventory.includes(item) || item.quantity <= 0) return;
+                this.useItem(item.name);
+                count.firstChild.textContent = `x${item.quantity} `;
+                if (item.quantity <= 0) {
+                    const row = button.closest('.inv-item');
+                    const next = row.nextElementSibling?.querySelector('button') || document.querySelector('#inventory-panel .close-btn');
+                    row.remove();
+                    if (!list.children.length) list.textContent = 'No matching items.';
+                    next?.focus();
+                }
+            };
+            count.append(' ', button);
+        });
     };
     Game.buyQuantity=function(quantity,query){const loc=WorldData.locations[this.state.location],stock=ExpansionData.shopStock[loc?.shop]||[];const entry=stock.find(s=>(WorldData.items[s.id]?.name||s.id).toLowerCase().includes(query.toLowerCase()));quantity=Math.max(1,Math.min(99,quantity||1));if(!loc?.shop||!entry){this.addNarrative('That item is not sold at this location.','system');return;}const cost=entry.price*quantity;if(this.state.player.gold<cost){this.addNarrative(`${quantity} cost ${cost} rupees; you do not have enough.`,'system');return;}this.state.player.gold-=cost;for(let i=0;i<quantity;i++)this.addItemToInventory(entry.id,WorldData.items[entry.id]);this.addNarrative(`Bought ${quantity} ${WorldData.items[entry.id].name} for ${cost} rupees.`,'item');this.save();this.updateHUD();};
     Game.sellQuantity=function(quantity,query){const loc=WorldData.locations[this.state.location],item=this.state.inventory.find(i=>i.name.toLowerCase().includes(query.toLowerCase()));if(!loc?.shop&&this.state.location!=='arcane_enchantery'){this.addNarrative('Sell at a shop or enchantery.','system');return;}if(!item){this.addNarrative('Item not found.','system');return;}quantity=Math.max(1,Math.min(quantity||1,item.quantity));const each=Math.max(1,Math.floor((item.value||item.damage||10)*.35));item.quantity-=quantity;if(item.quantity<=0)this.state.inventory.splice(this.state.inventory.indexOf(item),1);this.state.player.gold+=each*quantity;this.addNarrative(`Sold ${quantity} ${item.name} for ${each*quantity} rupees.`,'treasure');this.save();this.updateHUD();};

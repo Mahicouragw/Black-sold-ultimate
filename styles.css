@@ -526,13 +526,17 @@ kbd {
     border: 1px dashed var(--border);
     border-radius: 8px;
 }
-/* 3x3 grid: N/Up top, W/center/E middle, Down/S bottom */
+/* Eight compass points, with vertical travel on a separate row. */
+.dir-nw { grid-area: 1 / 1; }
+.dir-ne { grid-area: 1 / 3; }
+.dir-sw { grid-area: 3 / 1; }
+.dir-se { grid-area: 3 / 3; }
 .dir-n  { grid-column: 2; grid-row: 1; }
-.dir-up { grid-column: 3; grid-row: 1; }
+.dir-up { grid-area: 4 / 1; }
 .dir-w  { grid-column: 1; grid-row: 2; }
 .dpad-center { grid-column: 2; grid-row: 2; }
 .dir-e  { grid-column: 3; grid-row: 2; }
-.dir-down { grid-column: 1; grid-row: 3; }
+.dir-down { grid-area: 4 / 3; }
 .dir-s  { grid-column: 2; grid-row: 3; }
 
 @media (max-width: 430px) {
@@ -1052,3 +1056,5 @@ html[data-interface-mode="blind"] .pulse { animation:none; }
 .gesture-toolbar button { min-height: 48px; padding: 10px; background: #203b50; color: white; border: 1px solid #eac664; border-radius: 6px; }
 #gesture-selection { min-height: 3em; }
 #gesture-interface :focus-visible, #gesture-launch:focus-visible { outline: 4px solid #fff; outline-offset: 2px; }
+
+.dir-btn, #road-step { touch-action: none; user-select: none; }

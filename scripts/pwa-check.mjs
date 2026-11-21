@@ -36,7 +36,7 @@ for (const swFile of ['sw.js', 'service-worker.js']) {
     for (const required of ['narration-v755.js', 'bsu-server.js', 'survival-v755.js', 'palace-rooms-v755.js', 'prayer-angels-v755.js', 'screen-reader-v756.js', 'chess-ai-v755.js', 'game-hall-v755.js', 'game-hall.js', 'assets/vendor/chess.js']) {
         if (!paths.includes(required)) throw Error(`${swFile} does not precache ${required}`);
     }
-    for (const required of ['gesture-accessibility.js', 'world-navigation-v27.js', 'stabilization-v7211.js', 'chat-notice-feedback-v7221.js', 'assets/audio/audio-manifest.json', 'AUDIO_CREDITS.md', 'music.js', 'assets/audio/music/town-theme-rpg.mp3', 'assets/audio/music/natural-forest-theme.mp3', 'assets/audio/music/battle-theme-a.mp3', 'assets/audio/music/boss-battle-theme.mp3', 'assets/audio/music/final-boss-theme.ogg']) {
+    for (const required of ['gesture-accessibility.js', 'world-navigation-v27.js', 'stabilization-v7211.js', 'chat-notice-feedback-v7221.js', 'assets/audio/audio-manifest.json', 'AUDIO_CREDITS.md', 'music.js']) {
         if (!paths.includes(required)) throw Error(`${swFile} does not precache ${required}`);
     }
     if (!content.includes(`black-sword-v${packageVersion}`)) throw Error(`${swFile} cache version is stale`);

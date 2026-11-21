@@ -383,17 +383,26 @@ test('palace quests: a named companion joins, progress is counted per battle, an
     assert.equal(p.gold, gold);
 
     clearLog(window);
+    G.state.location = 'kaliwasch';
+    const events = [];
+    const emit = G.emitGameEvent.bind(G);
+    G.emitGameEvent = (text, type, options) => { events.push({text, options}); return emit(text, type, options); };
     G.checkQuests('kill', 'root goblin');
     await wait(80);
-    assert.match(lines(window).join('\n'), /Royal Forest Hunt is done: 5 of 5 battles won\. Return to the Royal Palace/);
+    assert.match(lines(window).join('\n'), /Final battle won for Royal Forest Hunt\. Reward not collected yet\. Open Quests/);
     assert.equal(p.gold, gold, 'nothing is paid in the field');
     G.checkQuests('kill', 'root goblin');               // extra battles do not over-count
     assert.equal(G.state.sacred.palace.active.progress, 5);
 
+    const victories = events.filter(e => e.text.startsWith('Final battle won'));
+    assert.equal(victories.length, 1);
+    assert.deepEqual([...victories[0].options.sfx], ['game-win']);
+    G.state.location = 'royal_palace';
     clearLog(window);
     await G.palaceQuest();
     log = lines(window).join('\n');
     assert.match(log, /Royal Forest Hunt is complete\. You receive 250 experience and 180 rupees\. Ser Aldric bows and returns to the palace/);
+    assert.deepEqual([...events.find(e => e.text.includes('You receive 250 experience')).options.sfx], ['coin']);
     assert.equal(p.gold, gold + 180);
     assert.ok(p.level > level || p.xp === xp + 250, 'experience is paid through the normal level-up rules');
     assert.equal(G.state.companions.some(c => c.name === 'Ser Aldric'), false, 'the companion leaves when the quest ends');

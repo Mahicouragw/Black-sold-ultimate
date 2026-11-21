@@ -20,6 +20,7 @@
         'hunger.hungry': ['You are hungry. Eat a meal to keep your strength.', 'మీకు ఆకలిగా ఉంది. బలం నిలుపుకోవడానికి భోజనం చేయండి.', 'आपको भूख लगी है। ताकत बनाए रखने के लिए भोजन करें।'],
         'hunger.full': ['You are full.', 'మీ కడుపు నిండుగా ఉంది.', 'आपका पेट भरा है।'],
         'hunger.fine': ['You are not hungry.', 'మీకు ఆకలిగా లేదు.', 'आपको भूख नहीं है।'],
+        'eat.healed': ['Recovered {hp} HP.', '{hp} ఆరోగ్య పాయింట్లు తిరిగి వచ్చాయి.', '{hp} स्वास्थ्य अंक वापस मिले।'],
         'eat.ate': ['You eat {item}.', 'మీరు {item} తిన్నారు.', 'आपने {item} खाया।'],
         'eat.meal': ['A proper meal. You will not be hungry for about {hours} hours.', 'ఇది కడుపు నిండే భోజనం. సుమారు {hours} గంటల వరకు మీకు ఆకలి వేయదు.', 'यह भरपेट भोजन था। लगभग {hours} घंटे तक आपको भूख नहीं लगेगी।'],
         'eat.snack': ['That takes the edge off your hunger.', 'దీనితో ఆకలి కొంత తగ్గింది.', 'इससे भूख कुछ कम हुई।'],
@@ -62,6 +63,12 @@
         'quest.accepted': ['The Royal Court gives you the quest {name}. {desc} {companion}, {title}, joins you and will fight beside you until the quest is done. Reward: {xp} experience and {gold} rupees.', 'రాజసభ మీకు {name} కార్యాన్ని అప్పగించింది. {desc} {companion} ({title}) మీతో చేరారు; కార్యం పూర్తయ్యే వరకు మీ పక్కన పోరాడతారు. బహుమతి: {xp} అనుభవం, {gold} రూపాయలు.', 'राजसभा ने आपको {name} का कार्य सौंपा है। {desc} {companion} ({title}) आपके साथ जुड़ गए हैं और कार्य पूरा होने तक आपके साथ लड़ेंगे। पुरस्कार: {xp} अनुभव और {gold} रुपये।'],
         'quest.active': ['You are on the quest {name}: {progress} of {target} battles won. {companion} is travelling with you.', 'మీరు {name} కార్యంలో ఉన్నారు: {target} లో {progress} పోరాటాలు గెలిచారు. {companion} మీతో ప్రయాణిస్తున్నారు.', 'आप {name} के कार्य पर हैं: {target} में से {progress} लड़ाइयाँ जीत चुके हैं। {companion} आपके साथ हैं।'],
         'quest.progress': ['{name}: {progress} of {target} battles won.', '{name}: {target} లో {progress} పోరాటాలు గెలిచారు.', '{name}: {target} में से {progress} लड़ाइयाँ जीतीं।'],
+        'quest.routeStep': ['Next exit: {direction} to {room}. Open Quests again after moving for the next step.', 'తదుపరి దారి: {direction}, {room} వైపు. కదిలిన తర్వాత తదుపరి అడుగు కోసం కార్యాల జాబితా మళ్లీ తెరవండి.', 'अगला रास्ता: {direction}, {room} की ओर। चलने के बाद अगला कदम जानने के लिए कार्य सूची फिर खोलें।'],
+        'quest.routeHere': ['You are at the court. Choose {action} in Location actions to report your victory.', 'మీరు రాజసభలో ఉన్నారు. విజయాన్ని నివేదించడానికి ఇక్కడి చర్యలలో {action} ఎంచుకోండి.', 'आप राजदरबार में हैं। जीत की सूचना देने के लिए यहाँ की कार्रवाइयों में {action} चुनें।'],
+        'quest.routeMissing': ['No open route to the court was found from here. Check the available exits and doors, then open Quests again.', 'ఇక్కడి నుంచి రాజసభకు తెరిచిన దారి కనబడలేదు. దారులు, తలుపులు చూసి కార్యాల జాబితా మళ్లీ తెరవండి.', 'यहाँ से दरबार तक कोई खुला रास्ता नहीं मिला। निकास और दरवाज़े जाँचें, फिर कार्य सूची खोलें।'],
+        'quest.finalVictory': ['Final battle won for {name}. Reward not collected yet. {guide}', '{name} కోసం చివరి పోరులో గెలిచారు. బహుమతి ఇంకా అందలేదు. {guide}', '{name} की आखिरी लड़ाई जीत ली। अभी इनाम नहीं मिला है। {guide}'],
+        'quest.openJournal': ['Open Quests for directions back to the Royal Palace.', 'రాజభవనానికి తిరిగి వెళ్లే దారి కోసం కార్యాల జాబితా తెరవండి.', 'राजमहल लौटने का रास्ता जानने के लिए कार्य सूची खोलें।'],
+        'quest.previouslyPaid': ['The court already recorded the reward for {name}. No new reward was added.', '{name} బహుమతి ఇప్పటికే నమోదైంది. కొత్త బహుమతి జోడించలేదు.', '{name} का इनाम दरबार में पहले ही दर्ज है। कोई नया इनाम नहीं जोड़ा गया।'],
         'quest.ready': ['{name} is done: {target} of {target} battles won. Return to the Royal Palace and report to the court for your reward.', '{name} పూర్తయింది: {target} లో {target} పోరాటాలు గెలిచారు. బహుమతి కోసం రాజభవనానికి తిరిగి వెళ్లి రాజసభకు తెలియజేయండి.', '{name} पूरा हुआ: {target} में से {target} लड़ाइयाँ जीतीं। पुरस्कार के लिए राजमहल लौटकर राजसभा को सूचना दें।'],
         'quest.completed': ['The court honours you. {name} is complete. You receive {xp} experience and {gold} rupees. {companion} bows and returns to the palace.', 'రాజసభ మిమ్మల్ని సత్కరించింది. {name} పూర్తయింది. మీకు {xp} అనుభవం, {gold} రూపాయలు లభించాయి. {companion} నమస్కరించి రాజభవనానికి తిరిగి వెళ్లారు.', 'राजसभा ने आपका सम्मान किया। {name} पूरा हुआ। आपको {xp} अनुभव और {gold} रुपये मिले। {companion} प्रणाम करके राजमहल लौट गए।'],
         'quest.allDone': ['You have completed every quest the Royal Court has to give. The Crown\'s thanks go with you.', 'రాజసభ ఇవ్వగల ప్రతి కార్యాన్నీ మీరు పూర్తి చేశారు. రాజ్యం మీకు కృతజ్ఞతలు తెలుపుతోంది.', 'आपने राजसभा का हर कार्य पूरा कर लिया है। राज्य आपका आभारी है।'],
@@ -397,7 +404,10 @@
             if (type === 'kill' && q && q.progress < q.target) {
                 q.progress++;
                 const params = { name: questName(q.quest_id), progress: q.progress, target: q.target };
-                say(this, N.t(q.progress >= q.target ? 'quest.ready' : 'quest.progress', params), 'treasure');
+                if (q.progress >= q.target) {
+                    const guide = atQuestRoom(this) ? courtDirections(this) : N.t('quest.openJournal');
+                    say(this, N.t('quest.finalVictory', { ...params, guide }), 'treasure', { sfx: ['game-win'] });
+                } else say(this, N.t('quest.progress', params), 'treasure');
                 if (S.canCall()) S.call('quest_progress', S.heroArgs({ quest_id: q.quest_id, progress: q.progress }));
                 this.save?.();
             }
@@ -410,7 +420,6 @@
             removeCompanion(q.quest_id);
             P.active = null;
             if (!P.completed.includes(q.quest_id)) P.completed.push(q.quest_id);
-            say(G, N.t('quest.completed', { name: questName(q.quest_id), xp: reward.xp, gold: reward.gold, companion }), 'treasure', { sfx: ['levelup'] });
             S.pay(reward.gold, reward.xp);
             if (q.quest_id === 'royal_hunt' && !G.state.completedQuests.includes('royal_hunt')) {
                 // The class-helper award for the first palace quest lives in an older file.
@@ -418,6 +427,8 @@
                 try { G.addNarrative = function (text, type) { if (!/^📜 Quest Complete/.test(String(text))) return add.call(this, text, type); }; G.completeQuest({ id: 'royal_hunt', name: questName('royal_hunt'), reward: {}, objectives: [] }); }
                 finally { G.addNarrative = add; G.state.quests = before; }
             }
+            const paid = reward.xp > 0 || reward.gold > 0;
+            say(G, N.t(paid ? 'quest.completed' : 'quest.previouslyPaid', { name: questName(q.quest_id), xp: reward.xp, gold: reward.gold, companion }), 'treasure', paid ? { sfx: ['coin'] } : {});
             G.updateHUD?.(); G.save?.();
         }
 
@@ -469,18 +480,31 @@
             } finally { this._questBusy = false; }
         };
 
-        const oldShowQuests = G.showQuests.bind(G);
-        G.showQuests = function () {
-            oldShowQuests();
-            const q = palace(this).active, list = document.getElementById('quest-list');
-            if (!q || !list) return;
-            list.querySelector('p.system')?.remove();
-            const div = document.createElement('div');
-            div.className = 'quest-item';
-            for (const [cls, text] of [['quest-name', questName(q.quest_id)], ['quest-desc', questDesc(q.quest_id)], ['quest-progress', N.t('quest.progress', { name: q.companion?.name || '', progress: q.progress, target: q.target })]]) {
-                const span = document.createElement('span'); span.className = cls; span.textContent = text; div.appendChild(span);
+        function courtDirections(game) {
+            if (atQuestRoom(game)) return N.t('quest.routeHere', { action: N.t('btn.palaceQuest') });
+            const start = game.state.location;
+            let best;
+            for (const room of QUEST_ROOMS) {
+                const route = game.findPhysicalRoute?.(start, room);
+                if (route?.length && (!best || route.length < best.length)) best = route;
             }
-            list.prepend(div);
+            const direction = best?.[0];
+            const next = WorldData.locations[start]?.exits?.[direction];
+            return WorldData.locations[next]?.name
+                ? N.t('quest.routeStep', { direction, room: WorldData.locations[next].name })
+                : N.t('quest.routeMissing');
+        }
+
+        const baseJournalEntries = G.questJournalEntries.bind(G);
+        G.questJournalEntries = function () {
+            const entries = baseJournalEntries();
+            const q = this.state.sacred?.palace?.active;
+            if (!q) return entries;
+            const name = questName(q.quest_id);
+            const step = q.progress >= q.target
+                ? N.t('quest.ready', { name, target: q.target })
+                : N.t('quest.progress', { name: q.companion?.name || name, progress: q.progress, target: q.target });
+            return [{ name, description: questDesc(q.quest_id), steps: q.progress >= q.target ? [step, courtDirections(this)] : [step] }, ...entries];
         };
 
         // ---------------------------------------------------- location buttons

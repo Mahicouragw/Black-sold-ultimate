@@ -31,17 +31,21 @@
             'tunnel_section_6': { fish: ['cave blindfish', 'underground eel'], rare: ['shadow ray'], difficulty: 4 }
         };
 
+        G.skillFishingSpot = function() { return fishingSpots[this.state.location]; };
+
         // Add fishing command
         const oldProcessCommand = G.processCommand;
         G.processCommand = function(cmd) {
             const c = cmd.toLowerCase().trim();
             
             if (c === 'fish' || c === 'go fishing') {
-                return this.goFishing();
+                return this.fish ? this.fish() : this.goFishing();
             }
+            if (c === 'recipes' || c === 'cooking recipes') return this.inspectCooking();
             if (c === 'cook' || c === 'cooking') {
                 return this.goCooking();
             }
+            if (c.startsWith('cook ')) return this.goCooking(c.slice(5).trim());
             if (c === 'craft' || c === 'crafting') {
                 return this.goCrafting();
             }
@@ -111,29 +115,58 @@
         };
 
         // Cooking system
-        G.goCooking = function() {
-            const foodItems = this.state.inventory.filter(i => i.type === 'food');
-            
+        const ingredients = inventory => inventory.filter(item => item.type === 'food' && item.quantity > 0);
+        const chooser = document.getElementById('cooking-choice');
+        const select = document.getElementById('cooking-ingredient');
+        document.getElementById('cook-selected').addEventListener('click', () => {
+            if (!chooser.hidden && select.value) G.processCommand(`cook ${select.value}`);
+        });
+        function updateChoices(foods) {
+            const previous = select.value;
+            const counts = new Map();
+            for (const item of foods) counts.set(item.name, (counts.get(item.name) || 0) + item.quantity);
+            select.replaceChildren(...Array.from(counts, ([name, count]) => new Option(`${name} (${count})`, name)));
+            if (counts.has(previous)) select.value = previous;
+            chooser.hidden = !foods.length;
+        }
+        G.inspectCooking = function() {
+            const foods = ingredients(this.state.inventory);
+            updateChoices(foods);
+            this.addNarrative('Cooking needs one food item. No kitchen or fire is required. A failed attempt also uses the ingredient.', 'system');
+            if (!foods.length) {
+                this.addNarrative('No cooking ingredients in your bag. Catch fish or gather food first.', 'system');
+                return;
+            }
+            const heal = 20 + this.state.skills.cooking.level * 5;
+            this.addNarrative(`Ingredients in your bag: ${foods.map(item => `${item.name} (${item.quantity})`).join('; ')}.`, 'item');
+            this.addNarrative(`Next recipe: one ${foods[0].name} makes cooked ${foods[0].name} on success, worth ${heal} HP of healing. Choose an ingredient below or type cook followed by its full name. Type cook alone for the first ingredient.`, 'system');
+        };
+        G.goCooking = function(name) {
+            const foodItems = ingredients(this.state.inventory);
             if (foodItems.length === 0) {
+                updateChoices(foodItems);
                 this.addNarrative('You need food items to cook. Catch fish or gather ingredients.', 'system');
                 return;
             }
-
-            const item = foodItems[0];
-            this.addNarrative(`You cook the ${item.name}...`, 'system');
-            
+            const item = name ? foodItems.find(food => food.name.toLowerCase() === name.toLowerCase()) : foodItems[0];
+            if (!item) {
+                this.addNarrative(`No ${name} available to cook. Nothing was used.`, 'system');
+                if (!chooser.hidden) updateChoices(foodItems);
+                return;
+            }
             const skill = this.state.skills.cooking;
             const roll = Math.random() * 100;
             const successChance = 60 + skill.level * 5;
-            
+            // Both outcomes consume exactly one ingredient. Count the remaining
+            // usable units across stacks, not just the stack we just used.
+            const cookedName = `cooked ${item.name}`;
+            item.quantity--;
+            if (item.quantity === 0) this.state.inventory = this.state.inventory.filter(i => i !== item);
+            const remaining = ingredients(this.state.inventory)
+                .filter(i => i.name === item.name).reduce((sum, i) => sum + Number(i.quantity), 0);
+            const balance = `${item.name} remaining: ${remaining}.`;
+
             if (roll < successChance) {
-                // Cooked successfully
-                const cookedName = `cooked ${item.name}`;
-                item.quantity--;
-                if (item.quantity <= 0) {
-                    this.state.inventory = this.state.inventory.filter(i => i !== item);
-                }
-                
                 // Add cooked food
                 const existing = this.state.inventory.find(i => i.name === cookedName);
                 if (existing) {
@@ -149,7 +182,7 @@
                     });
                 }
                 
-                this.addNarrative(`🍳 You cooked a delicious ${cookedName}! Heals ${20 + skill.level * 5} HP.`, 'item');
+                this.addNarrative(`Used 1 ${item.name}. Added 1 ${cookedName} to your bag. Heals ${existing?.power ?? (20 + skill.level * 5)} HP. ${balance}`, 'item');
                 
                 // Gain cooking XP
                 skill.xp += 15;
@@ -160,14 +193,11 @@
                     this.addNarrative(`👨‍🍳 Cooking level up! You are now level ${skill.level}!`, 'system');
                 }
             } else {
-                this.addNarrative('You burned the food... It is ruined.', 'system');
-                item.quantity--;
-                if (item.quantity <= 0) {
-                    this.state.inventory = this.state.inventory.filter(i => i !== item);
-                }
+                this.addNarrative(`Burned 1 ${item.name}. No ${cookedName} was added. ${balance}`, 'system');
                 skill.xp += 3;
             }
             
+            if (!chooser.hidden) updateChoices(ingredients(this.state.inventory));
             this.save?.();
         };
 

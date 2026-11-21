@@ -58,3 +58,21 @@ test('delete confirmation dialog can cancel', async t => {
     window.document.getElementById('confirm-dialog-no').click();
     assert.equal(await p, false);
 });
+
+test('title tutorial lets a guest retry a numbered target without starting combat', async t => {
+    const {window, dom} = await createRuntime();
+    t.after(() => dom.window.close());
+    const {document, Game} = window;
+    const previous = [Game.state.player, Game.state.inCombat];
+    document.querySelector('#btn-tutorial').click();
+    document.querySelector('[data-tutorial="practice"]').click();
+    const body = document.querySelector('#tutorial-body');
+    const [first, second] = body.querySelectorAll('button');
+    first.click();
+    assert.match(body.lastChild.textContent, /try again/);
+    second.click();
+    assert.match(body.lastChild.textContent, /Practice complete.*target 2/);
+    assert.deepEqual([Game.state.player, Game.state.inCombat], previous);
+    document.querySelector('[data-tutorial="fight"]').click();
+    assert.equal(body.querySelector('button'), null);
+});

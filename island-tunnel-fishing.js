@@ -34,7 +34,7 @@
     Object.values(WorldData.locations).filter(l=>/Silver River/.test(l.name)).forEach(l=>{if(!l.features.includes('fishing'))l.features.push('fishing');});
 
     const oldStart=Game.startCombat.bind(Game);Game.startCombat=function(name,queued=false){const data=WorldData.enemies[name],loc=WorldData.locations[this.state.location],savedEnemies=data?.boss&&loc?[...(loc.enemies||[])]:null;if(savedEnemies)loc.enemies=[];oldStart(name,queued);if(savedEnemies)loc.enemies=savedEnemies;if(this.state.enemy&&data){this.state.enemy.spells=data.spells||[];this.state.enemy.str=data.str||this.state.enemy.attack;this.state.enemy.dex=data.dex||8;this.state.enemy.magic=data.magic||0;this.state.enemy.defense=data.defense||0;this.state.enemy.weaponDamage=data.weaponDamage||this.state.enemy.attack;}};
-    const oldEnemyAttack=Game.enemyAttack.bind(Game);Game.enemyAttack=function(){const e=this.state.enemy,p=this.state.player;if(e?.spells?.length){const available=e.spells.filter(s=>Math.random()<(s.chance||.3));if(available.length){const spell=available[Math.floor(Math.random()*available.length)];if(spell.type==='heal'){const amount=Math.min(spell.power,e.maxHp-e.hp);e.hp+=amount;this.addNarrative(`🔴 ${e.name} casts ${spell.name} and restores ${amount} HP.`,'red-light');this.updateEnemyHUD();MusicSystem.playSFX('magic');return;}if(spell.type==='drain'){const drained=Math.min(p.mp,spell.power);p.mp-=drained;this.addNarrative(`🔴 ${e.name} casts ${spell.name}, draining ${drained} MP!`,'red-light');this.updateHUD();MusicSystem.playSFX('magic');return;}if(spell.type==='debuff'){const loss=Math.min(Math.max(0,p.str-1),spell.power);p.str-=loss;p._monsterStrDebuff=(p._monsterStrDebuff||0)+loss;this.addNarrative(`🔴 ${e.name} casts ${spell.name}; Strength falls by ${loss} for this battle.`,'red-light');this.updateHUD();MusicSystem.playSFX('magic');return;}const damage=Math.max(1,spell.power-Math.floor((p.wis||0)/10));p.hp-=damage;this.addNarrative(`🔴 ${e.name} casts ${spell.name} for ${damage} magical damage!`,'red-light');MusicSystem.playSFX('magic');this.updateHUD();if(p.hp<=0)this.gameOver();return;}}oldEnemyAttack();};
+    const oldEnemyAttack=Game.enemyAttack.bind(Game);Game.enemyAttack=function(){const e=this.state.enemy,p=this.state.player;if(e?.spells?.length){const available=e.spells.filter(s=>Math.random()<(s.chance||.3));if(available.length){const attacker=this.attackTargetLabel?.(e)??e.name;const spell=available[Math.floor(Math.random()*available.length)];if(spell.type==='heal'){const amount=Math.min(spell.power,e.maxHp-e.hp);e.hp+=amount;this.addNarrative(`🔴 ${attacker} casts ${spell.name} and restores ${amount} HP.`,'red-light');this.updateEnemyHUD();MusicSystem.playSFX('magic');return;}if(spell.type==='drain'){const drained=Math.min(p.mp,spell.power);p.mp-=drained;this.addNarrative(`🔴 ${attacker} casts ${spell.name}, draining ${drained} MP!`,'red-light');this.updateHUD();MusicSystem.playSFX('magic');return;}if(spell.type==='debuff'){const loss=Math.min(Math.max(0,p.str-1),spell.power);p.str-=loss;p._monsterStrDebuff=(p._monsterStrDebuff||0)+loss;this.addNarrative(`🔴 ${attacker} casts ${spell.name}; Strength falls by ${loss} for this battle.`,'red-light');this.updateHUD();MusicSystem.playSFX('magic');return;}const damage=Math.max(1,spell.power-Math.floor((p.wis||0)/10));p.hp-=damage;this.addNarrative(`🔴 ${attacker} casts ${spell.name} for ${damage} magical damage!`,'red-light');MusicSystem.playSFX('magic');this.updateHUD();if(p.hp<=0)this.gameOver();return;}}oldEnemyAttack();};
     const oldExamine=Game.examineEntity.bind(Game);Game.examineEntity=function(query){const e=this.state.enemy;if(e&&e.name.toLowerCase().includes(query.toLowerCase())){this.addNarrative(`${e.name}: HP ${e.hp}/${e.maxHp}; attack ${e.attack}; STR ${e.str||0}; DEX ${e.dex||0}; magic ${e.magic||0}; defense ${e.defense||0}; weapon damage ${e.weaponDamage||0}; spells ${e.spells?.map(s=>`${s.name} (${s.type} ${s.power})`).join(', ')||'none'}. ${e.desc||''}`,'combat');return;}oldExamine(query);};
 
     Game.restoreMonsterDebuffs=function(){const p=this.state.player;if(p?._monsterStrDebuff){p.str+=p._monsterStrDebuff;p._monsterStrDebuff=0;}};
@@ -43,7 +43,50 @@
     const oldGameOver=Game.gameOver.bind(Game);Game.gameOver=function(){this.restoreMonsterDebuffs();oldGameOver();};
     const fishingDefaults=()=>({skill:1,catches:0,lastAttempt:0});const ensureFishing=()=>Game.state.fishing=Object.assign(fishingDefaults(),Game.state.fishing||{});
     const oldGet=Game.getSaveData.bind(Game);Game.getSaveData=function(){return{...oldGet(),fishing:ensureFishing()};};
-    Game.fish=function(){const loc=WorldData.locations[this.state.location],state=ensureFishing(),rod=this.state.inventory.find(i=>i.id==='fishing rod'),bait=this.state.inventory.find(i=>i.id==='fishing bait');if(!loc?.features?.includes('fishing')){this.addNarrative('There is no fishable water at this location.','system');return;}if(!rod){this.addNarrative('A fishing rod is required. Buy one at a provision shop.','system');return;}if(!bait){this.addNarrative('Fishing bait is required.','system');return;}if(Date.now()-state.lastAttempt<5000){this.addNarrative('Wait a few seconds before casting again.','system');return;}state.lastAttempt=Date.now();bait.quantity--;if(bait.quantity<=0)this.state.inventory.splice(this.state.inventory.indexOf(bait),1);const roll=Math.random(),isCave=/underground|cave/i.test(loc.name),isIsland=/island/i.test(loc.name);let id=roll<.05?'golden carp':roll<.15?'pearl shell':isCave?'cave eel':isIsland?'storm tuna':'silver trout';this.addItemToInventory(id,WorldData.items[id]);state.catches++;if(state.catches%5===0)state.skill++;this.addNarrative(`Fishing catch: ${WorldData.items[id].name}. Fishing skill ${state.skill}; total catches ${state.catches}.`,'treasure');MusicSystem.playSFX('pickup');this.save();};
-    const oldCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='fish'||c==='cast fishing line'){this.fish();return;}if(c==='fishing status'){const f=ensureFishing();this.addNarrative(`Fishing skill ${f.skill}; ${f.catches} catches.`,'system');return;}oldCommand(cmd);};
+    function fishingConditions(game) {
+        const loc = WorldData.locations[game.state.location];
+        if (!loc?.features?.includes('fishing')) {
+            if (loc && game.skillFishingSpot?.()) return {skillSpot:true};
+            return {blocked:'There is no fishable water at this location. Try Seabreeze Ferry Pier.'};
+        }
+        const gear = id => game.state.inventory.find(item => item.id === id && item.quantity > 0);
+        const rod = gear('fishing rod'), bait = gear('fishing bait');
+        const remaining = Math.ceil((5000 - (Date.now() - (game.state.fishing?.lastAttempt || 0))) / 1000);
+        const blocked = !rod || !bait
+            ? `Missing: ${[!rod && 'fishing rod', !bait && 'fishing bait'].filter(Boolean).join(' and ')}. Buy supplies at a provision shop.`
+            : remaining > 0 ? `Wait ${remaining} more second${remaining === 1 ? '' : 's'} before casting.` : '';
+        return {loc, bait, blocked};
+    }
+    Game.inspectFishing = function() {
+        const info = fishingConditions(this);
+        const message = info.skillSpot ? 'This is a skill fishing spot. No rod or bait is required. Choose Cast fishing line or type fish.'
+            : info.loc ? `You can fish at ${info.loc.name}. Each cast needs a fishing rod and uses one bait. ${info.blocked || 'Ready. Choose Cast fishing line or type fish.'}`
+            : info.blocked;
+        this.addNarrative(message, 'system');
+    };
+    Game.fish=function(){
+        const {loc,bait,blocked,skillSpot}=fishingConditions(this);
+        if(skillSpot)return this.goFishing();
+        if(blocked){this.addNarrative(blocked,'system');return;}
+        const state=ensureFishing();
+        state.lastAttempt = Date.now();
+        bait.quantity--;
+        if (bait.quantity <= 0) this.state.inventory.splice(this.state.inventory.indexOf(bait), 1);
+        const roll = Math.random();
+        const id = roll < .05 ? 'golden carp' : roll < .15 ? 'pearl shell'
+            : /underground|cave/i.test(loc.name) ? 'cave eel'
+            : /island/i.test(loc.name) ? 'storm tuna' : 'silver trout';
+        const caught = WorldData.items[id];
+        this.addItemToInventory(id, caught);
+        state.catches++;
+        if (state.catches % 5 === 0) state.skill++;
+        const remaining = this.state.inventory.reduce((sum, item) =>
+            item.id === 'fishing bait' && item.quantity > 0 ? sum + Number(item.quantity) : sum, 0);
+        const refill = remaining === 0 ? ' Buy more bait at a provision shop before casting again.' : '';
+        this.addNarrative(`Fishing catch: ${caught.name}. Bait remaining: ${remaining}.${refill} Fishing skill ${state.skill}; total catches ${state.catches}.`, 'treasure');
+        MusicSystem.playSFX('pickup');
+        this.save();
+    };
+    const oldCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='check fishing'){this.inspectFishing();return;}if(c==='fish'||c==='go fishing'||c==='cast fishing line'){this.fish();return;}if(c==='fishing status'){const f=ensureFishing();this.addNarrative(`Fishing skill ${f.skill}; ${f.catches} catches.`,'system');return;}oldCommand(cmd);};
     if(window.ExpansionData){ExpansionData.counts.locations=Object.keys(WorldData.locations).length;ExpansionData.counts.monsters=Object.keys(WorldData.enemies).length;}
 })();

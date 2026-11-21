@@ -6,6 +6,9 @@ const OnlineSystem = {
     linked: false,
     ready: false,
     status: 'Connecting…',
+    connecting: false,
+    confirmedServiceUser: null,
+    networkRevision: 0,
     subscription: null,
     messageCache: [],
     messageExpiryTimer: null,
@@ -36,6 +39,8 @@ const OnlineSystem = {
 
     async init() {
         if (this.ready) return;
+        this.connecting = true;
+        this.updateServiceIndicator();
         this.populateVoiceSelectors();
         if('speechSynthesis'in window&&!this._voicesListener){speechSynthesis.addEventListener?.('voiceschanged',()=>this.populateVoiceSelectors());this._voicesListener=true;}
         this.setupHeroAutocomplete();
@@ -43,6 +48,7 @@ const OnlineSystem = {
         const hasFirebase = config?.provider === 'firebase' && config?.firebase;
         const hasNeonAuth = config?.authUrl && config?.dataApiUrl;
         if (!config || !window.BlackSwordBackend?.createClient || (!hasFirebase && !hasNeonAuth)) {
+            this.connecting = false;
             this.status = 'Guest mode';
             this.ensureLocalCode();
             this.updateIndicators();
@@ -115,6 +121,9 @@ const OnlineSystem = {
             this.status = 'Guest mode';
             this.ensureLocalCode();
             this.updateIndicators();
+        } finally {
+            this.connecting = false;
+            this.updateServiceIndicator();
         }
     },
 
@@ -234,6 +243,7 @@ const OnlineSystem = {
     async sendFriendFromSuggestion(inputId,index) { this.chooseHeroSuggestion(inputId,index);const hero=this.suggestionResults[inputId]?.[index];if(hero)await this.sendFriendRequest(hero.display_name); },
 
     async loadProfile(retry = true) {
+        const revision = this.networkRevision, uid = this.user?.id;
         let { data, error } = await this.client.rpc('get_my_profile');
         if (!error && Array.isArray(data)) data=data[0]||null;
         // Backward compatibility until the v7 privacy migration is installed.
@@ -242,6 +252,10 @@ const OnlineSystem = {
         if (!data && retry) { await new Promise(resolve=>setTimeout(resolve,500)); return this.loadProfile(false); }
         if (!data) throw new Error('Database schema is not installed yet');
         this.profile=data;
+        if (uid && uid === this.user?.id && revision === this.networkRevision && navigator.onLine !== false) {
+            this.confirmedServiceUser = uid;
+            this.updateServiceIndicator();
+        }
     },
 
     async refreshIdentityStatus() {
@@ -1209,13 +1223,60 @@ const OnlineSystem = {
         this.socialRefreshTimer=setTimeout(()=>{this.socialRefreshQueued=false;window.Game?.showSocial?.({background:true});},250);
     },
 
+    async checkOnlineService() {
+        const button = document.getElementById('check-online-service');
+        const result = document.getElementById('service-check-result');
+        if (button.getAttribute('aria-disabled') === 'true') return;
+        const uid = this.user?.id, client = this.client, revision = this.networkRevision, auth = this.authRevision;
+        const current = () => uid === this.user?.id && client === this.client && revision === this.networkRevision && auth === this.authRevision && navigator.onLine !== false;
+        let timer;
+        button.setAttribute('aria-disabled','true'); // keep keyboard / TalkBack focus on the control
+        try {
+            if (navigator.onLine === false) {
+                result.textContent = this.pick('Device offline. Reconnect and check again.', 'పరికరం ఆఫ్‌లైన్‌లో ఉంది. కనెక్ట్ చేసి మళ్లీ తనిఖీ చేయండి.', 'डिवाइस ऑफलाइन है। कनेक्ट करके फिर जाँचें।');
+                return;
+            }
+            if (!uid || !client) {
+                result.textContent = this.pick('No online session to check. You can keep playing locally.', 'తనిఖీ చేయడానికి ఆన్‌లైన్ సెషన్ లేదు. ఈ పరికరంలో ఆడవచ్చు.', 'जाँचने के लिए ऑनलाइन सत्र नहीं है। आप इसी डिवाइस पर खेल सकते हैं।');
+                return;
+            }
+            result.textContent = this.pick('Checking the game service…','గేమ్ సేవను తనిఖీ చేస్తోంది…','गेम सेवा जाँची जा रही है…');
+            const {data,error} = await Promise.race([client.rpc('get_my_profile'),new Promise((_,reject)=>{
+                timer=setTimeout(()=>reject(new Error('timeout')),10000);
+            })]);
+            const profile = Array.isArray(data) ? data[0] : data;
+            if (error || !current() || profile?.id !== uid) throw new Error('not confirmed');
+            this.profile = profile;
+            this.confirmedServiceUser = uid;
+            this.ready = true;
+            result.textContent = this.pick('Connection confirmed for this player.', 'ఈ ఆటగాడి కనెక్షన్ నిర్ధారించబడింది.', 'इस खिलाड़ी का कनेक्शन पुष्ट हो गया है।');
+        } catch {
+            if (current()) this.confirmedServiceUser = null;
+            result.textContent = this.pick('Connection not confirmed. Keep playing locally and try again later.', 'కనెక్షన్ నిర్ధారించబడలేదు. స్థానికంగా ఆడుతూ తర్వాత మళ్లీ ప్రయత్నించండి.', 'कनेक्शन पुष्ट नहीं हुआ। स्थानीय रूप से खेलें और बाद में फिर जाँचें।');
+        } finally {
+            clearTimeout(timer);
+            button.removeAttribute('aria-disabled');
+            this.updateServiceIndicator();
+        }
+    },
+
+    updateServiceIndicator() {
+        const el = document.getElementById('online-status');
+        if (!el) return;
+        const local = this.pick('Playing locally', 'ఈ పరికరంలో ఆడుతున్నారు', 'इस डिवाइस पर खेल रहे हैं');
+        const text = navigator.onLine === false ? local
+            : this.ready && this.user?.id && this.confirmedServiceUser === this.user.id
+                ? this.pick('Connected to online services', 'ఆన్‌లైన్ సేవలకు అనుసంధానమైంది', 'ऑनलाइन सेवाओं से जुड़े हैं')
+                : this.connecting ? this.pick('Connecting to online services…', 'ఆన్‌లైన్ సేవలకు అనుసంధానిస్తోంది…', 'ऑनलाइन सेवाओं से जुड़ रहे हैं…') : local;
+        if (el.textContent !== text) el.textContent = text;
+    },
+
     updateIndicators() {
         const activeName = window.Game?.state?.player?.name || this.profile?.display_name || 'No hero selected';
         const line = `${activeName} • ${this.status}`;
         // Static status area only. Writing identical text would re-fire the live
         // region and interrupt TalkBack on every render, so it is skipped.
-        const el = document.getElementById('online-status');
-        if (el && el.textContent !== line) el.textContent = line;
+        this.updateServiceIndicator();
         const titleStatus = document.getElementById('title-account-status');
         if (titleStatus && titleStatus.textContent !== line) titleStatus.textContent = line;
         const signIn = document.getElementById('btn-google-signin');
@@ -1277,3 +1338,20 @@ const OnlineSystem = {
     }
 };
 window.OnlineSystem = OnlineSystem;
+const serviceCheckButton = document.getElementById('check-online-service');
+serviceCheckButton?.addEventListener('click', () => OnlineSystem.checkOnlineService());
+const labelServiceCheck = () => {
+    if (serviceCheckButton) serviceCheckButton.textContent = OnlineSystem.pick('Check online connection','ఆన్‌లైన్ కనెక్షన్ తనిఖీ చేయండి','ऑनलाइन कनेक्शन जाँचें');
+};
+labelServiceCheck();
+window.addEventListener('bsu-language', labelServiceCheck);
+
+// Network availability alone does not prove the game database is reachable.
+// Forget the old confirmation and let the next successful profile read confirm it.
+window.addEventListener('offline', () => {
+    OnlineSystem.networkRevision++;
+    OnlineSystem.confirmedServiceUser = null;
+    OnlineSystem.updateServiceIndicator();
+});
+window.addEventListener('online', () => OnlineSystem.updateServiceIndicator());
+window.addEventListener('bsu-language', () => OnlineSystem.updateServiceIndicator());

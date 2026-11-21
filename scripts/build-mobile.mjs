@@ -1,3 +1,5 @@
+import { checkOfflineStartup } from './check-offline-startup.mjs';
+import { fileURLToPath } from 'node:url';
 import {cp,mkdir,rm,readdir,copyFile} from 'node:fs/promises';
 import {extname,join} from 'node:path';
 const root=new URL('../',import.meta.url),out=new URL('../www/',import.meta.url);
@@ -10,4 +12,5 @@ for(const dir of ['assets','icons'])await cp(new URL(`../${dir}`,import.meta.url
 for (const file of ['AUDIO_CREDITS.md','recorded-audio-checksums.json']) {
   await copyFile(new URL(`../${file}`,import.meta.url),new URL(`../www/${file}`,import.meta.url));
 }
+console.log(`Offline startup checked: ${await checkOfflineStartup(fileURLToPath(out))} local scripts in www/`);
 console.log('Capacitor/web assets, audio credits and recording checksums prepared in www/');

@@ -71,3 +71,23 @@ test('(34/37) Blind/TalkBack-first mode keeps command-first semantic controls',a
 test('(35/37) Sighted mode uses the same game state and exposes inline combat information',async t=>{const{window}=await ready(t),G=window.Game;window.InterfaceMode.apply('sighted');G.state.location='forest';G.startCombat('root goblin');assert.equal(window.document.documentElement.dataset.interfaceMode,'sighted');assert.match(window.document.getElementById('combat-status-text').textContent,/Fighting|Encounter:/);assert.equal(window.document.getElementById('combat-panel').hidden,true);});
 test('(36/37) command input remains accessible after encounter TTS completes',async t=>{const{window}=await ready(t),G=window.Game;window.AudioManager.playVoice=async()=>true;G.state.location='forest';G.startCombat('root goblin');await wait(0);const input=window.document.getElementById('cmd-input');assert.equal(input.disabled,false);assert.ok(input.getAttribute('aria-label'));});
 test('(37/37) duplicate event IDs cannot repeat live-region or game-TTS announcements',async t=>{const{window}=await ready(t),G=window.Game,spoken=[];window.AudioManager.playVoice=async text=>(spoken.push(text),true);window.document.getElementById('narrative').innerHTML='';await G.emitGameEvent('One clear announcement.','combat',{eventId:'same-event'});await G.emitGameEvent('One clear announcement.','combat',{eventId:'same-event'});assert.equal(spoken.length,1);assert.equal([...window.document.querySelectorAll('#narrative p')].filter(p=>p.textContent==='One clear announcement.').length,1);});
+
+test('a defeated duplicate hands off default Attack to the surviving numbered target once', async t => {
+    const {window} = await ready(t), G = window.Game;
+    G.state.location = 'forest';
+    G.startCombat('root goblin');
+    const name = G.state.enemy.name;
+    G.state.encounterTargets = [{name, active:true, hp:0}, {name, active:false, hp:80,maxHp:80}];
+    G.state.sacred.enemyQueue = [name];
+    G.state.enemy.hp = 0;
+    await G.enemyDefeated();
+    for(let i=0;i<50 && G.state.combatTransition;i++) await wait(20);
+    assert.equal(G.state.enemy?.hp,80);
+    G.updateEnemyHUD(); G.updateEnemyGroupHUD();
+    const d=window.document;
+    assert.match(d.querySelector('#combat-status-text').textContent,/Current target: root goblin \(target 2\)/);
+    assert.equal([...d.querySelectorAll('#narrative p')].filter(p=>p.textContent==='Next Attack target: root goblin (target 2).').length,1);
+    G.state.enemy.hp=0; await G.enemyDefeated();
+    assert.equal(G.state.inCombat,false);
+    assert.equal([...d.querySelectorAll('#narrative p')].filter(p=>p.textContent.startsWith('Next Attack target:')).length,1);
+});
