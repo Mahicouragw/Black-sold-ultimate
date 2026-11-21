@@ -95,9 +95,16 @@ class AudioManagerController {
             victory: { src: 'assets/audio/music/victory.mp3', title: 'Victory' }
         };
 
+        const fairTitles = ['Paper Star Procession','Ribbons on the Ice','Greta’s Waltz','Bell Court Carol','Fir Bough Reel','Candlelit Market','Hearthside Lullaby','Sleigh at Dawn','Winter Orchard','The Twenty-Fifth Bell'];
+        const fairKeys = fairTitles.map((title,i) => {
+            const key = `starlight${i+1}`;
+            this.music[key] = {title,src:`assets/fair/carol-${i+1}.mp3`};
+            return key;
+        });
         // Every requested category has at least two context-compatible real tracks.
         // Tracks may intentionally serve more than one related category.
         this.playlists = {
+            CHRISTMAS: fairKeys,
             CITY: ['town', 'townThemeRpg', 'palace', 'inn'],
             CITY_MARKET: ['townThemeRpg', 'town', 'inn', 'palace'],
             MARKET: ['townThemeRpg', 'inn', 'town', 'palace'],
@@ -518,7 +525,7 @@ class AudioManagerController {
         // Exploration music is stable: it loops until the world context changes.
         // Battle/special overlays end naturally so their smart-shuffled playlist
         // can advance without ever layering a second engine.
-        audio.loop = layer === 'world' && !this.directTrack && this.worldContext !== 'DIRECT';
+        audio.loop = layer === 'world' && !this.directTrack && this.worldContext !== 'DIRECT' && this.worldContext !== 'CHRISTMAS';
         audio.volume = 0;
         this.currentTrack = audio;
         this.currentKey = trackKey;

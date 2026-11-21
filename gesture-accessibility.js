@@ -178,9 +178,10 @@
         choose() { const c = this.menu?.choices[this.index]; if (c) c.run(); },
         async execute(fn) {
             if (this.busy) { speak('An action is still completing.'); return; }
-            Gestures.stop(); this.menu = null; this.stack = []; this.render(); this.busy = true;
+            const fighting = this.active() && G.state.inCombat;
+            Gestures.stop(); if (!fighting) { this.menu = null; this.stack = []; this.render(); } this.busy = true;
             try { await fn(); } catch (error) { console.warn('Gesture action failed', error); speak('The action could not be completed. No success is assumed.'); }
-            finally { this.busy = false; }
+            finally { this.busy = false; if (fighting && !G.state.inCombat && !G.state.combatTransition) { this.menu = null; this.stack = []; this.render(); } }
             // Don't auto-open controls when a panel is visible — let the user interact with it directly.
         },
         playSwipeSound() {
@@ -777,7 +778,7 @@
     const oldMove = G.move;
     G.move = function(dir) { return oldMove.call(this, dir); }; // the core move explains a sitting or lying posture itself
     const oldStart = G.startCombat;
-    G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); UI.render(); if (settings.narration) { 
+    G.startCombat = function(...args) { Gestures.stop(); UI.menu = null; UI.stack = []; if (this.state.player) this.state.player.gesturePosture = null; const r = oldStart.apply(this, args); if (UI.active() && this.state.inCombat && this.state.enemy) { UI.context(); return r; } UI.render(); if (settings.narration) {
         // Read combat status clearly - monster count, HP, etc.
         const enemies = G.aliveEncounterTargets?.() || [];
         const e = this.state.enemy;

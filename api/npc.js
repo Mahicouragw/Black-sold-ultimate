@@ -878,6 +878,15 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
 
+    if (req.headers?.origin === 'https://mahicouragw.github.io') {
+        res.setHeader('Access-Control-Allow-Origin', req.headers.origin);
+        res.setHeader('Vary', 'Origin');
+        if (req.method === 'OPTIONS') {
+            res.setHeader('Access-Control-Allow-Methods','POST');
+            res.setHeader('Access-Control-Allow-Headers','Content-Type');
+            res.statusCode = 204; return res.end();
+        }
+    }
     if (req.method !== 'POST') {
         res.statusCode = 405;
         return res.end(JSON.stringify({ error: 'POST required' }));
