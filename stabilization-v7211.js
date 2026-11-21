@@ -182,6 +182,8 @@
             if(input){input.disabled=false;input.removeAttribute('aria-busy');input.value='';}
         };
         Game.finishCommandCombat=function(){
+            const ui=window.GestureAccessibility?.UI;
+            if(ui?.active() && /^Combat actions/.test(ui.menu?.title || '') && !this.state.inCombat){ ui.menu=null;ui.stack=[];ui.render(); }
             const roster = document.getElementById('encounter-roster');
             if (roster) roster.open = false;
             const status=document.getElementById('combat-status');status?.classList.add('hidden');

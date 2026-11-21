@@ -19,7 +19,7 @@
 (() => {
     'use strict';
 
-    const ENDPOINT = 'api/npc';
+    const ENDPOINT = window.location.hostname === 'mahicouragw.github.io' ? 'https://black-sold-ultimate.vercel.app/api/npc' : 'api/npc';
     const MAX_HISTORY = 6;
 
     const AiNpc = {
@@ -196,7 +196,10 @@
             }
 
             if (!reply) {
-                reply = `${npc.name} says: "I cannot answer that right now. Please try again shortly."`;
+                const room = window.WorldData.locations[game.state.location];
+                game.addNarrative('Online conversation unavailable. Local dialogue follows.', 'system');
+                reply = /\b(exit|direction|road|where)\b/i.test(question) ? `${room.name}. ${game.describeExits(room)}`
+                    : npc.dialog?.length ? game.npcDialog(npc) : `Welcome to ${room.name}. Try Look Around to explore with me.`;
             }
 
             // Remember the exchange so the conversation has continuity.

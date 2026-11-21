@@ -32,7 +32,7 @@
         const summary=this.state.battleSummary||(this.state.battleSummary={id:`battle_${Date.now().toString(36)}_${(++battleSequence).toString(36)}`,xp:0,gold:0,defeated:[],enemyRecords:[],drops:[],levels:0,location:this.state.location,settled:false});
         summary.xp+=Math.max(0,e.xp||0);summary.gold+=Math.max(0,e.gold||0);summary.defeated.push(e.name);
         summary.enemyRecords.push({name:e.name,xp:e.xp||0,gold:e.gold||0,boss:Boolean(e.boss),finalBoss:Boolean(e.finalBoss),elite:Boolean(e.elite)});
-        this.state.kills++;this.checkQuests('kill',e.name);this.recordDefeatedForArea?.(summary.location,e.name,Boolean(this.state.arena?.active));this.restoreMonsterDebuffs?.();
+        this.state.kills++;window.StarlightFair?.victory(this,e);this.checkQuests('kill',e.name);this.recordDefeatedForArea?.(summary.location,e.name,Boolean(this.state.arena?.active));this.restoreMonsterDebuffs?.();
         if(window.ProfessionalAudioCombat)await window.ProfessionalAudioCombat.monsterDefeat(e.name);
         else this.addNarrative(`${e.name} defeated.`,'combat');
 

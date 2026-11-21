@@ -66,7 +66,8 @@ const Game = {
         const active = activeId && roster.heroes[activeId];
         if (!active) return; // No hero — show title screen as normal
         // If the player was in the middle of a game (has a location), resume directly
-        const savedLoc = active.location || active.state?.location;
+        let savedLoc = active.location || active.state?.location;
+        if (savedLoc?.startsWith('starlight_') && !window.StarlightFair?.sync(this)) savedLoc = 'kaliwasch';
         if (savedLoc && WorldData.locations[savedLoc]) {
             // Restore the hero state and jump straight into gameplay
             try {
@@ -1207,9 +1208,10 @@ const Game = {
         c = c.replace(/^(?:walk|move|go) (north|south|east|west|left|right|up|down)$/, '$1');
         c = ({left:'west',right:'east','climb up':'up','climb down':'down'})[c] || c;
 
-        // Movement (N/S/E/W/Up/Down only — no diagonals)
-        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd'].includes(c)) {
-            const dirMap = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
+        // Compass buttons, typed commands and speech share the same real exits.
+        c = c.replace(/^(?:walk|go|move) (?=(?:north|south)[ -]?(?:east|west)$)/, '').replace(/^(north|south)[ -](east|west)$/, '$1$2');
+        if (['north', 'n', 'south', 's', 'east', 'e', 'west', 'w', 'up', 'u', 'down', 'd','northeast','northwest','southeast','southwest','ne','nw','se','sw'].includes(c)) {
+            const dirMap = {ne:'northeast',nw:'northwest',se:'southeast',sw:'southwest', n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down' };
             this.move(dirMap[c] || c);
             return;
         }
@@ -2379,6 +2381,7 @@ const Game = {
 
     companionTurn() {
         return this.combatSequence(async () => {
+            window.StarlightFair?.elf(this);
             const active = this.state.companions.filter(c => c.hp > 0).slice(0, 3);
             for (const companion of active) {
                 if (!this.state.enemy || this.state.enemy.hp <= 0) break;

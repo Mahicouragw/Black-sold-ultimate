@@ -134,9 +134,10 @@ test('combat menu, mana failures, defend and real damage share original engine',
     G.enterLocation('forest'); G.startCombat('root goblin'); G.state.sacred.enemyQueue = [];
     w.Math.random = () => .5;
     const enemy = G.state.enemy; enemy.hp = enemy.maxHp = 10000;
-    UI.context(); assert.match(UI.menu.title, /Combat/);
+    assert.match(UI.menu.title, /Combat/, 'encounter opens gesture combat menu automatically');
     UI.menu.choices.find(c => c.label === 'Attack current enemy').run(); await wait(50);
     assert.ok(enemy.hp < 10000);
+    assert.match(UI.menu.title,/Combat/,'attacking keeps combat actions open');
     const mp = G.state.player.mp = 0; G.processCommand('cast shock'); assert.equal(G.state.player.mp, mp);
     assert.match(w.document.getElementById('narrative').textContent, /mana|know/i);
     const id = G.state.location; UI.move('north'); await wait(350); assert.equal(G.state.location, id);

@@ -54,14 +54,14 @@
                     : 'October. Cemetery lanterns burn. Fragments drop only in cemetery fights.'
             });
         }
-        const xmasStart = { y: p.y, m: 11, d: 25 };
-        const xmasEnd = { y: p.y, m: 12, d: 31 };
+        const xmasStart = { y: p.y, m: 12, d: 1 };
+        const xmasEnd = { y: p.y, m: 12, d: 25 };
         if (inRange(p, xmasStart, xmasEnd)) {
             out.push({
                 id: 'christmas',
                 title: 'Starlight Watch',
                 climax: p.m === 12 && p.d === 25,
-                hint: 'From 25 November through 31 December the city keeps a quiet starlight watch.'
+                hint: 'December 1–25: walk northeast from Kaliwasch Market Square to Starlight Fair. Say Christmas for activities.'
             });
         }
         const nyA = p.m === 12 && p.d === 31;
@@ -227,8 +227,11 @@
         if (!G || G._v729Seasonal) return false;
         G._v729Seasonal = true;
 
+
         const prevEnter = G.enterLocation.bind(G);
         G.enterLocation = function (locId) {
+            const open = window.StarlightFair?.sync(this);
+            if (open === false && locId?.startsWith('starlight_')) locId = 'kaliwasch';
             prevEnter(locId);
             syncWindows(this);
             onEnter(this, locId);
@@ -247,6 +250,7 @@
         const prevCmd = G.processCommand.bind(G);
         G.processCommand = function (raw) {
             syncWindows(this);
+            if (window.StarlightFair?.command(this, raw)) return;
             if (refuseExamine(this, raw)) return;
             const c = String(raw || '').trim().toLowerCase();
             if (c === 'events' || c === 'calendar' || c === 'season') {
@@ -258,6 +262,7 @@
         };
 
         window.SeasonalEvents = { activeEvents, westernEaster, parts, syncWindows, banner, TZ };
+        window.StarlightFair?.sync(G);
         console.log('v7.25.9 seasonal calendar ready');
         return true;
     }
