@@ -182,6 +182,8 @@
             if(input){input.disabled=false;input.removeAttribute('aria-busy');input.value='';}
         };
         Game.finishCommandCombat=function(){
+            const roster = document.getElementById('encounter-roster');
+            if (roster) roster.open = false;
             const status=document.getElementById('combat-status');status?.classList.add('hidden');
             this.updateCombatActionAvailability();
             const input=document.getElementById('cmd-input');
@@ -202,14 +204,18 @@
 
         const oldStart=Game.startCombat.bind(Game);Game.startCombat=function(name,queued=false){const add=this.addNarrative;if(!queued)this.addNarrative=function(text,type){if(/^A group of \d+ monsters surrounds you!$/.test(String(text))||/^You encounter (?:\d+ monsters?:|[^.]+\.$)/.test(String(text)))return;return add.call(this,text,type);};try{oldStart(name,queued);}finally{this.addNarrative=add;}if(!this.state.inCombat||!this.state.enemy)return;
             this.state.combatTransition=false;const p=this.state.player,e=this.state.enemy,tier=(p.level||1)<=4?'early':(p.level||1)<=12?'mid':'late',mult=tier==='early'?.85:tier==='late'?1.15:1;e.difficultyTier=tier;if(!e.boss&&!e.finalBoss){e.attack=Math.max(2,Math.floor(e.attack*mult));e.defense=Math.max(0,Math.floor((e.defense||0)*mult));}
-            if(queued){this.updateEnemyHUD();return;}
+            if(queued){
+                this.updateEnemyHUD();
+                if(e.hp > 0) this.emitGameEvent(`Next Attack target: ${this.attackTargetLabel(e, null, true)}.`, 'combat');
+                return;
+            }
             const names=[name,...(this.state.sacred?.enemyQueue||[])];this.state.encounterGroupNames=names;const description=formatGroups(names),message=`You encountered ${description}.`;this.beginCommandCombat(description);
             const panel=document.getElementById('combat-panel');if(panel){panel.hidden=true;panel.classList.add('hidden');panel.setAttribute('aria-label',`Combat encounter: ${description}`);panel.setAttribute('aria-hidden','true');}
             this.updateEnemyGroupHUD?.();this.updateCombatActionAvailability?.();this.emitGameEvent(message,'combat',{critical:true,eventId:`${this.state.battleSummary?.id||Date.now()}:encounter`});const input=document.getElementById('cmd-input');if(input&&this.state.inCombat){input.disabled=false;input.removeAttribute('aria-busy');input.focus();}
         };
 
-        const oldGroupHud=Game.updateEnemyGroupHUD?.bind(Game);if(oldGroupHud)Game.updateEnemyGroupHUD=function(){oldGroupHud();const box=document.getElementById('enemy-group-list');if(!box)return;const names=(this.aliveEncounterTargets?.()||[]).map(target=>target.name);if(!names.length)return;const description=formatGroups(names),summary=document.createElement('p');summary.className='enemy-group-summary';summary.textContent=`Enemy group: ${description}.`;box.prepend(summary);box.setAttribute('aria-label',`Living enemy group: ${description}`);const text=document.getElementById('combat-status-text');if(text&&this.state.inCombat)text.textContent=`Fighting ${description}. Current target: ${this.state.enemy?.name}, ${Math.max(0,this.state.enemy?.hp||0)} health. Use commands to act.`;};
-        const oldEnemyHud=Game.updateEnemyHUD.bind(Game);Game.updateEnemyHUD=function(){oldEnemyHud();this.updateCombatActionAvailability?.();const text=document.getElementById('combat-status-text');if(text&&this.state.inCombat&&this.state.enemy)text.textContent=`Current target: ${this.state.enemy.name}, ${Math.max(0,this.state.enemy.hp)} health. Choose a combat action or type a command.`;};
+        const oldGroupHud=Game.updateEnemyGroupHUD?.bind(Game);if(oldGroupHud)Game.updateEnemyGroupHUD=function(){oldGroupHud();const box=document.getElementById('enemy-group-list');if(!box)return;const names=(this.aliveEncounterTargets?.()||[]).map(target=>target.name);const description=formatGroups(names);const summary=document.querySelector('#encounter-roster .enemy-group-summary');if(summary)summary.textContent=names.length?`Enemy group: ${description}.`:'';if(!names.length)return;const text=document.getElementById('combat-status-text');if(text&&this.state.inCombat)text.textContent=`Fighting ${description}. Current target: ${this.state.enemy ? this.attackTargetLabel(this.state.enemy, null, true) : "pending"}, ${Math.max(0,this.state.enemy?.hp||0)} health. Use commands to act.`;};
+        const oldEnemyHud=Game.updateEnemyHUD.bind(Game);Game.updateEnemyHUD=function(){oldEnemyHud();this.updateCombatActionAvailability?.();const text=document.getElementById('combat-status-text');if(text&&this.state.inCombat&&this.state.enemy)text.textContent=`Current target: ${this.attackTargetLabel(this.state.enemy, null, true)}, ${Math.max(0,this.state.enemy.hp)} health. Choose a combat action or type a command.`;};
 
         const previousCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const raw=String(cmd||''),c=raw.toLowerCase().trim();if(!c)return;
             if(this.state.combatTransition){this.addNarrative('The next enemy is advancing. Keep your position.','system');return;}

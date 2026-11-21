@@ -36,11 +36,12 @@
     // but ordinary battle narration reports only natural outcomes.
     Game.playerAttack=function(){
         const p=this.state.player,e=this.state.enemy;if(!p||!e||!this.state.inCombat)return;
+        const label = this.attackTargetLabel?.(e) ?? e.name;
         const blessing=this.state.sacred?.dailyBattleBlessing?.expiresAt>Date.now()?this.state.sacred.dailyBattleBlessing:null;
         const bonusDex=blessing?.type==='dexterity'?blessing.value:0,bonusStr=blessing?.type==='strength'?blessing.value:0;
         const accuracy=Math.max(60,Math.min(97,78+(p.dex+bonusDex-(e.dex||8))*.6)),roll=Math.random()*100;
         if(roll>accuracy){
-            const text=`You miss ${e.name}.`;
+            const text=`You miss ${label}.`;
             if(this.emitGameEvent)this.emitGameEvent(text,'combat',{sfx:['miss']});
             else{this.addNarrative(text,'combat');MusicSystem.playSFX('miss');}
             this.companionTurn();if(this.state.inCombat&&this.state.enemy)this.enemyAttack();return;
@@ -49,7 +50,7 @@
         const effectiveDefense=Math.floor((e.defense||0)*(1-penetration)),variance=Math.floor(Math.random()*11),critChance=Math.max(3,Math.min(30,5+(p.dex+bonusDex)/8));
         const critical=Math.random()*100<critChance;let damage=Math.max(1,(p.weaponDamage||8)+Math.floor((p.str+bonusStr)/2)+variance-Math.floor(effectiveDefense/3));if(critical)damage=Math.floor(damage*1.75);
         e.hp=Math.max(0,e.hp-damage);
-        const goblin=/goblin/i.test(e.name),text=critical?`You deal a critical hit to ${e.name} for ${damage} damage.`:goblin?`You hit ${e.name} for ${damage} damage.`:`You strike ${e.name} for ${damage} damage.`;
+        const goblin=/goblin/i.test(e.name),text=critical?`You deal a critical hit to ${label} for ${damage} damage.`:goblin?`You hit ${label} for ${damage} damage.`:`You strike ${label} for ${damage} damage.`;
         const effects=goblin?['weapon-hit']:['hit'],reaction=goblin?['goblin-reaction']:[];
         if(this.emitGameEvent)this.emitGameEvent(text,'combat',{sfx:effects,reaction});
         else{this.addNarrative(text,'combat');[...effects,...reaction].forEach(effect=>MusicSystem.playSFX(effect));}

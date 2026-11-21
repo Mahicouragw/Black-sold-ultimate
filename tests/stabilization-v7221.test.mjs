@@ -992,13 +992,21 @@ test('(70) the Privacy Policy states only what the app truly does', async () => 
     }
 });
 
-test('(71) legal links are reachable from Settings in both interface modes', async () => {
-    const html = await readFile('index.html', 'utf8');
-    const settings = html.slice(html.indexOf('id="settings-panel"'), html.indexOf('id="settings-panel"') + 9000);
-    assert.match(settings, /href="privacy\.html"/, 'Privacy link in Settings');
-    assert.match(settings, /href="terms\.html"/, 'Terms link in Settings');
-    // Settings is shared by both modes, so no mode-specific hiding is allowed.
-    assert.doesNotMatch(settings, /legal-links[^>]*hidden/, 'legal links are never hidden');
+test('(71) legal links are reachable from Settings in both interface modes', async t => {
+    const {window} = await ready(t);
+    for (const mode of ['blind', 'sighted']) {
+        window.InterfaceMode.apply(mode);
+        window.Game.processCommand('settings');
+        const settings = window.document.getElementById('settings-panel');
+        for (const page of ['privacy.html', 'terms.html']) {
+            const link = settings.querySelector(`a[href="${page}"]`);
+            assert.ok(link, `${page} is linked inside Settings in ${mode} mode`);
+            assert.equal(link.closest('[hidden], .hidden, [inert], [aria-hidden="true"]'), null);
+            link.focus();
+            assert.equal(window.document.activeElement, link, `${page} can receive focus`);
+        }
+        window.Game.closePanels();
+    }
 });
 
 test('(72) legal pages are precached so they work offline in the PWA', async () => {

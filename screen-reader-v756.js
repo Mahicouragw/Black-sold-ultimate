@@ -68,6 +68,13 @@
         'sr.hud.mp': ['Magic {v}', 'మంత్రశక్తి {v}', 'जादुई शक्ति {v}'],
         'sr.hud.xp': ['Experience {v}', 'అనుభవం {v}', 'अनुभव {v}'],
         'sr.hud.gold': ['{v} rupees', '{v} రూపాయలు', '{v} रुपये'],
+        'sr.review': ['Review recent messages', 'ఇటీవలి సందేశాలు చదవండి', 'हाल के संदेश पढ़ें'],
+        'sr.reviewHelp': ['Up to five messages, newest first. Close and reopen to refresh.', 'గరిష్ఠంగా ఐదు సందేశాలు, కొత్తవి ముందు. తాజా సందేశాల కోసం మూసి మళ్లీ తెరవండి.', 'अधिकतम पाँच संदेश, सबसे नया पहले। ताज़ा करने के लिए बंद करके फिर खोलें।'],
+        'sr.reviewType': ['Message type', 'సందేశ రకం', 'संदेश का प्रकार'],
+        'sr.reviewAll': ['All messages', 'అన్ని సందేశాలు', 'सभी संदेश'],
+        'sr.reviewCombat': ['Combat messages', 'పోరాట సందేశాలు', 'लड़ाई के संदेश'],
+        'sr.reviewNoCombat': ['No combat messages in this history.', 'ఈ చరిత్రలో పోరాట సందేశాలు లేవు.', 'इस इतिहास में लड़ाई के संदेश नहीं हैं।'],
+        'sr.reviewEmpty': ['No messages yet.', 'ఇంకా సందేశాలు లేవు.', 'अभी कोई संदेश नहीं है।'],
         'sr.music': ['Music on or off', 'సంగీతం ఆన్ లేదా ఆఫ్', 'संगीत चालू या बंद']
     });
 
@@ -381,10 +388,44 @@
         const oldShow = G.showScreen.bind(G);
         G.showScreen = function (id) {
             const before = this.state.screen;
+            if (id !== 'game-screen') review.open = false;
             const result = oldShow(id);
             try { screenChanged(id, before); } catch (error) { console.warn('screen focus:', error); }
             return result;
         };
+
+        const review = $('message-review');
+        const filter = $('message-review-filter');
+        let snapshot = [];
+        const renderReview = () => {
+            const list = review.querySelector('ol');
+            list.replaceChildren();
+            if (!review.open) return;
+            const combatOnly = filter.value === 'combat';
+            const lines = snapshot.filter(line => !combatOnly || line.combat).slice(0, 5).map(line => line.text);
+            for (const text of lines.length ? lines : [N.t(combatOnly ? 'sr.reviewNoCombat' : 'sr.reviewEmpty')]) {
+                const item = document.createElement('li');
+                item.textContent = text;
+                list.append(item);
+            }
+        };
+        const labelReview = () => {
+            review.querySelector('summary').textContent = N.t('sr.review');
+            $('message-review-help').textContent = N.t('sr.reviewHelp');
+            filter.labels[0].textContent = N.t('sr.reviewType');
+            filter.options[0].textContent = N.t('sr.reviewAll');
+            filter.options[1].textContent = N.t('sr.reviewCombat');
+            renderReview();
+        };
+        labelReview();
+        window.addEventListener('bsu-language', labelReview);
+        filter.addEventListener('change', renderReview);
+        review.addEventListener('toggle', () => {
+            snapshot = review.open ? [...$('narrative').querySelectorAll('p')].map(line => ({
+                text: line.textContent.trim(), combat: line.classList.contains('combat')
+            })).filter(line => line.text).reverse() : [];
+            renderReview();
+        });
 
         watchActions();
 

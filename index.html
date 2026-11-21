@@ -201,6 +201,8 @@
                 <button type="button" class="menu-btn" data-tutorial="where">Where to go</button>
                 <button type="button" class="menu-btn" data-tutorial="do">What to do</button>
                 <button type="button" class="menu-btn" data-tutorial="fight">How to fight</button>
+                <button type="button" class="menu-btn" data-tutorial="practice">Practice choosing a target</button>
+                <button type="button" class="menu-btn" data-tutorial="court">Practice returning to court</button>
                 <button type="button" class="menu-btn" data-tutorial="heal">How healing works</button>
                 <button type="button" class="menu-btn" data-tutorial="doors">Opening doors with magic</button>
                 <button type="button" class="menu-btn" data-tutorial="racing">Car racing and horse racing</button>
@@ -268,18 +270,33 @@
                 <div class="hud-right">
                     <span class="stat">💰 <span id="gold">0</span></span>
                     <span id="turn-info">Solo</span>
-                    <span id="online-status" class="online-status" aria-live="polite">Connecting…</span>
+                    <span id="online-status" class="online-status" aria-live="off">Playing locally</span>
                     <button id="btn-hud-music" class="icon-btn" title="Toggle Music">🎵</button>
                 </div>
             </div>
 
             <!-- Game Area -->
             <div id="game-area">
-                <div id="location-art" class="ascii-art" aria-live="polite"></div>
+                <div id="location-art" class="ascii-art" aria-hidden="true"></div>
                 <div id="narrative" class="narrative" role="log" aria-live="polite"></div>
+                <details id="message-review">
+                    <summary>Review recent messages</summary>
+                    <p id="message-review-help"></p>
+                    <label for="message-review-filter">Message type</label>
+                    <select id="message-review-filter" aria-controls="message-review-list">
+                        <option value="all">All messages</option>
+                        <option value="combat">Combat messages</option>
+                    </select>
+                    <ol id="message-review-list"></ol>
+                </details>
                 <section id="combat-status" class="inline-combat-status hidden" aria-labelledby="combat-status-heading">
                     <h3 id="combat-status-heading">Current encounter</h3>
                     <p id="combat-status-text"></p>
+                    <details id="encounter-roster">
+                        <summary>Inspect living enemies</summary>
+                        <p class="enemy-group-summary"></p>
+                        <ul id="enemy-group-list" class="enemy-group-list" aria-label="Living enemies"></ul>
+                    </details>
                     <div id="combat-actions" class="inline-combat-actions" role="group" aria-label="Combat actions">
                         <button type="button" class="combat-action-btn" data-combat-command="attack" accesskey="1">⚔️ Attack</button>
                         <button type="button" class="combat-action-btn" data-combat-command="healing spell" accesskey="2">✨ Healing Spell</button>
@@ -304,20 +321,43 @@
 
             <!-- Action Bar -->
             <div class="action-bar">
-                <div class="dpad" aria-label="Available directions">
+                <div class="dpad" role="group" aria-label="Available directions">
+                    <button class="dir-btn dir-nw" data-cmd="northwest" aria-label="northwest">↖ NW</button>
                     <button class="dir-btn dir-n" data-cmd="north" title="North (W / ↑)">↑ N</button>
-                    <button class="dir-btn dir-up" data-cmd="up" title="Up (U)">▲ Up</button>
+                    <button class="dir-btn dir-ne" data-cmd="northeast" aria-label="northeast">↗ NE</button>
                     <button class="dir-btn dir-w" data-cmd="west" title="West (A / ←)">← W</button>
                     <span class="dpad-center" aria-hidden="true">◆</span>
                     <button class="dir-btn dir-e" data-cmd="east" title="East (D / →)">→ E</button>
-                    <button class="dir-btn dir-down" data-cmd="down" title="Down (J)">▼ Down</button>
+                    <button class="dir-btn dir-sw" data-cmd="southwest" aria-label="southwest">↙ SW</button>
                     <button class="dir-btn dir-s" data-cmd="south" title="South (S / ↓)">↓ S</button>
+                    <button class="dir-btn dir-se" data-cmd="southeast" aria-label="southeast">↘ SE</button>
+                    <button class="dir-btn dir-up" data-cmd="up" title="Up (U)">▲ Up</button>
+                    <button class="dir-btn dir-down" data-cmd="down" title="Down (J)">▼ Down</button>
                 </div>
+                <details id="story-road"><summary>Walk the story road</summary>
+                    <p>Tap a direction for one step, or hold it to keep walking. Release to stop. With TalkBack, activate a button for one step. Voice commands include “walk road”, “walk left” (west), “climb up”, and “open chat rooms”.</p>
+                    <label for="road-target">Story or map destination</label>
+                    <select id="road-target"><option value="royal_palace">1. Royal Palace — the dispatch</option><option value="grand_temple">2. Grand Temple — the bells</option><option value="forest">3. Forest — beyond the walls</option></select>
+                    <p id="road-note" role="status"></p><button id="road-step" type="button">Walk toward destination</button>
+                    <button type="button" id="road-rediscover">Reset discovery narration for this hero</button>
+                </details>
                 <div class="action-btns">
                     <button class="action-btn" id="btn-look-around" data-cmd="look around">🧭 Look Around</button>
+                    <details id="room-speakers">
+                        <summary>People here</summary>
+                        <div id="room-speaker-actions"></div>
+                    </details>
                     <button class="action-btn" id="btn-where-am-i" data-cmd="where am i">📍 Where Am I</button>
                     <button class="action-btn" data-cmd="look">👁️ Look</button>
                     <button class="action-btn" data-cmd="inventory">🎒 Items</button>
+                    <button type="button" class="action-btn" data-cmd="check fishing">Check fishing spot</button>
+                    <button type="button" class="action-btn" data-cmd="cast fishing line">Cast fishing line</button>
+                    <button type="button" class="action-btn" data-cmd="cooking recipes">Cooking recipes</button>
+                    <div id="cooking-choice" role="group" aria-label="Choose a cooking ingredient" hidden>
+                        <label for="cooking-ingredient">Ingredient</label>
+                        <select id="cooking-ingredient"></select>
+                        <button type="button" id="cook-selected" class="menu-btn">Cook selected ingredient</button>
+                    </div>
                     <button class="action-btn" data-cmd="stats">📊 Stats</button>
                     <button class="action-btn" data-cmd="map">🗺️ Map</button>
                     <button class="action-btn" data-cmd="quests">📜 Quests</button>
@@ -342,7 +382,6 @@
                 <div class="enemy-health">
                     <span>❤️ <span id="enemy-hp">50/50</span></span>
                 </div>
-                <div id="enemy-group-list" class="enemy-group-list" aria-live="polite"></div>
                 <div class="combat-actions">
                     <button class="combat-btn" data-action="attack">⚔️ Attack</button>
                     <button class="combat-btn" data-action="spell">Spells</button>
@@ -597,6 +636,8 @@
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
                     <div class="stat-row"><span>Version</span><span id="settings-version">7.58.0</span></div>
+                    <button type="button" id="check-online-service" class="menu-btn">Check online connection</button>
+                    <p id="service-check-result" role="status"></p>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
@@ -635,7 +676,12 @@
                     </fieldset>
                     <fieldset class="audio-settings" aria-describedby="audio-settings-help">
                         <legend>Audio and device speech</legend>
+                        <label class="setting-toggle"><input type="checkbox" checked id="setting-character-recordings"> Play English NPC character recordings when available</label>
                         <label class="setting-toggle" for="setting-music-enabled"><input type="checkbox" id="setting-music-enabled"> Music on</label>
+                        <button type="button" class="menu-btn" id="check-soundtrack" hidden>Check offline soundtrack</button>
+                        <button type="button" class="menu-btn" id="download-soundtrack" hidden>Download offline soundtrack (59 MiB)</button>
+                        <button type="button" class="menu-btn" id="remove-soundtrack" hidden>Remove offline soundtrack</button>
+                        <p role="status" id="soundtrack-status"></p>
                         <label for="setting-music-volume">Music volume <output id="setting-music-volume-value" for="setting-music-volume">32%</output></label>
                         <input type="range" id="setting-music-volume" min="0" max="100" step="1" value="32" aria-label="Music volume, 0 to 100 percent">
                         <label class="setting-toggle" for="setting-music-shuffle"><input type="checkbox" id="setting-music-shuffle"> Smart music shuffle</label>
@@ -678,6 +724,7 @@
                         <p class="settings-note">Use Send Feedback in Chat Rooms to contact the development team.</p>
                     </div>
                     <button id="btn-cloud-save" class="menu-btn">☁️ Save to Cloud</button>
+                    <p id="cloud-save-result" role="status"></p>
                     <button id="btn-account-signout" class="menu-btn">Sign Out</button>
                 </div>
                 <button class="menu-btn close-btn">Close</button>
@@ -764,6 +811,8 @@
     <script src="expansion.js"></script>
     <script src="regions-v4.js"></script>
     <script src="online.js"></script>
+    <script defer src="npc-voices.js"></script>
+    <script src="road-walking.js"></script>
     <script src="game.js"></script>
     <script defer src="sacred.js"></script>
     <script defer src="alexa-parity.js"></script>

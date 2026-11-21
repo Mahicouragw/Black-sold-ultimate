@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Practice returning to court</title>
+<style>body{font:1.1rem/1.5 system-ui;color:#faf8ef;background:#181822;max-width:38rem;margin:auto;padding:1rem}h1{font-size:1.45rem}button{font:inherit;padding:.65rem;margin:.25rem;color:inherit;background:#34344a;border:1px solid #aaa;border-radius:.35rem}button:focus-visible{outline:3px solid gold}</style>
+<main><h1>Practice returning to court</h1><p>Start with the return to court, or rehearse the fight first. This is practice: no hero, connection, or real rewards are needed.</p>
+<button id="full">Practice the full quest</button><p id="place" tabindex="-1"></p><button id="guide">Read quest directions</button><div id="actions" role="group" aria-label="Practice actions"></div><p role="status" id="message" tabindex="-1"></p>
+<button id="review">Review latest cue</button><button id="speak" hidden>Speak latest cue with browser voice</button>
+<p id="voice-note" role="status"></p><button id="reset">Restart court practice</button></main>
+<script>
+const rooms = {
+    armory: {name:'Royal Palace Armory', exits:{west:'court'}, hint:'Go west to the Royal Palace entrance.'},
+    court: {name:'Royal Palace entrance', exits:{east:'armory', west:'library'}, hint:'You are at court. Choose Report victory to collect the practice reward.'},
+    library: {name:'Royal Palace Library', exits:{east:'court'}, hint:'Go east to the Royal Palace entrance.'}
+};
+let room, paid;
+const place = document.querySelector('#place'), actions = document.querySelector('#actions'), message = document.querySelector('#message'), guide = document.querySelector('#guide');
+// Read existing text only: reviewing a cue never invokes its game action.
+const latestCue = () => message.textContent ? message : place;
+document.querySelector('#review').onclick = () => latestCue().focus();
+const speak = document.querySelector('#speak');
+if (window.speechSynthesis && typeof window.SpeechSynthesisUtterance === 'function') {
+    speak.hidden = false;
+    let current;
+    speak.onclick = () => {
+        const note = document.querySelector('#voice-note');
+        const utterance = new SpeechSynthesisUtterance(latestCue().textContent);
+        current = utterance;
+        note.textContent = '';
+        utterance.lang = document.documentElement.lang;
+        utterance.onerror = () => {
+            if (current === utterance) note.textContent = 'Browser speech was interrupted or unavailable. Choose Review latest cue to read the same text.';
+        };
+        try { speechSynthesis.cancel(); speechSynthesis.speak(utterance); }
+        catch { utterance.onerror(); }
+    };
+}
+function button(label, action) {
+    const b = document.createElement('button'); b.textContent = label; b.onclick = action; actions.append(b);
+}
+function enter(id, focus) {
+    guide.hidden = false; room = id; place.textContent = 'Location: ' + rooms[id].name; actions.replaceChildren();
+    for (const [direction, next] of Object.entries(rooms[id].exits)) {
+        button(direction + ' to ' + rooms[next].name, () => enter(next, true));
+    }
+    if (id === 'court' && !paid) button('Report victory', () => {
+        paid = true; enter(room, true); message.textContent = 'Practice complete. The court awards 250 experience and 180 rupees in this exercise only.';
+    });
+    if (focus) guide.focus();
+    message.textContent = focus ? 'You are at ' + rooms[id].name + '.' : '';
+}
+guide.onclick = () => { message.textContent = paid ? 'You have already collected the practice reward.' : rooms[room].hint; };
+function restart(focus) { paid = false; enter('armory', focus); }
+function startFight() {
+    paid = false;
+    room = null;
+    guide.hidden = true;
+    place.textContent = 'Practice fight: both enemies are training goblins. Attack the wounded one.';
+    actions.replaceChildren();
+    message.textContent = '';
+    button('Attack target 1: training goblin, 12 of 12 health', () => {
+        message.textContent = 'Target 1 has full health. Inspect target 2 and try again.';
+    });
+    button('Attack target 2: training goblin, 4 of 12 health', () => {
+        enter('armory', true);
+        message.textContent = 'Final battle won. Your reward is not collected yet. Read quest directions to find the court.';
+    });
+    place.focus();
+}
+document.querySelector('#full').onclick = startFight;
+document.querySelector('#reset').onclick = () => restart(true);
+restart(false);
+</script></html>

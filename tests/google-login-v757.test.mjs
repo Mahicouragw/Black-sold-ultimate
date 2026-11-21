@@ -113,3 +113,52 @@ test('the automatic cloud save is written to the online database and can be read
     assert.equal(heroes[0].player.name, 'Mahi');
     assert.equal((await sql(`select display_name from bsu_social.profiles where id = 'uid-mahi'`))[0].display_name, 'Mahi', 'other players see the hero name');
 });
+
+test('gameplay status separates device connectivity from a confirmed service session without moving focus', async t => {
+    const {window,O} = await start(t,{user:googleUser('hud-user','Asha')});
+    const hud=window.document.getElementById('online-status');
+    const initializing=O.init(); assert.match(hud.textContent,/Connecting/);
+    await initializing; assert.match(hud.textContent,/Connected to online services/);
+    assert.equal(hud.getAttribute('aria-live'),'off');
+    const focused=window.document.activeElement;
+    Object.defineProperty(window.navigator,'onLine',{value:false,configurable:true});
+    window.dispatchEvent(new window.Event('offline')); assert.equal(hud.textContent,'Playing locally');
+    Object.defineProperty(window.navigator,'onLine',{value:true,configurable:true});
+    window.dispatchEvent(new window.Event('online')); assert.equal(hud.textContent,'Playing locally');
+    await O.loadProfile(false); assert.match(hud.textContent,/Connected/);
+    assert.equal(window.document.activeElement,focused);
+});
+
+test('Settings rechecks the same player once without switching screens or accepting stale results', async t => {
+    const {window,O}=await start(t,{user:googleUser('check-user','Asha')});
+    await O.init(); const d=window.document, btn=d.querySelector('#check-online-service');
+    O.showSettings(); const screen=window.Game.state.screen, hero=window.Game.state.player;
+    let resolve,calls=0;
+    O.client.rpc=()=>{calls++;return new Promise(r=>{resolve=r;});};
+    btn.click(); btn.click(); assert.equal(calls,1);
+    window.dispatchEvent(new window.Event('offline'));
+    resolve({data:{id:'check-user'}}); await wait(0);
+    assert.match(d.querySelector('#service-check-result').textContent,/not confirmed/);
+    assert.equal(O.confirmedServiceUser,null);
+    btn.click();resolve({data:[{id:'check-user'}]});await wait(0);
+    assert.match(d.querySelector('#online-status').textContent,/Connected/);
+    assert.equal(window.Game.state.screen,screen);assert.equal(window.Game.state.player,hero);
+    assert.equal(btn.hasAttribute('aria-disabled'),false);
+});
+
+test('manual backup distinguishes device persistence from an acknowledged write', async t => {
+    const {window,O}=await start(t,{user:googleUser('backup-check','Asha')});
+    await O.init(); const G=window.Game, d=window.document;
+    G.state.activeHeroId='hero-check'; G.state.player={name:'Asha'};
+    G.getSaveData=()=>({player:{name:'Asha'},location:'forest'});
+    let uploads=0,finish;
+    O.saveGame=()=>{uploads++;return new Promise(resolve=>{finish=resolve;});};
+    const status=d.querySelector('#cloud-save-result');
+    const first=G.requestCloudBackup();await G.requestCloudBackup();
+    assert.equal(uploads,1);assert.match(status.textContent,/Waiting for cloud confirmation/);
+    assert.equal(G.getRoster().heroes['hero-check'].location,'forest');
+    finish(false);await first;assert.match(status.textContent,/Saved on this device\. Cloud backup not confirmed/);
+    const second=G.requestCloudBackup();finish(true);await second;assert.match(status.textContent,/server confirmed/);
+    G.persistLocalRoster=()=>{throw Error('quota');};await G.requestCloudBackup();
+    assert.match(status.textContent,/Device save failed/);assert.equal(uploads,2);
+});

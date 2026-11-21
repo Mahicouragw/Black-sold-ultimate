@@ -329,3 +329,34 @@ test('every new line exists in English, Telugu and Hindi', async t => {
         assert.match(hi, /[\u0900-\u097F]/, `${key} has Hindi text`);
     }
 });
+
+test('message review is a stationary newest-first snapshot, not a replay of commands', async t => {
+    const {D,G} = await liveGame(t);
+    const log = D.querySelector('#narrative'), review = D.querySelector('#message-review');
+    const read = () => [...review.querySelectorAll('li')].map(li => li.textContent);
+    const toggle = async () => { review.querySelector('summary').click(); await wait(15); };
+    log.replaceChildren();
+    await toggle(); assert.deepEqual(read(), ['No messages yet.']); await toggle();
+    for (let i=1;i<=6;i++) G.addNarrative(`Cue ${i}`);
+    await toggle(); assert.deepEqual(read(), ['Cue 6','Cue 5','Cue 4','Cue 3','Cue 2']);
+    G.addNarrative('Cue 7'); assert.equal(read()[0],'Cue 6');
+    await toggle(); await toggle(); assert.equal(read()[0],'Cue 7');
+    assert.equal(log.children.length,7);
+    G.showScreen('title-screen'); assert.equal(review.open,false);
+});
+
+test('combat filter finds older combat lines without refreshing the snapshot', async t => {
+    const {D,G,window} = await liveGame(t);
+    const review = D.querySelector('#message-review'), filter = review.querySelector('select');
+    const toggle = async () => { review.querySelector('summary').click(); await wait(15); };
+    const read = () => [...review.querySelectorAll('li')].map(li => li.textContent);
+    D.querySelector('#narrative').replaceChildren();
+    G.addNarrative('The goblin blocks.', 'combat');
+    for (let i=0;i<6;i++) G.addNarrative(`Travel ${i}`, 'location');
+    await toggle(); G.addNarrative('Your strike lands.', 'combat');
+    filter.value = 'combat'; filter.dispatchEvent(new window.Event('change'));
+    assert.deepEqual(read(), ['The goblin blocks.']);
+    await toggle(); await toggle(); assert.deepEqual(read(), ['Your strike lands.', 'The goblin blocks.']);
+    await toggle(); D.querySelector('#narrative').replaceChildren(); await toggle();
+    assert.deepEqual(read(), ['No combat messages in this history.']);
+});

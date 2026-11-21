@@ -147,3 +147,7 @@ The Car Racing District uses only the recorded files above: GGBotNet’s engine-
 - CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 - CC BY-SA 3.0: https://creativecommons.org/licenses/by-sa/3.0/
 - MIT: https://opensource.org/licenses/MIT
+
+### NPC character dialogue (`assets/voices/`)
+
+Palace Courier and Merchant Aldric use the two auditioned synthetic character voices. The remaining English cast uses original game dialogue rendered with hexgrad's Kokoro-82M v1.0 neural speech model. Each character has a distinct blend of two English style embeddings (65% primary, 35% secondary); these are synthetic performances, not recordings of the game's narrator. Model and voice assets: Apache-2.0, from `onnx-community/Kokoro-82M-v1.0-ONNX` (`kokoro-q8-shards@1.0.0`), and `kokoro-local-runtime@0.1.0` (Kokoro voice tensors). The game ships the resulting MP3s, not the inference model. No player dialogue is uploaded to generate this audio.

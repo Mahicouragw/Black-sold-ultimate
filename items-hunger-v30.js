@@ -311,13 +311,25 @@
             || null;
     }
 
+    const lastCookedMeal = new WeakMap();
     function eatFood(game, item) {
         const p = settleHunger(game);
         const gain = Math.max(1, Math.min(100, Number(item.satiety || item.value || 15)));
-        if (p.satiety >= 99.5) {
+        // Existing saves identify skill-cooked food by its name, effect and power.
+        const cooked = item.type === 'food' && item.effect === 'heal' && /^cooked /i.test(item.name) && item.power > 0;
+        const healed = cooked ? Math.max(0, Math.min(item.power, p.maxHp - p.hp)) : 0;
+        if (cooked) {
+            const last = lastCookedMeal.get(p);
+            if (item.quantity <= 0 || (last?.name === item.name && Date.now() - last.at < 400)) return false;
+        }
+        if (p.satiety >= 99.5 && !healed) {
             const text = T('eat.full', { item: item.name }, `You are already full. Keep the ${item.name} for later.`);
             game.addNarrative(text, 'system');
             return false;
+        }
+        if (cooked) {
+            lastCookedMeal.set(p, {name:item.name, at:Date.now()});
+            p.hp += healed;
         }
         // A real meal fills the hero completely; a snack only takes the edge off.
         const meal = gain >= HUNGER.meal;
@@ -331,7 +343,8 @@
         const after = meal ? T('eat.meal', { hours: HUNGER.hours }, `A proper meal. You will not be hungry for about ${HUNGER.hours} hours.`)
             : p.satiety > HUNGER.threshold ? T('eat.snack', {}, 'That takes the edge off your hunger.')
                 : T('eat.stillHungry', {}, 'It helps a little, but you are still hungry.');
-        const text = `${T('eat.ate', { item: item.name }, `You eat ${item.name}.`)} ${after}`;
+        const recovery = cooked ? ' ' + T('eat.healed', {hp:healed}, `Recovered ${healed} HP.`) : '';
+        const text = `${T('eat.ate', { item: item.name }, `You eat ${item.name}.`)}${recovery} ${after}`;
         if (game.emitGameEvent) game.emitGameEvent(text, 'item', { sfx: ['eat'] });
         else { game.addNarrative(text, 'item'); window.MusicSystem?.playSFX?.('eat'); }
         game.updateHUD?.();
@@ -441,7 +454,9 @@
 
         const prevUse = G.useItem.bind(G);
         G.useItem = function (name) {
-            const item = this.state.inventory.find(i => i.name.toLowerCase().includes(String(name || '').toLowerCase()));
+            const q = String(name || '').trim().toLowerCase();
+            const item = this.state.inventory.find(i => i.name?.toLowerCase() === q)
+                || this.state.inventory.find(i => i.name?.toLowerCase().includes(q));
             if (item && (item.type === 'food' || item.effect === 'hunger')) return eatFood(this, item);
             return prevUse(name);
         };

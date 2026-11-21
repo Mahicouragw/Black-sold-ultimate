@@ -322,7 +322,28 @@ class AudioManagerController {
         console.log('AudioManager initialized: bounded players, smart playlists, Web Audio SFX and device TTS.');
     }
 
+    stopCharacterVoice() {
+        const clip = this.characterClip;
+        if (!clip) return;
+        this.characterClip = null; clip.onended = null; clip.pause();
+    }
+
+    playCharacterVoice(paths) {
+        this.stopCharacterVoice();
+        const play = index => {
+            const clip = this.characterClip = new Audio(paths[index]);
+            clip.onended = () => {
+                if (this.characterClip !== clip) return;
+                this.characterClip = null;
+                if (index + 1 < paths.length) play(index + 1);
+            };
+            clip.play()?.catch(() => { if (this.characterClip === clip) this.characterClip = null; });
+        };
+        play(0);
+    }
+
     pausePageAudio() {
+        this.stopCharacterVoice();
         if(this.pageSuspended)return;
         this.visibilityResume={world:Boolean(this.worldAudio&&!this.worldAudio.paused),overlay:Boolean(this.overlayAudio&&!this.overlayAudio.paused)};
         this.pageSuspended=true;++this.playbackSession;this.pendingPlayback=null;

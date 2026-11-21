@@ -47,3 +47,18 @@ iOS project generation succeeds cross-platform, but compiling/signing must be do
 ## PWA
 
 Open the HTTPS website in a compatible browser and choose **Install App**, or use the browser's install menu. The service worker caches the offline game shell and runtime static assets. Online authentication, chat, translation, and multiplayer still require a connection.
+
+The PWA installs gameplay cues (including movement and combat effects) with the
+shell. Background music streams online unless downloaded separately. After the
+service worker takes control, choose **Settings → Download offline soundtrack**
+(about 59 MiB). Wait for “Soundtrack ready offline” before disconnecting. Retry
+incomplete downloads to fetch only missing tracks. Native bundles still include
+the music files. Browser storage eviction can remove downloaded tracks.
+
+Use **Settings → Check offline soundtrack** to count the expected tracks still
+in browser storage. This check also works offline and never starts a download.
+It checks the soundtrack only, not sign-in, multiplayer, or device speech voices.
+
+To free that space, choose **Settings → Remove offline soundtrack** and confirm.
+This removes only this game's optional soundtrack cache, not saves, gameplay
+effects, or other apps' downloads. You can download the music again later.
