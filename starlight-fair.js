@@ -34,7 +34,7 @@
     function cityAction(g,c){
         if(!g.state.player)return false;
         const say=t=>g.addNarrative(t,'system'),loc=g.state.location;
-        if(c==='christmas map'){say(`Christmas City. Bell Court connects west to the kitchen, east to the pond and north to Pinecone Exchange. City rows from south to north; each row is listed west to east: ${blocks.map(row=>row.join(', ')).join('; ')}. Visit Clockwork Lobby for a hidden passage.`);return true;}
+        if(c==='christmas map'){say(`Christmas City. Bell Court connects west to the kitchen, east to the pond and north to Pinecone Exchange. City rows from south to north; each row is listed west to east: ${blocks.map(row=>row.join(', ')).join('; ')}. Visit Clockwork Lobby for a hidden passage, and Carolers’ Arch for Advent Row, where one numbered door opens each night of December.`);return true;}
         if(!['christmas protect','christmas ring bell','christmas recruit','christmas decorate','christmas gift','christmas quest'].includes(c))return false;
         const j=journal(g);
         if(c==='christmas quest'){say(`Lantern fawns protected: ${j.rescued}/3. Decorations: ${j.found.join(', ')||'none'}. Tree: ${j.decorated?'lit':'unlit'}. Guard a fawn in the wild districts, collect all three decorations, then visit the Grand Christmas Tree. Santa visits Kaliwasch Market Square on December 25.`);return true;}
@@ -43,7 +43,7 @@
         if(c==='christmas ring bell' && loc===lobby){j.door=true;sync(g);g.updateDirectionButtons(WorldData.locations[lobby].exits);say('The clock slides aside. Go down to the elf workshop.');}
         else if(c==='christmas recruit' && loc===workshop){j.elf=true;say('Pip the Christmas Elf joins you. In Christmas City battles he mends your wounds.');}
         else if(c==='christmas decorate' && loc===tree){if(j.decorated)say('Your star is already shining.');else if(j.found.length<3 || j.rescued<3)say('Guard three fawns and collect a glass ball, ribbon and a silver star first.');else{j.decorated=true;say('You tie the gold ribbon, hang the ruby ball and lift the star. The whole tree lights up! Visit Santa on December 25.');}}
-        else if(c==='christmas gift' && loc===market){if(window.SeasonalEvents.parts(new Date()).d!==25)say('Santa’s sleigh arrives December 25.');else if(!j.decorated)say('Santa asks you to finish decorating the Grand Christmas Tree.');else if(j.gift)say('Santa has already given you this year’s gift.');else{j.gift=true;g.state.player.gold+=250;g.updateHUD();say('Santa Claus steps out of his sleigh and gives you 250 gold for protecting the fawns!');}}
+        else if(c==='christmas gift' && loc===market){if(window.SeasonalEvents.parts(new Date()).d!==25)say('Santa’s sleigh arrives December 25.');else if(!j.decorated)say('Santa asks you to finish decorating the Grand Christmas Tree.');else if(j.gift)say('Santa has already given you this year’s present.');else{j.gift=true;if(window.AdventCalendar?.santaGift)window.AdventCalendar.santaGift(g);else say('Santa Claus steps out of his sleigh, but his sack is still being packed.');}}
         else{say('That action needs its own location. Say Christmas map or Christmas quest.');return true;}
         g.save();return true;
     }
@@ -75,9 +75,12 @@
         const c=String(raw).trim().toLowerCase(), active=sync(g),say=text=>g.addNarrative(text,'system');
         if(!active && g.state.location?.startsWith('starlight_')){g.enterLocation(market);say('The fair has closed. You return to Market Square.');return true;}
         if(!/^christmas(?: |$)/.test(c))return false;
+        // Advent Row owns its own door, story, quest and present commands; the
+        // seasonal wrapper calls this function before anything else.
+        if(window.AdventCalendar?.handle(g,raw))return true;
         if(!active){say('Starlight Fair opens December 1 through December 25, India time.');return true;}
         if(cityAction(g,c))return true;
-        if(c==='christmas'){say('From Kaliwasch Market Square go northeast. Say Christmas map to read the city map, Christmas quest for the tree quest, or Christmas quiz at Bell Court. At Ribbon Ice Pond use fish; in Greta’s kitchen use recipes and cook. Talk to each host through People here.');return true;}
+        if(c==='christmas'){say('From Kaliwasch Market Square go northeast. Say Christmas map to read the city map, Christmas quest for the tree quest, Christmas quiz at Bell Court, or go north from Carolers’ Arch to Advent Row, where one numbered door opens each night: christmas open, christmas story, christmas secret, christmas present. At Ribbon Ice Pond use fish; in Greta’s kitchen use recipes and cook. Talk to each host through People here.');return true;}
         if(c==='christmas help' && g.state.player && !g.state.inCombat){
             if(g.state.location===pond){
                 const {y,m,d}=window.SeasonalEvents.parts(new Date()), day=`${y}-${m}-${d}`;

@@ -153,4 +153,6 @@ The Car Racing District uses only the recorded files above: GGBotNet’s engine-
 Palace Courier and Merchant Aldric use the two auditioned synthetic character voices. The remaining English cast uses original game dialogue rendered with hexgrad's Kokoro-82M v1.0 neural speech model. Each character has a distinct blend of two English style embeddings (65% primary, 35% secondary); these are synthetic performances, not recordings of the game's narrator. Model and voice assets: Apache-2.0, from `onnx-community/Kokoro-82M-v1.0-ONNX` (`kokoro-q8-shards@1.0.0`), and `kokoro-local-runtime@0.1.0` (Kokoro voice tensors). The game ships the resulting MP3s, not the inference model. No player dialogue is uploaded to generate this audio.
 
 ### Starlight Fair
-Ten original instrumental miniatures in `assets/fair/`, composed and synthesized for this game using layered bells and a plucked bass. No sampled recordings.
+Sixteen original instrumental miniatures in `assets/fair/`, composed and synthesized for this game using layered bells, a plucked bass and a soft organ pad (`scripts/render-christmas-music.py`). No sampled recordings.
+
+The twenty-five Advent door stories in `assets/advent/` are recorded narration made for this game. Each door uses its own clip; if a clip is absent the same words are spoken by the device voice so a story is never missing.

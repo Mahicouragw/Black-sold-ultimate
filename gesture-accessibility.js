@@ -18,7 +18,18 @@
         navigation: 'Directions and routes', inventory: 'Inventory', sit: 'Sit', lie: 'Lie down',
         reference: 'Gesture reference', repeat: 'Repeat speech', stop: 'Stop walking' };
     const saved = read(KEY, {});
-    const settings = { narration: !!saved.narration, interval: Math.max(450, Math.min(2500, Number(saved.interval) || 800)), map: { ...defaults } };
+    const settings = {
+        narration: !!saved.narration,
+        interval: Math.max(450, Math.min(2500, Number(saved.interval) || 800)),
+        // Re-read the walkable directions when you come back to a known place.
+        directions: saved.directions !== false,
+        // Corner swipes can either open the four menus (default) or walk the
+        // four diagonals. Nothing else about the gesture map changes.
+        corners: saved.corners === 'walk' ? 'walk' : 'menus',
+        map: { ...defaults }
+    };
+    const CORNER_DIRECTION = Object.freeze({ 'up-right': 'northeast', 'up-left': 'northwest', 'down-right': 'southeast', 'down-left': 'southwest' });
+    const DIAGONAL_SPEECH = 'To walk diagonally: tap the compass buttons north-east, north-west, south-east or south-west, type or say north east, or turn on Corner swipes walk diagonally in narrator settings. With that setting on, swipe up-right for north-east, up-left for north-west, down-right for south-east and down-left for south-west. The four menus those corners used to open stay in the visible controls list.';
     for (const key of Object.keys(defaults)) if (names[saved.map?.[key]]) settings.map[key] = saved.map[key];
     const persist = () => write(KEY, settings);
     const visible = el => {
@@ -74,6 +85,7 @@
             const overlay = $('gesture-interface');
             overlay.hidden = !this.active();
             const box = $('gesture-narration'); if (box) box.checked = settings.narration;
+            const dirBox = $('gesture-directions'); if (dirBox) dirBox.checked = settings.directions;
         },
         open(title, choices, { push = true, page = 0 } = {}) {
             if (choices.length > 8) {
@@ -263,6 +275,7 @@
                 return;
             }
             if (token === 'tap') { A.repeatVoice(); return; }
+            if (settings.corners === 'walk' && CORNER_DIRECTION[token]) return this.move(CORNER_DIRECTION[token]);
             const action = settings.map[token];
             if (['north', 'south', 'east', 'west'].includes(action)) return this.move(action);
             if (action === 'context') return this.context();
@@ -619,17 +632,34 @@
                 option('Quieter speech', () => { A.setVoiceVolume(Math.max(.1, A.voiceVolume - .1)); speak(`Volume ${Math.round(A.voiceVolume * 100)} percent`); }),
                 option('Slower walking repeat', () => { settings.interval = Math.min(2500, settings.interval + 100); persist(); speak(`${settings.interval} milliseconds between steps.`); }),
                 option('Faster walking repeat', () => { settings.interval = Math.max(450, settings.interval - 100); persist(); speak(`${settings.interval} milliseconds between steps.`); }),
+                option(`Announce possible directions: ${settings.directions ? 'on' : 'off'}`, () => {
+                    settings.directions = !settings.directions; persist();
+                    const box = $('gesture-directions'); if (box) box.checked = settings.directions;
+                    speak(settings.directions ? 'Possible directions will be read when you come back to a place you know.' : 'Possible directions will not be read on arrival; Look Around still lists them.');
+                }),
+                option(`Corner swipes: ${settings.corners === 'walk' ? 'walk diagonally' : 'open menus'}`, () => {
+                    settings.corners = settings.corners === 'walk' ? 'menus' : 'walk'; persist();
+                    speak(settings.corners === 'walk'
+                        ? 'Corner swipes walk diagonally: up-right north-east, up-left north-west, down-right south-east, down-left south-west. Notifications, voice, interact and the social hub stay in the visible controls list.'
+                        : 'Corner swipes open Notifications, Voice commands, Interact and the Social hub again. Diagonal walking stays on the compass buttons and in typed or spoken commands.');
+                }),
+                option('How do I walk diagonally?', () => speak(DIAGONAL_SPEECH)),
                 option('Remap world gestures', () => this.remap()), option('Repeat gesture instructions', () => this.tutorial(0)),
                 option('Switch to Sighted Visual Mode', () => { speak('Sighted Visual Mode. Narration can be disabled separately.'); InterfaceMode.apply('sighted', { announce: true }); }),
                 option('Disable narration', () => { settings.narration = false; persist(); A.setVoiceEnabled(false); this.sync(); })
             ]);
         },
+        announceDirections() { return settings.directions !== false; },
         rate(delta) { A.settings.voiceRate = Math.round(Math.max(.5, Math.min(2, A.settings.voiceRate + delta)) * 10) / 10; A.persistSettings(); speak(`Speech speed ${A.settings.voiceRate}.`); },
         remap() {
             this.open('Remap world gestures. Menu gestures and two finger swipe cancel remain fixed.', Object.keys(defaults).map(key => option(`${key}: ${names[settings.map[key]]}`, () => this.open(`Assign ${key}`, Object.entries(names).map(([id, label]) => option(label, () => { settings.map[key] = id; persist(); speak(`${key} now means ${label}. Other gestures are unchanged.`); this.reference(); }))))));
         },
         reference() {
             this.open('Gesture reference', [
+                option('How do I walk diagonally?', () => speak(DIAGONAL_SPEECH)),
+                option('Corner swipes now', () => speak(settings.corners === 'walk'
+                    ? 'Corner swipes walk diagonally: up-right north-east, up-left north-west, down-right south-east, down-left south-west.'
+                    : 'Corner swipes open menus: down-right notifications, up-right voice commands, up-left interact, down-left social hub. Diagonal walking uses the compass buttons or typed and spoken directions.')),
                 ...Object.entries(settings.map).map(([key, id]) => option(`${key}: ${names[id]}`, () => speak(`${key}: ${names[id]}. World only. Two finger swipe cancels or returns.`))),
                 option('Continuous walking instructions', () => speak('Swipe in a cardinal direction and keep your finger down for half a second. Walking repeats until release, a blocked path, combat, a panel or app switch. Release cancels pending hold steps. Tap Stop walking at any time.')),
                 option('Menu gestures', () => speak('In menus, down is next, up or right is previous, double tap chooses, left goes back. Single tap repeats selection. Two finger swipe always cancels. World remapping never changes these.'))
@@ -638,7 +668,7 @@
         tutorial(step) {
             const lessons = [
                 'World movement. Swipe up north, down south, left west, right east. Two-finger swipe up goes up stairs or ladders. Two-finger swipe down goes down. Two-finger swipe left or right cancels.',
-                'Diagonal swipes. Swipe down-right opens Notifications (requests, gifts, combat invites). Swipe up-right opens Voice Commands (type or speak game commands). Swipe down-left opens Social Hub (combat groups, trades, gifts, friends, chat rooms).',
+                'Diagonal movement and menus. By default a diagonal swipe opens a menu: down-right Notifications, up-right Voice Commands, down-left Social Hub, up-left Interact. To walk diagonally instead, use the compass buttons north-east, north-west, south-east and south-west, say or type the direction, or turn on Corner swipes walk diagonally in narrator settings.',
                 'Continuous walking. Swipe in a cardinal direction and keep the finger down for half a second. Release to stop, including any pending step. Stop walking is always available.',
                 'Menus. Down-right opens location or combat actions. Up-left or double tap opens nearby interaction choices. No object is selected automatically.',
                 'Magic. Up-right opens known spells with requirements. Browse, choose a spell, then confirm Cast or Cancel.',
@@ -821,9 +851,11 @@
         $('gesture-repeat').onclick = () => A.repeatVoice(); $('gesture-prefs').onclick = () => UI.preferences(); $('gesture-help').onclick = () => UI.reference();
         Gestures.bind($('gesture-pad'));
         $('gesture-pad').addEventListener('keydown', e => { const tokens = { ArrowDown: 'down', ArrowUp: 'up', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'double', Escape: 'cancel' }; if (tokens[e.key]) { e.preventDefault(); e.stopPropagation(); UI.handle(tokens[e.key]); } });
-        const fieldset = document.createElement('fieldset'); fieldset.innerHTML = '<legend>Built-in game narration and gestures</legend><label><input id="gesture-narration" type="checkbox"> Narrate game events independently of TalkBack</label><button type="button" id="gesture-settings-open">Narrator settings, tutorial and gesture remapping</button>';
+        const fieldset = document.createElement('fieldset'); fieldset.innerHTML = '<legend>Built-in game narration and gestures</legend><label><input id="gesture-narration" type="checkbox"> Narrate game events independently of TalkBack</label><label><input id="gesture-directions" type="checkbox"> Announce possible directions when I return to a place</label><button type="button" id="gesture-settings-open">Narrator settings, tutorial and gesture remapping</button>';
         document.querySelector('#settings-panel .settings-card')?.append(fieldset);
         $('gesture-narration').onchange = e => { settings.narration = e.target.checked; persist(); A.setVoiceEnabled(settings.narration); if (settings.narration) speak('Independent game narration enabled.'); };
+        const directionsBox = $('gesture-directions');
+        if (directionsBox) { directionsBox.checked = settings.directions; directionsBox.onchange = e => { settings.directions = e.target.checked; persist(); speak(settings.directions ? 'Possible directions will be read when you return to a place you know.' : 'Possible directions will not be read on arrival.'); }; }
         $('gesture-settings-open').onclick = () => { if (!UI.active()) InterfaceMode.apply('blind'); UI.preferences(); };
         window.addEventListener('black-sword-speech-status', e => { $('gesture-speech-status').textContent = e.detail.text; });
         window.addEventListener('black-sword-interface-change', () => { Gestures.reset(); UI.menu = null; UI.stack = []; UI.sync(); UI.render(); });

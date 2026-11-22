@@ -88,7 +88,7 @@ test('committed movement narrates first and selects the destination terrain reco
     assert.deepEqual(JSON.parse(JSON.stringify(events)), [{ text: 'You moved north to Muddy Bog. A wet marsh with soft mud. There is no way out of here on foot.', type: 'location', options: { sfx: ['step-mud'] } }]);
     G.state.location = 'audio_origin'; G.state.visited.push('audio_mud');
     G.move('north'); await wait(350);
-    assert.equal(events.at(-1).text,'Muddy Bog','a return visit names the destination without repeating the description');
+    assert.equal(events.at(-1).text,'You went north to Muddy Bog. There is no way out of here on foot.','a return visit names the destination and its real directions without repeating the description');
     assert.equal(G.getFootstepSFX({ name: 'Forest Grove', features: ['canopy'] }), 'step-leaves');
     assert.equal(G.getFootstepSFX({ name: 'Old House', features: ['wooden floorboards'] }), 'step-wood');
     assert.equal(G.getFootstepSFX({ name: 'Mountain Trail' }), 'step-gravel');

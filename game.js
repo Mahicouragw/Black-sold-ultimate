@@ -1457,7 +1457,14 @@ const Game = {
                 const alreadyVisited = discoveries.includes(dest);
                 if (!alreadyVisited && discoveries !== this.state.visited) discoveries.push(dest);
                 const arrival = N ? N.t('move.moved', { dir: direction, place: target.name }) : `You moved ${direction} to ${target.name}.`;
-                const text = alreadyVisited ? target.name : [arrival, target.description, this.describeExits(target)].filter(Boolean).join(' ');
+                // Coming back to a known place reads its name (and, when the player
+                // asks for it, every direction they can really walk from here).
+                const UI = window.GestureAccessibility?.UI;
+                const announceExits = !UI?.walking && UI?.announceDirections?.() !== false;
+                const revisit = N ? N.t('move.revisit', { dir: direction, place: target.name }) : `You went ${direction} to ${target.name}.`;
+                const text = alreadyVisited
+                    ? (announceExits ? `${revisit} ${this.describeExits(target)}` : target.name)
+                    : [arrival, target.description, this.describeExits(target)].filter(Boolean).join(' ');
                 const footstep = this.getFootstepSFX(target);
                 this._lastMoveResult = { moved: true, direction, from: origin, to: dest };
                 if (this.emitGameEvent) this.emitGameEvent(text, 'location', { sfx: [footstep] });

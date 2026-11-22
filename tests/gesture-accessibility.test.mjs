@@ -176,3 +176,40 @@ test('speech rate, pause, resume, repeat and engine error expose real state', as
     spoken.at(-1).onerror({ error: 'voice-unavailable' });
     assert.match(w.document.getElementById('gesture-speech-status').textContent, /voice-unavailable/);
 });
+
+test('returning to a known place reads its real exits, and the setting can turn that off', async t => {
+    const { G, UI, w, settings } = await ready(t);
+    const narrative = () => w.document.getElementById('narrative').textContent;
+    const start = G.state.location;
+    assert.equal(UI.announceDirections(), true, 'possible directions are announced by default');
+    UI.move('north'); await wait(400);
+    assert.equal(G.state.location, w.WorldData.locations[start].exits.north);
+    UI.move('south'); await wait(400);
+    assert.equal(G.state.location, start);
+    const said = narrative().slice(narrative().lastIndexOf('You went'));
+    assert.match(said, /You went south to /, 'the direction and place are both read');
+    assert.match(said, /You can go /, 'and every walkable direction from here');
+
+    settings.directions = false; assert.equal(UI.announceDirections(), false);
+    const mark = narrative().length;
+    UI.move('north'); await wait(400); UI.move('south'); await wait(400);
+    assert.equal(G.state.location, start);
+    const tail = narrative().slice(mark);
+    assert.match(tail, /Kaliwasch Market Square/, 'the place is still confirmed');
+    assert.doesNotMatch(tail.slice(tail.lastIndexOf('Kaliwasch Market Square')), /You can go /, 'and exits stay quiet when the setting is off');
+});
+
+test('corner swipes can walk the four diagonals instead of opening menus', async t => {
+    const { G, UI, w, settings } = await ready(t);
+    const moves = []; G.processCommand = dir => { moves.push(dir); return true; };
+    // A room with real diagonal paths, so the gesture reaches movement instead of a block.
+    Object.assign(w.WorldData.locations[G.state.location].exits, { northeast: 'forest', northwest: 'forest', southeast: 'forest', southwest: 'forest' });
+    settings.corners = 'walk';
+    for (const [token, direction] of [['up-right', 'northeast'], ['up-left', 'northwest'], ['down-right', 'southeast'], ['down-left', 'southwest']]) {
+        UI.handle(token); assert.equal(moves.at(-1), direction, token + ' walks ' + direction);
+    }
+    settings.corners = 'menus';
+    UI.menu = null; UI.handle('down-left');
+    assert.match(UI.menu?.title || '', /Social hub/, 'the corner menu is restored when the setting is off');
+    assert.equal(settings.corners, 'menus');
+});
