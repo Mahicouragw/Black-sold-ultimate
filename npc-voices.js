@@ -375,6 +375,8 @@
         lastEngine: '',
         neuralAvailable: true,
         neuralRetryAt: 0,
+        lastError: '',
+        speechCache: new Map(),
 
         endpoint() {
             return window.location.hostname === 'mahicouragw.github.io'
@@ -396,9 +398,15 @@
                 });
                 clearTimeout(timer);
                 if (!response.ok) {
+                    let reason = '';
+                    try { reason = (await response.json())?.error || ''; } catch {}
+                    this.lastError = reason || `http ${response.status}`;
                     // 503 means no provider is configured: stop trying this session.
-                    if (response.status === 503) { this.neuralAvailable = false; }
-                    else this.neuralRetryAt = Date.now() + 60000;
+                    if (response.status === 503) this.neuralAvailable = false;
+                    else if (response.status === 502 && ['tts-auth-failed', 'tts-quota'].includes(reason)) {
+                        // A key problem will not fix itself in a minute.
+                        this.neuralAvailable = false;
+                    } else this.neuralRetryAt = Date.now() + 60000;
                     return null;
                 }
                 const blob = await response.blob();
@@ -440,14 +448,46 @@
             });
         },
 
+        /** Reuse audio already fetched for the same character and sentence. */
+        cachedSpeech(name, text) {
+            const key = `${name}|${text}`;
+            if (this.speechCache.has(key)) return Promise.resolve(this.speechCache.get(key));
+            return this.fetchSpeech(name, text).then(blob => {
+                if (blob) {
+                    this.speechCache.set(key, blob);
+                    if (this.speechCache.size > 60) this.speechCache.delete(this.speechCache.keys().next().value);
+                }
+                return blob;
+            });
+        },
+
         /** Read text aloud with the character's synthetic voice. */
         async speakNeural(name, text) {
-            const blob = await this.fetchSpeech(name, text);
-            if (!blob) return false;
-            this.lastEngine = 'neural';
-            const ok = await this.playBlob(blob);
-            if (!ok) this.neuralRetryAt = Date.now() + 30000;
-            return ok;
+            const parts = this.chunks(text, 450);
+            for (let index = 0; index < parts.length; index += 1) {
+                const blob = await this.cachedSpeech(name, parts[index]);
+                // Nothing spoken yet: let the caller fall back to the device voice.
+                if (!blob) return index > 0;
+                this.lastEngine = 'neural';
+                const ok = await this.playBlob(blob);
+                if (!ok) {
+                    this.neuralRetryAt = Date.now() + 30000;
+                    return index > 0;
+                }
+            }
+            return parts.length > 0;
+        },
+
+        /** Ask the service whether a voice key is configured (no secrets returned). */
+        async diagnose() {
+            try {
+                const response = await fetch(this.endpoint(), { method: 'GET' });
+                if (!response.ok) return { reachable: true, configured: false, status: response.status };
+                const data = await response.json();
+                return { reachable: true, configured: Boolean(data?.configured), providers: data?.providers || [] };
+            } catch {
+                return { reachable: false };
+            }
         },
 
         /** Read text aloud in this character's voice; returns the audio promise. */

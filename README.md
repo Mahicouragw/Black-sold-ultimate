@@ -50,7 +50,9 @@ read aloud by a neural voice service, not the phone's screen-reader voice. Add a
 free key in Vercel and the whole cast changes voice; with no key the device voice
 is used with each character's own pitch and speed, so nothing falls silent.
 Full steps, free key links and where to paste them: **[VOICE_SETUP.md](VOICE_SETUP.md)**.
-Type `voice status` in the game to hear which engine is reading.
+Type `voice status` in the game to hear which engine is reading (and whether the
+server has a voice key ready), and `voice test` to hear one line in the voice of
+the person you are standing with.
 
 ## Built-in narration and gesture interface (7.27.0)
 

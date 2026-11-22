@@ -45,9 +45,26 @@ Notes:
 4. **Save**.
 5. **Deployments → newest deployment → ⋯ → Redeploy** so the function picks up
    the variable.
-6. In the game type **`voice status`**. It answers with either
-   *"Characters are speaking with their own synthetic voices"* or
-   *"No voice service key is configured"*.
+6. In the game type **`voice status`**. It asks the server (no key ever leaves
+   the server) and answers with either *"Characters are speaking with their own
+   synthetic voices"* or *"No voice service key is configured"*, plus the name
+   of the voice service that is ready.
+7. Type **`voice test`**. The person you are standing with reads one short line
+   in their own voice — the quickest way to hear whether the key works.
+8. If you hear the phone voice instead, read the sentence `voice status` gives
+   you:
+   * *key rejected or the API is not enabled* — the key is wrong, or the Text to
+     Speech API was never switched on for that Google project. Delete the old
+     `GEMINI_API_KEY` value and paste a fresh key from
+     https://aistudio.google.com/app/apikey, then redeploy.
+   * *quota* — the free daily limit is used up. The game keeps working in the
+     device voice and switches back by itself later.
+   * *no voice key is configured* — the variable is not on the Production
+     environment, or the deployment happened before it was added. Redeploy.
+
+Optional for Gemini: add `GEMINI_TTS_MODEL` to pin one speech model. Without
+it the server tries the current Gemini speech models in order and remembers the
+first that answers, so a retired preview model never silences the game.
 
 Optional for ElevenLabs: add `ELEVENLABS_VOICE_ID` with one voice id, and/or
 `ELEVENLABS_VOICE_MAP` as JSON mapping game voice names to ElevenLabs voice ids,
@@ -69,6 +86,8 @@ story is never silent and never a flat screen-reader monotone.
 
 ## Nothing is trusted from the browser
 
-`/api/tts` accepts only up to 500 characters, validates the voice name, rate
-limits per IP (30 requests a minute), keeps the key server-side and never echoes
-it. CORS is limited to the two live sites.
+`/api/tts` accepts only up to 500 characters per request (longer answers are
+split into several parts by the game and read in order), validates the voice
+name, rate limits per IP (30 requests a minute), keeps the key server-side and
+never echoes it. `GET /api/tts` reports only *whether* a key is configured and
+which provider is ready. CORS is limited to the two live sites.
