@@ -7,6 +7,16 @@ An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Fea
 `ADVENT_ROW.md` documents the December 1–25 city, the twenty-five date-locked
 doors, their stories, quests, presents and the direction-announcement settings.
 
+## Talking to people (live voice)
+
+Every NPC answers with a live voice: type `say hello`, `ask where is the forest`
+or any question of your own, and the person replies in their own pitch, speed and
+system voice, reading **exactly the words printed on screen** — the way TalkBack
+or a chat assistant reads its answer. Nothing is replaced by a pre-recorded clip,
+so an answer is never stuck to one fixed question, and no "thinking" line is ever
+spoken. Fixed script lines that never change (door stories, the crier's bulletins)
+still use their own recordings, because those words are identical to the text.
+
 ## Built-in narration and gesture interface (7.27.0)
 
 Tap **Start spoken gesture controls** for Accessible Gesture Mode and the optional

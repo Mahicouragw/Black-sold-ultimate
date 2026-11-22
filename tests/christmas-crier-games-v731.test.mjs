@@ -27,10 +27,19 @@ test('Crier Bell stands in the tavern and on the market square and speaks record
     assert.ok(w.WorldData.npcs.kaliwasch_tavern.some(n => n.name === 'Crier Bell'), 'tavern crier');
     for (let i = 1; i <= 8; i++) assert.ok(existsSync(`assets/crier/line-0${i}.mp3`), `recorded line ${i} ships`);
 
+    // A greeting is written fresh and read aloud by the device voice, so any
+    // question or comment gets a live answer rather than a fixed clip.
+    const spoken = [];
+    const emit = G.emitGameEvent;
+    G.emitGameEvent = (text, type, options = {}) => { spoken.push({ text, type, options }); return Promise.resolve(true); };
     G.state.location = 'kaliwasch';
     G.processCommand('say hello');
-    assert.match(narrative(w), /Crier Bell/, 'the crier answers a greeting');
-    assert.ok(played.some(src => src.endsWith('line-01.mp3')), 'with his own recorded voice, not the device voice');
+    G.emitGameEvent = emit;
+    assert.equal(spoken.length, 1, 'the crier answers the greeting himself, through TTS');
+    assert.match(spoken[0].text, /Crier Bell/, 'and it is the crier who speaks');
+    assert.match(spoken[0].text, /Crier Bell says: .*town crier/i, 'the spoken words are the greeting itself');
+    assert.ok(!played.some(src => src.endsWith('line-01.mp3')), 'the greeting is not swapped for a clip');
+    assert.equal(typeof spoken[0].options.pitch, 'number', 'spoken in the crier voice profile');
 
     G.processCommand('say where is the map');
     assert.ok(played.some(src => src.endsWith('line-02.mp3')), 'map answer is recorded');
@@ -136,11 +145,14 @@ test('the Google button always answers a click, even when the provider cannot lo
     assert.match(status, /guest|Chrome|connection/i);
 });
 
-test('greetings use the character audio and never a "thinking" placeholder', async t => {
+test('greetings are written for the moment and never a "thinking" placeholder', async t => {
     const { w } = await ready(t);
-    const line = w.AiNpc.smallTalk({ name: 'Tavern Keeper Greta' }, 'hello');
-    assert.ok(line, 'a recorded greeting is chosen');
-    assert.ok(w.CharacterRecordings.has('Tavern Keeper Greta', line));
-    assert.equal(w.AiNpc.smallTalk({ name: 'Tavern Keeper Greta' }, 'where is the forest'), '');
-    assert.ok(w.AiNpc.voiceFor('Tavern Keeper Greta').startsWith('system:') || w.AiNpc.voiceFor('Tavern Keeper Greta') === '');
+    const npc = { name: 'Tavern Keeper Greta', role: 'tavern keeper' };
+    const line = w.AiNpc.smallTalk(npc, 'hello');
+    assert.ok(line, 'a greeting is produced');
+    assert.match(line, /Tavern Keeper Greta/, 'it names the character who speaks');
+    assert.match(line, /Kaliwasch|tavern|this place/i, 'and the place the player is standing in');
+    assert.equal(w.CharacterRecordings.has(npc.name, line), false, 'it is not a canned recording');
+    assert.equal(w.AiNpc.smallTalk(npc, 'where is the forest'), '', 'real questions go to the provider');
+    assert.ok(w.AiNpc.voiceFor(npc.name).startsWith('system:'), 'the character keeps a device voice');
 });

@@ -1148,7 +1148,7 @@ class AudioManagerController {
      * Each item finishes speech before its first effect and each effect before
      * the next. Controls never await this queue unless their own logic chooses to.
      */
-    enqueueAudioEvent({ text = '', effects = [], voiceId = 'system:default', language = 'en-US', priority = false, channel = '', eventId = '', requireVoice = false } = {}) {
+    enqueueAudioEvent({ text = '', effects = [], voiceId = 'system:default', language = 'en-US', priority = false, channel = '', eventId = '', requireVoice = false, pitch = 1, rate = 1 } = {}) {
         text = String(text || '').trim();
         effects = (Array.isArray(effects) ? effects : [effects]).filter(Boolean).map(String);
         if (this.pageSuspended || this.isDocumentHidden() || (!text && !effects.length)) return Promise.resolve(false);
@@ -1193,6 +1193,8 @@ class AudioManagerController {
             const item = {
                 id: ++this.audioEventSequence, channel, eventId, text: text.slice(0, 600), effects,
                 voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal',
+                pitch: Math.max(0.5, Math.min(1.5, Number(pitch) || 1)),
+                rate: Math.max(0.6, Math.min(1.6, Number(rate) || 1)),
                 resolve, cancelled: false, cancelSpeech: null, cancelEffect: null
             };
             while (this.speechQueue.length >= 12) {
@@ -1288,7 +1290,9 @@ class AudioManagerController {
             const cancel = () => finish(false);
             utterance.lang = item.language || 'en-US';
             utterance.volume = this.voiceVolume;
-            utterance.rate = Math.max(0.5, Math.min(2, this.settings.voiceRate || 1));
+            // A character's own speaking profile modulates the narrator's speed.
+            utterance.rate = Math.max(0.5, Math.min(2, (this.settings.voiceRate || 1) * (item.rate || 1)));
+            utterance.pitch = Math.max(0.5, Math.min(1.5, item.pitch || 1));
             let voices = [];
             try { voices = speechSynthesis.getVoices() || []; } catch {}
             const requestedName = item.voiceId?.startsWith('system:') ? item.voiceId.slice(7) : '';

@@ -318,6 +318,46 @@
             ['My shelves hold supplies for every road. Gold buys what steel cannot.', 'gold']
         ])]]
     ]);
+    /* ── Live character voices ─────────────────────────────────────────────
+       Recorded clips only ever cover a fixed script line. Everything else an
+       NPC says is spoken by the device voice reading the exact words on the
+       screen, so any answer to any question can be heard — like TalkBack or a
+       chat assistant reading its reply, but with this character's own pitch,
+       speed and preferred system voice. */
+    const liveHash = name => {
+        let h = 2166136261;
+        for (const ch of String(name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+        return h >>> 0;
+    };
+    window.CharacterVoices = {
+        /** A stable device-voice profile for one character name. */
+        profile(name) {
+            const hash = liveHash(name);
+            let voices = [];
+            try { voices = (window.speechSynthesis?.getVoices?.() || []).filter(v => /^en/i.test(v.lang || '')); } catch { voices = []; }
+            const chosen = voices.length ? voices[(hash >>> 7) % voices.length] : null;
+            return {
+                voiceId: chosen ? `system:${chosen.name}` : 'system:default',
+                voice: chosen?.name || '',
+                pitch: Number((0.80 + ((hash >>> 3) % 41) / 100).toFixed(2)),
+                rate: Number((0.90 + ((hash >>> 11) % 21) / 100).toFixed(2))
+            };
+        },
+        /** Read text aloud in this character's voice; returns the audio promise. */
+        speak(name, text) {
+            const words = String(text || '').trim();
+            const audio = window.AudioManager || window.MusicSystem;
+            if (!audio || !words) return Promise.resolve(false);
+            return audio.enqueueAudioEvent({
+                text: words,
+                ...this.profile(name),
+                channel: `npc:${name}`,
+                priority: true,
+                requireVoice: true
+            });
+        }
+    };
+
     const deeds = ' Your deeds are already spoken of across the city.';
     const key = 'bsu.characterRecordings';
     const stop = () => window.AudioManager.stopCharacterVoice();

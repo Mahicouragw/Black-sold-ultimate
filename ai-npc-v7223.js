@@ -140,7 +140,7 @@
             narrative.scrollTop = narrative.scrollHeight;
         },
 
-        /** Greetings, thanks and farewells answered from recorded character audio. */
+        /** A greeting, thanks or farewell written for this moment — not a clip. */
         smallTalk(npc, question) {
             const said = String(question || '').toLowerCase().replace(/[!.?,]/g, ' ').trim();
             const greeting = /^(hi|hello|hey|yo|greetings|namaste|namaskaram|good (morning|afternoon|evening|day))\b/.test(said)
@@ -148,24 +148,49 @@
             const thanks = /\b(thank(s| you)|much obliged)\b/.test(said);
             const bye = /\b(bye|goodbye|farewell|see you|good night)\b/.test(said);
             if (!greeting && !thanks && !bye) return '';
-            const lines = window.CharacterRecordings?.lines?.(npc.name) || [];
-            if (!lines.length) return '';
-            const recorded = lines.filter(line => window.CharacterRecordings.has(npc.name, line));
-            if (!recorded.length) return '';
-            const preferred = greeting ? recorded.find(line => /welcome|hello|greet|care for|good|well met|safe/i.test(line))
-                : thanks ? recorded.find(line => /thank|welcome|glad|good/i.test(line))
-                : recorded.find(line => /farewell|safe|travel|good|watch/i.test(line));
-            return preferred || recorded[0];
+            const game = window.Game;
+            const room = window.WorldData?.locations?.[game?.state?.location];
+            const place = room?.name || 'this place';
+            const role = npc.role ? `${npc.name}, ${npc.role},` : npc.name;
+            if (thanks) return `You are very welcome. ${npc.name} is glad to help — ask anything else and I will answer out loud.`;
+            if (bye) return `Safe roads, traveller. You will find ${npc.name} right here in ${place} when you return.`;
+            return `Well met. I am ${role} here in ${place}. Ask me anything and I will speak the answer in my own voice.`;
         },
 
-        /** A stable device-voice profile per character, used only when no recorded
-         *  clip exists for the exact words. */
-        voiceFor(name) {
-            const voices = (() => { try { return window.speechSynthesis?.getVoices?.() || []; } catch { return []; } })();
-            const english = voices.filter(voice => /^en/i.test(voice.lang || ''));
-            if (!english.length) return '';
+        /** A stable device-voice profile per character, used for every answer so
+         *  arbitrary text can be read aloud — no clip has to exist first. */
+        profileFor(name) {
+            const profile = window.CharacterVoices?.profile?.(name);
+            if (profile) return profile;
             let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-            return `system:${english[h % english.length].name}`;
+            return { voiceId: 'system:default', pitch: 1, rate: 1, voice: '', hash: h };
+        },
+
+        /** Back-compat: the voice id part of the character profile. */
+        voiceFor(name) {
+            return this.profileFor(name).voiceId || '';
+        },
+
+        /**
+         * Log the answer and speak exactly those words in the character's own
+         * device voice. Any sentence can be read, so any question gets a live
+         * answer; no clip has to exist first and none is substituted.
+         */
+        announce(game, npc, reply) {
+            const spoken = `${npc.name} says: ${reply}`;
+            const nowMs = Date.now();
+            if (spoken === this.lastSpoken && nowMs - this.lastSpokenAt < 2500) return false;
+            this.lastSpoken = spoken;
+            this.lastSpokenAt = nowMs;
+            const profile = this.profileFor(npc.name);
+            const emitted = game.emitGameEvent?.(spoken, 'npc', {
+                eventId: `npc:${npc.name}:${nowMs}`,
+                voiceId: profile.voiceId,
+                pitch: profile.pitch,
+                rate: profile.rate
+            });
+            if (!emitted) game.addNarrative(spoken, 'npc');
+            return true;
         },
 
         async ask(rawMessage) {
@@ -192,17 +217,13 @@
             const history = this.histories.get(npc.name) || [];
 
             game.addNarrative(`You ask ${npc.name}: "${question}"`, 'npc');
-            // A greeting is answered at once from the character's own recorded
-            // voice. No "thinking" placeholder is ever spoken: the player hears
-            // the person, not a progress message.
+            // A greeting is answered at once with words written for this moment,
+            // then read aloud in the character's own device voice. No clip is
+            // substituted and no "thinking" placeholder is ever spoken.
             const small = this.smallTalk(npc, question);
             if (small) {
-                const handled = game._audioNarrationHandled;
-                try {
-                    if (window.CharacterRecordings?.play(npc.name, small)) game._audioNarrationHandled = true;
-                    game.addNarrative(`${npc.name} says: "${small}"`, 'npc');
-                } finally { game._audioNarrationHandled = handled; }
-                this.aiAvailable = false;
+                this.announce(game, npc, small);
+                this.aiAvailable = true;
                 return true;
             }
 
@@ -243,31 +264,8 @@
             const updated = [...history, { role: 'user', content: question }, { role: 'assistant', content: reply }];
             this.histories.set(npc.name, updated.slice(-MAX_HISTORY));
 
-            const spoken = `${npc.name} says: ${reply}`;
-            // Duplicate-response guard: if the exact same reply was spoken a
-            // moment ago, do not log or speak it a second time.
-            const nowMs = Date.now();
-            if (spoken === this.lastSpoken && nowMs - this.lastSpokenAt < 2500) {
-                this.aiAvailable = ai;
-                return true;
-            }
-            this.lastSpoken = spoken;
-            this.lastSpokenAt = nowMs;
-            // emitGameEvent writes the log AND routes through centralized TTS,
-            // so the TTS OFF setting is honoured automatically. TTS speaks the
-            // final answer exactly once; sources are visual/touch targets only.
-            // Recorded character audio first; only text the cast has no clip for
-            // falls back to the device voice, using that character's own profile.
-            const handledBefore = game._audioNarrationHandled;
-            try {
-                if (window.CharacterRecordings?.play(npc.name, reply)) {
-                    game._audioNarrationHandled = true;
-                    game.addNarrative(spoken, 'npc');
-                } else {
-                    game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${nowMs}`, voiceId: this.voiceFor(npc.name) })
-                        || game.addNarrative(spoken, 'npc');
-                }
-            } finally { game._audioNarrationHandled = handledBefore; }
+            // Speak the answer itself, word for word, in this character's voice.
+            this.announce(game, npc, reply);
             if (sources.length) this.renderSources(sources);
             this.aiAvailable = ai;
             return true;
