@@ -30,6 +30,25 @@
         lastSpokenAt: 0,
         lastCall: null,                // { provider, ai, ms, at } of the last answer
 
+        /** Plain-language report of the AI and voice services, for "voice status". */
+        async reportStatus(game = window.Game) {
+            const parts = [this.statusLine()];
+            const voices = window.CharacterVoices;
+            if (voices?.diagnose) {
+                const health = await voices.diagnose();
+                if (!health.reachable) parts.push('I could not reach the voice service at all.');
+                else if (!health.configured) parts.push('The voice service is reachable but no voice key is configured yet, so the device voice is reading.');
+                else {
+                    const names = (health.providers || []).map(provider => provider.name).join(' and ');
+                    parts.push(`The voice service is configured with ${names || 'a provider'}.`);
+                }
+            }
+            const report = parts.join(' ');
+            const spoken = game.emitGameEvent?.(report, 'system', { character: false });
+            if (!spoken) game.addNarrative(report, 'system');
+            return report;
+        },
+
         /** Plain-language report of the AI service, for "ai status". */
         statusLine() {
             if (!this.lastCall) return 'No question has been sent to the AI service yet. Ask someone something and I will report back.';
@@ -38,8 +57,8 @@
             const voices = window.CharacterVoices;
             const voiceLine = voices?.lastEngine === 'neural'
                 ? ' Characters are speaking with their own synthetic voices.'
-                : voices?.neuralAvailable === false
-                    ? ' No voice service key is configured, so the device voice is reading the answers.'
+                : voices?.lastError
+                    ? ` The synthetic voice service said ${voices.lastError}, so the device voice is reading.`
                     : ' The device voice is reading until the synthetic voice service answers.';
             return (ai
                 ? `The AI service answered at ${when} through ${provider}, in ${Math.round(ms / 100) / 10} seconds.`
@@ -412,9 +431,15 @@
 
             const game = this?.state ? this : window.Game;
             if (/^(?:ai|npc|tts|voice) status$/.test(lower)) {
-                const report = AiNpc.statusLine();
-                const spoken = game.emitGameEvent?.(report, 'system', { character: false });
-                if (!spoken) game.addNarrative(report, 'system');
+                AiNpc.reportStatus(game);
+                return;
+            }
+            if (/^(?:voice|tts) test$/.test(lower)) {
+                const npc = AiNpc.resolveNpc('') || { name: 'Crier Bell', role: 'town crier' };
+                const line = `This is my voice. I am ${npc.name}, and I read every answer aloud, word for word.`;
+                game.addNarrative(`${npc.name} says: "${line}"`, 'npc');
+                if (window.CharacterVoices?.speak) window.CharacterVoices.speak(npc.name, line);
+                else AiNpc.announce(game, npc, line);
                 return;
             }
             if (/^(?:ai|npc) (?:test|diagnose)$/.test(lower)) {

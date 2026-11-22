@@ -41,6 +41,10 @@ const CLOUD_VOICES = {
     Schedar: 'en-GB-Studio-B', Gacrux: 'en-GB-Studio-C'
 };
 
+const reasonFor = failure => failure?.status === 429 ? 'tts-quota'
+    : [401, 403].includes(failure?.status) ? 'tts-auth-failed'
+    : 'tts-unavailable';
+
 const pickGeminiVoice = voice => GEMINI_VOICES.includes(voice) ? voice : 'Kore';
 const pickCloudVoice = voice => CLOUD_VOICES[voice] || 'en-IN-Neural2-A';
 
@@ -78,28 +82,56 @@ function rateFor(ip, now) {
     return bucket.length <= RATE_LIMIT;
 }
 
+/**
+ * Gemini TTS model names move on, so try the configured one first and then the
+ * other speech models. A retired model id must not silence the whole cast.
+ */
+const GEMINI_TTS_MODELS = [
+    process.env.GEMINI_TTS_MODEL,
+    'gemini-2.5-flash-preview-tts',
+    'gemini-2.5-pro-preview-tts',
+    'gemini-2.0-flash-preview-tts'
+].filter(Boolean);
+
 async function geminiSpeech(text, voice) {
-    const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=' +
-        encodeURIComponent(process.env.GEMINI_API_KEY), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text }] }],
-            generationConfig: {
-                responseModalities: ['AUDIO'],
-                speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: pickGeminiVoice(voice) } } }
-            }
-        }),
-        signal: AbortSignal.timeout(20000)
-    });
-    if (!response.ok) throw new Error(`gemini tts ${response.status}`);
-    const data = await response.json();
-    const inline = data.candidates?.[0]?.content?.parts?.find(part => part.inlineData)?.inlineData;
-    if (!inline?.data) throw new Error('gemini tts empty');
-    const pcm = Buffer.from(inline.data, 'base64');
-    const rate = Number((inline.mimeType || '').match(/rate=(\d+)/)?.[1] || 24000);
-    return { audio: pcmToWav(pcm, rate), type: 'audio/wav' };
+    let lastError = null;
+    for (const model of [...new Set(GEMINI_TTS_MODELS)]) {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=` +
+            encodeURIComponent(process.env.GEMINI_API_KEY), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text }] }],
+                generationConfig: {
+                    responseModalities: ['AUDIO'],
+                    speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: pickGeminiVoice(voice) } } }
+                }
+            }),
+            signal: AbortSignal.timeout(20000)
+        });
+        if (!response.ok) {
+            const status = response.status;
+            lastError = Object.assign(new Error(`gemini tts ${status}`), { status });
+            // A bad or unpaid key will fail the same way on every model.
+            if (status === 401 || status === 403 || status === 429) throw lastError;
+            continue;
+        }
+        const data = await response.json();
+        const inline = data.candidates?.[0]?.content?.parts?.find(part => part.inlineData)?.inlineData;
+        if (!inline?.data) {
+            lastError = new Error('gemini tts empty');
+            continue;
+        }
+        const bytes = Buffer.from(inline.data, 'base64');
+        const mime = inline.mimeType || '';
+        if (mime.startsWith('audio/wav') || mime.startsWith('audio/mpeg')) {
+            return { audio: bytes, type: mime.split(';')[0], model };
+        }
+        const rate = Number(mime.match(/rate=(\d+)/)?.[1] || 24000);
+        return { audio: pcmToWav(bytes, rate), type: 'audio/wav', model };
+    }
+    throw lastError || new Error('gemini tts unavailable');
 }
 
 async function cloudSpeech(text, voice) {
@@ -154,6 +186,49 @@ module.exports = async function handler(req, res) {
         }
     }
     res.setHeader('Cache-Control', 'public, max-age=86400');
+    // A browser can open /api/tts directly to see whether a voice service is
+    // configured. No key, secret or account detail is ever returned.
+    if (req.method === 'GET') {
+        const listed = [];
+        if (process.env.GEMINI_API_KEY) listed.push({ name: 'gemini', model: GEMINI_TTS_MODELS[0] });
+        if (process.env.GOOGLE_TTS_API_KEY) listed.push({ name: 'google' });
+        if (process.env.ELEVENLABS_API_KEY) listed.push({ name: 'elevenlabs' });
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+
+        // ?probe=1 speaks two words and reports only whether the key works, so a
+        // deployment can be checked end to end without exposing audio or secrets.
+        const wantsProbe = new URL(req.url || '/', 'http://localhost').searchParams.get('probe');
+        if (!wantsProbe) return res.end(JSON.stringify({ configured: listed.length > 0, providers: listed }));
+
+        const ip = (req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0];
+        if (!rateFor(ip, Date.now())) {
+            res.statusCode = 429;
+            return res.end(JSON.stringify({ configured: listed.length > 0, ok: false, error: 'rate limited' }));
+        }
+        const calls = [];
+        if (process.env.GEMINI_API_KEY) calls.push(['gemini', geminiSpeech]);
+        if (process.env.GOOGLE_TTS_API_KEY) calls.push(['google', cloudSpeech]);
+        if (process.env.ELEVENLABS_API_KEY) calls.push(['elevenlabs', elevenSpeech]);
+        let failure = null;
+        for (const [name, call] of calls) {
+            try {
+                const { audio, model } = await call('Hello.', 'Kore');
+                return res.end(JSON.stringify({
+                    configured: true, ok: true, provider: name, model: model || null, bytes: audio.length, providers: listed
+                }));
+            } catch (error) {
+                console.warn(`TTS probe ${name} failed: ${error.message}`);
+                failure = { provider: name, status: error.status || 0 };
+            }
+        }
+        return res.end(JSON.stringify({
+            configured: calls.length > 0, ok: false,
+            error: calls.length ? reasonFor(failure) : 'tts-not-configured',
+            provider: failure?.provider || null, providers: listed
+        }));
+    }
     if (req.method !== 'POST') {
         res.statusCode = 405;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -187,20 +262,23 @@ module.exports = async function handler(req, res) {
         return res.end(JSON.stringify({ error: 'tts-not-configured' }));
     }
 
+    let failure = null;
     for (const [name, call] of providers) {
         try {
-            const { audio, type } = await call(text, voice);
+            const { audio, type, model } = await call(text, voice);
             res.statusCode = 200;
             res.setHeader('Content-Type', type);
             res.setHeader('X-Voice-Provider', name);
             res.setHeader('X-Voice-Name', voice || 'default');
+            if (model) res.setHeader('X-Voice-Model', model);
             return res.end(audio);
         } catch (error) {
             console.warn(`TTS provider ${name} unavailable: ${error.message}`);
+            failure = { provider: name, status: error.status || 0, message: error.message };
         }
     }
 
     res.statusCode = 502;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    return res.end(JSON.stringify({ error: 'tts-unavailable' }));
+    return res.end(JSON.stringify({ error: reasonFor(failure), provider: failure?.provider || null }));
 };

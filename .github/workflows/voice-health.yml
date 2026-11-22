@@ -1,0 +1,31 @@
+name: Voice health
+
+# Asks the live game's voice endpoint to speak two words and reports whether the
+# configured key really works. The key itself never leaves Vercel.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the live voice service
+        run: |
+          set -o pipefail
+          url="https://black-sold-ultimate.vercel.app/api/tts"
+          echo "Configuration:"
+          curl -sS "$url" || true
+          echo
+          for attempt in 1 2 3; do
+            body=$(curl -sS "$url?probe=1" || true)
+            echo "Probe $attempt: $body"
+            if printf '%s' "$body" | grep -q '"ok":true'; then
+              echo "The voice service is configured and speaking."
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "The voice service did not speak. See VOICE_SETUP.md."
+          exit 1
