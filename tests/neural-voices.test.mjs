@@ -313,3 +313,59 @@ function probeRes() {
     const res = { statusCode: 200, body: null, headers: {}, setHeader(n, v) { this.headers[n.toLowerCase()] = v; }, end(b) { this.body = b; return b; } };
     return res;
 }
+
+test('the same line is never paid for twice on the server', async t => {
+    withEnv(t, { GEMINI_API_KEY: 'test-key' });
+    let calls = 0;
+    global.fetch = async () => {
+        calls += 1;
+        return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;rate=24000', data: Buffer.alloc(400, 9).toString('base64') } }] } }] }) };
+    };
+    const first = await ttsCall({ text: 'The market opens at dawn, friend.', voice: 'Leda' });
+    const second = await ttsCall({ text: 'The market opens at dawn, friend.', voice: 'Leda' });
+    assert.equal(calls, 1, 'the second sentence came from the server cache');
+    assert.equal(second.headers['x-voice-cache'], 'hit');
+    assert.equal(first.statusCode, 200);
+});
+
+test('a used-up quota pauses voices and comes back later, without going silent', async t => {
+    const w = await ready(t);
+    w.CharacterVoices.neuralAvailable = true;
+    w.CharacterVoices.neuralRetryAt = 0;
+    w.CharacterVoices.speechCache.clear();
+    w.fetch = async () => ({ ok: false, status: 502, json: async () => ({ error: 'tts-quota' }) });
+    const before = Date.now();
+    const blob = await w.CharacterVoices.fetchSpeech('Leda', 'A line nobody has said before.');
+    assert.equal(blob, null);
+    assert.equal(w.CharacterVoices.neuralAvailable, true, 'quota is temporary, not a broken key');
+    assert.ok(w.CharacterVoices.neuralRetryAt - before >= 29 * 60000, 'it waits about half an hour');
+    assert.equal(w.CharacterVoices.lastError, 'tts-quota');
+});
+
+test('a rejected key stops the retries for the whole session', async t => {
+    const w = await ready(t);
+    w.CharacterVoices.neuralAvailable = true;
+    w.CharacterVoices.neuralRetryAt = 0;
+    w.fetch = async () => ({ ok: false, status: 502, json: async () => ({ error: 'tts-auth-failed' }) });
+    assert.equal(await w.CharacterVoices.fetchSpeech('Leda', 'Anything at all.'), null);
+    assert.equal(w.CharacterVoices.neuralAvailable, false);
+});
+
+test('a sentence heard once is kept on disk, even after a reload', async t => {
+    const w = await ready(t);
+    w.CharacterVoices.speechCache.clear();
+    w.CharacterVoices.neuralAvailable = true;
+    w.CharacterVoices.neuralRetryAt = 0;
+    let calls = 0;
+    w.fetch = async () => { calls += 1; return { ok: true, json: async () => ({}), blob: async () => new w.Blob([new Uint8Array(2000)]) }; };
+    const disk = new Map();
+    w.Response = class { constructor(blob) { this.blobData = blob; } };
+    w.caches = { open: async () => ({ match: async url => disk.get(url), put: async (url, response) => { disk.set(url, { blob: async () => response.blobData }); } }) };
+    const line = 'Mind the ice on the north road tonight.';
+    await w.CharacterVoices.cachedSpeech('Leda', line);
+    assert.equal(disk.size, 1, 'the audio was written to the browser cache');
+    w.CharacterVoices.speechCache.clear();   // simulate a fresh page load
+    const again = await w.CharacterVoices.cachedSpeech('Leda', line);
+    assert.equal(calls, 1, 'the reloaded page reused the stored audio');
+    assert.ok(again.size > 0);
+});

@@ -20,14 +20,20 @@ jobs:
           echo "Configuration:"
           curl -sS "$url" || true
           echo
-          for attempt in $(seq 1 12); do
-            body=$(curl -sS "$url?probe=1" || true)
-            echo "Probe $attempt: $body"
-            if printf '%s' "$body" | grep -q '"ok":true'; then
-              echo "The voice service is configured and speaking."
-              exit 0
-            fi
-            sleep 20
-          done
-          echo "The voice service did not speak within four minutes. See VOICE_SETUP.md."
+          # Give the production deployment time to be promoted, then probe ONCE:
+          # every probe is a real (quota-limited) speech request.
+          sleep 120
+          body=$(curl -sS "$url?probe=1" || true)
+          echo "Probe: $body"
+          if printf '%s' "$body" | grep -q '"ok":true'; then
+            echo "The voice service is configured and speaking."
+            exit 0
+          fi
+          # Out of free quota is a known limit, not a broken deployment: say so
+          # without failing the release. Anything else is a real problem.
+          if printf '%s' "$body" | grep -q '"error":"tts-quota"'; then
+            echo "::warning::The voice key works but the free quota is used up; the game is using the device voice until it refills. See VOICE_SETUP.md."
+            exit 0
+          fi
+          echo "The voice service did not speak. See VOICE_SETUP.md for what each error means."
           exit 1

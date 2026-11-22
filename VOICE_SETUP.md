@@ -57,8 +57,15 @@ Notes:
      Speech API was never switched on for that Google project. Delete the old
      `GEMINI_API_KEY` value and paste a fresh key from
      https://aistudio.google.com/app/apikey, then redeploy.
-   * *quota* — the free daily limit is used up. The game keeps working in the
-     device voice and switches back by itself later.
+   * *quota* — the free limit is used up. The Gemini speech preview gives only
+     **15 requests a day** (3 a minute) on the free tier, which one long
+     conversation can use up. The game keeps working in the device voice, says
+     so in `voice status`, and retries by itself after half an hour. For real
+     play, add a **Google Cloud Text-to-Speech** key as well
+     (`GOOGLE_TTS_API_KEY`): its permanent free tier is **1 million Neural2
+     characters a month** (about 18 hours of speech), and it has `en-IN`
+     voices. Both keys can be present — Gemini is tried first, Cloud answers
+     when Gemini is out of quota.
    * *no voice key is configured* — the variable is not on the Production
      environment, or the deployment happened before it was added. Redeploy.
 
@@ -78,6 +85,14 @@ are chosen from the character's name, so they never shuffle between sessions.
 The same assignment is used for the device-voice fallback (pitch and speed), so
 the cast sounds different even before a key is added.
 
+## Repeats cost nothing
+
+Small free quotas only work if the game does not pay twice for the same line.
+A sentence is cached in the browser (Cache Storage, so it survives a reload) and
+again in the serverless function, keyed by character and words. A repeated
+greeting, signpost or direction is replayed from disk instead of being billed
+again.
+
 ## Door stories
 
 Each of the twenty-five doors keeps its own recorded clip. If a door's clip is
@@ -90,4 +105,5 @@ story is never silent and never a flat screen-reader monotone.
 split into several parts by the game and read in order), validates the voice
 name, rate limits per IP (30 requests a minute), keeps the key server-side and
 never echoes it. `GET /api/tts` reports only *whether* a key is configured and
-which provider is ready. CORS is limited to the two live sites.
+which provider is ready; `GET /api/tts?probe=1` speaks two words once and
+returns whether the key really works (used by the *Voice health* workflow). CORS is limited to the two live sites.
