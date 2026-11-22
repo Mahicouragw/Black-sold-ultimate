@@ -217,7 +217,7 @@ test('ai status says whether the model answered', async t => {
     assert.match(w.AiNpc.statusLine(), /answered .*openrouter/i);
 });
 
-test('each door keeper reads their story in their own voice', async t => {
+test('each door keeps its recorded story and falls back to the keeper voice', async t => {
     const { w, G } = await ready(t);
     const BaseDate = w.Date;
     w.Date = class extends BaseDate { constructor(...args) { super(...(args.length ? args : ['2026-12-07T10:00:00Z'])); } };
@@ -227,13 +227,34 @@ test('each door keeper reads their story in their own voice', async t => {
     // The ready() clock is 7 December, so door 7 is the one open tonight.
     const day = w.AdventCalendar.days.find(item => item.n === 7) || w.AdventCalendar.days[0];
     const spoken = [];
-    const original = w.CharacterVoices.speak;
+    const originalSpeak = w.CharacterVoices.speak;
     w.CharacterVoices.speak = (name, text) => { spoken.push({ name, text }); return Promise.resolve(true); };
+    const clips = [];
+    const OriginalAudio = w.Audio;
+    let failPlayback = false;
+    w.Audio = class {
+        constructor(src) { this.src = String(src); clips.push(this.src); }
+        addEventListener() {}
+        removeEventListener() {}
+        play() { if (failPlayback) { setTimeout(() => this.onerror?.(), 0); } else { setTimeout(() => this.onended?.(), 0); } return Promise.resolve(); }
+        pause() {}
+        load() {}
+    };
     G.state.location = `starlight_advent_room_${day.n}`;
     G.processCommand('christmas story');
-    w.CharacterVoices.speak = original;
-    assert.equal(spoken.length, 1, 'the story is read aloud');
-    assert.equal(spoken[0].name, day.keeper, 'by the keeper of that door');
+    await wait(20);
+    const storyClips = clips.filter(src => /story-\d+\.mp3$/.test(src));
+    assert.equal(storyClips.length, 1, 'the recorded clip is used again');
+    assert.match(storyClips[0], new RegExp(`story-0${day.n}\\.mp3$`), 'the door has its own recording');
+    assert.equal(spoken.length, 0, 'no double reading while the recording plays');
+
+    failPlayback = true;
+    G.processCommand('christmas story');
+    await wait(30);
+    w.Audio = OriginalAudio;
+    w.CharacterVoices.speak = originalSpeak;
+    assert.equal(spoken.length, 1, 'a missing or broken clip falls back to the keeper voice');
+    assert.equal(spoken[0].name, day.keeper, 'the keeper of that door speaks');
     assert.ok(spoken[0].text.length > 40, 'and it is the story text on screen');
 });
 

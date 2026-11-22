@@ -292,11 +292,20 @@
         // Music stays low, the story sits on top, and the chime marks the start.
         w.MusicSystem?.playSFX('music-transition');
         A?.duckMusic?.(0.3, 'advent-story');
-        // Each door keeper reads the story in their own voice. The words spoken
-        // are exactly the words printed above, so any story can be heard, and
-        // the music lifts again as soon as the reading ends.
-        const spoken = w.CharacterVoices?.speak?.(day.keeper, day.story);
-        Promise.resolve(spoken).finally(() => A?.restoreMusic?.('advent-story'));
+        // The door's own recorded clip plays first, in the keeper's recorded
+        // voice. If that clip is missing, the keeper reads the same words in
+        // their own synthetic voice, so a story is never silent.
+        const path = `assets/advent/story-${String(day.n).padStart(2, '0')}.mp3`;
+        clip = new w.Audio(path);
+        clip.onended = () => { clip = null; A?.restoreMusic?.('advent-story'); };
+        clip.onerror = () => {
+            clip = null;
+            A?.restoreMusic?.('advent-story');
+            const spoken = w.CharacterVoices?.speak?.(day.keeper, day.story);
+            Promise.resolve(spoken).finally(() => A?.restoreMusic?.('advent-story'));
+        };
+        const started = clip.play?.();
+        if (started?.catch) started.catch(() => clip?.onerror?.());
         if (j) { j.heard[day.n] = Date.now(); game.save?.(); }
     }
 

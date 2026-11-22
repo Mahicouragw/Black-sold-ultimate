@@ -329,7 +329,24 @@
         for (const ch of String(name || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
         return h >>> 0;
     };
+    /* ── Neural character voices ───────────────────────────────────────────
+       Each character has one synthetic voice of their own. The words spoken
+       are exactly the words on screen, but the sound comes from a neural TTS
+       service (/api/tts) rather than the phone's screen reader voice, so the
+       cast sound like different people instead of one TalkBack voice. The
+       device voice stays as the fallback when no service is configured. */
+    const NEURAL_VOICES = [
+        'Kore', 'Puck', 'Charon', 'Fenrir', 'Aoede', 'Leda', 'Orus', 'Zephyr',
+        'Callirrhoe', 'Autonoe', 'Enceladus', 'Iapetus', 'Umbriel', 'Algieba',
+        'Despina', 'Erinome'
+    ];
+
     window.CharacterVoices = {
+        /** The neural voice assigned to this character (stable for the name). */
+        neuralVoice(name) {
+            return NEURAL_VOICES[liveHash(name) % NEURAL_VOICES.length];
+        },
+
         /** A stable device-voice profile for one character name. */
         profile(name) {
             const hash = liveHash(name);
@@ -355,11 +372,96 @@
             if (current.trim()) out.push(current.trim());
             return out;
         },
+        lastEngine: '',
+        neuralAvailable: true,
+        neuralRetryAt: 0,
+
+        endpoint() {
+            return window.location.hostname === 'mahicouragw.github.io'
+                ? 'https://black-sold-ultimate.vercel.app/api/tts'
+                : 'api/tts';
+        },
+
+        /** Ask the neural voice service for this sentence. Returns a Blob or null. */
+        async fetchSpeech(name, text) {
+            if (!this.neuralAvailable || Date.now() < this.neuralRetryAt) return null;
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => { try { controller.abort(); } catch {} }, 9000);
+                const response = await fetch(this.endpoint(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice: this.neuralVoice(name) }),
+                    signal: controller.signal
+                });
+                clearTimeout(timer);
+                if (!response.ok) {
+                    // 503 means no provider is configured: stop trying this session.
+                    if (response.status === 503) { this.neuralAvailable = false; }
+                    else this.neuralRetryAt = Date.now() + 60000;
+                    return null;
+                }
+                const blob = await response.blob();
+                return blob && blob.size > 600 ? blob : null;
+            } catch {
+                this.neuralRetryAt = Date.now() + 60000;
+                return null;
+            }
+        },
+
+        stopNeural() {
+            try { this.currentAudio?.pause?.(); } catch {}
+            if (this.currentUrl) { try { URL.revokeObjectURL(this.currentUrl); } catch {} }
+            this.currentAudio = null;
+            this.currentUrl = null;
+        },
+
+        /** Play a blob in this character's voice; resolves true when it ends. */
+        playBlob(blob, timeoutMs = 30000) {
+            return new Promise(resolve => {
+                let settled = false;
+                const done = value => { if (!settled) { settled = true; clearTimeout(watchdog); resolve(value); } };
+                let audio;
+                try {
+                    this.stopNeural();
+                    const url = URL.createObjectURL(blob);
+                    this.currentUrl = url;
+                    audio = new window.Audio(url);
+                    this.currentAudio = audio;
+                } catch { resolve(false); return; }
+                const watchdog = setTimeout(() => done(true), timeoutMs);
+                audio.onended = () => done(true);
+                audio.onerror = () => done(false);
+                window.AudioManager?.duckMusic?.(0.25, 'npc-voice');
+                const finish = () => window.AudioManager?.restoreMusic?.('npc-voice');
+                audio.addEventListener?.('ended', finish);
+                const started = audio.play?.();
+                if (started?.catch) started.catch(() => done(false));
+            });
+        },
+
+        /** Read text aloud with the character's synthetic voice. */
+        async speakNeural(name, text) {
+            const blob = await this.fetchSpeech(name, text);
+            if (!blob) return false;
+            this.lastEngine = 'neural';
+            const ok = await this.playBlob(blob);
+            if (!ok) this.neuralRetryAt = Date.now() + 30000;
+            return ok;
+        },
+
         /** Read text aloud in this character's voice; returns the audio promise. */
-        speak(name, text) {
+        async speak(name, text) {
             const words = String(text || '').trim();
             const audio = window.AudioManager || window.MusicSystem;
-            if (!audio || !words) return Promise.resolve(false);
+            if (!words) return false;
+            // Synthetic character voice first, so nobody sounds like TalkBack.
+            if (this.neuralAvailable && (audio?.characterVoicesEnabled !== false)) {
+                const spoken = await this.speakNeural(name, words);
+                if (spoken) return true;
+            }
+            if (!audio) return false;
+            this.lastEngine = 'device';
             const parts = this.chunks(words);
             return parts.reduce((chain, part, index) => chain.then(ok =>
                 audio.enqueueAudioEvent({
