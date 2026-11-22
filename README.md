@@ -43,6 +43,15 @@ falls silent. Anything else goes to the live AI service with a 12-second limit;
 if it cannot answer, the character still replies aloud from local knowledge
 instead of leaving you waiting.
 
+## Synthetic character voices
+
+Every NPC can speak with a **synthetic voice of its own** — the words on screen
+read aloud by a neural voice service, not the phone's screen-reader voice. Add a
+free key in Vercel and the whole cast changes voice; with no key the device voice
+is used with each character's own pitch and speed, so nothing falls silent.
+Full steps, free key links and where to paste them: **[VOICE_SETUP.md](VOICE_SETUP.md)**.
+Type `voice status` in the game to hear which engine is reading.
+
 ## Built-in narration and gesture interface (7.27.0)
 
 Tap **Start spoken gesture controls** for Accessible Gesture Mode and the optional

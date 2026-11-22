@@ -35,9 +35,15 @@
             if (!this.lastCall) return 'No question has been sent to the AI service yet. Ask someone something and I will report back.';
             const { provider, ai, ms, at } = this.lastCall;
             const when = at ? at.toLocaleTimeString() : 'just now';
-            return ai
-                ? `The AI service answered at ${when} through ${provider}, in ${Math.round(ms / 100) / 10} seconds. Characters read those answers aloud in their own voices.`
-                : `The AI service did not answer at ${when} (${provider}, ${Math.round(ms / 100) / 10} seconds). Characters answered from the game's own knowledge instead. Check the internet connection, then ask again.`;
+            const voices = window.CharacterVoices;
+            const voiceLine = voices?.lastEngine === 'neural'
+                ? ' Characters are speaking with their own synthetic voices.'
+                : voices?.neuralAvailable === false
+                    ? ' No voice service key is configured, so the device voice is reading the answers.'
+                    : ' The device voice is reading until the synthetic voice service answers.';
+            return (ai
+                ? `The AI service answered at ${when} through ${provider}, in ${Math.round(ms / 100) / 10} seconds.`
+                : `The AI service did not answer at ${when} (${provider}, ${Math.round(ms / 100) / 10} seconds). Characters answered from the game's own knowledge instead. Check the internet connection, then ask again.`) + voiceLine;
         },
 
         /**

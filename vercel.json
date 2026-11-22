@@ -8,6 +8,10 @@
     {
       "source": "/api/npc",
       "destination": "/api/npc.js"
+    },
+    {
+      "source": "/api/tts",
+      "destination": "/api/tts.js"
     }
   ],
   "headers": [
