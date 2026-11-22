@@ -383,8 +383,22 @@ const OnlineSystem = {
     },
 
     async signInGoogle() {
-        if (!this.client) await this.init();
-        if (!this.client) { this.status = 'Guest mode'; this.updateIndicators(); return; }
+        // A click must always produce visible feedback. Opening the panel first
+        // means a blocked Firebase script can never look like a dead button.
+        const panel = document.getElementById('google-login-panel');
+        const status = document.getElementById('google-login-status');
+        panel?.classList.remove('hidden');
+        if (status) status.textContent = 'Opening Google sign-in…';
+        try {
+            if (!this.client) await Promise.race([this.init(), new Promise(done => setTimeout(done, 9000))]);
+        } catch { /* reported below with a readable message */ }
+        if (!this.client) {
+            this.status = 'Google sign-in could not start on this connection';
+            this.updateIndicators();
+            if (status) status.textContent = 'Google sign-in could not start on this connection, so the button cannot open a Google window. You can still play: a guest hero saves on this device, and Settings shows your Player ID and PIN for another device. Try again on Wi-Fi or in Chrome.';
+            try { window.GestureAccessibility?.UI && window.AudioManager?.playVoice?.('Google sign-in could not start on this connection. You can still play as a guest.'); } catch {}
+            return;
+        }
         // Signed in, but the database did not answer when the game started: try again.
         if(this.linked&&!this.ready){this.status='Connecting…';this.updateIndicators();await this.init();return;}
         if(this.linked){localStorage.setItem('black_sword_google_login_requested','true');this.status=`Restoring ${this.profile?.display_name||'your Google account'} heroes…`;this.updateIndicators();await this.cacheCloudSave(true);return;}

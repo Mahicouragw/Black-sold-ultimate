@@ -97,10 +97,12 @@ test('Advent Row lives only inside the season and closes itself afterwards', asy
     assert.match(w.document.getElementById('narrative')?.textContent || '', /.|^$/);
 });
 
-test('sixteen Christmas instrumentals rotate only in Christmas locations', async t => {
+test('Christmas locations play only real recorded, licensed instrumentals', async t => {
     const { w } = await ready(t);
     const keys = w.AudioManager.playlists.CHRISTMAS;
-    assert.equal(new Set(keys).size, 16);
-    for (const key of keys) assert.match(w.AudioManager.music[key].src, /^assets\/fair\/carol-\d+\.mp3$/);
-    assert.match(w.AudioManager.music.starlight16.title, /Finale/);
+    assert.equal(new Set(keys).size, 5);
+    for (const key of keys) {
+        assert.match(w.AudioManager.music[key].src, /^assets\/audio\/music\//, 'real recording from the licensed library, never generated audio');
+        assert.doesNotMatch(w.AudioManager.music[key].src, /assets\/fair\//);
+    }
 });

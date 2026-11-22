@@ -27,6 +27,14 @@ holds one keeper, one story, one quest, one secret word and one present.
 | `christmas secret <word>` | Repeats the secret word hidden in the story. |
 | `christmas search` / `christmas sing` / `christmas fight` / `cook` / `fish` | The door's own quest, depending on which keeper you visit. |
 | `christmas present` | Opens the wrapped parcel once the quest is done. |
+| `christmas buy` / `christmas buy apples\|honey\|ginger\|flour\|scroll` | Candy Cane Ingredient Stall prices and purchases. |
+| `christmas kitchen` | Reads your ingredients and cooking scrolls. |
+| `christmas read scroll` | Opens a scroll won in battle: two ingredients and cooking experience. |
+| `christmas pull lever` | The brass lever on Candy Cane Lane opens the toymaker's hidden vault. |
+| `christmas use key` | Clockwork Lobby's number-shaped keyhole needs door twelve's secret word (`twelve`). |
+| `christmas open chest` / `christmas take scrolls` | The two hidden vaults. |
+| `christmas games` / `play chess\|ludo\|snakes\|carrom\|blackjack` | The Christmas Game Hall off Advent Gate. |
+| `christmas news` / `say hello` | Crier Bell, at the market square and in the tavern. |
 
 ## Presents
 
@@ -46,8 +54,11 @@ through the device voice, so a story is never missing and never silent. While a
 story plays, Christmas music is ducked rather than stopped, the change is marked
 with a chime, and doors, coins, pickups and rewards keep their own sounds.
 
-`assets/fair/` now holds **sixteen** original instrumentals, produced by
-`scripts/render-christmas-music.py`. They rotate only in Christmas City.
+Christmas City plays **only real recorded, licensed instrumentals** from the
+shipped library: *A Winter Tale*, *Beyond the Frozen Veil*, *A New Town*, *The Old
+Tower Inn* and *Night Town*. The earlier synthesized carols were removed, and the
+game ships no generated music or effects. All event sounds are the recorded
+`assets/audio/sfx/` files (door, coin, pickup, level-up, chime).
 
 ## Directions
 

@@ -330,6 +330,12 @@
                 localStorage.setItem(key, box.checked ? 'on' : 'off');
             };
         },
+        /** Every recorded line this character owns, so callers can choose one
+         *  instead of guessing at a clip that does not exist. */
+        lines(name) { const actor = cast.get(name); return actor ? [...actor[1].keys()] : []; },
+        has(name, text) { const actor = cast.get(name); return Boolean(actor && actor[1].has(text)); },
+        /** Play a recorded line if it exists. Returns true only when audio started. */
+        speak(name, text) { return this.play(name, text); },
         play(name, text) {
             stop();
             const actor = cast.get(name);
