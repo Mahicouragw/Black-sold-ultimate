@@ -339,23 +339,38 @@
             return {
                 voiceId: chosen ? `system:${chosen.name}` : 'system:default',
                 voice: chosen?.name || '',
-                pitch: Number((0.80 + ((hash >>> 3) % 41) / 100).toFixed(2)),
-                rate: Number((0.90 + ((hash >>> 11) % 21) / 100).toFixed(2))
+                pitch: Number((0.62 + ((hash >>> 3) % 74) / 100).toFixed(2)),
+                rate: Number((0.86 + ((hash >>> 11) % 27) / 100).toFixed(2))
             };
+        },
+        /** Split long text at sentence boundaries so nothing is truncated. */
+        chunks(text, size = 380) {
+            const sentences = String(text || '').match(/[^.!?]+[.!?]*\s*/g) || [];
+            const out = [];
+            let current = '';
+            for (const sentence of sentences) {
+                if ((current + sentence).length > size && current) { out.push(current.trim()); current = ''; }
+                current += sentence;
+            }
+            if (current.trim()) out.push(current.trim());
+            return out;
         },
         /** Read text aloud in this character's voice; returns the audio promise. */
         speak(name, text) {
             const words = String(text || '').trim();
             const audio = window.AudioManager || window.MusicSystem;
             if (!audio || !words) return Promise.resolve(false);
-            return audio.enqueueAudioEvent({
-                text: words,
-                ...this.profile(name),
-                channel: `npc:${name}`,
-                priority: true,
-                requireVoice: true,
-                character: true
-            });
+            const parts = this.chunks(words);
+            return parts.reduce((chain, part, index) => chain.then(ok =>
+                audio.enqueueAudioEvent({
+                    text: part,
+                    ...this.profile(name),
+                    channel: `npc:${name}`,
+                    priority: index === 0,
+                    requireVoice: true,
+                    character: true
+                }).then(next => ok || next)
+            ), Promise.resolve(false));
         }
     };
 

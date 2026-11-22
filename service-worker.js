@@ -1,7 +1,7 @@
 
 const BASE=new URL('./',self.registration.scope);
 const PREFIX=`black-sword:${BASE.href}:shell:`;
-const CACHE=PREFIX+'black-sword-v7.58.0-npc-voice2';
+const CACHE=PREFIX+'black-sword-v7.58.0-voices3';
 const MUSIC_CACHE=`black-sword:${BASE.href}:music-v1`;
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',

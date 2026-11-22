@@ -287,23 +287,16 @@
     function playStory(game, day) {
         const A = w.AudioManager;
         const j = journal(game);
-        const path = `assets/advent/story-${String(day.n).padStart(2, '0')}.mp3`;
         say(game, `${day.keeper}, door ${day.n}, ${day.title}. ${day.story}`, 'npc');
         stopStory();
         // Music stays low, the story sits on top, and the chime marks the start.
         w.MusicSystem?.playSFX('music-transition');
         A?.duckMusic?.(0.3, 'advent-story');
-        if (!A) return;
-        clip = new w.Audio(path);
-        clip.onended = () => { clip = null; A.restoreMusic?.('advent-story'); };
-        clip.onerror = () => {
-            clip = null;
-            A.restoreMusic?.('advent-story');
-            // No recording for this door yet: the same words, spoken by the
-            // device voice, so the story is never missing.
-            A.playVoice?.(day.story);
-        };
-        clip.play?.().catch(() => clip?.onerror?.());
+        // Each door keeper reads the story in their own voice. The words spoken
+        // are exactly the words printed above, so any story can be heard, and
+        // the music lifts again as soon as the reading ends.
+        const spoken = w.CharacterVoices?.speak?.(day.keeper, day.story);
+        Promise.resolve(spoken).finally(() => A?.restoreMusic?.('advent-story'));
         if (j) { j.heard[day.n] = Date.now(); game.save?.(); }
     }
 

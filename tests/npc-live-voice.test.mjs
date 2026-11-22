@@ -185,3 +185,64 @@ test('a stuck request is released instead of blocking the player forever', async
     assert.equal(w.AiNpc.pending, false);
     assert.match(spy.spoken[0].text, /gold/i);
 });
+
+test('a general question still reaches the AI and different questions differ', async t => {
+    const { w, G } = await ready(t);
+    const asked = [];
+    w.fetch = async (url, options) => {
+        const body = JSON.parse(options.body);
+        asked.push(body.message);
+        return { json: async () => ({ reply: `Answer to ${body.message}.`, ai: true, provider: 'openrouter' }) };
+    };
+    const spy = spySpeech(w, G);
+    await w.AiNpc.ask('what will you do for christmas');
+    await w.AiNpc.ask('tell me a story about the sea');
+    spy.restore();
+    assert.equal(asked.length, 2, 'both questions reach the model');
+    assert.equal(asked[0], 'what will you do for christmas');
+    const replies = spy.spoken.map(item => item.text);
+    assert.equal(replies.length, 2);
+    assert.notEqual(replies[0], replies[1], 'two different questions never get one canned answer');
+    assert.match(replies[0], /Answer to what will you do for christmas/);
+});
+
+test('ai status says whether the model answered', async t => {
+    const { w, G } = await ready(t);
+    w.fetch = async () => { throw new Error('offline'); };
+    await w.AiNpc.ask('tell me about the moon');
+    assert.equal(w.AiNpc.lastCall.ai, false);
+    assert.match(w.AiNpc.statusLine(), /did not answer|unreachable/i);
+    w.fetch = async () => ({ json: async () => ({ reply: 'It is bright tonight.', ai: true, provider: 'openrouter' }) });
+    await w.AiNpc.ask('is the moon bright');
+    assert.match(w.AiNpc.statusLine(), /answered .*openrouter/i);
+});
+
+test('each door keeper reads their story in their own voice', async t => {
+    const { w, G } = await ready(t);
+    const BaseDate = w.Date;
+    w.Date = class extends BaseDate { constructor(...args) { super(...(args.length ? args : ['2026-12-07T10:00:00Z'])); } };
+    w.StarlightFair.sync(G);
+    G.state.location = 'starlight_city_1_2';
+    w.AdventCalendar.sync(G);
+    // The ready() clock is 7 December, so door 7 is the one open tonight.
+    const day = w.AdventCalendar.days.find(item => item.n === 7) || w.AdventCalendar.days[0];
+    const spoken = [];
+    const original = w.CharacterVoices.speak;
+    w.CharacterVoices.speak = (name, text) => { spoken.push({ name, text }); return Promise.resolve(true); };
+    G.state.location = `starlight_advent_room_${day.n}`;
+    G.processCommand('christmas story');
+    w.CharacterVoices.speak = original;
+    assert.equal(spoken.length, 1, 'the story is read aloud');
+    assert.equal(spoken[0].name, day.keeper, 'by the keeper of that door');
+    assert.ok(spoken[0].text.length > 40, 'and it is the story text on screen');
+});
+
+test('characters do not all share one voice', async t => {
+    const { w } = await ready(t);
+    const names = ['Merchant Aldric', 'Tavern Keeper Greta', 'Crier Bell', 'Temple Priest', 'Captain Marcus', 'Royal Steward'];
+    const pitches = new Set(names.map(name => w.CharacterVoices.profile(name).pitch));
+    const rates = new Set(names.map(name => w.CharacterVoices.profile(name).rate));
+    assert.ok(pitches.size >= 4, 'pitch differs between people');
+    assert.ok(rates.size >= 3, 'speed differs between people');
+    assert.ok(Math.max(...[...pitches]) - Math.min(...[...pitches]) > 0.2, 'the difference is audible, not a hair');
+});
