@@ -49,7 +49,7 @@ with the number of doors you finished.
 ## Voice, music and sound
 
 Every door has its own clip at `assets/advent/story-NN.mp3`, recorded for this
-game. Clips 01–10 are recorded so far; a door without a clip plays the same words
+game. Clips 01–12 are recorded so far; a door without a clip plays the same words
 through the device voice, so a story is never missing and never silent. While a
 story plays, Christmas music is ducked rather than stopped, the change is marked
 with a chime, and doors, coins, pickups and rewards keep their own sounds.

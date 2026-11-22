@@ -55,6 +55,17 @@
         narrate(game, `Crier Bell: ${text}`, 'npc');
     }
 
+    /** Words written for this moment, read aloud by the crier's own device voice. */
+    function liveSay(game, text) {
+        const profile = w.CharacterVoices?.profile?.(crier.name) || { voiceId: 'system:default', pitch: .92, rate: 1 };
+        const spoken = `Crier Bell says: ${text}`;
+        const emitted = game.emitGameEvent?.(spoken, 'npc', {
+            eventId: `crier:live:${Date.now()}`,
+            voiceId: profile.voiceId, pitch: profile.pitch, rate: profile.rate
+        });
+        if (!emitted) narrate(game, spoken, 'npc');
+    }
+
     const LINES = {
         'line-01': 'Hear the news of Christmas City! I am Crier Bell. Ask me about the map, the actions, the event, the tree, the games, or the latest news.',
         'line-02': 'Kaliwasch Market Square has the north-east gate to Bell Court. West of Bell Court is Greta’s kitchen, east is Ribbon Ice Pond, north is the five-by-five city, and Carolers’ Arch opens west onto Advent Gate. Advent Row runs from door one to door twenty-five and ends in Candy Cane Lane, which leads back to the pond.',
@@ -75,9 +86,14 @@
         const text = String(question || '').trim();
         const topic = topicFor(text);
         if (topic) { answer(game, topic, LINES[topic]); return true; }
-        // Greeting, thanks or farewell: the crier's own recorded greeting.
-        if (/^(hi|hello|hey|greetings|namaste|good (morning|afternoon|evening))\b/i.test(text) || /thank|bye|farewell/i.test(text)) {
-            answer(game, 'line-01', LINES['line-01']);
+        // Greeting, thanks or farewell: answered fresh, then read aloud in the
+        // crier's own voice, so any question or comment gets a live reply.
+        if (/^(hi|hello|hey|greetings|namaste|good (morning|afternoon|evening))\b/i.test(text)) {
+            liveSay(game, 'Well met, traveller. I am Crier Bell, town crier of Kaliwasch. Ask me anything about Christmas City — the map, the actions, the event, the tree, the games or the latest news — and I will answer out loud.');
+            return true;
+        }
+        if (/\b(thank(s| you)|bye|farewell|good night)\b/i.test(text)) {
+            liveSay(game, 'You are welcome, traveller. Walk safe, and listen for my bell on the square.');
             return true;
         }
         return false;
@@ -90,16 +106,16 @@
         const here = game.state.location;
         const present = festivalOpen() && (here === market || here === tavern);
         if (present) {
-            if (text === 'christmas news') { answer(game, 'line-07', LINES['line-07']); return; }
+            if (text === 'christmas news') { answer(game, 'line-07', LINES['line-07']); return true; }
             if (text === 'christmas crier' || text === 'talk to crier bell' || text === 'talk crier bell') {
-                answer(game, 'line-01', LINES['line-01']); return;
+                answer(game, 'line-01', LINES['line-01']); return true;
             }
             const said = /^(?:ask|say)\s+(.+)$/.exec(text);
-            if (said && ask(game, said[1])) return;
-            if (text === 'christmas help' || text === 'christmas guide') { answer(game, 'line-03', LINES['line-03']); return; }
+            if (said && ask(game, said[1])) return true;
+            if (text === 'christmas help' || text === 'christmas guide') { answer(game, 'line-03', LINES['line-03']); return true; }
             if (text === 'christmas map' && !game.state.location?.startsWith('starlight_')) {
                 // The crier answers the map question from the market and tavern.
-                if (here === market || here === tavern) { answer(game, 'line-02', LINES['line-02']); return; }
+                if (here === market || here === tavern) { answer(game, 'line-02', LINES['line-02']); return true; }
             }
         }
         if (text === 'christmas news' && !present) {
