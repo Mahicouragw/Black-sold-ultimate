@@ -95,7 +95,7 @@ class AudioManagerController {
             victory: { src: 'assets/audio/music/victory.mp3', title: 'Victory' }
         };
 
-        const fairTitles = ['Paper Star Procession','Ribbons on the Ice','Greta’s Waltz','Bell Court Carol','Fir Bough Reel','Candlelit Market','Hearthside Lullaby','Sleigh at Dawn','Winter Orchard','The Twenty-Fifth Bell'];
+        const fairTitles = ['Paper Star Procession','Ribbons on the Ice','Greta’s Waltz','Bell Court Carol','Fir Bough Reel','Candlelit Market','Hearthside Lullaby','Sleigh at Dawn','Winter Orchard','The Twenty-Fifth Bell','Advent Row Bell','Candy Cane Skip','Candle Chapel Air','Reindeer Crossing','Star Observatory','Sleigh Bell Finale'];
         const fairKeys = fairTitles.map((title,i) => {
             const key = `starlight${i+1}`;
             this.music[key] = {title,src:`assets/fair/carol-${i+1}.mp3`};

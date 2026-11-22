@@ -2,6 +2,11 @@
 
 An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Features real royalty-free ambient music, enhanced combat, guilds, quests, and more!
 
+## Christmas City and Advent Row
+
+`ADVENT_ROW.md` documents the December 1–25 city, the twenty-five date-locked
+doors, their stories, quests, presents and the direction-announcement settings.
+
 ## Built-in narration and gesture interface (7.27.0)
 
 Tap **Start spoken gesture controls** for Accessible Gesture Mode and the optional

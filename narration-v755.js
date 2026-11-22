@@ -31,6 +31,7 @@
         'move.going': ['Going {Dir}…', '{dir} వైపు వెళ్తున్నారు…', '{dir} की ओर जा रहे हैं…'],
         'move.moved': ['You moved {dir} to {place}.', 'మీరు {dir} వైపు నడిచి {place} చేరుకున్నారు.', 'आप {dir} की ओर चलकर {place} पहुँचे।'],
         'move.noPath': ['You did not move. There is no path {dir} from {place}.', 'మీరు కదలలేదు. {place} నుండి {dir} వైపు దారి లేదు.', 'आप आगे नहीं बढ़े। {place} से {dir} की ओर कोई रास्ता नहीं है।'],
+        'move.revisit': ['You went {dir} to {place}.', 'మీరు {dir} వైపు వెళ్లి {place} చేరుకున్నారు.', 'आप {dir} की ओर जाकर {place} पहुँचे।'],
         'move.exits': ['You can go {list}.', 'మీరు వెళ్లగల దిక్కులు: {list}.', 'आप इन दिशाओं में जा सकते हैं: {list}।'],
         'move.noExits': ['There is no way out of here on foot.', 'ఇక్కడి నుండి నడిచి వెళ్లే దారి లేదు.', 'यहाँ से पैदल निकलने का कोई रास्ता नहीं है।'],
         'move.combat': ['You did not move. You are in combat and cannot go {dir} until the battle ends. Say flee to escape, or keep fighting.', 'మీరు కదలలేదు. మీరు యుద్ధంలో ఉన్నారు, పోరు ముగిసే వరకు {dir} వైపు వెళ్లలేరు. తప్పించుకోవడానికి ఫ్లీ అనండి, లేదా పోరాడండి.', 'आप आगे नहीं बढ़े। आप युद्ध में हैं और लड़ाई खत्म होने तक {dir} की ओर नहीं जा सकते। भागने के लिए फ़्ली कहें, या लड़ते रहें।'],
