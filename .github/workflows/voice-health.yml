@@ -4,6 +4,8 @@ name: Voice health
 # configured key really works. The key itself never leaves Vercel.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 3 * * *'
 
@@ -18,7 +20,7 @@ jobs:
           echo "Configuration:"
           curl -sS "$url" || true
           echo
-          for attempt in 1 2 3; do
+          for attempt in $(seq 1 12); do
             body=$(curl -sS "$url?probe=1" || true)
             echo "Probe $attempt: $body"
             if printf '%s' "$body" | grep -q '"ok":true'; then
@@ -27,5 +29,5 @@ jobs:
             fi
             sleep 20
           done
-          echo "The voice service did not speak. See VOICE_SETUP.md."
+          echo "The voice service did not speak within four minutes. See VOICE_SETUP.md."
           exit 1
