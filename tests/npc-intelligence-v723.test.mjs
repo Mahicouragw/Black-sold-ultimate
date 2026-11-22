@@ -155,9 +155,10 @@ test('(111) one question produces one response: concurrent requests are refused'
     Game.state.location = 'kaliwasch';
     WorldData.npcs.kaliwasch = [{ name: 'Merchant Aldric', role: 'trader', dialog: [] }];
     AiNpc.pending = false; AiNpc.lastSpoken = ''; AiNpc.lastSpokenAt = 0; AiNpc.histories.clear();
-    let fetches = 0, emits = 0;
+    let fetches = 0;
+    const emits = [];
     const origEmit = Game.emitGameEvent;
-    Game.emitGameEvent = () => { emits++; return Promise.resolve(true); };
+    Game.emitGameEvent = text => { emits.push(text); return Promise.resolve(true); };
     window.fetch = async (url) => {
         if (String(url).includes('api/npc')) {
             fetches++;
@@ -167,14 +168,17 @@ test('(111) one question produces one response: concurrent requests are refused'
         return { ok: false, status: 404, json: async () => ({}) };
     };
 
-    const first = AiNpc.ask('hello');
-    const concurrent = AiNpc.ask('hello');
+    // A greeting is answered from recorded character audio; a real question is
+    // what reaches the network, so ask one here.
+    const question = 'where is the forest entrance';
+    const first = AiNpc.ask(question);
+    const concurrent = AiNpc.ask(question);
     assert.equal(await first, true);
     assert.equal(await concurrent, false, 'a second request while one is pending is refused');
 
-    await AiNpc.ask('hello'); // identical reply a moment later → suppressed
+    await AiNpc.ask(question); // identical reply a moment later → suppressed
     assert.equal(fetches, 2, 'only two network calls for three attempts');
-    assert.equal(emits, 1, 'the identical reply is announced exactly once');
+    assert.equal(emits.filter(text => /Well met, traveller\./.test(text)).length, 1, 'the identical reply is spoken exactly once');
     Game.emitGameEvent = origEmit;
 });
 
@@ -192,7 +196,8 @@ test('(112) NPC replies still reach the narrative log when TTS is off', async t 
     };
     const spoken = [];
     Game.emitGameEvent = (text, type) => { spoken.push(text); /* log only, do not speak */ const el = window.document.getElementById('narrative'); if (el) el.appendChild(window.document.createTextNode(text)); return Promise.resolve(true); };
-    await AiNpc.ask('hello');
-    assert.equal(spoken.length, 1, 'exactly one announcement is produced');
-    assert.ok(window.document.getElementById('narrative').textContent.includes('Merchant Aldric says: Well met, traveller.'));
+    await AiNpc.ask('where is the forest entrance');
+    const log = window.document.getElementById('narrative').textContent;
+    assert.ok(log.includes('Merchant Aldric says: Well met, traveller.'), 'the reply reaches the log even with TTS off');
+    assert.equal(log.split('Merchant Aldric says: Well met, traveller.').length - 1, 1, 'exactly one reply is produced');
 });

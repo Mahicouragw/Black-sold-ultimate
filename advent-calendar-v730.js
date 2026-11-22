@@ -9,6 +9,8 @@
     if (!G || !w.WorldData || !w.SeasonalEvents) return;
 
     const market = 'kaliwasch';
+    const lobby = 'starlight_city_1_2';
+    const stall = 'starlight_candy_stall', toyVault = 'starlight_toy_vault', clockVault = 'starlight_clock_vault';
     const gate = 'starlight_advent_gate';
     const lane = 'starlight_candy_cane_lane';
     const row = n => `starlight_advent_row_${n}`;
@@ -18,79 +20,79 @@
     // One entry per door. The story is the exact text of the recorded voice
     // clip, so a reader who cannot hear the audio gets the same words.
     const DAYS = [
-        { n: 1, keeper: 'Keeper Maren', title: 'The Candle in the Window', music: 'starlight11',
+        { n: 1, keeper: 'Keeper Maren', title: 'The Candle in the Window', music: 'CHRISTMAS',
           story: 'On the first night of winter, Keeper Maren set one candle in the window of the first door, and every traveller on the frozen road could see it. She promised that whoever knocked here would carry that light all year. The candle is still warm. Say christmas search beside it, and keep my secret word: candlewick.',
           secret: 'candlewick', task: { type: 'search', verb: 'light the first candle' } },
-        { n: 2, keeper: 'Baker Tomas', title: 'The Gingerbread Key', music: 'starlight12',
+        { n: 2, keeper: 'Baker Tomas', title: 'The Gingerbread Key', music: 'CHRISTMAS',
           story: 'Baker Tomas locked his shop with a key of gingerbread, because a key you can eat can never be stolen. He swore the oven remembers every wish whispered into the dough. Tonight the oven is warm again. Say cook to bake with me, and remember the secret word: cinnamon.',
           secret: 'cinnamon', task: { type: 'cook', verb: 'cook one dish' } },
-        { n: 3, keeper: 'Fisherwoman Rhea', title: 'The Singing Ice', music: 'starlight13',
+        { n: 3, keeper: 'Fisherwoman Rhea', title: 'The Singing Ice', music: 'CHRISTMAS',
           story: 'Rhea cut her fishing hole by lantern light and swore the fish came up singing. She kept one silver scale in her pocket for luck and gave it to the first child who asked. Say fish at any ice hole, and keep the secret word: silver scale.',
           secret: 'silver scale', task: { type: 'fish', verb: 'land one fish' } },
-        { n: 4, keeper: 'Watchman Corvin', title: 'The Brass Lantern', music: 'starlight14',
+        { n: 4, keeper: 'Watchman Corvin', title: 'The Brass Lantern', music: 'CHRISTMAS',
           story: 'Watchman Corvin paced this street for forty winters with a brass lantern and a bent key. He met the frost prowlers with a broom and a very loud voice. Tonight the prowlers are back. Say christmas fight, and remember the secret word: lantern.',
           secret: 'lantern', task: { type: 'battle', verb: 'drive off a frost prowler' } },
-        { n: 5, keeper: 'Herbalist Nissa', title: 'Mistletoe Above the Door', music: 'starlight15',
+        { n: 5, keeper: 'Herbalist Nissa', title: 'Mistletoe Above the Door', music: 'CHRISTMAS',
           story: 'Nissa hung mistletoe above every door because, she said, a doorway that has been kissed cannot freeze. She pressed her last sprig into a book and left it for a stranger. Search the little room, and the secret word is: mistletoe.',
           secret: 'mistletoe', task: { type: 'search', verb: 'find the pressed sprig' } },
-        { n: 6, keeper: 'Bellringer Ines', title: 'The Frozen Bell', music: 'starlight16',
+        { n: 6, keeper: 'Bellringer Ines', title: 'The Frozen Bell', music: 'CHRISTMAS',
           story: 'Ines rang the frozen bell with a stone wrapped in wool, and the note travelled further than any sermon. People came from three valleys to hear it, then stayed to sing. Say christmas sing, and the secret word is: echo.',
           secret: 'echo', task: { type: 'sing', verb: 'sing with the bell' } },
-        { n: 7, keeper: 'Cooper Bram', title: 'A Promise with Hoops', music: 'starlight11',
+        { n: 7, keeper: 'Cooper Bram', title: 'A Promise with Hoops', music: 'CHRISTMAS',
           story: 'Bram built barrels that held cider, rain water, and once, memorably, a very angry goose. He said a good barrel is a promise with hoops on. Search his workshop, and the secret word is: hoop.',
           secret: 'hoop', task: { type: 'search', verb: 'find the goose barrel' } },
-        { n: 8, keeper: 'Weaver Ysolde', title: 'The Long Scarf', music: 'starlight12',
+        { n: 8, keeper: 'Weaver Ysolde', title: 'The Long Scarf', music: 'CHRISTMAS',
           story: 'Ysolde wove scarves long enough to wrap a whole family, then gave them away and started again. Her loom still clicks at night, finishing someone else’s winter. Search the loom, and the secret word is: thread.',
           secret: 'thread', task: { type: 'search', verb: 'take the finished scarf' } },
-        { n: 9, keeper: 'Lamplighter Pek', title: 'The Ladder and the Dark', music: 'starlight13',
+        { n: 9, keeper: 'Lamplighter Pek', title: 'The Ladder and the Dark', music: 'CHRISTMAS',
           story: 'Pek was only nine when he took the lamplighter’s ladder, and he lit every lamp on this street before supper. He said the dark is only a room where nobody has lit the lamp yet. Search for his matches, and the secret word is: ladder.',
           secret: 'ladder', task: { type: 'search', verb: 'light the street lantern' } },
-        { n: 10, keeper: 'Star-gazer Cassia', title: 'The Comet Chart', music: 'starlight14',
+        { n: 10, keeper: 'Star-gazer Cassia', title: 'The Comet Chart', music: 'CHRISTMAS',
           story: 'Cassia charted a comet that returns once in eighty years and named it after her grandmother. She pinned the chart to this wall with one star circled in red. Search the observatory, and the secret word is: comet.',
           secret: 'comet', task: { type: 'search', verb: 'find the circled chart' } },
-        { n: 11, keeper: 'Toymaker Fenn', title: 'The Wooden Horse', music: 'starlight15',
+        { n: 11, keeper: 'Toymaker Fenn', title: 'The Wooden Horse', music: 'CHRISTMAS',
           story: 'Fenn carved a wooden horse with a mane of real hair, and the child who took it home is a grandparent now. He never sold a toy; he only chose the child. Search his bench, and the secret word is: wooden horse.',
           secret: 'wooden horse', task: { type: 'search', verb: 'finish the carved horse' } },
-        { n: 12, keeper: 'Clockkeeper Ilse', title: 'One Brass Key', music: 'starlight16',
+        { n: 12, keeper: 'Clockkeeper Ilse', title: 'One Brass Key', music: 'CHRISTMAS',
           story: 'Ilse wound every clock on this street with one brass key, and when the frost stopped them she wound them with her hands. There are twelve chimes in her counting room. Search for the key, and the secret word is: twelve.',
           secret: 'twelve', task: { type: 'search', verb: 'wind the counting clock' } },
-        { n: 13, keeper: 'Reindeer herder Auno', title: 'Moss and Neighbours', music: 'starlight11',
+        { n: 13, keeper: 'Reindeer herder Auno', title: 'Moss and Neighbours', music: 'CHRISTMAS',
           story: 'Auno fed his reindeer moss from a leather pouch and talked to them like neighbours. They followed him through blizzards because he never once lied to them. Search for the pouch, and the secret word is: moss.',
           secret: 'moss', task: { type: 'search', verb: 'feed the reindeer' } },
-        { n: 14, keeper: 'Choir mistress Bela', title: 'Forty First Notes', music: 'starlight12',
+        { n: 14, keeper: 'Choir mistress Bela', title: 'Forty First Notes', music: 'CHRISTMAS',
           story: 'Bela taught forty children to sing one note perfectly, then let them find the rest themselves. The choir still meets here at dusk, though the children are grey now. Say christmas sing, and the secret word is: harmony.',
           secret: 'harmony', task: { type: 'sing', verb: 'join the dusk choir' } },
-        { n: 15, keeper: 'Candlemaker Orla', title: 'Little Wax Houses', music: 'starlight13',
+        { n: 15, keeper: 'Candlemaker Orla', title: 'Little Wax Houses', music: 'CHRISTMAS',
           story: 'Orla poured wax in the shape of small houses, so every window in the city could hold a home. She said light is the cheapest gift that still costs something. Search her moulds, and the secret word is: beeswax.',
           secret: 'beeswax', task: { type: 'search', verb: 'pour a wax house' } },
-        { n: 16, keeper: 'Glassblower Miro', title: 'The Ringing Bauble', music: 'starlight14',
+        { n: 16, keeper: 'Glassblower Miro', title: 'The Ringing Bauble', music: 'CHRISTMAS',
           story: 'Miro blew a bauble so thin it rang like a bell when the wind found it. He made twelve, and every year one more appears on the tree. Search the kiln, and the secret word is: ember.',
           secret: 'ember', task: { type: 'search', verb: 'cool the new bauble' } },
-        { n: 17, keeper: 'Pie seller Dorrit', title: 'A Joke for a Pie', music: 'starlight15',
+        { n: 17, keeper: 'Pie seller Dorrit', title: 'A Joke for a Pie', music: 'CHRISTMAS',
           story: 'Dorrit sold mince pies from a tray and never counted the coins, only the people. If a child came without money she asked for a joke instead. Say cook and bake one pie with me, and the secret word is: pastry.',
           secret: 'pastry', task: { type: 'cook', verb: 'bake a mince pie' } },
-        { n: 18, keeper: 'Woodcutter Halvard', title: 'A Spell of Warmth', music: 'starlight16',
+        { n: 18, keeper: 'Woodcutter Halvard', title: 'A Spell of Warmth', music: 'CHRISTMAS',
           story: 'Halvard stacked logs higher than his cottage and still worried about February. He said a warm house is a spell you build with your hands. Search the woodpile, and the secret word is: birch.',
           secret: 'birch', task: { type: 'search', verb: 'stack the birch logs' } },
-        { n: 19, keeper: 'Postmistress Sana', title: 'The Loneliest House', music: 'starlight11',
+        { n: 19, keeper: 'Postmistress Sana', title: 'The Loneliest House', music: 'CHRISTMAS',
           story: 'Sana carried letters through the snow on snowshoes and delivered one addressed only to the loneliest house on the hill. Nobody knows who wrote it. Search her mailbag, and the secret word is: postmark.',
           secret: 'postmark', task: { type: 'search', verb: 'sort the last letters' } },
-        { n: 20, keeper: 'Painter Luce', title: 'The City on the Wall', music: 'starlight12',
+        { n: 20, keeper: 'Painter Luce', title: 'The City on the Wall', music: 'CHRISTMAS',
           story: 'Luce painted the whole city on one wall, then painted herself into it, small, waving from a window. Visitors still look for her. Search the mural, and the secret word is: cobalt.',
           secret: 'cobalt', task: { type: 'search', verb: 'sign the mural' } },
-        { n: 21, keeper: 'Beekeeper Ottilie', title: 'Stored Sunlight', music: 'starlight13',
+        { n: 21, keeper: 'Beekeeper Ottilie', title: 'Stored Sunlight', music: 'CHRISTMAS',
           story: 'Ottilie kept her bees awake all winter with sugar and stubbornness, and they rewarded her with honey for the feast. She said sweetness is stored sunlight. Search the hives, and the secret word is: honeycomb.',
           secret: 'honeycomb', task: { type: 'search', verb: 'collect the winter honey' } },
-        { n: 22, keeper: 'Snow-sculptor Rune', title: 'The Snow Hare', music: 'starlight14',
+        { n: 22, keeper: 'Snow-sculptor Rune', title: 'The Snow Hare', music: 'CHRISTMAS',
           story: 'Rune built a snow hare taller than a man, and it kept its shape until March because he mended it every morning. Say christmas fight to guard it, and the secret word is: snow hare.',
           secret: 'snow hare', task: { type: 'battle', verb: 'guard the snow hare' } },
-        { n: 23, keeper: 'Old Wren', title: 'The Story That Changes', music: 'starlight15',
+        { n: 23, keeper: 'Old Wren', title: 'The Story That Changes', music: 'CHRISTMAS',
           story: 'Old Wren told the same story every year, and every year it changed by one small true detail. That, she said, is how a story stays alive. Listen, say christmas sing to answer her, and the secret word is: hearth.',
           secret: 'hearth', task: { type: 'sing', verb: 'answer the old story' } },
-        { n: 24, keeper: 'Elsbeth the Keykeeper', title: 'The Bent Key on a Ribbon', music: 'starlight16',
+        { n: 24, keeper: 'Elsbeth the Keykeeper', title: 'The Bent Key on a Ribbon', music: 'CHRISTMAS',
           story: 'Elsbeth kept her father’s bent key on a ribbon and opened every door on this street for anyone who knocked politely. She never turned away a wet coat. Search the key ring, and the secret word is: ribbon.',
           secret: 'ribbon', task: { type: 'search', verb: 'hang the key ring' } },
-        { n: 25, keeper: 'Santa Claus', title: 'The Twenty-Fifth Door', music: 'starlight10',
+        { n: 25, keeper: 'Santa Claus', title: 'The Twenty-Fifth Door', music: 'CHRISTMAS',
           story: 'On the twenty-fifth night, Santa Claus himself stands in the last doorway with a sack that is never quite empty. He remembers every kindness and is a poor forgetter of names. Say christmas present, and the secret word is: sleigh bell.',
           secret: 'sleigh bell', task: { type: 'search', verb: 'help with the last sack' } }
     ];
@@ -113,6 +115,14 @@
             { id: 'mistletoe_ring', name: 'Mistletoe Ring', type: 'accessory', slot: 'neck', hp: 12, mp: 12, wis: 2, value: 800, desc: 'A silver ring strung on a leather cord, holding one white berry that never falls.' },
             { id: 'santas_star', name: 'Santa’s Star', type: 'accessory', slot: 'neck', hp: 20, str: 1, wis: 2, value: 2000, desc: 'The star from the top of Santa’s own tree, given away once a century to a hero who finished every door.' }
         ]
+    };
+
+    const KITCHEN = {
+        'winter apples': { name: 'Winter Apples', type: 'food', effect: 'heal', power: 18, value: 12, desc: 'Firm red apples kept cold until the feast. Cook one for a warm dish.' },
+        'honey jar': { name: 'Honey Jar', type: 'food', effect: 'heal', power: 22, value: 20, desc: 'Thick winter honey from Ottilie’s hives. Sweetens pies and tea.' },
+        'ginger root': { name: 'Ginger Root', type: 'food', effect: 'heal', power: 15, value: 14, desc: 'A knuckled root with a hot bite, the heart of gingerbread.' },
+        'flour sack': { name: 'Flour Sack', type: 'food', effect: 'heal', power: 12, value: 10, desc: 'Milled winter wheat. Bread, pastry and dumplings all begin here.' },
+        'christmas cooking scroll': { name: 'Christmas Cooking Scroll', type: 'scroll', value: 60, desc: 'A recipe written on a ribbon-tied scroll, won in battle. Say christmas read scroll to open it: it teaches the kitchen and restocks your ingredients.' }
     };
 
     const hash = text => {
@@ -145,6 +155,7 @@
     function registerTreasure() {
         const items = w.WorldData.items;
         for (const group of Object.values(TREASURE)) for (const item of group) items[item.id] ||= { ...item };
+        for (const [key, item] of Object.entries(KITCHEN)) items[key] ||= { ...item };
     }
 
     function buildRooms(game) {
@@ -164,6 +175,14 @@
         // The city edge opens onto the gate, and the pond has a lane entrance too.
         if (L['starlight_city_0_0']) L['starlight_city_0_0'].exits.west = gate;
         if (L['starlight_pond']) L['starlight_pond'].exits.south = lane;
+
+        if (!L[lane]) return false;
+        L[lane].description = 'A curving lane paved with red and white stone, lined with stalls selling ribbon, oranges, hot sugar and cooking ingredients. A brass lever juts out beside the toymaker’s shop window. South leads to Ribbon Ice Pond. West returns to Advent Gate. Say christmas buy for the stall, christmas pull lever for the lever.';
+        L[lane].exits.east = stall;
+        L[stall] ||= { id: stall, name: 'Candy Cane Ingredient Stall', region: 'Christmas City', safe: true, music: 'CHRISTMAS', musicContext: 'CHRISTMAS', exits: { west: lane }, items: [], enemies: [], features: [], description: 'An awning of red and white stripes over baskets of apples, honey, ginger and flour. Say christmas buy for prices, then christmas buy apples, honey, ginger or flour.' };
+
+        if (!L[toyVault]) L[toyVault] = { id: toyVault, name: 'Toymaker’s Hidden Vault', region: 'Christmas City', safe: true, music: 'CHRISTMAS', musicContext: 'CHRISTMAS', exits: { south: lane }, items: [], enemies: [], features: [], description: 'A dry brick room behind the toy shop, smelling of varnish and sawdust. A wooden chest waits under the bench. Say christmas open chest.' };
+        if (!L[clockVault]) L[clockVault] = { id: clockVault, name: 'Clock Lobby Strongroom', region: 'Christmas City', safe: true, music: 'CHRISTMAS', musicContext: 'CHRISTMAS', exits: { down: lobby }, items: [], enemies: [], features: [], description: 'A stone strongroom behind the clock face, lit by one green lamp. Two ribbon-tied scrolls and a purse sit on the shelf. Say christmas take scrolls.' };
 
         for (const day of DAYS) {
             const streetId = row(day.n), roomId = inside(day.n), state = doorState(day.n);
@@ -189,6 +208,7 @@
             N[streetId] = [{ name: day.keeper, role: 'door keeper', dialog: [day.story] }];
         }
         registerTreasure();
+        w.ChristmasGames?.build?.();
         return Boolean(L[gate]);
     }
 
@@ -310,13 +330,15 @@
 
     /* -------------------------------------------------------------- commands */
 
-    const ACTIONS = new Set(['christmas open', 'christmas story', 'christmas search', 'christmas sing', 'christmas fight', 'christmas present', 'christmas doors', 'christmas map', 'christmas secret']);
+    const ACTIONS = new Set(['christmas open', 'christmas story', 'christmas search', 'christmas sing', 'christmas fight', 'christmas present', 'christmas doors', 'christmas map', 'christmas secret', 'christmas buy', 'christmas pull lever', 'christmas use key', 'christmas open chest', 'christmas take scrolls', 'christmas read scroll', 'christmas kitchen']);
 
     function handle(game, raw) {
         const text = String(raw).trim().toLowerCase().replace(/\s+/g, ' ');
         if (!/^christmas /.test(text)) return false;
-        const verb = text.split(' ').slice(0, 2).join(' ');
-        const rest = text.slice(verb.length).trim();
+        // Longest matching action, so "christmas pull lever" is not read as "christmas pull".
+        const verb = [...ACTIONS].sort((a, b) => b.length - a.length)
+            .find(action => text === action || text.startsWith(action + ' ')) || '';
+        const rest = verb ? text.slice(verb.length).trim() : '';
         if (!ACTIONS.has(verb) && !text.startsWith('christmas secret ')) return false;
         if (festivalOpen()) sync(game);
         const where = here(game);
@@ -324,6 +346,89 @@
         if (!festivalOpen() && where.kind !== 'other') { say(game, 'Christmas City opens December 1 and closes after December 25, India time.'); return true; }
 
         if (verb === 'christmas doors') { doorsReport(game); return true; }
+        if (verb === 'christmas kitchen') {
+            const bag = game.state.inventory || [];
+            const foods = bag.filter(i => i.type === 'food' && i.quantity > 0).map(i => i.name);
+            const scrolls = bag.filter(i => i.id === 'christmas cooking scroll').reduce((n, i) => n + i.quantity, 0);
+            say(game, `Christmas kitchen. Ingredients in your bag: ${foods.join(', ') || 'none'}. Cooking scrolls: ${scrolls}. Scrolls drop in Christmas City battles, and the Candy Cane stall sells apples, honey, ginger and flour. Say recipes to cook.`);
+            return true;
+        }
+        if (text === 'christmas buy') {
+            game.state.location === 'starlight_candy_stall' || game.state.location === lane
+                ? say(game, 'The stall sells winter apples for 12 gold, a honey jar for 20, ginger root for 14 and a flour sack for 10. Say christmas buy apples, honey, ginger or flour.')
+                : say(game, 'The Candy Cane Ingredient Stall is on Candy Cane Lane, east of Advent Gate.');
+            return true;
+        }
+        if (/^christmas buy (apples|honey|ginger|flour|cooking scroll)$/.test(text)) {
+            if (game.state.location !== 'starlight_candy_stall' && game.state.location !== lane) { say(game, 'Buy at the Candy Cane Ingredient Stall, on Candy Cane Lane.'); return true; }
+            const choice = text.split(' ').pop();
+            const stock = { apples: ['winter apples', 12], honey: ['honey jar', 20], ginger: ['ginger root', 14], flour: ['flour sack', 10], scroll: ['christmas cooking scroll', 40] };
+            const [id, price] = stock[choice === 'cooking' ? 'scroll' : choice] || stock.apples;
+            if ((game.state.player.gold || 0) < price) { say(game, `You need ${price} gold for that. You have ${game.state.player.gold || 0}.`); return true; }
+            game.state.player.gold -= price;
+            game.addItemToInventory(id, { ...KITCHEN[id] });
+            game.updateHUD?.(); game.save?.();
+            w.MusicSystem?.playSFX('coin');
+            say(game, `You buy one ${KITCHEN[id].name} for ${price} gold. Say recipes to cook with it.`, 'item');
+            return true;
+        }
+        if (verb === 'christmas read scroll') {
+            const bag = game.state.inventory || [];
+            const scroll = bag.find(i => i.id === 'christmas cooking scroll' && i.quantity > 0);
+            if (!scroll) { say(game, 'You have no Christmas cooking scroll. Win a battle in Christmas City, or buy one at the Candy Cane stall for 40 gold.'); return true; }
+            scroll.quantity--;
+            if (scroll.quantity <= 0) game.state.inventory = bag.filter(i => i !== scroll);
+            const gained = ['winter apples', 'honey jar', 'ginger root', 'flour sack'].sort(() => Math.random() - .5).slice(0, 2);
+            for (const id of gained) game.addItemToInventory(id, { ...KITCHEN[id] });
+            if (game.state.skills?.cooking) game.state.skills.cooking.xp = (game.state.skills.cooking.xp || 0) + 25;
+            game.save?.();
+            w.MusicSystem?.playSFX('pickup');
+            say(game, `The scroll teaches you the keeper’s recipe: ${gained.map(id => KITCHEN[id].name).join(' and ')}. Cooking experience plus twenty-five. Say recipes to cook.`, 'treasure');
+            return true;
+        }
+        if (verb === 'christmas pull lever') {
+            if (game.state.location !== lane) { say(game, 'The brass lever is on Candy Cane Lane, beside the toy shop window.'); return true; }
+            const j = journal(game);
+            j.lever = true;
+            w.WorldData.locations[lane].exits.west = gate;
+            w.WorldData.locations[lane].exits.north = 'starlight_toy_vault';
+            say(game, 'The lever turns with a heavy clack. A wall panel swings open to the north, into the toymaker’s hidden vault.');
+            w.MusicSystem?.playSFX('door');
+            game.save?.();
+            return true;
+        }
+        if (verb === 'christmas use key') {
+            if (game.state.location !== lobby) { say(game, 'The keyhole is behind the clock in Clockwork Lobby.'); return true; }
+            const j = journal(game);
+            if (!j.secret[12]) { say(game, 'The keyhole is shaped like a number, and it will not turn. Door twelve holds the number and the secret word: listen to its story, then say christmas secret twelve.'); return true; }
+            j.clockKey = true;
+            w.WorldData.locations[lobby].exits.up = clockVault;
+            say(game, 'The number-shaped keyhole turns and a stone door opens up into the Clock Lobby Strongroom.', 'treasure');
+            w.MusicSystem?.playSFX('door');
+            game.save?.();
+            return true;
+        }
+        if (verb === 'christmas open chest') {
+            if (game.state.location !== 'starlight_toy_vault') { say(game, 'The toy chest is in the hidden vault north of Candy Cane Lane.'); return true; }
+            const j = journal(game);
+            if (j.toyChest) { say(game, 'The toy chest is empty now.'); return true; }
+            j.toyChest = Date.now();
+            give(game, giftFor(game, 24, 3), 'The toy chest creaks open.');
+            return true;
+        }
+        if (verb === 'christmas take scrolls') {
+            if (game.state.location !== 'starlight_clock_vault') { say(game, 'The strongroom is up from Clockwork Lobby, behind the clock face.'); return true; }
+            const j = journal(game);
+            if (j.clockScrolls) { say(game, 'The shelf is bare now.'); return true; }
+            j.clockScrolls = Date.now();
+            game.addItemToInventory('christmas cooking scroll', { ...KITCHEN['christmas cooking scroll'] });
+            game.addItemToInventory('christmas cooking scroll', { ...KITCHEN['christmas cooking scroll'] });
+            game.state.player.gold = (game.state.player.gold || 0) + 40;
+            game.updateHUD?.(); game.save?.();
+            w.MusicSystem?.playSFX('coin');
+            say(game, 'You take two cooking scrolls and a purse of 40 gold.', 'treasure');
+            return true;
+        }
         if (verb === 'christmas map') {
             const t = today();
             say(game, `Christmas City streets. Advent Gate connects Carolers’ Arch to Advent Row and Candy Cane Lane; the lane leads to Ribbon Ice Pond. Advent Row runs north from door 1 to door 25, one stoop for each night of December, and ends in the lane. On December ${t.d}, door ${t.d} is the one open door. Say christmas doors for every door's state.`);
@@ -407,19 +512,49 @@
 
     /* ---------------------------------------------------------- Santa Claus */
 
+    /** Cooking scrolls and ingredients are won in battle, never conjured. */
+    function battleDrop(game) {
+        if (!/^starlight_/.test(String(game.state.location)) || !festivalOpen() || Math.random() >= .45) return false;
+        const drop = Math.random() < .5 ? 'christmas cooking scroll' : pick(['winter apples', 'honey jar', 'ginger root', 'flour sack'], `${game.state.player?.name}:${Date.now()}`);
+        game.addItemToInventory(drop, { ...KITCHEN[drop] });
+        say(game, `Among the frost you find a ${KITCHEN[drop].name}. Say christmas kitchen to review your ingredients.`, 'treasure');
+        game.save?.();
+        return true;
+    }
+
+    /** Santa's one present of the year. It is never gold and never daily: the
+     *  hero must have finished all twenty-five doors, and only on December 25. */
     function santaGift(game) {
         const j = journal(game);
+        const t = today();
+        if (t.d !== 25 || !festivalOpen()) {
+            say(game, 'Santa’s sleigh is not here yet. He checks the doors on December 25.');
+            return { given: false, reason: 'date' };
+        }
         const doors = Object.keys(j?.done || {}).length;
         const secrets = Object.keys(j?.secret || {}).length;
-        const decorated = Boolean(game.state.player?.starCity?.decorated);
-        if (j?.santaGift) return { already: true, doors, secrets };
-        const grade = Math.min(3, (decorated ? 1 : 0) + (doors >= 20 ? 2 : doors >= 10 ? 1 : 0) + (secrets >= 15 ? 1 : 0));
+        if (j?.santaGift) {
+            say(game, 'Santa has already given you this year’s present. He remembers.');
+            return { given: false, reason: 'already' };
+        }
+        if (doors < 25) {
+            const missing = DAYS.filter(d => !j.done[d.n]).map(d => d.n);
+            w.MusicSystem?.playSFX('board-error');
+            say(game, `Santa checks his list twice. ${doors} of 25 doors are finished, so the great present stays in the sack. Still open: ${missing.join(', ')}. He gives nothing daily, and nothing for part of the road.`);
+            return { given: false, reason: 'unfinished', doors };
+        }
         j.santaGift = Date.now();
-        const gift = giftFor(game, 25, Math.min(3, Math.max(1, grade)));
-        gift.contents.push(TREASURE.treasures[1]);
-        gift.diamonds += doors * 5;
-        give(game, gift, `Santa Claus opens the great sack. "${doors} doors and ${secrets} secret words, hero. You have been paying attention."`);
-        return { already: false, doors, secrets, gift };
+        const gift = {
+            diamonds: 60 + secrets * 4,
+            contents: [
+                { ...TREASURE.weapons[0] },
+                { ...TREASURE.armour[0] },
+                { ...TREASURE.treasures[1] },
+                { id: 'cooked winter stew', name: 'Cooked Winter Stew', type: 'food', effect: 'heal', power: 70, value: 30, desc: 'A clay pot of stew, still hot. Eat it to restore health.' }
+            ]
+        };
+        give(game, gift, `Santa Claus sets the sack down and bows. "Every door, hero. All twenty-five. This was made for someone who protects Christmas: take the Starforged Blade, the Holly Mail and my own star."`);
+        return { given: true, doors, secrets, gift };
     }
 
     /* -------------------------------------------------------------- wiring */
@@ -434,7 +569,17 @@
             w.MusicSystem?.playSFX('board-error');
             return;
         }
-        return oldEnter.call(this, id, visited);
+        const result = oldEnter.call(this, id, visited);
+        if (id === market && festivalOpen()) {
+            const j = journal(this);
+            const tree = this.state.player?.starCity?.decorated;
+            say(this, tree
+                ? 'A tall Christmas tree stands in the market square, its star lit for the city. Crier Bell is calling the news. Say christmas news or say hello to him.'
+                : 'A tall Christmas tree stands bare in the market square, waiting for its ball, ribbon and star. Crier Bell is calling the news. Say christmas news or say hello to him.', 'system');
+            if (j) this.save?.();
+        }
+        if (id === market || id === 'kaliwasch_tavern') w.ChristmasCrier?.sync?.(this);
+        return result;
     };
 
     const oldBlock = G.movementBlock;
@@ -486,6 +631,7 @@
         const name = this.state.enemy?.name;
         const result = oldDefeated.apply(this, args);
         if (day?.task.type === 'battle' && /frost|prowler/i.test(String(name))) finishQuest(this, day, 'battle');
+        battleDrop(this);
         return result;
     };
 
@@ -503,7 +649,7 @@
         if (!active) {
             if (L['starlight_city_0_0']?.exits?.west === gate) delete L['starlight_city_0_0'].exits.west;
             if (L['starlight_pond']?.exits?.south === lane) delete L['starlight_pond'].exits.south;
-            for (const id of Object.keys(L)) if (/^starlight_advent_/.test(id)) delete L[id];
+            for (const id of Object.keys(L)) if (/^starlight_(advent_|candy_stall|toy_vault|clock_vault|game_hall)/.test(id)) delete L[id];
             return false;
         }
         return true;
@@ -528,5 +674,5 @@
     if (typeof process === 'undefined') schedule();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 
-    w.AdventCalendar = { sync, handle, days: DAYS, santaGift, doorOpen, doorState, statusLine, stopStory, questHint, finishQuest, giftFor, journal };
+    w.AdventCalendar = { sync, handle, days: DAYS, santaGift, battleDrop, doorOpen, doorState, statusLine, stopStory, questHint, finishQuest, giftFor, journal };
 })();

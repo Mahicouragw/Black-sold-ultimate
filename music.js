@@ -95,16 +95,12 @@ class AudioManagerController {
             victory: { src: 'assets/audio/music/victory.mp3', title: 'Victory' }
         };
 
-        const fairTitles = ['Paper Star Procession','Ribbons on the Ice','Greta’s Waltz','Bell Court Carol','Fir Bough Reel','Candlelit Market','Hearthside Lullaby','Sleigh at Dawn','Winter Orchard','The Twenty-Fifth Bell','Advent Row Bell','Candy Cane Skip','Candle Chapel Air','Reindeer Crossing','Star Observatory','Sleigh Bell Finale'];
-        const fairKeys = fairTitles.map((title,i) => {
-            const key = `starlight${i+1}`;
-            this.music[key] = {title,src:`assets/fair/carol-${i+1}.mp3`};
-            return key;
-        });
-        // Every requested category has at least two context-compatible real tracks.
-        // Tracks may intentionally serve more than one related category.
+        // Christmas City plays only real recorded, licensed instrumental music from
+        // the shipped library: two winter choir recordings and the inn/town themes.
+        // No generated audio is used for music anywhere in the game.
+        const christmasKeys = ['temple', 'epicExplore', 'palace', 'inn', 'town'];
         this.playlists = {
-            CHRISTMAS: fairKeys,
+            CHRISTMAS: christmasKeys,
             CITY: ['town', 'townThemeRpg', 'palace', 'inn'],
             CITY_MARKET: ['townThemeRpg', 'town', 'inn', 'palace'],
             MARKET: ['townThemeRpg', 'inn', 'town', 'palace'],

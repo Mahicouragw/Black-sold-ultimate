@@ -140,6 +140,34 @@
             narrative.scrollTop = narrative.scrollHeight;
         },
 
+        /** Greetings, thanks and farewells answered from recorded character audio. */
+        smallTalk(npc, question) {
+            const said = String(question || '').toLowerCase().replace(/[!.?,]/g, ' ').trim();
+            const greeting = /^(hi|hello|hey|yo|greetings|namaste|namaskaram|good (morning|afternoon|evening|day))\b/.test(said)
+                || /\b(how are you|how do you do)\b/.test(said);
+            const thanks = /\b(thank(s| you)|much obliged)\b/.test(said);
+            const bye = /\b(bye|goodbye|farewell|see you|good night)\b/.test(said);
+            if (!greeting && !thanks && !bye) return '';
+            const lines = window.CharacterRecordings?.lines?.(npc.name) || [];
+            if (!lines.length) return '';
+            const recorded = lines.filter(line => window.CharacterRecordings.has(npc.name, line));
+            if (!recorded.length) return '';
+            const preferred = greeting ? recorded.find(line => /welcome|hello|greet|care for|good|well met|safe/i.test(line))
+                : thanks ? recorded.find(line => /thank|welcome|glad|good/i.test(line))
+                : recorded.find(line => /farewell|safe|travel|good|watch/i.test(line));
+            return preferred || recorded[0];
+        },
+
+        /** A stable device-voice profile per character, used only when no recorded
+         *  clip exists for the exact words. */
+        voiceFor(name) {
+            const voices = (() => { try { return window.speechSynthesis?.getVoices?.() || []; } catch { return []; } })();
+            const english = voices.filter(voice => /^en/i.test(voice.lang || ''));
+            if (!english.length) return '';
+            let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+            return `system:${english[h % english.length].name}`;
+        },
+
         async ask(rawMessage) {
             const game = window.Game;
             const message = String(rawMessage || '').trim();
@@ -163,11 +191,20 @@
             const question = this.stripName(message, npc);
             const history = this.histories.get(npc.name) || [];
 
-            // Tell the player something is happening: silence is confusing with
-            // a screen reader.
             game.addNarrative(`You ask ${npc.name}: "${question}"`, 'npc');
-            const thinking = `${npc.name} is thinking...`;
-            game.addNarrative(thinking, 'system');
+            // A greeting is answered at once from the character's own recorded
+            // voice. No "thinking" placeholder is ever spoken: the player hears
+            // the person, not a progress message.
+            const small = this.smallTalk(npc, question);
+            if (small) {
+                const handled = game._audioNarrationHandled;
+                try {
+                    if (window.CharacterRecordings?.play(npc.name, small)) game._audioNarrationHandled = true;
+                    game.addNarrative(`${npc.name} says: "${small}"`, 'npc');
+                } finally { game._audioNarrationHandled = handled; }
+                this.aiAvailable = false;
+                return true;
+            }
 
             let reply = '';
             let ai = false;
@@ -219,8 +256,18 @@
             // emitGameEvent writes the log AND routes through centralized TTS,
             // so the TTS OFF setting is honoured automatically. TTS speaks the
             // final answer exactly once; sources are visual/touch targets only.
-            game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${nowMs}` })
-                || game.addNarrative(spoken, 'npc');
+            // Recorded character audio first; only text the cast has no clip for
+            // falls back to the device voice, using that character's own profile.
+            const handledBefore = game._audioNarrationHandled;
+            try {
+                if (window.CharacterRecordings?.play(npc.name, reply)) {
+                    game._audioNarrationHandled = true;
+                    game.addNarrative(spoken, 'npc');
+                } else {
+                    game.emitGameEvent?.(spoken, 'npc', { eventId: `npc:${npc.name}:${nowMs}`, voiceId: this.voiceFor(npc.name) })
+                        || game.addNarrative(spoken, 'npc');
+                }
+            } finally { game._audioNarrationHandled = handledBefore; }
             if (sources.length) this.renderSources(sources);
             this.aiAvailable = ai;
             return true;
