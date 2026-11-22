@@ -353,7 +353,8 @@
                 ...this.profile(name),
                 channel: `npc:${name}`,
                 priority: true,
-                requireVoice: true
+                requireVoice: true,
+                character: true
             });
         }
     };
