@@ -17,6 +17,10 @@
  */
 
 const RATE = new Map();
+// Audio already spoken for one voice and one sentence: free quota is small, so
+// a repeated line (a greeting, a direction) must never be paid for twice.
+const SPOKEN = new Map();
+const SPOKEN_MAX = 48;
 const RATE_LIMIT = 30;          // requests per minute per IP
 const MAX_TEXT = 500;
 
@@ -262,10 +266,24 @@ module.exports = async function handler(req, res) {
         return res.end(JSON.stringify({ error: 'tts-not-configured' }));
     }
 
+    const memoKey = `${voice || 'default'}|${text}`;
+    const memo = SPOKEN.get(memoKey);
+    if (memo) {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', memo.type);
+        res.setHeader('X-Voice-Provider', memo.provider);
+        res.setHeader('X-Voice-Name', voice || 'default');
+        if (memo.model) res.setHeader('X-Voice-Model', memo.model);
+        res.setHeader('X-Voice-Cache', 'hit');
+        return res.end(memo.audio);
+    }
+
     let failure = null;
     for (const [name, call] of providers) {
         try {
             const { audio, type, model } = await call(text, voice);
+            SPOKEN.set(memoKey, { audio, type, model, provider: name });
+            if (SPOKEN.size > SPOKEN_MAX) SPOKEN.delete(SPOKEN.keys().next().value);
             res.statusCode = 200;
             res.setHeader('Content-Type', type);
             res.setHeader('X-Voice-Provider', name);
@@ -280,5 +298,6 @@ module.exports = async function handler(req, res) {
 
     res.statusCode = 502;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    if (failure?.status === 429) res.setHeader('Retry-After', '1800');
     return res.end(JSON.stringify({ error: reasonFor(failure), provider: failure?.provider || null }));
 };

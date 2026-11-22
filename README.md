@@ -52,7 +52,8 @@ is used with each character's own pitch and speed, so nothing falls silent.
 Full steps, free key links and where to paste them: **[VOICE_SETUP.md](VOICE_SETUP.md)**.
 Type `voice status` in the game to hear which engine is reading (and whether the
 server has a voice key ready), and `voice test` to hear one line in the voice of
-the person you are standing with.
+the person you are standing with. Spoken lines are cached on the device, so a
+sentence heard once costs no quota when it comes round again.
 
 ## Built-in narration and gesture interface (7.27.0)
 

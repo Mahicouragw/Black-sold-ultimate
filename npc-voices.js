@@ -403,9 +403,12 @@
                     this.lastError = reason || `http ${response.status}`;
                     // 503 means no provider is configured: stop trying this session.
                     if (response.status === 503) this.neuralAvailable = false;
-                    else if (response.status === 502 && ['tts-auth-failed', 'tts-quota'].includes(reason)) {
-                        // A key problem will not fix itself in a minute.
+                    else if (response.status === 502 && reason === 'tts-auth-failed') {
+                        // A rejected key will not fix itself; do not hammer it.
                         this.neuralAvailable = false;
+                    } else if (response.status === 502 && reason === 'tts-quota') {
+                        // Free voice quota refills; wait quietly and try again later.
+                        this.neuralRetryAt = Date.now() + 30 * 60000;
                     } else this.neuralRetryAt = Date.now() + 60000;
                     return null;
                 }
@@ -448,17 +451,52 @@
             });
         },
 
+        /** A stable key for one character saying one sentence. */
+        speechKey(name, text) {
+            const source = `${name}\u0001${text}`;
+            let hash = 2166136261;
+            for (let i = 0; i < source.length; i += 1) {
+                hash ^= source.charCodeAt(i);
+                hash = Math.imul(hash, 16777619) >>> 0;
+            }
+            return `/tts-cache/${encodeURIComponent(name)}/${hash.toString(36)}`;
+        },
+
+        /** The browser's own disk cache, so a repeated line costs no quota. */
+        async speechCacheStore() {
+            if (!('caches' in window) || !window.caches?.open) return null;
+            try { return await window.caches.open('black-sword-voices-v1'); } catch { return null; }
+        },
+
         /** Reuse audio already fetched for the same character and sentence. */
         cachedSpeech(name, text) {
             const key = `${name}|${text}`;
             if (this.speechCache.has(key)) return Promise.resolve(this.speechCache.get(key));
-            return this.fetchSpeech(name, text).then(blob => {
+            return (async () => {
+                const url = this.speechKey(name, text);
+                const store = await this.speechCacheStore();
+                if (store) {
+                    try {
+                        const hit = await store.match(url);
+                        if (hit) {
+                            const cached = await hit.blob();
+                            if (cached && cached.size > 600) {
+                                this.speechCache.set(key, cached);
+                                return cached;
+                            }
+                        }
+                    } catch { /* a broken cache never stops the voice */ }
+                }
+                const blob = await this.fetchSpeech(name, text);
                 if (blob) {
                     this.speechCache.set(key, blob);
                     if (this.speechCache.size > 60) this.speechCache.delete(this.speechCache.keys().next().value);
+                    if (store) {
+                        try { await store.put(url, new window.Response(blob)); } catch { /* quota of storage */ }
+                    }
                 }
                 return blob;
-            });
+            })();
         },
 
         /** Read text aloud with the character's synthetic voice. */
