@@ -109,6 +109,13 @@ function rewriteVendorLeak(text) {
     return s;
 }
 
+/** Small stable hash, used to pick one of several phrasings. */
+function hash(text) {
+    let h = 2166136261;
+    for (const ch of String(text)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+    return h >>> 0;
+}
+
 /** Offline answers so NPCs still respond with no API key configured. */
 function fallbackReply(message, npc) {
     const text = String(message || '').toLowerCase();
@@ -145,7 +152,20 @@ function fallbackReply(message, npc) {
     if (/shop|buy|item|weapon|armor/.test(text)) {
         return `The traders in the city sell weapons, armour and potions. Type "shop" when you stand in a market to see the wares.`;
     }
-    return `I hear you, traveller. My knowledge of that is thin today, but ask me about quests, monsters, spells or the roads of Kandor and I will help.`;
+    if (/christmas|advent|santa|door|starlight/.test(text)) {
+        const variants = [
+            `Christmas keeps its own city here. When the season opens, walk northeast from Kaliwasch Market Square to Starlight Fair, and ask the town crier for the news.`,
+            `The Christmas season runs from the first of December to the twenty-fifth. Advent Row has twenty-five doors, one for each night, and a tree that wants three ornaments.`,
+            `I keep my own counsel about the season. Ask the crier on the market square for the dates, or walk northeast to Starlight Fair when the snow is falling.`
+        ];
+        return variants[Math.abs(hash(message + name)) % variants.length];
+    }
+    const generic = [
+        `I hear you, traveller. My knowledge of that is thin today, but ask me about quests, monsters, spells or the roads of Kandor and I will help.`,
+        `That lies beyond my learning, friend. Ask me of the roads, the shops or the quests and I will answer plainly.`,
+        `You will want a wiser head than mine for that. The roads of Kandor I know, though: ask me where to walk.`
+    ];
+    return generic[Math.abs(hash(message + name)) % generic.length];
 }
 
 /**
@@ -844,34 +864,70 @@ async function callGemini(key, systemText, message, history) {
     return sanitizeReply(data.candidates?.[0]?.content?.parts?.map(p => p.text).join(''));
 }
 
-// Zero-cost models first. A ":free" model never spends credits, so the game
-// keeps working on an unfunded account. OpenRouter falls through this list
-// automatically if a model is rate limited or unavailable.
-const OPENROUTER_FREE_MODELS = [
-    'google/gemma-4-26b-a4b-it:free',
-    'nvidia/nemotron-3.5-lightning:free',
-    'google/gemma-4-31b-it:free'
-];
+/**
+ * OpenRouter model ladder.
+ *
+ * The first entry is whatever the deployment configured (NPC_MODEL); after
+ * that come broadly available models, cheapest and most reliable first. Each
+ * model is tried on its own request, so one retired or rate-limited id never
+ * takes the whole conversation down — that was why NPCs used to fall back to
+ * one canned answer even with the internet working.
+ */
+const OPENROUTER_MODELS = [
+    process.env.NPC_MODEL,
+    'openai/gpt-4o-mini',
+    'google/gemini-2.0-flash-001',
+    'anthropic/claude-3.5-haiku',
+    'meta-llama/llama-3.3-70b-instruct',
+    'deepseek/deepseek-chat',
+    'qwen/qwen-2.5-72b-instruct',
+    'mistralai/mistral-small-latest',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'openrouter/auto'
+].filter(Boolean);
 
-async function callOpenRouter(key, systemText, message, history) {
-    const primary = process.env.NPC_MODEL || OPENROUTER_FREE_MODELS[0];
+async function askOneModel(key, model, systemText, message, history) {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        headers: {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://black-sold-ultimate.vercel.app',
+            'X-Title': 'Black Soul Ultimate'
+        },
         body: JSON.stringify({
-            model: primary,
-            models: [...new Set([primary, ...OPENROUTER_FREE_MODELS])],
+            model,
             max_tokens: 220,
             temperature: 0.8,
             reasoning: { enabled: false },
             include_reasoning: false,
             messages: [{ role: 'system', content: systemText }, ...history, { role: 'user', content: message }]
         }),
-        signal: AbortSignal.timeout(25000)
+        signal: AbortSignal.timeout(14000)
     });
-    if (!response.ok) throw new Error(`openrouter ${response.status}`);
+    if (!response.ok) throw new Error(`openrouter ${model} ${response.status}`);
     const data = await response.json();
-    return sanitizeReply(data.choices?.[0]?.message?.content);
+    const reply = sanitizeReply(data.choices?.[0]?.message?.content);
+    if (!reply) throw new Error(`openrouter ${model} empty`);
+    return reply;
+}
+
+async function callOpenRouter(key, systemText, message, history) {
+    const tried = new Set();
+    let lastError = null;
+    for (const model of OPENROUTER_MODELS) {
+        if (!model || tried.has(model)) continue;
+        tried.add(model);
+        try {
+            return await askOneModel(key, model, systemText, message, history);
+        } catch (error) {
+            lastError = error;
+            // A retired model id (400/404) or a rate limit (429) is normal:
+            // move to the next model instead of giving up on the player.
+            console.warn(`NPC model ${model} unavailable: ${error.message}`);
+        }
+    }
+    throw lastError || new Error('openrouter unavailable');
 }
 
 module.exports = async function handler(req, res) {

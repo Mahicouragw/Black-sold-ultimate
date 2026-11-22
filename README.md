@@ -27,7 +27,14 @@ you keep narration off for TalkBack.
 | `ask Aldric about the shops` | Same, using his name. |
 
 After you name someone, later questions stay with them until you name someone
-else. Each person keeps their own conversation.
+else. Each person keeps their own conversation. Every character — including each
+of the twenty-five door keepers — has their own pitch, speed and preferred
+system voice, so no two people share one flat screen-reader voice.
+
+`ai status` reports what the AI service did on the last question: which provider
+answered, how long it took, or that it could not be reached. The NPC endpoint
+walks a ladder of known-good models, so one retired model can never turn every
+reply into the same sentence.
 
 **Always answers.** Greetings, the season, the crier, the game hall, cooking,
 your gold, health, quests, exits and the people around you are answered at once

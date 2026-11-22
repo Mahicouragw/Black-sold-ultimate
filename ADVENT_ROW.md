@@ -48,11 +48,12 @@ with the number of doors you finished.
 
 ## Voice, music and sound
 
-Every door has its own clip at `assets/advent/story-NN.mp3`, recorded for this
-game. Clips 01–12 are recorded so far; a door without a clip plays the same words
-through the device voice, so a story is never missing and never silent. While a
-story plays, Christmas music is ducked rather than stopped, the change is marked
-with a chime, and doors, coins, pickups and rewards keep their own sounds.
+Every door is read by **its own keeper**, at once, in that keeper's voice: the
+exact words printed on screen are spoken with a pitch, speed and system voice
+assigned to the keeper's name, so Keeper Maren never sounds like Cooper Bram.
+Stories are never silent, never truncated (long text is split at sentence
+boundaries), and need no clip. Music ducks while a keeper speaks and returns
+when the reading ends; doors, coins, pickups and rewards keep their own sounds.
 
 Christmas City plays **only real recorded, licensed instrumentals** from the
 shipped library: *A Winter Tale*, *Beyond the Frozen Veil*, *A New Town*, *The Old

@@ -28,6 +28,17 @@
         pending: false,
         lastSpoken: '',                // duplicate-response guard
         lastSpokenAt: 0,
+        lastCall: null,                // { provider, ai, ms, at } of the last answer
+
+        /** Plain-language report of the AI service, for "ai status". */
+        statusLine() {
+            if (!this.lastCall) return 'No question has been sent to the AI service yet. Ask someone something and I will report back.';
+            const { provider, ai, ms, at } = this.lastCall;
+            const when = at ? at.toLocaleTimeString() : 'just now';
+            return ai
+                ? `The AI service answered at ${when} through ${provider}, in ${Math.round(ms / 100) / 10} seconds. Characters read those answers aloud in their own voices.`
+                : `The AI service did not answer at ${when} (${provider}, ${Math.round(ms / 100) / 10} seconds). Characters answered from the game's own knowledge instead. Check the internet connection, then ask again.`;
+        },
 
         /**
          * A small, sanitized snapshot of the player's real game state sent to
@@ -125,17 +136,28 @@
             const date = new Date();
             const christmas = window.SeasonalEvents?.activeEvents?.(date)?.some(event => event.id === 'christmas');
             const player = game?.state?.player || {};
-            if (/christmas|advent|xmas|santa|crier|starlight|door/.test(q)) {
+            // Only the questions whose answers live in the game itself are
+            // answered without the AI: where and when things are. Anything
+            // broader ("what will you do for Christmas?") reaches the model,
+            // so a character never gives one canned reply to every subject.
+            const asksPlaceOrDate = /where|when|which date|what date|open|close|opens|closes|start|begin|season|dates?/.test(q);
+            const asksHow = /how (do|can|does)|what can i|how to/.test(q);
+            if (asksPlaceOrDate && /christmas|advent|xmas|santa|crier|starlight/.test(q)) {
                 if (christmas) {
                     return `Christmas City is open today. Walk northeast from Kaliwasch Market Square to Starlight Fair; Crier Bell stands on the square and in the tavern with the news, and Advent Row runs from door one to door twenty-five.`;
                 }
                 const day = `${date.getDate()} ${date.toLocaleString('en-US', { month: 'long' })}`;
-                return `Christmas City opens on the first of December and closes on the twenty-fifth. Today is ${day}, so Crier Bell is not on the square yet: on December the first he takes his place on Kaliwasch Market Square and in the tavern, and he is the one who calls the Christmas news and answers questions about it.`;
+                const variants = [
+                    `Christmas City opens on the first of December and closes on the twenty-fifth. Today is ${day}, so Crier Bell is not on the square yet: on December the first he takes his place on Kaliwasch Market Square and in the tavern.`,
+                    `The season runs from the first to the twenty-fifth of December. Today is ${day}, so the Christmas city is still closed and the crier will not be at the market square until December the first.`,
+                    `Not yet — Christmas opens on December the first and closes on the twenty-fifth. Today is ${day}. Crier Bell waits with the news on Kaliwasch Market Square and in the tavern once the season begins.`
+                ];
+                return variants[this.hash(npc.name + q) % variants.length];
             }
-            if (/game hall|chess|ludo|carrom|snake|blackjack/.test(q)) {
+            if ((asksPlaceOrDate || asksHow) && /game hall|chess|ludo|carrom|snake|blackjack/.test(q)) {
                 return 'The Christmas Game Hall is off Advent Gate, with rooms for chess, carrom, snakes and ladders, ludo and blackjack. Stand in the hall and say play chess, or use the actions menu.';
             }
-            if (/cook|recipe|ingredient|scroll|kitchen/.test(q)) {
+            if ((asksPlaceOrDate || asksHow) && /cook|recipe|ingredient|scroll|kitchen/.test(q)) {
                 return 'The kitchen lives at Greta\'s tavern. Cooking scrolls drop in Christmas fights and the candy cane stall sells ingredients. Say christmas kitchen to see what you carry, and christmas read scroll to open a scroll.';
             }
             if (/\b(gold|money|coins)\b/.test(q)) return `You carry ${Number(player.gold) || 0} gold.`;
@@ -149,6 +171,13 @@
             }
             if (/who.*(here|talk)|anyone here|people here/.test(q)) return this.whoIsHere();
             return '';
+        },
+
+        /** Stable small hash, used to pick between equally good phrasings. */
+        hash(text) {
+            let h = 2166136261;
+            for (const ch of String(text || '')) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+            return h >>> 0;
         },
 
         /** Keep the last few turns so a character can refer back. */
@@ -319,6 +348,7 @@
             let sources = [];
             this.pending = true;
             this.pendingSince = Date.now();
+            const startedAt = Date.now();
             const controller = new AbortController();
             const timer = setTimeout(() => { try { controller.abort(); } catch {} }, 12000);
             try {
@@ -338,8 +368,10 @@
                 reply = this.sanitizeReply(data?.reply || '');
                 ai = Boolean(data?.ai);
                 sources = Array.isArray(data?.sources) ? data.sources : [];
+                this.lastCall = { provider: data?.provider || 'unknown', ai, ms: Date.now() - startedAt, at: new Date() };
             } catch {
                 reply = '';
+                this.lastCall = { provider: 'unreachable', ai: false, ms: Date.now() - startedAt, at: new Date() };
             } finally {
                 clearTimeout(timer);
                 this.pending = false;
@@ -373,6 +405,16 @@
             const lower = raw.toLowerCase().trim();
 
             const game = this?.state ? this : window.Game;
+            if (/^(?:ai|npc|tts|voice) status$/.test(lower)) {
+                const report = AiNpc.statusLine();
+                const spoken = game.emitGameEvent?.(report, 'system', { character: false });
+                if (!spoken) game.addNarrative(report, 'system');
+                return;
+            }
+            if (/^(?:ai|npc) (?:test|diagnose)$/.test(lower)) {
+                AiNpc.ask('hello there, can you hear me');
+                return;
+            }
             // Who is standing here, and how to address one of them.
             if (/^(?:who is here|who's here|who is there|who can i talk to|people here|npcs)\??$/.test(lower)) {
                 const roster = AiNpc.whoIsHere();
