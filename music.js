@@ -17,6 +17,7 @@ class AudioManagerController {
             sfxEnabled: true,
             sfxVolume: 0.55,
             voiceEnabled: false,
+            characterVoices: true,
             voiceVolume: 0.9,
             voiceRate: 1,
             shuffle: true
@@ -217,6 +218,23 @@ class AudioManagerController {
     set sfxEnabled(value) { this.settings.sfxEnabled = Boolean(value); }
     get voiceEnabled() { return this.settings.voiceEnabled; }
     set voiceEnabled(value) { this.settings.voiceEnabled = Boolean(value); }
+    /** Character speech (NPC replies) has its own switch and is on by default. */
+    get characterVoicesEnabled() { return this.settings.characterVoices !== false; }
+    setCharacterVoices(value) {
+        this.settings.characterVoices = Boolean(value);
+        if (!this.settings.characterVoices) this.interruptCharacterVoices();
+        this.persistSettings();
+        return this.settings.characterVoices;
+    }
+    interruptCharacterVoices() {
+        this.speechQueue = this.speechQueue.filter(item => {
+            if (!item.character) return true;
+            item.cancelled = true;
+            item.resolve(false);
+            return false;
+        });
+        if (this.currentSpeechItem?.character && this.activeSpeechCancel) this.activeSpeechCancel();
+    }
     get volume() { return this.settings.musicVolume; }
     set volume(value) { this.settings.musicVolume = this.clamp(value); }
     get sfxVolume() { return this.settings.sfxVolume; }
@@ -398,6 +416,7 @@ class AudioManagerController {
         bindCheck('setting-sfx-enabled', 'sfxEnabled', enabled => this.setSFXEnabled(enabled, false));
         bindRange('setting-sfx-volume', 'sfxVolume', this.setSFXVolume);
         bindCheck('setting-voice-enabled', 'voiceEnabled', enabled => this.setVoiceEnabled(enabled, false));
+        bindCheck('setting-npc-voices', 'characterVoices', enabled => this.setCharacterVoices(enabled));
         bindRange('setting-voice-volume', 'voiceVolume', this.setVoiceVolume);
         bindCheck('setting-music-shuffle', 'shuffle', () => this.playlistState.clear());
     }
@@ -407,6 +426,7 @@ class AudioManagerController {
             'setting-music-enabled': this.musicEnabled,
             'setting-sfx-enabled': this.sfxEnabled,
             'setting-voice-enabled': this.voiceEnabled,
+            'setting-npc-voices': this.characterVoicesEnabled,
             'setting-music-shuffle': this.settings.shuffle
         };
         for (const [id, checked] of Object.entries(checks)) {
@@ -1148,13 +1168,14 @@ class AudioManagerController {
      * Each item finishes speech before its first effect and each effect before
      * the next. Controls never await this queue unless their own logic chooses to.
      */
-    enqueueAudioEvent({ text = '', effects = [], voiceId = 'system:default', language = 'en-US', priority = false, channel = '', eventId = '', requireVoice = false, pitch = 1, rate = 1 } = {}) {
+    enqueueAudioEvent({ text = '', effects = [], voiceId = 'system:default', language = 'en-US', priority = false, channel = '', eventId = '', requireVoice = false, pitch = 1, rate = 1, character = false } = {}) {
         text = String(text || '').trim();
         effects = (Array.isArray(effects) ? effects : [effects]).filter(Boolean).map(String);
         if (this.pageSuspended || this.isDocumentHidden() || (!text && !effects.length)) return Promise.resolve(false);
-        if (text && requireVoice && !this.voiceEnabled) return Promise.resolve(false);
+        const speechOn = character ? this.characterVoicesEnabled : this.voiceEnabled;
+        if (text && requireVoice && !speechOn) return Promise.resolve(false);
         if (!text && !this.sfxEnabled) return Promise.resolve(false);
-        if (text && this.voiceEnabled && (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance)) {
+        if (text && speechOn && (!('speechSynthesis' in window) || !window.SpeechSynthesisUtterance)) {
             this.voiceStatus('Speech engine unavailable. Use text controls or install a browser/device voice.');
             if (!effects.length || requireVoice) return Promise.resolve(false);
         }
@@ -1192,7 +1213,8 @@ class AudioManagerController {
             }
             const item = {
                 id: ++this.audioEventSequence, channel, eventId, text: text.slice(0, 600), effects,
-                voiceId, language, priority: critical ? 'critical' : priority ? 'high' : 'normal',
+                voiceId, language, character: Boolean(character),
+                priority: critical ? 'critical' : priority ? 'high' : 'normal',
                 pitch: Math.max(0.5, Math.min(1.5, Number(pitch) || 1)),
                 rate: Math.max(0.6, Math.min(1.6, Number(rate) || 1)),
                 resolve, cancelled: false, cancelSpeech: null, cancelEffect: null
@@ -1242,7 +1264,7 @@ class AudioManagerController {
         item.queueGeneration = this.audioQueueGeneration;
         let success = true;
         try {
-            if (item.text && this.voiceEnabled && !item.cancelled) success = await this.speakQueuedItem(item);
+            if (item.text && (item.character ? this.characterVoicesEnabled : this.voiceEnabled) && !item.cancelled) success = await this.speakQueuedItem(item);
             // A real engine error resolves the speech stage and allows the
             // matching recording to recover. Cancellation/page hide skips it.
             if (!item.cancelled && this.sfxEnabled && !this.pageSuspended && !this.isDocumentHidden()) {

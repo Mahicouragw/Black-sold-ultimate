@@ -61,7 +61,7 @@
         const spoken = `Crier Bell says: ${text}`;
         const emitted = game.emitGameEvent?.(spoken, 'npc', {
             eventId: `crier:live:${Date.now()}`,
-            voiceId: profile.voiceId, pitch: profile.pitch, rate: profile.rate
+            voiceId: profile.voiceId, pitch: profile.pitch, rate: profile.rate, character: true
         });
         if (!emitted) narrate(game, spoken, 'npc');
     }

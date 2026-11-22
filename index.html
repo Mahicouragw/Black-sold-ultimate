@@ -712,10 +712,11 @@
                         <label class="setting-toggle" for="setting-sfx-enabled"><input type="checkbox" id="setting-sfx-enabled"> Sound effects on</label>
                         <label for="setting-sfx-volume">Sound effects volume <output id="setting-sfx-volume-value" for="setting-sfx-volume">55%</output></label>
                         <input type="range" id="setting-sfx-volume" min="0" max="100" step="1" value="55" aria-label="Sound effects volume, 0 to 100 percent">
-                        <label class="setting-toggle" for="setting-voice-enabled"><input type="checkbox" id="setting-voice-enabled"> Device voice and TTS on</label>
+                        <label class="setting-toggle" for="setting-npc-voices"><input type="checkbox" id="setting-npc-voices" checked> NPC voices read every reply aloud</label>
+                        <label class="setting-toggle" for="setting-voice-enabled"><input type="checkbox" id="setting-voice-enabled"> Device voice and TTS on for narration</label>
                         <label for="setting-voice-volume">Device voice volume <output id="setting-voice-volume-value" for="setting-voice-volume">90%</output></label>
                         <input type="range" id="setting-voice-volume" min="0" max="100" step="1" value="90" aria-label="Device voice volume, 0 to 100 percent">
-                        <p id="audio-settings-help" class="settings-note">Device speech is off by default to avoid duplicating TalkBack. Turn it on for spoken chat; music automatically ducks while speech plays.</p>
+                        <p id="audio-settings-help" class="settings-note">People you talk to read their answers aloud by default, each in their own voice, exactly as the words appear on screen — no clip and no waiting message. Narration (movement, items, battle text) is the separate "Device voice and TTS" switch and stays off by default to avoid duplicating TalkBack. Music ducks while anyone speaks.</p>
                     </fieldset>
                     <fieldset class="gameplay-settings" aria-describedby="encounter-frequency-help">
                         <legend>Gameplay</legend>

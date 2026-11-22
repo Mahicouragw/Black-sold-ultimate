@@ -59,12 +59,25 @@
             return (window.WorldData?.npcs?.[window.Game?.state?.location]) || [];
         },
 
+        /** True when the player typed this person's name, or part of it. */
+        matchesName(npc, text) {
+            const said = ` ${String(text || '').toLowerCase()} `;
+            const name = String(npc.name || '').toLowerCase().trim();
+            if (!name) return false;
+            if (said.includes(name)) return true;
+            return name.split(/\s+/).filter(word => word.length > 3)
+                .some(word => new RegExp(`\\b${word}\\b`).test(said));
+        },
+
         /** Resolve which NPC should answer, preferring an explicit name match. */
         resolveNpc(query) {
             const here = this.localNpcs();
             if (!here.length) return null;
-            const text = String(query || '').toLowerCase();
-            const named = here.find(npc => text.includes(npc.name.toLowerCase()));
+            const said = String(query || '').toLowerCase().trim();
+            // An exact name wins, so "Mira" never goes to "Mira the Elder".
+            const exact = here.find(npc => String(npc.name || '').toLowerCase() === said);
+            if (exact) return exact;
+            const named = here.find(npc => this.matchesName(npc, query));
             if (named) return named;
             if (this.lastNpc) {
                 const previous = here.find(npc => npc.name === this.lastNpc);
@@ -73,10 +86,75 @@
             return here[0];
         },
 
-        /** Strip a leading NPC name so it is not repeated back in the question. */
+        /** Strip the NPC name so it is not repeated back in the question. */
         stripName(message, npc) {
-            const pattern = new RegExp(`^\\s*${npc.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[,:]?\\s*`, 'i');
-            return message.replace(pattern, '').trim() || message.trim();
+            const escape = text => String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            let out = String(message || '');
+            const name = String(npc?.name || '');
+            if (name) {
+                out = out.replace(new RegExp(escape(name), 'ig'), ' ');
+                for (const word of name.split(/\s+/).filter(part => part.length > 3)) {
+                    out = out.replace(new RegExp(`\\b${escape(word)}\\b`, 'ig'), ' ');
+                }
+            }
+            out = out.replace(/^\s*(?:talk\s+to|speak\s+to|ask|say)\s+/i, '')
+                .replace(/^[\s,:;.!?-]+/, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            return out || String(message || '').trim();
+        },
+
+        /** Everyone standing here, so the player can choose who answers. */
+        whoIsHere() {
+            const here = this.localNpcs();
+            if (!here.length) return 'There is no one here to talk to. Walk to a village, city or guild hall and ask again.';
+            const list = here.map(npc => (npc.role ? `${npc.name}, ${npc.role}` : npc.name)).join('; ');
+            const first = here[0].name;
+            return `Standing here with you: ${list}. Say talk to ${first} to hear that person, or say ${first}, and then your question.`;
+        },
+
+        /**
+         * Game knowledge answered at once, in the speaker's voice, without
+         * waiting for the network. This keeps NPCs talking even when the AI
+         * service is slow or offline.
+         */
+        localAnswer(npc, question, game) {
+            const q = String(question || '').toLowerCase();
+            const room = window.WorldData?.locations?.[game?.state?.location];
+            const place = room?.name || 'here';
+            const date = new Date();
+            const christmas = window.SeasonalEvents?.activeEvents?.(date)?.some(event => event.id === 'christmas');
+            const player = game?.state?.player || {};
+            if (/christmas|advent|xmas|santa|crier|starlight|door/.test(q)) {
+                if (christmas) {
+                    return `Christmas City is open today. Walk northeast from Kaliwasch Market Square to Starlight Fair; Crier Bell stands on the square and in the tavern with the news, and Advent Row runs from door one to door twenty-five.`;
+                }
+                const day = `${date.getDate()} ${date.toLocaleString('en-US', { month: 'long' })}`;
+                return `Christmas City opens on the first of December and closes on the twenty-fifth. Today is ${day}, so Crier Bell is not on the square yet: on December the first he takes his place on Kaliwasch Market Square and in the tavern, and he is the one who calls the Christmas news and answers questions about it.`;
+            }
+            if (/game hall|chess|ludo|carrom|snake|blackjack/.test(q)) {
+                return 'The Christmas Game Hall is off Advent Gate, with rooms for chess, carrom, snakes and ladders, ludo and blackjack. Stand in the hall and say play chess, or use the actions menu.';
+            }
+            if (/cook|recipe|ingredient|scroll|kitchen/.test(q)) {
+                return 'The kitchen lives at Greta\'s tavern. Cooking scrolls drop in Christmas fights and the candy cane stall sells ingredients. Say christmas kitchen to see what you carry, and christmas read scroll to open a scroll.';
+            }
+            if (/\b(gold|money|coins)\b/.test(q)) return `You carry ${Number(player.gold) || 0} gold.`;
+            if (/\b(health|hit points|hurt|wounded)\b/.test(q)) return `You have ${Number(player.hp) || 0} of ${Number(player.maxHp) || 0} health.`;
+            if (/\b(quest|mission|task)\b/.test(q)) {
+                const quests = (game?.state?.quests || []).map(item => (typeof item === 'string' ? item : item?.name)).filter(Boolean);
+                return quests.length ? `Your open quests are: ${quests.join('; ')}.` : 'You have no open quests right now. Say quests at any time to check.';
+            }
+            if (/\b(exit|exits|direction|directions|way out|which way|road out)\b/.test(q) || /^where am i\b/.test(q)) {
+                return room ? `${place}. ${game.describeExits(room)}` : 'I cannot see the road from here.';
+            }
+            if (/who.*(here|talk)|anyone here|people here/.test(q)) return this.whoIsHere();
+            return '';
+        },
+
+        /** Keep the last few turns so a character can refer back. */
+        remember(npc, question, reply) {
+            const history = this.histories.get(npc.name) || [];
+            this.histories.set(npc.name, [...history, { role: 'user', content: question }, { role: 'assistant', content: reply }].slice(-MAX_HISTORY));
         },
 
         /**
@@ -187,7 +265,8 @@
                 eventId: `npc:${npc.name}:${nowMs}`,
                 voiceId: profile.voiceId,
                 pitch: profile.pitch,
-                rate: profile.rate
+                rate: profile.rate,
+                character: true
             });
             if (!emitted) game.addNarrative(spoken, 'npc');
             return true;
@@ -206,20 +285,18 @@
                 window.MusicSystem?.playSFX?.('board-error');
                 return false;
             }
+            // A stuck request must never silence the characters: release it.
+            if (this.pending && Date.now() - (this.pendingSince || 0) > 15000) this.pending = false;
             if (this.pending) {
-                game.addNarrative('Wait for the current reply before asking again.', 'system');
+                game.addNarrative(`${npc.name} is still answering your last question. Give it a moment.`, 'system');
                 return false;
             }
 
-            this.pending = true;
             this.lastNpc = npc.name;
             const question = this.stripName(message, npc);
-            const history = this.histories.get(npc.name) || [];
-
             game.addNarrative(`You ask ${npc.name}: "${question}"`, 'npc');
-            // A greeting is answered at once with words written for this moment,
-            // then read aloud in the character's own device voice. No clip is
-            // substituted and no "thinking" placeholder is ever spoken.
+
+            // Greetings: words written for this moment, read aloud in their voice.
             const small = this.smallTalk(npc, question);
             if (small) {
                 this.announce(game, npc, small);
@@ -227,9 +304,23 @@
                 return true;
             }
 
+            // Game and world questions: answered at once, in the speaker's voice,
+            // so the player never waits on a network round trip to hear someone.
+            const local = this.localAnswer(npc, question, game);
+            if (local) {
+                this.remember(npc, question, local);
+                this.announce(game, npc, local);
+                this.aiAvailable = false;
+                return true;
+            }
+
             let reply = '';
             let ai = false;
             let sources = [];
+            this.pending = true;
+            this.pendingSince = Date.now();
+            const controller = new AbortController();
+            const timer = setTimeout(() => { try { controller.abort(); } catch {} }, 12000);
             try {
                 const response = await fetch(ENDPOINT, {
                     method: 'POST',
@@ -238,10 +329,10 @@
                         message: question,
                         npcName: npc.name,
                         npcRole: npc.role || 'a villager of Kandor',
-                        history,
+                        history: this.histories.get(npc.name) || [],
                         game: this.buildGameSnapshot()
                     }),
-                    signal: AbortSignal.timeout(28000)
+                    signal: controller.signal
                 });
                 const data = await response.json();
                 reply = this.sanitizeReply(data?.reply || '');
@@ -250,20 +341,18 @@
             } catch {
                 reply = '';
             } finally {
+                clearTimeout(timer);
                 this.pending = false;
+                this.pendingSince = 0;
             }
 
             if (!reply) {
-                const room = window.WorldData.locations[game.state.location];
-                game.addNarrative('Online conversation unavailable. Local dialogue follows.', 'system');
-                reply = /\b(exit|direction|road|where)\b/i.test(question) ? `${room.name}. ${game.describeExits(room)}`
-                    : npc.dialog?.length ? game.npcDialog(npc) : `Welcome to ${room.name}. Try Look Around to explore with me.`;
+                const room = window.WorldData?.locations?.[game.state.location];
+                reply = npc.dialog?.length ? game.npcDialog(npc)
+                    : `Welcome to ${room?.name || 'this place'}. Ask me about the road, the shops or the season, and I will answer.`;
             }
 
-            // Remember the exchange so the conversation has continuity.
-            const updated = [...history, { role: 'user', content: question }, { role: 'assistant', content: reply }];
-            this.histories.set(npc.name, updated.slice(-MAX_HISTORY));
-
+            this.remember(npc, question, reply);
             // Speak the answer itself, word for word, in this character's voice.
             this.announce(game, npc, reply);
             if (sources.length) this.renderSources(sources);
@@ -283,6 +372,25 @@
             const raw = String(cmd || '');
             const lower = raw.toLowerCase().trim();
 
+            const game = this?.state ? this : window.Game;
+            // Who is standing here, and how to address one of them.
+            if (/^(?:who is here|who's here|who is there|who can i talk to|people here|npcs)\??$/.test(lower)) {
+                const roster = AiNpc.whoIsHere();
+                const spoken = game.emitGameEvent?.(roster, 'system');
+                if (!spoken) game.addNarrative(roster, 'system');
+                return;
+            }
+            const talkTo = lower.match(/^(?:talk to|speak to|talk with)\s+(.+)$/);
+            if (talkTo) {
+                const npc = AiNpc.resolveNpc(talkTo[1]);
+                if (npc && AiNpc.matchesName(npc, talkTo[1])) {
+                    AiNpc.lastNpc = npc.name;
+                    const greeting = AiNpc.smallTalk(npc, 'hello');
+                    game.addNarrative(`You turn to ${npc.name}.`, 'system');
+                    AiNpc.announce(game, npc, greeting);
+                    return;
+                }
+            }
             // "ask ..." / "say ..." reach the AI NPC. Plain "talk" keeps the
             // existing scripted dialog so nothing that worked is removed.
             const match = lower.match(/^(?:ask|say)\s+(.+)$/);

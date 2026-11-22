@@ -9,13 +9,32 @@ doors, their stories, quests, presents and the direction-announcement settings.
 
 ## Talking to people (live voice)
 
-Every NPC answers with a live voice: type `say hello`, `ask where is the forest`
-or any question of your own, and the person replies in their own pitch, speed and
-system voice, reading **exactly the words printed on screen** — the way TalkBack
-or a chat assistant reads its answer. Nothing is replaced by a pre-recorded clip,
-so an answer is never stuck to one fixed question, and no "thinking" line is ever
-spoken. Fixed script lines that never change (door stories, the crier's bulletins)
-still use their own recordings, because those words are identical to the text.
+Every NPC answers with a live voice: type `say hello`, `ask …`, or any question of
+your own, and the person replies in their own pitch, speed and system voice,
+reading **exactly the words printed on screen** — the way a chat assistant reads
+its answer. Nothing is replaced by a pre-recorded clip, and no "thinking" line is
+ever spoken. NPC voices are **on by default** (Settings → *NPC voices read every
+reply aloud*), separately from the narration voice, so replies are heard even if
+you keep narration off for TalkBack.
+
+**Choosing who answers.** With several people in the room:
+
+| Command | What it does |
+| --- | --- |
+| `who is here` | Lists everyone present, their role and how to address them. |
+| `talk to Greta` | Turns to that person and lets them greet you aloud. |
+| `say Greta, where is the forest` | That person answers, in her own voice. |
+| `ask Aldric about the shops` | Same, using his name. |
+
+After you name someone, later questions stay with them until you name someone
+else. Each person keeps their own conversation.
+
+**Always answers.** Greetings, the season, the crier, the game hall, cooking,
+your gold, health, quests, exits and the people around you are answered at once
+from the game's own knowledge, with no network round trip, so a character never
+falls silent. Anything else goes to the live AI service with a 12-second limit;
+if it cannot answer, the character still replies aloud from local knowledge
+instead of leaving you waiting.
 
 ## Built-in narration and gesture interface (7.27.0)
 

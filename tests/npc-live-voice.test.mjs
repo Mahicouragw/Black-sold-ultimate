@@ -44,14 +44,14 @@ test('the spoken words are exactly the words written on screen', async t => {
     const spoken = [];
     const original = G.emitGameEvent;
     G.emitGameEvent = (text, type, options = {}) => { spoken.push({ text, type, options }); return original.call(G, text, type, options); };
-    w.fetch = async () => ({ json: async () => ({ reply: 'The forest entrance lies north of the market square.', ai: true }) });
-    await w.AiNpc.ask('where is the forest entrance');
+    w.fetch = async () => ({ json: async () => ({ reply: 'Because tiny particles in the air scatter blue light the most.', ai: true }) });
+    await w.AiNpc.ask('why is the sky blue');
     G.emitGameEvent = original;
     const log = w.document.getElementById('narrative').textContent;
-    assert.ok(log.includes('Merchant Aldric says: The forest entrance lies north of the market square.'), 'the reply is on screen');
+    assert.ok(log.includes('Merchant Aldric says: Because tiny particles in the air scatter blue light the most.'), 'the reply is on screen');
     const answer = spoken.find(item => item.text.startsWith('Merchant Aldric says:'));
     assert.ok(answer, 'and the same reply is spoken');
-    assert.ok(answer.text.includes('The forest entrance lies north of the market square.'), 'word for word, nothing swapped in');
+    assert.ok(answer.text.includes('Because tiny particles in the air scatter blue light the most.'), 'word for word, nothing swapped in');
 });
 
 test('any question is answered out loud, even with no network', async t => {
@@ -111,4 +111,77 @@ test('a free-form question to the crier is answered live, not with a fixed clip'
     const answered = w.ChristmasCrier.ask(G, 'would you like some tea?');
     assert.equal(answered, false, 'an off-script question goes to the live NPC brain');
     assert.equal(w.ChristmasCrier.ask(G, 'hello there'), true, 'a greeting is answered at once');
+});
+
+test('an NPC voice speaks even when narration TTS is off', async t => {
+    const { w } = await ready(t);
+    const made = [];
+    w.speechSynthesis = {
+        getVoices: () => [{ name: 'Test Voice', lang: 'en-US' }],
+        speak: utterance => { made.push(utterance); setTimeout(() => utterance.onend?.(), 0); },
+        cancel() {}, pause() {}, resume() {}
+    };
+    w.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+    w.AudioManager.voiceEnabled = false;
+    assert.equal(w.AudioManager.characterVoicesEnabled, true, 'character speech is on by default');
+    const done = w.AudioManager.enqueueAudioEvent({ text: 'Well met, traveller.', character: true, requireVoice: true, voiceId: 'system:Test Voice' });
+    assert.equal(await done, true, 'the reply is spoken, not dropped by the narration setting');
+    assert.equal(made[0]?.text, 'Well met, traveller.');
+    w.AudioManager.setCharacterVoices(false);
+    assert.equal(w.AudioManager.characterVoicesEnabled, false, 'and the player can turn NPC voices off');
+    assert.equal(await w.AudioManager.enqueueAudioEvent({ text: 'Silent now.', character: true, requireVoice: true }), false);
+});
+
+test('a greeting never silences the next question', async t => {
+    const { w, G } = await ready(t);
+    const spy = spySpeech(w, G);
+    w.fetch = async () => ({ json: async () => ({ reply: 'Bread is baked at the tavern.', ai: true }) });
+    await w.AiNpc.ask('hello');
+    assert.equal(w.AiNpc.pending, false, 'the greeting releases the request slot');
+    await w.AiNpc.ask('where is the bakery');
+    spy.restore();
+    assert.equal(spy.spoken.filter(item => /Merchant Aldric/.test(item.text)).length, 2, 'both answers are spoken');
+});
+
+test('you can choose which of several people answers', async t => {
+    const { w, G } = await ready(t);
+    w.WorldData.npcs.kaliwasch = [
+        { name: 'Merchant Aldric', role: 'shopkeeper', dialog: [] },
+        { name: 'Tavern Keeper Greta', role: 'tavern keeper', dialog: [] },
+        { name: 'Temple Priest', role: 'priest', dialog: [] }
+    ];
+    w.AiNpc.lastNpc = null;
+    const spy = spySpeech(w, G);
+    G.processCommand('who is here');
+    assert.match(spy.spoken[0].text, /Merchant Aldric.*Tavern Keeper Greta.*Temple Priest/s, 'the roster names everyone present');
+    G.processCommand('say Greta, how much gold do I have');
+    G.processCommand('talk to Temple Priest');
+    G.processCommand('say what is my health');
+    spy.restore();
+    assert.ok(spy.spoken.some(item => item.text.startsWith('Tavern Keeper Greta says: You carry')), 'a named person answers');
+    assert.ok(spy.spoken.some(item => item.text.startsWith('Temple Priest says: Well met')), 'talk to picks that person');
+    assert.ok(spy.spoken.some(item => item.text.startsWith('Temple Priest says: You have')), 'and they keep the conversation');
+});
+
+test('the Christmas crier question is answered at once, without the network', async t => {
+    const { w, G } = await ready(t);
+    let fetches = 0;
+    w.fetch = async () => { fetches++; throw new Error('no network'); };
+    const spy = spySpeech(w, G);
+    assert.equal(await w.AiNpc.ask('where is the christmas crier'), true);
+    spy.restore();
+    assert.equal(fetches, 0, 'the local answer needs no round trip');
+    assert.match(spy.spoken[0].text, /first of December|December/i, 'it explains the season');
+    assert.match(spy.spoken[0].text, /Kaliwasch Market Square/, 'and where the crier stands');
+});
+
+test('a stuck request is released instead of blocking the player forever', async t => {
+    const { w, G } = await ready(t);
+    w.AiNpc.pending = true;
+    w.AiNpc.pendingSince = Date.now() - 60000;
+    const spy = spySpeech(w, G);
+    assert.equal(await w.AiNpc.ask('how much gold do I have'), true);
+    spy.restore();
+    assert.equal(w.AiNpc.pending, false);
+    assert.match(spy.spoken[0].text, /gold/i);
 });
