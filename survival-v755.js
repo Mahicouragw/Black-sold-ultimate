@@ -328,7 +328,14 @@
             }
             // Offline: the same once-a-day rule against this device's clock.
             const now = Date.now(), last = Number(sacred(G).lastTemporaryPrayer) || 0, first = !sacred(G).firstPrayerDone;
-            const granted = !last || now - last >= DAY || now < last;
+            // A blessing that is still standing is itself proof it was granted:
+            // a snapshot that kept the blessing but lost its timestamp must not
+            // hand out a second one the same day.
+            const standing = sacred(G).dailyBattleBlessing
+                && (sacred(G).dailyBattleBlessing.source === 'prayer'
+                    || (!sacred(G).dailyBattleBlessing.source && Number(sacred(G).dailyBattleBlessing.expiresAt) - now > 3600000))
+                && Number(sacred(G).dailyBattleBlessing.expiresAt) > now;
+            const granted = !standing && (!last || now - last >= DAY || now < last);
             if (granted) { sacred(G).lastTemporaryPrayer = now; sacred(G).dailyBattleBlessing = { type: PRAYERS[prayer], value: 5, expiresAt: now + DAY, source: 'prayer', prayer }; }
             finishPrayer(prayer, { first, granted, daily: sacred(G).dailyBattleBlessing?.type || PRAYERS[prayer], hoursLeft: Math.max(1, Math.ceil((DAY - (now - last)) / 3600000)) });
             return true;

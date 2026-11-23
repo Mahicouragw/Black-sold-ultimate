@@ -123,6 +123,9 @@ const OnlineSystem = {
             this.updateIndicators();
         } finally {
             this.connecting = false;
+            // The sign-in button is hidden while the session is still being
+            // restored; refresh the panel once that is settled.
+            this.updateIndicators();
             this.updateServiceIndicator();
         }
     },
@@ -1348,8 +1351,11 @@ const OnlineSystem = {
         if (titleStatus && titleStatus.textContent !== line) titleStatus.textContent = line;
         const signIn = document.getElementById('btn-google-signin');
         if (signIn) {
-            signIn.hidden = Boolean(this.linked);
-            signIn.disabled = Boolean(this.linked);
+            // While sign-in is still being restored the button is not shown, so a
+            // player who is already signed in never sees "Continue with Google"
+            // flash on a reload or a version update.
+            signIn.hidden = Boolean(this.linked) || Boolean(this.connecting);
+            signIn.disabled = Boolean(this.linked) || Boolean(this.connecting);
             if (!this.linked) {
                 signIn.innerHTML = '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
             }
@@ -1358,14 +1364,18 @@ const OnlineSystem = {
         if (code) code.textContent = this.getPlayerCode();
         const heroName = document.getElementById('settings-hero-name');
         if (heroName) heroName.textContent = activeName;
-        // Account status row — hide entirely after login (user doesn't need to see it)
+        // Account status row — always says which account this device is using, so
+        // a signed-in player can see that Google is still connected after a
+        // reload, and a guest knows the heroes are stored on this device only.
         const account = document.getElementById('settings-account-status');
         if (account) {
-            if (this.linked) {
-                account.parentElement.hidden = true; // Hide the entire row
-            } else {
-                account.textContent = this.ready ? 'Guest account' : 'Local/offline guest';
-            }
+            const email = this.user?.email || this.profile?.email || '';
+            account.textContent = this.linked
+                ? `Google account${email ? ' — ' + email : ' — connected'}`
+                : this.connecting ? 'Checking sign-in…'
+                : this.ready ? 'Guest account — not linked to Google (heroes stay on this device)'
+                : 'Local/offline guest — not linked to Google';
+            account.parentElement.hidden = false;
         }
         // Player ID row — hide after login
         const codeRow = document.getElementById('settings-player-code')?.parentElement;
@@ -1380,7 +1390,14 @@ const OnlineSystem = {
         const guestBox = document.getElementById('settings-guest-google');
         if (guestBox) { guestBox.classList.add('hidden'); guestBox.hidden = true; }
         const linkedBox = document.getElementById('settings-linked-google');
-        if (linkedBox) linkedBox.classList.toggle('hidden', !this.linked);
+        if (linkedBox) {
+            linkedBox.classList.toggle('hidden', !this.linked);
+            const note = linkedBox.querySelector('.settings-note');
+            if (note && this.linked) {
+                const email = this.user?.email || this.profile?.email || '';
+                note.textContent = `Google is connected${email ? ' as ' + email : ''}. Cloud saves, quests, blessings and heroes belong to this account. Use Sign out or Delete account below.`;
+            }
+        }
         const pinLogin = document.getElementById('settings-pin-login');
         if (pinLogin) pinLogin.classList.toggle('hidden', this.linked);
         // Copy Player ID button — hide after login

@@ -106,6 +106,16 @@ Snakes & Ladders and Ludo are played by swipe and double tap on top of the
 existing engines, so every rule stays enforced by them. Details and the exact
 gesture table: [`reports/gesture-modes-v761.md`](reports/gesture-modes-v761.md).
 
+## 🔁 Refresh-safe blessings and palace quests (7.62.0)
+
+Resuming a game after a reload now goes through the same loader as **Continue**,
+so the lasting blessing, the daily blessing, the accepted palace quest and every
+other saved slice come back with the hero. A still-standing blessing blocks a
+second one the same day, a completed palace quest is never offered as accepted
+again, and cloud restores union both snapshots instead of letting an older one
+erase progress. Settings → Account now names the Google account that is in use.
+Details: [`reports/progress-integrity-v762.md`](reports/progress-integrity-v762.md).
+
 ## 🔎 Public Feature Audit
 
 See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.
