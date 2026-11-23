@@ -116,6 +116,13 @@ again, and cloud restores union both snapshots instead of letting an older one
 erase progress. Settings → Account now names the Google account that is in use.
 Details: [`reports/progress-integrity-v762.md`](reports/progress-integrity-v762.md).
 
+## 🔊 Honest spell sounds (7.62.1)
+
+A failed Alohomora no longer plays the recorded door-opening clip, and it never
+spends mana on an empty room. Success plays one recorded door click; failure
+plays the recorded error cue. Every spell cue is a real recording — no
+synthesised tones. Details: [`reports/sound-honesty-v7621.md`](reports/sound-honesty-v7621.md).
+
 ## 🔎 Public Feature Audit
 
 See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.
