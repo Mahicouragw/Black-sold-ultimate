@@ -82,6 +82,16 @@ game engine.
 See [gesture mappings, setup, validation and remaining Android release gates](GESTURE_ACCESSIBILITY.md).
 Physical Android audio acceptance and production deployment are not yet verified.
 
+## 💾 Save safety: quests, reloads and Google sign-in (7.60.0)
+
+Every hero save now carries a `savedAt` timestamp, and palace quest history is
+also kept in an append-only device ledger that is written the moment progress
+changes and again when the page is hidden. On load the game unions the ledger
+back in, and the cloud restore merges cloud and device per hero so the **newer**
+snapshot wins. A finished palace quest can no longer be handed out again after a
+refresh, a deploy or a Google sign-in. Details and manual verification steps:
+[`reports/quest-persistence-fix.md`](reports/quest-persistence-fix.md).
+
 ## 🔎 Public Feature Audit
 
 See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.

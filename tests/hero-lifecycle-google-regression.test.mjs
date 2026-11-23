@@ -287,6 +287,10 @@ test('cloud restore unloads the previous account before playing the restored slo
     const { Game, OnlineSystem } = window;
     const id = makeHero(window, 'Local Version');
     const cloudHero = {
+        // A genuinely newer cloud snapshot. Since v7.60 the newer snapshot wins,
+        // so this test states its intent explicitly instead of relying on an
+        // unconditional cloud overwrite (which used to roll local progress back).
+        savedAt: Date.now() + 60000,
         player: { name: 'Cloud Version', race: 'elf', class: 'mage', level: 4, hp: 60, maxHp: 60, mp: 100, maxMp: 100, spells: [] },
         inventory: [], location: 'kaliwasch', visited: ['kaliwasch'], quests: [], completedQuests: [], slainEnemies: {}
     };
