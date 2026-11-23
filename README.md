@@ -92,6 +92,20 @@ snapshot wins. A finished palace quest can no longer be handed out again after a
 refresh, a deploy or a Google sign-in. Details and manual verification steps:
 [`reports/quest-persistence-fix.md`](reports/quest-persistence-fix.md).
 
+## 🎮 Gesture contexts, real chests and gesture boards (7.61.0)
+
+Seven gesture contexts share one game state: exploration, combat, inventory,
+object interaction, chess, snakes & ladders and ludo. Only the active context
+reads a swipe, so one gesture can never fire two actions. Inventory mode browses
+the real carried items by category, inspects them, equips and unequips through
+the real slot system, and drops only after a confirmed second double tap — a
+dropped item lies in the room and can be picked up again after a reload. Three
+authored chests (Eastern Ruins, Goblin Camp, Witch's Hut) open with their real
+locks and hold real items; the Christmas toy chest keeps its own command. Chess,
+Snakes & Ladders and Ludo are played by swipe and double tap on top of the
+existing engines, so every rule stays enforced by them. Details and the exact
+gesture table: [`reports/gesture-modes-v761.md`](reports/gesture-modes-v761.md).
+
 ## 🔎 Public Feature Audit
 
 See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.
