@@ -123,6 +123,17 @@ spends mana on an empty room. Success plays one recorded door click; failure
 plays the recorded error cue. Every spell cue is a real recording — no
 synthesised tones. Details: [`reports/sound-honesty-v7621.md`](reports/sound-honesty-v7621.md).
 
+## 🌐 Online-only play and the audio audit (7.63.0)
+
+The game now requires an internet connection: going offline opens a spoken
+`alertdialog` with one Retry button, pauses every input path and never writes a
+save; the connection returning resumes play automatically. Guests still play
+online — a Google account is not required. A new `sound test` command names and
+plays every recorded effect, and the audit confirms 88 cues, 68 recorded
+sound-effect files, 0 missing recordings and 0 synthesised tones. Spoken
+narration still uses the device voice engine for dynamic text.
+Details: [`reports/online-only-and-audio-audit-v763.md`](reports/online-only-and-audio-audit-v763.md).
+
 ## 🔎 Public Feature Audit
 
 See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.
