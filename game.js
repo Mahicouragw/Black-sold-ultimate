@@ -68,22 +68,27 @@ const Game = {
         // If the player was in the middle of a game (has a location), resume directly
         let savedLoc = active.location || active.state?.location;
         if (savedLoc?.startsWith('starlight_') && !window.StarlightFair?.sync(this)) savedLoc = 'kaliwasch';
-        if (savedLoc && WorldData.locations[savedLoc]) {
-            // Restore the hero state and jump straight into gameplay
-            try {
-                this.state.player = active.player || active;
+        if (!savedLoc || !WorldData.locations[savedLoc]) return;
+        // Resume through the one real loader. Copying a few fields by hand used
+        // to skip `sacred`, quests and the voyage ledger, so a page refresh could
+        // forget a lasting blessing, the daily blessing and the palace quest the
+        // hero had already accepted — and the next save then wrote that loss to
+        // the hero slot. continueGame() restores the whole snapshot, including
+        // every module's own restore hook.
+        try {
+            this.state.activeHeroId = activeId;
+            if (this.continueGame() === false) return;
+            // continueGame has already entered the saved room and described it.
+            // Only a fallback room change needs its own entry, so the player
+            // never hears the same location twice at start-up.
+            if (this.state.location !== savedLoc) {
                 this.state.location = savedLoc;
-                this.state.inventory = active.inventory || [];
-                this.state.companions = active.companions || [];
-                this.state.visited = active.visited || [];
-                this.state.kills = active.kills || 0;
-                this.state.activeHeroId = activeId;
-                this.showScreen('game-screen');
                 this.enterLocation(savedLoc);
                 this.look();
-            } catch (e) {
-                console.warn('Auto-resume failed, showing title:', e);
             }
+            this.showScreen('game-screen');
+        } catch (e) {
+            console.warn('Auto-resume failed, showing title:', e);
         }
     },
 
