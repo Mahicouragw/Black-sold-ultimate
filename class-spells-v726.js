@@ -266,6 +266,18 @@
             return result;
         }
 
+        // Alohomora's "use" recording is the sound of a door opening. Playing it
+        // before the attempt meant a failed spell (no magical door here, an open
+        // door, or too little mana) still sounded like a door swinging open.
+        // The door system plays its own recorded click only when a door really
+        // opens, so a failed attempt gets the recorded error cue instead.
+        if (key === 'alohomora') {
+            const mpBeforeDoor = p.mp;
+            const result = oldCast.call(this, name);
+            if (!(this.state.player && this.state.player.mp < mpBeforeDoor)) cue(key, 'fail');
+            return result;
+        }
+
         cue(key, 'use');
         const mpBefore = p.mp;
         const result = oldCast.call(this, name);

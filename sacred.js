@@ -284,9 +284,17 @@
     Game.castSpell=function(name){
         const spell=this.state.player?.spells?.find(s=>s.toLowerCase().includes(name.toLowerCase())); const key=spell?.toLowerCase();
         if(key==='alohomora'){
-            const p=this.state.player;if(p.mp<8){this.addNarrative('Alohomora requires 8 MP.','system');return;}p.mp-=8;MusicSystem.playSFX('door');
-            const loc=WorldData.locations[this.state.location], exits=['north','west','east','south','up','down'].filter(d=>loc.exits[d]);
-            this.addNarrative(`Alohomora releases the lock with a metallic click. Available directions: ${exits.join(', ')||'none'}.`,'green-light');this.updateHUD();this.save();return;
+            // Never pretend a door opened and never spend mana on a room with
+            // nothing to open: the old code played the door-opening recording
+            // and promised a released lock in every location.
+            if(window.GameSpellSystem?.castOpeningDoors) return window.GameSpellSystem.castOpeningDoors(this);
+            const p=this.state.player,loc=WorldData.locations[this.state.location],door=loc?.specialDoor;
+            if(!door?.magical){MusicSystem.playSFX('board-error');this.addNarrative('You shout Alohomora. The word echoes, but there is no magical door here. No mana is spent.','system');return;}
+            if(door.open){this.addNarrative('The magical door is already open.','system');return;}
+            if(p.mp<8){this.addNarrative('Alohomora requires 8 MP.','system');return;}
+            p.mp-=8;door.open=true;MusicSystem.playSFX('magic');MusicSystem.playSFX('door');
+            this.addNarrative('The magical door opens with a recorded click. The way is open.','green-light');
+            this.updateDirectionButtons?.(loc.exits);this.updateHUD();this.save();return;
         }
         const special=Object.values(CLASS_GUILD_SPELLS).flat().map(s=>s.toLowerCase()).concat(['emerald lifestrike','spirit wolf','soul mend']);
         if(!special.includes(key)) return oldCast(name);
