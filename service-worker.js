@@ -1,7 +1,7 @@
 
 const BASE=new URL('./',self.registration.scope);
 const PREFIX=`black-sword:${BASE.href}:shell:`;
-const CACHE=PREFIX+'black-sword-v7.58.0-neural3';
+const CACHE=PREFIX+'black-sword-v7.58.0-neural4';
 const MUSIC_CACHE=`black-sword:${BASE.href}:music-v1`;
 const CORE=[
   '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',
@@ -69,7 +69,7 @@ const CORE=[
   'assets/voices/temple-priest-deeds.mp3','assets/voices/void-frontier-guide-0.mp3','assets/voices/void-frontier-guide-1.mp3','assets/voices/void-frontier-guide-2.mp3',
   'assets/voices/void-frontier-guide-deeds.mp3','assets/voices/whispering-steppe-guide-0.mp3','assets/voices/whispering-steppe-guide-1.mp3','assets/voices/whispering-steppe-guide-2.mp3',
   'assets/voices/whispering-steppe-guide-deeds.mp3',
-  'road-walking.js','npc-voices.js','assets/voices/aldric-deeds.mp3','assets/voices/aldric-fortune.mp3','assets/voices/aldric-gold.mp3','assets/voices/aldric-wares.mp3','assets/voices/aldric-welcome.mp3','assets/voices/courier-archive.mp3','assets/voices/courier-deeds.mp3','assets/voices/courier-route.mp3',
+  'road-walking.js','npc-voices.js','voice-pack-v758.js','assets/voices/aldric-deeds.mp3','assets/voices/aldric-fortune.mp3','assets/voices/aldric-gold.mp3','assets/voices/aldric-wares.mp3','assets/voices/aldric-welcome.mp3','assets/voices/courier-archive.mp3','assets/voices/courier-deeds.mp3','assets/voices/courier-route.mp3',
   'world.js','world-restructure-v748.js','world-expansion-v744.js','world-connectivity-v747.js','game-systems-v747.js','halloween-narration.js','expansion.js','regions-v4.js','online.js','game.js','sacred.js',
   'alexa-parity.js','equipment-sets.js','housing-world-v5.js','forest-expansion-v6.js','island-tunnel-fishing.js','translation.js',
   'chat-rooms.js','voice-artifacts-maps.js','spell-mastery-black-sword.js','world-grid-houses-combat-v8.js','city-directory-v9.js','context-actions-houses-prayer-v10.js',

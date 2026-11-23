@@ -53,7 +53,10 @@ Full steps, free key links and where to paste them: **[VOICE_SETUP.md](VOICE_SET
 Type `voice status` in the game to hear which engine is reading (and whether the
 server has a voice key ready), and `voice test` to hear one line in the voice of
 the person you are standing with. Spoken lines are cached on the device, so a
-sentence heard once costs no quota when it comes round again.
+sentence heard once costs no quota when it comes round again. To remove quotas
+completely, type `voice pack`: a one-time ~90 MB download gives every character
+an unlimited on-device voice that works offline with no key (`voice pack status`,
+`voice pack off`).
 
 ## Built-in narration and gesture interface (7.27.0)
 

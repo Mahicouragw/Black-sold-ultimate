@@ -30,10 +30,30 @@
         lastSpokenAt: 0,
         lastCall: null,                // { provider, ai, ms, at } of the last answer
 
+        /** Speak a system message without a character voice. */
+        say(game, text) {
+            const spoken = game.emitGameEvent?.(text, 'system', { character: false });
+            if (!spoken) game.addNarrative(text, 'system');
+        },
+
+        /** Download the unlimited on-device voices, once. */
+        async downloadVoicePack(game = window.Game) {
+            const pack = window.KokoroVoicePack;
+            if (!pack) return AiNpc.say(game, 'On-device voices are not available in this build.');
+            if (pack.ready) return AiNpc.say(game, pack.statusLine());
+            if (pack.state === 'loading') return AiNpc.say(game, pack.statusLine());
+            AiNpc.say(game, 'Downloading the on-device voice model now: about ninety megabytes, one time. After this, every character speaks for free, offline, with no key and no daily limit. Keep this tab open.');
+            const ok = await pack.load();
+            return AiNpc.say(game, ok
+                ? 'On-device voices are ready. Every character now has an unlimited voice of their own; say "voice test" to hear one.'
+                : pack.statusLine());
+        },
+
         /** Plain-language report of the AI and voice services, for "voice status". */
         async reportStatus(game = window.Game) {
             const parts = [this.statusLine()];
             const voices = window.CharacterVoices;
+            if (window.KokoroVoicePack) parts.push(window.KokoroVoicePack.statusLine());
             if (voices?.diagnose) {
                 const health = await voices.diagnose();
                 if (!health.reachable) parts.push('I could not reach the voice service at all.');
@@ -55,7 +75,10 @@
             const { provider, ai, ms, at } = this.lastCall;
             const when = at ? at.toLocaleTimeString() : 'just now';
             const voices = window.CharacterVoices;
-            const voiceLine = voices?.lastEngine === 'neural'
+            const pack = window.KokoroVoicePack;
+            const voiceLine = voices?.lastEngine === 'kokoro' || pack?.state === 'ready'
+                ? ' Characters are speaking with their own on-device voices: unlimited, offline, no key and no quota.'
+                : voices?.lastEngine === 'neural'
                 ? ' Characters are speaking with their own synthetic voices.'
                 : voices?.lastError
                     ? ` The synthetic voice service said ${voices.lastError}, so the device voice is reading.`
@@ -432,6 +455,19 @@
             const game = this?.state ? this : window.Game;
             if (/^(?:ai|npc|tts|voice) status$/.test(lower)) {
                 AiNpc.reportStatus(game);
+                return;
+            }
+            if (/^(?:voice|tts) (?:pack|unlimited|download)$/.test(lower)) {
+                AiNpc.downloadVoicePack(game);
+                return;
+            }
+            if (/^(?:voice|tts) pack (?:status|progress)$/.test(lower)) {
+                AiNpc.say(game, window.KokoroVoicePack?.statusLine() || 'On-device voices are not available in this build.');
+                return;
+            }
+            if (/^(?:voice|tts) pack (?:off|stop|disable)$/.test(lower)) {
+                window.KokoroVoicePack?.disable();
+                AiNpc.say(game, 'On-device voices are off. The cloud voice and the device voice are still here. The downloaded files stay cached, so you can say "voice pack" again any time.');
                 return;
             }
             if (/^(?:voice|tts) test$/.test(lower)) {

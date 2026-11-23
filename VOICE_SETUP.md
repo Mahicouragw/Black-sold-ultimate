@@ -85,6 +85,37 @@ are chosen from the character's name, so they never shuffle between sessions.
 The same assignment is used for the device-voice fallback (pitch and speed), so
 the cast sounds different even before a key is added.
 
+## Unlimited, free, no quota: the on-device voice pack
+
+Every cloud voice has a free limit. Gemini's speech preview is the tightest
+(about fifteen requests a day). If you do not want any limit at all, the game
+can run a small open speech model **inside the phone** instead:
+
+```text
+voice pack
+```
+
+* One download of about ninety megabytes (Kokoro-82M, Apache 2.0 licence).
+  Keep the tab open while it downloads; the message reports progress.
+* After that every character speaks **with no key, no quota and no internet**.
+  Each of the sixteen game voices has its own on-device speaker.
+* `voice pack status` says whether it is ready or how far the download got.
+* `voice pack off` stops using it (the downloaded files stay cached, so turning
+  it back on is instant).
+
+The order of voices is now: **on-device pack -> cloud voice (Gemini, Cloud TTS,
+ElevenLabs) -> the device voice**. If the pack cannot download — old browser,
+no space, blocked CDN — the game says so in `voice pack status` and carries on
+with the cloud voice, so nothing goes silent.
+
+The model speaks English (and other Latin-script languages). A line in Telugu,
+Hindi, Arabic or Chinese is handed to the cloud voice instead of being
+mispronounced, so mixed-language play still sounds right.
+
+The pack needs a browser with WebAssembly (every current Chrome, Edge, Firefox
+and Safari) and roughly 400 MB of free memory while it loads. It is a one-time
+cost per device; a second device downloads it again.
+
 ## Repeats cost nothing
 
 Small free quotas only work if the game does not pay twice for the same line.
