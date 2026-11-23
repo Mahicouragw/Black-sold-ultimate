@@ -32,6 +32,9 @@
         scheme: saved.scheme === 'compass' ? 'compass' : 'walk',
         turnStep: saved.turnStep === 45 ? 45 : 90,
         swipe: ['low', 'medium', 'high'].includes(saved.swipe) ? saved.swipe : 'medium',
+        // Chosen combat style and spell for the one-swipe combat gestures.
+        attack: ['basic', 'heavy', 'quick', 'multi', 'magic', 'defensive', 'special'].includes(saved.attack) ? saved.attack : 'basic',
+        spell: typeof saved.spell === 'string' ? saved.spell : '',
         map: { ...defaults }
     };
     const CORNER_DIRECTION = Object.freeze({ 'up-right': 'northeast', 'up-left': 'northwest', 'down-right': 'southeast', 'down-left': 'southwest' });
@@ -40,6 +43,8 @@
     const DIRECTIONS = Object.freeze(['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest']);
     const SWIPE_PX = Object.freeze({ low: 60, medium: 36, high: 22 });
     const swipeThreshold = () => SWIPE_PX[settings.swipe] || 36;
+    // Mana cost of each healing spell, exactly as game.js charges it.
+    const HEALING_COST = { 'minor heal': 14, 'heal': 20, 'nature mend': 22, 'mass heal': 38, 'holy light': 25 };
     const spin = (direction, steps) => DIRECTIONS[((DIRECTIONS.indexOf(direction) + steps) % 8 + 8) % 8];
     const opposite = direction => spin(direction, 4);
     const DIAGONAL_SPEECH = 'To walk diagonally: tap the compass buttons north-east, north-west, south-east or south-west, type or say north east, or turn on Corner swipes walk diagonally in narrator settings. With that setting on, swipe up-right for north-east, up-left for north-west, down-right for south-east and down-left for south-west. The four menus those corners used to open stay in the visible controls list.';
@@ -134,6 +139,7 @@
                 return false;
             }
             if (!backward) this.setFacing(direction);
+            this.clearFocus();
             G.processCommand(direction);
             return true;
         },
@@ -148,6 +154,196 @@
                 }, settings.interval);
             }
         },
+        /** Healing spells this hero knows, cheapest first. */
+        healingSpells() {
+            return (G.state.player?.spells || [])
+                .filter(name => HEALING_COST[String(name).toLowerCase()] !== undefined)
+                .sort((a, b) => HEALING_COST[a.toLowerCase()] - HEALING_COST[b.toLowerCase()]);
+        },
+        /** The healing item the hero actually carries, if any. */
+        healingItem() {
+            return (G.state.inventory || []).find(item => (item.quantity || 0) > 0 && ['heal', 'both'].includes(item.effect));
+        },
+        healthSentence() {
+            const p = G.state.player;
+            if (!p) return '';
+            return `Health ${p.hp} of ${p.maxHp}. Magic ${p.mp} of ${p.maxMp}.`;
+        },
+        /** Up-right in combat: the chosen attack, through the normal combat rules. */
+        attackGesture() {
+            if (!this.canFight()) return;
+            G.combatAbility(settings.attack || 'basic');
+        },
+        /** Speak an ability result through the narrator, never TalkBack. */
+        announceAbility(name, before) {
+            this.afterCombat(() => speak(this.castSummary(name, before), false, 'combat'));
+        },
+        /** The full ability list, with the real cooldown and cost of each. */
+        abilities() {
+            const list = G.COMBAT_ABILITIES || [];
+            const choices = list.map(a => {
+                const cd = G.combatCooldown?.(a.id) || 0;
+                const cost = a.cost ? `, ${a.cost} magic` : '';
+                const state = cd ? `, cooling down ${cd}` : '';
+                return option(`${a.name}${cost}${state}`, () => {
+                    speak(a.desc, true, 'combat');
+                    this.open(a.name, [
+                        option(`Use ${a.name} now`, command(`combat ${a.id}`)),
+                        option(`Make ${a.name} my up-right swipe`, () => { settings.attack = a.id; persist(); speak(`${a.name} is now your up-right combat action.`); }),
+                        option('Explain the numbers again', () => speak(a.desc, true, 'combat')),
+                        option('Back to combat actions', () => this.context())
+                    ]);
+                });
+            });
+            this.open('Combat abilities. Up-right uses ' + (G.combatAbilityInfo?.(settings.attack)?.name || 'Basic Attack'), choices.concat([
+                option('Back to combat actions', () => this.context())
+            ]));
+        },
+        /** Up-left in combat: the chosen spell, or the spellbook if none chosen. */
+        spellGesture() {
+            if (!this.canFight()) return;
+            const spells = G.state.player.spells || [];
+            if (!spells.length) { speak('You know no spells yet. Up-left will stay silent until you learn one.'); return; }
+            let chosen = spells.find(name => name.toLowerCase() === String(settings.spell).toLowerCase());
+            if (!chosen) { this.open('Choose the spell for up-left', spells.map(name => option(name, () => { settings.spell = name; persist(); speak(`${name} is now your up-left spell.`); }))); return; }
+            const before = this.snapshot();
+            G.processCommand(`cast ${chosen}`);
+            this.afterCombat(() => speak(this.castSummary(chosen, before), false, 'combat'));
+        },
+        /** Down-left in combat: a healing spell if possible, otherwise a healing item. */
+        healGesture() {
+            if (!this.canFight()) return;
+            const before = G.state.player.hp;
+            const spell = this.healingSpells().find(name => G.state.player.mp >= HEALING_COST[name.toLowerCase()]);
+            if (spell) {
+                G.processCommand(`cast ${spell}`);
+                const after = G.state.player.hp;
+                speak(`${spell}. ${after > before ? `You recover ${after - before} health.` : 'No health was restored.'} ${this.healthSentence()}`, false, 'combat');
+                return;
+            }
+            const item = this.healingItem();
+            if (item) {
+                G.processCommand(`use ${item.name}`);
+                const after = G.state.player.hp;
+                speak(`${item.name}. ${after > before ? `You recover ${after - before} health.` : 'No health was restored.'} ${this.healthSentence()}`, false, 'combat');
+                return;
+            }
+            speak(`No healing is available: not enough magic for a healing spell, and no healing item in the pack. ${this.healthSentence()}`, false, 'combat');
+        },
+        canFight() {
+            if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return false; }
+            if (this.menu || this.busy) return false;
+            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return false;
+            if (!G.state.inCombat) { speak('That is a combat gesture. There is no fight right now. Swipe up to walk.'); return false; }
+            return true;
+        },
+        /** Run a callback once the current combat chain has really finished. */
+        afterCombat(fn) {
+            const chain = G._combatChain;
+            if (chain && typeof chain.then === 'function') chain.then(fn, fn);
+            else setTimeout(fn, 0);
+        },
+        snapshot() {
+            const p = G.state.player, e = G.state.enemy;
+            return { enemy: e?.name || '', enemyHp: e?.hp ?? 0, enemyMax: e?.maxHp ?? 0, hp: p?.hp ?? 0, mp: p?.mp ?? 0 };
+        },
+        lastNarrative() {
+            const lines = document.querySelectorAll('#narrative p');
+            return lines[lines.length - 1]?.textContent?.trim() || '';
+        },
+        /** What actually changed, said in plain words. Never invented. */
+        castSummary(spell, before) {
+            const now = this.snapshot();
+            const parts = [];
+            if (now.enemyHp <= 0 || !now.enemy) {
+                if (before.enemy) parts.push(`${before.enemy} is defeated.`);
+            } else if (now.enemyHp < before.enemyHp) {
+                parts.push(`${now.enemy} lost ${before.enemyHp - now.enemyHp} health and has ${now.enemyHp} of ${now.enemyMax}.`);
+            }
+            if (now.hp > before.hp) parts.push(`You recovered ${now.hp - before.hp} health.`);
+            if (now.mp < before.mp) parts.push(`You spent ${before.mp - now.mp} magic.`);
+            if (!parts.length) parts.push(`No effect. ${this.lastNarrative()}`);
+            return `${spell}. ${parts.join(' ')} Your health ${now.hp}, magic ${now.mp}.`;
+        },
+
+        /** Down-right in combat: brace for the next enemy action. */
+        defendGesture() {
+            if (!this.canFight()) return;
+            G.processCommand('defend');
+        },
+        /** Up-right/up-left/down-right/down-left during a fight. */
+        combatToken(token) {
+            // One physical swipe = one action. A bouncing or duplicated pointer
+            // event inside 250 ms is ignored instead of spending a second turn.
+            const now = Date.now();
+            const last = this._lastCombatToken || {};
+            if (last.token === token && now - last.at < 250) return;
+            this._lastCombatToken = { token, at: now };
+            if (token === 'up-right') return this.attackGesture();
+            if (token === 'up-left') return this.spellGesture();
+            if (token === 'down-right') return this.defendGesture();
+            if (token === 'down-left') return this.healGesture();
+        },
+
+        /** Everything nearby that can be inspected, taken or opened. */
+        nearbyObjects() {
+            const list = [];
+            const location = loc();
+            if (!location) return list;
+            for (const npc of window.WorldData.npcs?.[G.state.location] || []) {
+                list.push({
+                    label: npc.name, kind: 'person',
+                    describe: `${npc.name}, ${npc.role || 'person'} here in this room. Can talk.`,
+                    run: () => G.processCommand(`talk ${npc.name}`)
+                });
+            }
+            for (const id of location.items || []) {
+                const item = window.WorldData.items?.[id];
+                if (!item) continue;
+                if (item.hidden && !G.state.parity?.discoveredItems?.includes(`${G.state.location}:${id}`)) continue;
+                list.push({
+                    label: item.name, kind: 'item',
+                    describe: `${item.name} here in this room. Can be collected. ${item.desc || ''} ${item.effect ? `Effect ${item.effect}.` : ''}`.trim(),
+                    run: () => G.processCommand(`take ${item.name}`)
+                });
+            }
+            if (location.houseExterior) {
+                const open = Boolean(location.exits.up);
+                list.push({
+                    label: open ? 'open door' : 'closed door', kind: 'door',
+                    describe: open ? 'The door here stands open. Can be closed.' : 'The door here is closed. Can be opened if it is not locked.',
+                    run: () => G.processCommand(open ? 'close door' : 'open door')
+                });
+            }
+            for (const [dir, id] of Object.entries(location.exits || {})) {
+                if (!['up', 'down'].includes(dir)) continue;
+                list.push({
+                    label: `${dir} to ${window.WorldData.locations[id]?.name || id}`, kind: 'stairs',
+                    describe: `Stairs going ${dir} to ${window.WorldData.locations[id]?.name || id}.`,
+                    run: () => G.processCommand(dir)
+                });
+            }
+            return list;
+        },
+        /** Two-finger swipe left or right: move through what is really here. */
+        browseFocus(step) {
+            if (this.menu || this.busy) return;
+            if (!this.focusList?.length) { this.focusList = this.nearbyObjects(); this.focusIndex = -1; }
+            if (!this.focusList.length) { speak(`Nothing nearby to inspect in ${loc()?.name}.`); return; }
+            this.focusIndex = (this.focusIndex + step + this.focusList.length) % this.focusList.length;
+            const object = this.focusList[this.focusIndex];
+            speak(`${this.focusIndex + 1} of ${this.focusList.length}. ${object.describe} Double tap to ${object.kind === 'item' ? 'collect it' : object.kind === 'door' ? 'use the door' : object.kind === 'person' ? 'talk' : 'use it'}.`, false, 'location');
+        },
+        /** Double tap with a focus: act on it; otherwise open the real choices. */
+        activateFocus() {
+            if (this.menu) return;
+            if (!this.focusList?.length || this.focusIndex < 0) { this.focusList = null; this.focusIndex = -1; return this.context(); }
+            const object = this.focusList[this.focusIndex];
+            speak(`Acting on ${object.label}.`, false, 'location');
+            object.run();
+        },
+        clearFocus() { this.focusList = null; this.focusIndex = -1; },
+
         /** The four one-finger swipes, translated for the walk-and-turn scheme. */
         walkToken(token) {
             if (token === 'up') return this.walkStep(false);
@@ -319,6 +515,13 @@
             if (token === 'cancel') { this.back(); return; }
             // Direct go_up / go_down from two-finger swipes (bypasses settings.map)
             if (token === 'go_up' || token === 'go_down') return this.verticalMove(token);
+            // A combat menu opens automatically when a fight starts. The four
+            // combat swipes must still work from there, closing that menu first.
+            if (this.menu && G.state.inCombat && /^Combat actions/.test(this.menu.title || '')
+                && ['up-right', 'up-left', 'down-right', 'down-left'].includes(token)) {
+                this.menu = null; this.stack = []; this.clearFocus(); this.render();
+                return this.combatToken(token);
+            }
             if (this.menu) {
                 if (['up', 'right'].includes(token)) this.browse(-1);
                 else if (token === 'down') this.browse(1);
@@ -327,6 +530,10 @@
                 else if (token === 'tap') speak(this.menu.choices[this.index].label, true);
                 return;
             }
+            // Combat gestures only answer during a fight, and never inside menus.
+            if (G.state.inCombat && ['up-right', 'up-left', 'down-right', 'down-left'].includes(token)) return this.combatToken(token);
+            if (token === 'two-left' || token === 'two-right') return this.browseFocus(token === 'two-right' ? 1 : -1);
+            if (token === 'double' && this.focusList?.length) return this.activateFocus();
             if (settings.scheme === 'walk') {
                 // Walking and turning are separate: up walks, left and right
                 // turn, down walks backward without turning round.
@@ -483,6 +690,7 @@
             if (G.state.inCombat) {
                 const targets = G.aliveEncounterTargets?.() || [];
                 return this.open('Combat actions. ' + this.combatDescription(), [
+                    option('Combat abilities, with costs and cooldowns', () => this.abilities()),
                     option('Attack current enemy', command('attack')), option('Defend', command('defend')),
                     option('Flee', command('flee')), option('Pray', command('pray')), option('Magic and healing', () => this.magic()), option('Inventory', () => this.inventory()),
                     ...targets.map(t => option(`Attack ${t.name}`, command(`attack ${t.name}`))),
@@ -737,6 +945,8 @@
                     : 'Corner swipes open menus: down-right notifications, up-right voice commands, up-left interact, down-left social hub. Diagonal walking uses the compass buttons or typed and spoken directions.')),
                 ...Object.entries(settings.map).map(([key, id]) => option(`${key}: ${names[id]}`, () => speak(`${key}: ${names[id]}. World only. Two finger swipe cancels or returns.`))),
                 option('Continuous walking instructions', () => speak('Swipe in a cardinal direction and keep your finger down for half a second. Walking repeats until release, a blocked path, combat, a panel or app switch. Release cancels pending hold steps. Tap Stop walking at any time.')),
+                option('Combat gestures', () => speak(`During a fight, up-right uses ${G.combatAbilityInfo?.(settings.attack)?.name || 'Basic Attack'}, up-left casts ${settings.spell || 'your chosen spell'}, down-right braces to defend, down-left heals with a healing spell first and then a healing item. Combat gestures never walk or turn, and walking gestures never fire during a fight.`)),
+                option('Browsing objects and inventory', () => speak('Two finger swipe right moves to the next nearby object and reads its name, what it is and whether it can be collected. Swipe left for the previous one. Double tap collects it, opens or closes the door, talks to the person or uses the object. Two finger tap opens the inventory.')),
                 option('Menus, and the older compass swipes', () => speak('In menus, down is next, up or right is previous, double tap chooses, left goes back. Single tap repeats selection. Two finger swipe always cancels. World remapping never changes these.')),
                 option('Which world scheme am I using?', () => speak(settings.scheme === 'walk'
                     ? `Walk and turn gestures. You are facing ${UI.facing()}. Swipe up walks forward, down backward, left and right turn ${settings.turnStep} degrees, tap walks continuously, two finger tap stops, a circle turns around.`
@@ -752,6 +962,7 @@
                 'Magic. Up-right opens known spells with requirements. Browse, choose a spell, then confirm Cast or Cancel.',
                 'Inventory. Two finger tap opens real inventory. Browse items and choose Use, Equip, Inspect or a confirmed Drop where supported. Left returns.',
                 'Navigation. Down-left opens real exits and city routes. Diagonal world travel and stairs are options here, not diagonal swipes.',
+                'Combat. When a fight starts, up-right performs your chosen combat ability, up-left casts your chosen spell, down-right braces to defend and down-left heals. Every ability states its mana cost and cooldown, and every failure explains why it failed.',
                 'Posture. Stationary one finger hold sits on a real seat. Stationary two finger hold lies on a real bed. Only in safe rooms. Open actions to stand up. No automatic healing.',
                 'Speech. Single tap repeats. The bottom controls open narrator settings, tutorial and reference. You can change speed, volume and world mappings. Two finger swipe cancels menus. TalkBack is not required.'
             ];
@@ -869,9 +1080,11 @@
             const finalToken = token || this.endToken; this.endToken = null;
             if (countChecked === 2 && finalToken) {
                 this.lastTap = 0;
-                // Two-finger swipe up = go up, two-finger swipe down = go down
+                // Two-finger swipe up = go up stairs, down = go down, left/right =
+                // browse what is really here. Any other two-finger swipe cancels.
                 if (finalToken === 'up') { UI.handle('go_up'); return; }
                 if (finalToken === 'down') { UI.handle('go_down'); return; }
+                if (finalToken === 'left' || finalToken === 'right') { UI.handle(finalToken === 'left' ? 'two-left' : 'two-right'); return; }
                 UI.handle('cancel');
                 return;
             }
@@ -902,6 +1115,7 @@
 
     const oldEnter = G.enterLocation;
     G.enterLocation = function(id, alreadyVisited) {
+        UI.clearFocus();
         const p = this.state.player; if (p?.gesturePosture?.location !== id && p) p.gesturePosture = null;
         const result = oldEnter.call(this, id, alreadyVisited);
         if (settings.narration && UI.active() && this._walkingArrival !== id) {
@@ -1040,6 +1254,11 @@
                 return;
             }
 
+            if (isDiagonal && G.state.inCombat && UI.active()) {
+                UI.handle(token);
+                this.reset();
+                return;
+            }
             if (isDiagonal && !G.state.inCombat) {
                 // Diagonal swipes open panels
                 if (token === 'down-right' && UI.notifications) UI.notifications();
@@ -1067,6 +1286,87 @@
         GlobalSwipes.init();
     }
 
-    window.GestureAccessibility = { UI, Gestures, settings, defaults, furniture, spellInfo, GlobalSwipes, DIRECTIONS };
+    // Every typed or spoken cast goes through one door, so the attempt counter
+    // cannot miss the spells that have specialised combat handlers.
+    const oldProcessCommand = G.processCommand.bind(G);
+    const SPELL_ALIASES = {
+        'multiple strike': 'Multi Strike', 'multi strike': 'Multi Strike',
+        'shock': 'Shock', 'alohomora': 'Alohomora', 'opening doors': 'Alohomora',
+        'opening door': 'Alohomora', 'light orbs': 'Light Orbs', 'healing spell': 'heal'
+    };
+    G.processCommand = function (input) {
+        const text = String(input || '').trim();
+        const key = text.toLowerCase();
+        const cast = /^cast\s+(.+)$/.exec(key) || /^cast spell\s+(.+)$/.exec(key);
+        let wanted = cast ? cast[1].trim() : key;
+        const spells = this.state.player?.spells || [];
+        const alias = SPELL_ALIASES[wanted];
+        let spell = alias && (wanted === 'healing spell'
+            ? spells.find(s => /heal|mend/i.test(s))
+            : spells.find(s => s.toLowerCase() === alias.toLowerCase()));
+        if (!spell) spell = spells.find(s => s.toLowerCase() === wanted) || spells.find(s => s.toLowerCase().includes(wanted));
+        const isCast = Boolean(cast) || Boolean(alias);
+        if (isCast && spell) return this.castSpell(spell);
+        return oldProcessCommand(input);
+    };
+
+    // Mastery must count every cast, including the spells handled by the later
+    // combat systems (Multi-Strike, Shock, Light Orbs, healing, doors). This is
+    // the outermost cast wrapper, so it sees the real state before and after.
+    const oldCastSpell = G.castSpell?.bind(G);
+    if (oldCastSpell) {
+        G.castSpell = function (name) {
+            const spells = this.state.player?.spells || [];
+            const wanted = String(name || '').toLowerCase().trim();
+            const spell = spells.find(s => s.toLowerCase() === wanted) || spells.find(s => s.toLowerCase().includes(wanted));
+            if (!spell || !this.recordSpellAttempt) return oldCastSpell(name);
+            const p = this.state.player;
+            const log = document.getElementById('narrative');
+            const before = {
+                mp: p.mp, hp: p.hp, enemy: this.state.enemy?.name || '',
+                enemyHp: this.state.enemy?.hp ?? 0,
+                companionHp: (this.state.companions || []).reduce((n, c) => n + (c.hp || 0), 0),
+                lines: log ? log.children.length : 0
+            };
+            this.recordSpellAttempt(spell);
+            const result = oldCastSpell(name);
+            const settle = () => {
+                try {
+                    if (!this.state?.player) return;
+                    const after = {
+                        mp: this.state.player.mp, hp: this.state.player.hp,
+                        enemyHp: this.state.enemy?.hp ?? 0,
+                        companionHp: (this.state.companions || []).reduce((n, c) => n + (c.hp || 0), 0)
+                    };
+                    const used = Math.max(0, before.mp - after.mp);
+                    const damage = Math.max(0, before.enemyHp - after.enemyHp);
+                    const healing = Math.max(0, after.hp - before.hp) + Math.max(0, after.companionHp - before.companionHp);
+                    const text = log ? [...log.children].slice(before.lines).map(el => el.textContent).join(' ') : '';
+                    const utility = /alohomora|opening door|close door|lifestrike|light orbs/i.test(spell);
+                    const worked = damage > 0 || healing > 0
+                        || /clicks|unlocks|bursts|restores \d|healed \d|strikes? for|hits? .* for|damage/i.test(text)
+                        || (utility && used > 0 && !/no locked door|cannot|only use|not enough|requires/i.test(text));
+                    this.recordSpellOutcome(spell, worked);
+                    this.save?.();
+                } catch { /* the page or fight has gone away */ }
+            };
+            setTimeout(settle, 400);
+            return result;
+        };
+    }
+
+    // Combat starts are announced by the game narrator itself, never by TalkBack.
+    const oldStartCombat = G.startCombat?.bind(G);
+    if (oldStartCombat) {
+        G.startCombat = function (name, queued) {
+            oldStartCombat(name, queued);
+            if (!this.state.inCombat) return;
+            const count = (this.aliveEncounterTargets?.() || []).length;
+            const enemy = count === 1 ? `One enemy (${this.state.enemy?.name || name}) is nearby.` : `${count} enemies are nearby.`;
+            speak(`Combat started. ${enemy} Up-right attacks, up-left casts, down-right defends or dodges, down-left heals.`, true, 'combat');
+        };
+    }
+
+    window.GestureAccessibility = { UI, Gestures, settings, defaults, furniture, spellInfo, GlobalSwipes, DIRECTIONS, speak, combatTokens: ['up-right', 'up-left', 'down-right', 'down-left'] };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
 })();

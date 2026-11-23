@@ -198,6 +198,11 @@ class AudioManagerController {
             'board-turn': ['assets/audio/sfx/board-turn.wav'], 'board-error': ['assets/audio/sfx/board-error.wav'],
             'card-shuffle': ['assets/audio/sfx/card-shuffle.wav'], 'card-draw': ['assets/audio/sfx/card-draw.wav'],
             'multi-strike': ['assets/audio/sfx/attack-fast.wav', 'assets/audio/sfx/carrom-strike.wav'],
+            // Gesture combat: each swing uses its own genuine recording.
+            'attack-heavy': ['assets/audio/sfx/attack-heavy.wav'],
+            'attack-fast': ['assets/audio/sfx/attack-fast.wav'],
+            'spell-cast': ['assets/audio/sfx/spell-cast.wav'],
+            'spell-arcane': ['assets/audio/sfx/spell-arcane.wav'],
             shark: ['assets/audio/sfx/haunted-wind.wav', 'assets/audio/sfx/monster-roar.wav'],
             'shark-hit': ['assets/audio/sfx/hit-metal-2.wav', 'assets/audio/sfx/body-fall.wav'],
             summon: ['assets/audio/sfx/ghost-moan.wav', 'assets/audio/sfx/spell-cast.wav'],
