@@ -61,8 +61,15 @@ an unlimited on-device voice that works offline with no key (`voice pack status`
 ## Built-in narration and gesture interface (7.27.0)
 
 Tap **Start spoken gesture controls** for Accessible Gesture Mode and the optional
-spoken tutorial. TalkBack is not the narrator. Swipe movement, contextual combat,
-magic, inventory, real routes and narrator settings use the existing game engine.
+spoken tutorial. TalkBack is not the narrator. The default **walk and turn**
+scheme behaves like a person walking: swipe up walks forward in the direction you
+face, swipe left and right turn you on the spot, swipe down steps backward, a tap
+starts or stops continuous walking, a long press walks while held, two fingers
+stop instantly and a circle turns you around. Turning never moves you and walking
+never turns you; every step follows the room's real exits. Sensitivity, the turn
+step (90° or 45°) and the older compass swipes are in Narrator settings.
+Contextual combat, magic, inventory, real routes and narrator settings use the
+existing game engine.
 See [gesture mappings, setup, validation and remaining Android release gates](GESTURE_ACCESSIBILITY.md).
 Physical Android audio acceptance and production deployment are not yet verified.
 

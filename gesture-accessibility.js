@@ -26,9 +26,22 @@
         // Corner swipes can either open the four menus (default) or walk the
         // four diagonals. Nothing else about the gesture map changes.
         corners: saved.corners === 'walk' ? 'walk' : 'menus',
+        // How the world is driven: 'walk' = swipe to walk and turn like a person
+        // (forward/backward and turning are separate), 'compass' = the older
+        // one swipe per compass direction.
+        scheme: saved.scheme === 'compass' ? 'compass' : 'walk',
+        turnStep: saved.turnStep === 45 ? 45 : 90,
+        swipe: ['low', 'medium', 'high'].includes(saved.swipe) ? saved.swipe : 'medium',
         map: { ...defaults }
     };
     const CORNER_DIRECTION = Object.freeze({ 'up-right': 'northeast', 'up-left': 'northwest', 'down-right': 'southeast', 'down-left': 'southwest' });
+    // Eight facing directions clockwise. Walking forward uses the facing; turning
+    // only changes the facing, never the location.
+    const DIRECTIONS = Object.freeze(['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest']);
+    const SWIPE_PX = Object.freeze({ low: 60, medium: 36, high: 22 });
+    const swipeThreshold = () => SWIPE_PX[settings.swipe] || 36;
+    const spin = (direction, steps) => DIRECTIONS[((DIRECTIONS.indexOf(direction) + steps) % 8 + 8) % 8];
+    const opposite = direction => spin(direction, 4);
     const DIAGONAL_SPEECH = 'To walk diagonally: tap the compass buttons north-east, north-west, south-east or south-west, type or say north east, or turn on Corner swipes walk diagonally in narrator settings. With that setting on, swipe up-right for north-east, up-left for north-west, down-right for south-east and down-left for south-west. The four menus those corners used to open stay in the visible controls list.';
     for (const key of Object.keys(defaults)) if (names[saved.map?.[key]]) settings.map[key] = saved.map[key];
     const persist = () => write(KEY, settings);
@@ -73,6 +86,76 @@
         menu: null, index: 0, stack: [], walking: false, suppressLocation: false, busy: false,
         active() { return window.InterfaceMode?.current === 'blind'; },
         save() { persist(); },
+
+        /** Which way the hero is facing. Turning changes only this. */
+        facing() {
+            const player = G.state.player;
+            if (!player) return 'north';
+            if (!DIRECTIONS.includes(player.facing)) player.facing = 'north';
+            return player.facing;
+        },
+        setFacing(direction) {
+            const player = G.state.player;
+            if (!player) return;
+            player.facing = DIRECTIONS.includes(direction) ? direction : 'north';
+            try { G.save?.(); } catch { /* an unsaved facing is harmless */ }
+        },
+        /** What lies straight ahead, in words that match the real exits. */
+        aheadSpeech() {
+            const direction = this.facing();
+            const exits = loc()?.exits || {};
+            const next = exits[direction] && window.WorldData.locations[exits[direction]];
+            if (next) return `Ahead: ${next.name}.`;
+            const open = DIRECTIONS.filter(dir => exits[dir]).slice(0, 4).join(', ');
+            return open ? `No path straight ahead. From here you can go ${open}.` : 'No path straight ahead, and no way out of here on foot.';
+        },
+        turn(steps) {
+            if (!G.state.player) return;
+            const direction = spin(this.facing(), steps);
+            this.setFacing(direction);
+            G.cancelPendingMovement?.();
+            this.walking = false;
+            speak(`Facing ${direction}. ${this.aheadSpeech()}`, false, 'location');
+        },
+        /** Walk one step forward, or backward without turning round. */
+        walkStep(backward = false) {
+            if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return false; }
+            if (this.menu || this.busy || G._movementPending) return false;
+            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return false;
+            if (G.state.player.gesturePosture) { speak('Stand up before walking.'); Gestures.stop(); return false; }
+            if (G.state.inCombat || G.state.combatTransition) { speak('You cannot walk during combat.'); Gestures.stop(); return false; }
+            const facing = this.facing();
+            const direction = backward ? opposite(facing) : facing;
+            if (!loc()?.exits?.[direction]) {
+                speak(backward
+                    ? `Blocked behind you. ${this.aheadSpeech()}`
+                    : `Blocked. There is no path ${direction} from ${loc()?.name}. You are facing ${facing}.`, true, 'location');
+                Gestures.stop();
+                return false;
+            }
+            if (!backward) this.setFacing(direction);
+            G.processCommand(direction);
+            return true;
+        },
+        /** Single tap: start continuous forward walking, or stop it. */
+        toggleWalk() {
+            if (G.state.screen !== 'game-screen' || !G.state.player) return;
+            if (this.walking) { Gestures.stop(); speak(`Walking stopped at ${loc()?.name}.`, false, 'location'); return; }
+            if (this.walkStep(false)) {
+                this.walking = true;
+                Gestures.repeat = setInterval(() => {
+                    if (!this.walkStep(false)) Gestures.stop();
+                }, settings.interval);
+            }
+        },
+        /** The four one-finger swipes, translated for the walk-and-turn scheme. */
+        walkToken(token) {
+            if (token === 'up') return this.walkStep(false);
+            if (token === 'down') return this.walkStep(true);
+            if (token === 'left') return this.turn(-Math.round(180 / settings.turnStep));
+            if (token === 'right') return this.turn(Math.round(180 / settings.turnStep));
+            if (token === 'circle') return this.turn(4);
+        },
         enable() {
             if ($('gesture-launch')) document.body.append($('gesture-launch'));
             settings.narration = true; persist(); A.init(); A.setVoiceEnabled(true); A.resumeVoice();
@@ -197,40 +280,10 @@
             // Don't auto-open controls when a panel is visible — let the user interact with it directly.
         },
         playSwipeSound() {
-            // Generate a realistic short whoosh/swipe sound using Web Audio API
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const duration = 0.15;
-                const bufferSize = ctx.sampleRate * duration;
-                const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-                const data = buffer.getChannelData(0);
-                // Filtered noise that sweeps from high to low frequency (whoosh effect)
-                for (let i = 0; i < bufferSize; i++) {
-                    const t = i / bufferSize;
-                    const envelope = Math.sin(t * Math.PI) * (1 - t * 0.5); // attack-decay
-                    const noise = (Math.random() * 2 - 1);
-                    // Frequency sweep simulation via amplitude modulation
-                    const freq = Math.sin(t * 80 * Math.PI * (1 - t * 0.7)) * 0.3;
-                    data[i] = (noise * 0.7 + freq) * envelope * 0.25;
-                }
-                const source = ctx.createBufferSource();
-                source.buffer = buffer;
-                // Bandpass filter for realistic whoosh
-                const filter = ctx.createBiquadFilter();
-                filter.type = 'bandpass';
-                filter.frequency.setValueAtTime(2000, ctx.currentTime);
-                filter.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + duration);
-                filter.Q.value = 1.5;
-                const gain = ctx.createGain();
-                gain.gain.setValueAtTime(0.4, ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-                source.connect(filter);
-                filter.connect(gain);
-                gain.connect(ctx.destination);
-                source.start();
-                source.onended = () => ctx.close();
-            } catch (e) { /* audio not available */ }
+            // Real recording only. The game never synthesises a sound effect.
+            if (A?.playSFX) A.playSFX('swipe');
         },
+
         handle(token) {
             if (!this.active()) return;
             // When a panel or dialog is open, handle panel navigation with swipes
@@ -273,6 +326,13 @@
                 else if (token === 'double') this.choose();
                 else if (token === 'tap') speak(this.menu.choices[this.index].label, true);
                 return;
+            }
+            if (settings.scheme === 'walk') {
+                // Walking and turning are separate: up walks, left and right
+                // turn, down walks backward without turning round.
+                if (['up', 'down', 'left', 'right', 'circle'].includes(token)) return this.walkToken(token);
+                if (token === 'two-tap') { Gestures.stop(); speak(`Walking stopped at ${loc()?.name}.`, false, 'location'); return; }
+                if (token === 'tap') return this.toggleWalk();
             }
             if (token === 'tap') { A.repeatVoice(); return; }
             if (settings.corners === 'walk' && CORNER_DIRECTION[token]) return this.move(CORNER_DIRECTION[token]);
@@ -637,6 +697,21 @@
                     const box = $('gesture-directions'); if (box) box.checked = settings.directions;
                     speak(settings.directions ? 'Possible directions will be read when you come back to a place you know.' : 'Possible directions will not be read on arrival; Look Around still lists them.');
                 }),
+                option(`Walk and turn gestures: ${settings.scheme === 'walk' ? 'on' : 'off, compass swipes'}`, () => {
+                    settings.scheme = settings.scheme === 'walk' ? 'compass' : 'walk'; persist(); Gestures.reset();
+                    speak(settings.scheme === 'walk'
+                        ? 'Walk and turn gestures on. Swipe up walks forward, down walks backward, left and right turn you, and a tap starts or stops continuous walking. Two finger tap stops immediately.'
+                        : 'Compass swipes. One swipe is one compass direction: up north, down south, left west, right east.');
+                }),
+                option(`Turn step: ${settings.turnStep} degrees`, () => {
+                    settings.turnStep = settings.turnStep === 90 ? 45 : 90; persist();
+                    speak(`Each turn is now ${settings.turnStep} degrees. Turning never moves you.`);
+                }),
+                option(`Swipe sensitivity: ${settings.swipe}`, () => {
+                    const order = ['low', 'medium', 'high'];
+                    settings.swipe = order[(order.indexOf(settings.swipe) + 1) % order.length]; persist();
+                    speak(`${settings.swipe} sensitivity. A swipe needs about ${swipeThreshold()} pixels of travel.`);
+                }),
                 option(`Corner swipes: ${settings.corners === 'walk' ? 'walk diagonally' : 'open menus'}`, () => {
                     settings.corners = settings.corners === 'walk' ? 'menus' : 'walk'; persist();
                     speak(settings.corners === 'walk'
@@ -662,12 +737,15 @@
                     : 'Corner swipes open menus: down-right notifications, up-right voice commands, up-left interact, down-left social hub. Diagonal walking uses the compass buttons or typed and spoken directions.')),
                 ...Object.entries(settings.map).map(([key, id]) => option(`${key}: ${names[id]}`, () => speak(`${key}: ${names[id]}. World only. Two finger swipe cancels or returns.`))),
                 option('Continuous walking instructions', () => speak('Swipe in a cardinal direction and keep your finger down for half a second. Walking repeats until release, a blocked path, combat, a panel or app switch. Release cancels pending hold steps. Tap Stop walking at any time.')),
-                option('Menu gestures', () => speak('In menus, down is next, up or right is previous, double tap chooses, left goes back. Single tap repeats selection. Two finger swipe always cancels. World remapping never changes these.'))
+                option('Menus, and the older compass swipes', () => speak('In menus, down is next, up or right is previous, double tap chooses, left goes back. Single tap repeats selection. Two finger swipe always cancels. World remapping never changes these.')),
+                option('Which world scheme am I using?', () => speak(settings.scheme === 'walk'
+                    ? `Walk and turn gestures. You are facing ${UI.facing()}. Swipe up walks forward, down backward, left and right turn ${settings.turnStep} degrees, tap walks continuously, two finger tap stops, a circle turns around.`
+                    : `Compass swipes. Up north, down south, left west, right east. You are facing ${UI.facing()}.`))
             ]);
         },
         tutorial(step) {
             const lessons = [
-                'World movement. Swipe up north, down south, left west, right east. Two-finger swipe up goes up stairs or ladders. Two-finger swipe down goes down. Two-finger swipe left or right cancels.',
+                'Walking and turning. Swipe up to walk forward where you are facing, swipe down to step backward without turning. Swipe left or right to turn on the spot. A single tap starts continuous walking; tap again or two-finger tap to stop. A long press walks while you hold. Draw a circle to turn around. With Walk and turn gestures switched off, swipes become plain compass directions instead.',
                 'Diagonal movement and menus. By default a diagonal swipe opens a menu: down-right Notifications, up-right Voice Commands, down-left Social Hub, up-left Interact. To walk diagonally instead, use the compass buttons north-east, north-west, south-east and south-west, say or type the direction, or turn on Corner swipes walk diagonally in narrator settings.',
                 'Continuous walking. Swipe in a cardinal direction and keep the finger down for half a second. Release to stop, including any pending step. Stop walking is always available.',
                 'Menus. Down-right opens location or combat actions. Up-left or double tap opens nearby interaction choices. No object is selected automatically.',
@@ -716,8 +794,9 @@
 
     const Gestures = {
         points: new Map(), timer: null, repeat: null, lastTap: 0, lastTapPoint: null, held: false, maxPointers: 0,
+        path: 0, turned: 0, lastAngle: null,
         direction(dx, dy) {
-            if (Math.hypot(dx, dy) < 36) return null;
+            if (Math.hypot(dx, dy) < swipeThreshold()) return null;
             const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
             return ({ 0: 'right', 1: 'down-right', 2: 'down', 3: 'down-left', 4: 'left', '-4': 'left', '-3': 'up-left', '-2': 'up', '-1': 'up-right' })[angle];
         },
@@ -727,7 +806,10 @@
             if (!UI.active() || e.pointerType === 'mouse' && e.button !== 0) return;
             e.preventDefault();
             clearTimeout(this.tapTimer);
-            if (!this.points.size) { this.held = false; this.maxPointers = 0; this.started = Date.now(); }
+            if (!this.points.size) {
+                this.held = false; this.maxPointers = 0; this.started = Date.now();
+                this.path = 0; this.turned = 0; this.lastAngle = null;
+            }
             if (this.points.size) this.stop();
             this.points.set(e.pointerId, { x: e.clientX, y: e.clientY, dx: 0, dy: 0 });
             this.maxPointers = Math.max(this.maxPointers, this.points.size);
@@ -738,7 +820,13 @@
                 if (!this.points.size) return;
                 const p = [...this.points.values()][0], token = this.direction(p.dx, p.dy);
                 this.held = true;
-                if (this.maxPointers === 1 && ['up', 'down', 'left', 'right'].includes(token) && !UI.menu) {
+                if (this.maxPointers === 1 && !UI.menu && settings.scheme === 'walk') {
+                    // Long press walks forward while the finger stays down; letting
+                    // go stops it, including any pending step.
+                    UI.walking = true;
+                    if (!UI.walkStep(false)) { UI.walking = false; return; }
+                    this.repeat = setInterval(() => { if (!UI.walkStep(false)) this.stop(); }, settings.interval);
+                } else if (this.maxPointers === 1 && ['up', 'down', 'left', 'right'].includes(token) && !UI.menu) {
                     const dir = settings.map[token];
                     if (!['north', 'south', 'east', 'west'].includes(dir)) return;
                     UI.walking = true; UI.move(dir);
@@ -748,18 +836,38 @@
         },
         move(e) {
             const p = this.points.get(e.pointerId); if (!p) return;
-            e.preventDefault(); p.dx = e.clientX - p.x; p.dy = e.clientY - p.y;
+            e.preventDefault();
+            const x0 = p.x + p.dx, y0 = p.y + p.dy;
+            const step = Math.hypot(e.clientX - x0, e.clientY - y0);
+            p.dx = e.clientX - p.x; p.dy = e.clientY - p.y;
+            if (this.maxPointers === 1) {
+                this.path += step;
+                const angle = Math.atan2(p.dy, p.dx) * 180 / Math.PI;
+                if (this.lastAngle !== null) {
+                    let delta = angle - this.lastAngle;
+                    if (delta > 180) delta -= 360; else if (delta < -180) delta += 360;
+                    // Ignore jumps: a real circular swipe turns smoothly.
+                    if (Math.abs(delta) < 135) this.turned += delta;
+                }
+                this.lastAngle = angle;
+            }
             if (this.maxPointers === 2 && this.direction(p.dx, p.dy)) { this.held = true; this.stop(); }
+        },
+
+        /** A full loop of the finger means turn around. */
+        circled() {
+            return Math.abs(this.turned) >= 250 && this.path > 140;
         },
         up(e) {
             const p = this.points.get(e.pointerId); if (!p) return;
             e.preventDefault(); p.dx = e.clientX - p.x; p.dy = e.clientY - p.y;
-            const token = this.direction(p.dx, p.dy), count = this.maxPointers;
+            const circling = this.maxPointers === 1 && this.circled();
+            const token = (circling && settings.scheme === 'walk' ? 'circle' : this.direction(p.dx, p.dy)), countChecked = this.maxPointers;
             this.points.delete(e.pointerId);
             this.stop();
             if (this.points.size) { this.endToken = token; return; }
             const finalToken = token || this.endToken; this.endToken = null;
-            if (count === 2 && finalToken) {
+            if (countChecked === 2 && finalToken) {
                 this.lastTap = 0;
                 // Two-finger swipe up = go up, two-finger swipe down = go down
                 if (finalToken === 'up') { UI.handle('go_up'); return; }
@@ -768,7 +876,7 @@
                 return;
             }
             if (this.held) { this.lastTap = 0; return; }
-            if (count === 2) { this.lastTap = 0; UI.handle('two-tap'); return; }
+            if (countChecked === 2) { this.lastTap = 0; UI.handle('two-tap'); return; }
             if (finalToken) { this.lastTap = 0; UI.handle(finalToken); return; }
             const now = Date.now();
             if (this.lastTap && now - this.lastTap < 330 && Math.hypot(e.clientX - this.lastTapPoint.x, e.clientY - this.lastTapPoint.y) < 40) { clearTimeout(this.tapTimer); this.lastTap = 0; UI.handle('double'); }
@@ -959,6 +1067,6 @@
         GlobalSwipes.init();
     }
 
-    window.GestureAccessibility = { UI, Gestures, settings, defaults, furniture, spellInfo, GlobalSwipes };
+    window.GestureAccessibility = { UI, Gestures, settings, defaults, furniture, spellInfo, GlobalSwipes, DIRECTIONS };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true }); else init();
 })();

@@ -16,6 +16,8 @@ async function ready(t) {
     w.Math.random = () => .99; w.GameSpellSystem.random = () => .99;
     w.ProfessionalAudioCombat = null; w.AudioManager.endBattle = async () => {};
     const api = w.GestureAccessibility;
+    // This file tests the classic compass swipes (one swipe per direction).
+    api.settings.scheme = 'compass'; api.UI.save();
     api.UI.close(); G.closePanels();
     return { ...r, ...api, G, w };
 }

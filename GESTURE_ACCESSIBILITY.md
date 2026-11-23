@@ -25,36 +25,50 @@ Interface mode. The original game interface, keyboard, command input, music and
 buttons remain in place. Speech can be disabled separately. Switching mode
 stops walking and never resets the hero.
 
-## Default world mappings
+## Default world mappings — walk and turn (7.59.0)
 
-Gestures apply **only on the bordered Gesture surface**, not across the whole
-browser. This keeps native form fields and scrolling usable.
+The hero walks like a person: the way they are **facing** decides where forward
+is. Turning changes only the facing; walking changes only the room. Both use the
+real exits of the room graph, so a swipe can never teleport the player.
 
 | Gesture | Action |
 |---|---|
-| Swipe up | North |
-| Swipe down | South |
-| Swipe left | West |
-| Swipe right | East |
-| Cardinal swipe, keep finger down 550 ms | Repeat that direction, initially every 800 ms |
-| Release hold | Stop and cancel any pending hold step |
+| Swipe up | Walk one step **forward**, in the direction the hero is facing |
+| Swipe down | Step **backward** (opposite the facing) without turning round |
+| Swipe left | Turn left on the spot (90° by default, 45° in settings) |
+| Swipe right | Turn right on the spot |
+| Draw a circle | Turn around (180°) |
+| Single tap | Start continuous forward walking; tap again to stop |
+| Long press (hold) | Walk forward while the finger stays down; release stops, including any pending step |
+| Two-finger tap | Stop instantly and say where you stopped |
 | Down-right | Contextual actions, or combat actions during combat |
 | Up-right | Known magic and healing choices; choose Cast or Cancel |
 | Up-left | Nearby interaction choices, without guessing which object to activate |
 | Double tap | Nearby interaction choices |
 | Down-left | Navigation and route guidance (not an invented backward mechanic) |
-| Two-finger tap | Inventory |
-| Stationary one-finger hold, 550 ms | Sit at a valid local seat |
-| Stationary two-finger hold, 550 ms | Lie on a valid local bed |
-| Single tap | Repeat last message |
+| Stationary one-finger hold on a seat | Sit at a valid local seat |
+| Stationary two-finger hold | Lie on a valid local bed |
 | Any two-finger swipe | Cancel/back; fixed and not remappable |
 | Stop walking button | Emergency stop, including a pending movement |
 
-World gestures are remappable. A token always has one action; assigning the same
-action to two tokens does not combine actions. Movement repeats only for
-cardinal swipe tokens mapped to movement. Menu gestures are intentionally fixed
-so remapping cannot remove the way out. Stairs and diagonal **world routes** are
-selected in Navigation, rather than overloading diagonal action swipes.
+Turning is announced with the new facing and what is really ahead:
+*"Facing east. Ahead: Kaliwasch District 8."* or *"Facing south. No path straight
+ahead. From here you can go north, east, west."* A blocked step is spoken as
+blocked and never as a success.
+
+**Sensitivity** (`Narrator settings → Swipe sensitivity`) changes how far the
+finger must travel: low 60 px, medium 36 px, high 22 px. **Turn step** switches
+between 90° and 45°. **Walk and turn gestures** can be switched off for the older
+compass swipes, where one swipe is one compass direction.
+
+### Compass swipes (optional, off by default)
+
+| Gesture | Action |
+|---|---|
+| Swipe up / down / left / right | North / South / West / East |
+| Swipe + hold 550 ms | Repeat that compass direction every 800 ms |
+| Two-finger tap | Inventory |
+| Single tap | Repeat last message |
 
 ### Menus
 
