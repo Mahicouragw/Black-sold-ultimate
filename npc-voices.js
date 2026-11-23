@@ -533,7 +533,15 @@
             const words = String(text || '').trim();
             const audio = window.AudioManager || window.MusicSystem;
             if (!words) return false;
-            // Synthetic character voice first, so nobody sounds like TalkBack.
+            // The unlimited on-device model wins when the player downloaded it.
+            const pack = window.KokoroVoicePack;
+            if (pack?.wanted && pack.state !== 'failed' && audio?.characterVoicesEnabled !== false) {
+                if (pack.ready || await pack.load()) {
+                    const spokenLocally = await pack.speak(name, words, this.profile(name));
+                    if (spokenLocally) { this.lastEngine = 'kokoro'; return true; }
+                }
+            }
+            // Synthetic character voice next, so nobody sounds like TalkBack.
             if (this.neuralAvailable && (audio?.characterVoicesEnabled !== false)) {
                 const spoken = await this.speakNeural(name, words);
                 if (spoken) return true;
