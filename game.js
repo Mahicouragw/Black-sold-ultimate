@@ -3467,6 +3467,9 @@ const Game = {
 
     getSaveData() {
         return {
+            // Per-hero timestamp: cloud/local merges keep the newer snapshot,
+            // so a stale cloud restore can never roll a hero backwards.
+            savedAt: Date.now(),
             player: this.state.player,
             inventory: this.state.inventory,
             location: this.state.location,

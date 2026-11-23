@@ -768,6 +768,39 @@ const OnlineSystem = {
         return merged;
     },
 
+    /**
+     * Reconcile a cloud roster with the device roster without losing progress.
+     *
+     * Hero data now carries `savedAt`. For a hero that exists in both places the
+     * newer snapshot wins, so a completed palace quest can never be rolled back
+     * by a stale cloud row (or by a reload/deploy that interrupted a save). An
+     * empty cloud row never erases local heroes; unknown local slots are never
+     * imported into somebody else's account.
+     */
+    mergeNewestRoster(cloudRoster, localRoster) {
+        const merged = { ...(cloudRoster || {}), version: 2, heroes: { ...(cloudRoster?.heroes || {}) } };
+        const cloudCount = Object.keys(merged.heroes).length;
+        let repaired = false;
+        if (!cloudCount) {
+            const localHeroes = localRoster?.heroes || {};
+            if (Object.keys(localHeroes).length) {
+                merged.heroes = { ...localHeroes };
+                merged.activeHeroId = localRoster?.activeHeroId || Object.keys(localHeroes)[0] || null;
+                repaired = true;
+            }
+            return { merged, repaired };
+        }
+        for (const [id, hero] of Object.entries(localRoster?.heroes || {})) {
+            const existing = merged.heroes[id];
+            if (!existing || !hero) continue;
+            const localTime = Number(hero.savedAt) || 0;
+            const cloudTime = Number(existing.savedAt) || 0;
+            if (localTime > cloudTime) { merged.heroes[id] = hero; repaired = true; }
+        }
+        if (!merged.activeHeroId || !merged.heroes[merged.activeHeroId]) merged.activeHeroId = Object.keys(merged.heroes)[0] || null;
+        return { merged, repaired };
+    },
+
     // Fetch the cloud roster, apply a pending guest merge, persist locally.
     // Throws on real network failure so callers can pick the fallback path.
     async restoreRosterFromCloud() {
@@ -787,6 +820,15 @@ const OnlineSystem = {
             localStorage.setItem('black_sword_merged_this_login','true');
         }
         localStorage.removeItem('black_sword_google_login_requested');
+        // Keep the newer of cloud and device per hero: a stale cloud row must
+        // never roll back quest, inventory or level progress made on this device.
+        let repairedCloud=false;
+        try{
+            const localRoster=window.Game.getRoster();
+            const reconciled=this.mergeNewestRoster(roster,localRoster);
+            roster=reconciled.merged;
+            repairedCloud=reconciled.repaired;
+        }catch(error){console.warn('Roster reconcile skipped:',error?.message||error);}
         const restoredCount=Object.keys(roster.heroes||{}).length;
         if(restoredCount>0){
             if(!roster.activeHeroId||!roster.heroes[roster.activeHeroId])roster.activeHeroId=Object.keys(roster.heroes)[0];
@@ -799,6 +841,10 @@ const OnlineSystem = {
             try{localStorage.setItem('black_sword_roster_was_linked',this.linked?'true':'false');}catch{}
             const active=roster.heroes[roster.activeHeroId];
             if(active?.player?.name){this.profile=this.profile||{};this.profile.display_name=active.player.name;this.client.from('profiles').update({display_name:active.player.name,level:active.player.level||1,last_seen:new Date().toISOString()}).eq('id',this.user.id).then(()=>{});}
+        }
+        if(repairedCloud){
+            // Put the reconciled (newer) snapshot back so the next reload agrees.
+            await this.saveGame(roster).catch(()=>false);
         }
         return {heroes:roster.heroes||{},activeHeroId:roster.activeHeroId||null,restoredCount,mergeSynced};
     },
@@ -982,6 +1028,13 @@ const OnlineSystem = {
             const shouldApply=Boolean(mergeRequested||loginRequested||!localCount||(cloudIsNewer&&!window.Game.state.player));
             if(!shouldApply){this.updateHeroEntryPoints(true);this.updateIndicators();return true;}
 
+            // Same reconciliation as the login path: never replace newer device
+            // progress (palace quests, inventory, level) with a stale cloud row.
+            try{
+                const reconciled=this.mergeNewestRoster(roster,localRoster);
+                roster=reconciled.merged;
+                if(reconciled.repaired)this.saveGame(roster).catch(()=>false);
+            }catch(error){console.warn('Roster reconcile skipped:',error?.message||error);}
             window.Game.storeRoster(roster,{touch:false});
             const active=roster.heroes[roster.activeHeroId];
             if(loginRequested)window.Game.resetHeroRuntime();
