@@ -1,10 +1,10 @@
 
 const BASE=new URL('./',self.registration.scope);
 const PREFIX=`black-sword:${BASE.href}:shell:`;
-const CACHE=PREFIX+'black-sword-v7.58.0-walkturn1';
+const CACHE=PREFIX+'black-sword-v7.59.0-combat1';
 const MUSIC_CACHE=`black-sword:${BASE.href}:music-v1`;
 const CORE=[
-  '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js',
+  '','index.html','styles.css','manifest.webmanifest','version.js','music.js','accessible-dialogs.js','gesture-accessibility.js','combat-abilities-gesture.js',
   'assets/voices/ashen-vale-guide-0.mp3','assets/voices/ashen-vale-guide-1.mp3','assets/voices/ashen-vale-guide-2.mp3','assets/voices/ashen-vale-guide-deeds.mp3',
   'assets/voices/aurora-city-estate-agent-0.mp3','assets/voices/aurora-city-estate-agent-1.mp3','assets/voices/aurora-city-estate-agent-2.mp3','assets/voices/aurora-city-estate-agent-deeds.mp3',
   'assets/voices/aurora-city-guild-registrar-0.mp3','assets/voices/aurora-city-guild-registrar-1.mp3','assets/voices/aurora-city-guild-registrar-2.mp3','assets/voices/aurora-city-guild-registrar-3.mp3',

@@ -18,6 +18,11 @@ here instead of being replaced with a fake.
 | Wind outdoors | `assets/audio/sfx/haunted-wind.wav` |
 | Gesture acknowledgement (real whoosh) | `assets/audio/sfx/music-transition.wav` (the `swipe` sound) |
 | Combat, magic, coins, chests with existing coverage | see `music.js` sound registry |
+| Heavy attack swing | `assets/audio/sfx/attack-heavy.wav` |
+| Quick attack swing | `assets/audio/sfx/attack-fast.wav` |
+| Spell cast / arcane spell | `assets/audio/sfx/spell-cast.wav`, `spell-arcane.wav` |
+| Healing spell | `assets/audio/sfx/heal.wav`, `heal-chain.wav` |
+| Missed attack | `assets/audio/sfx/miss.wav` |
 
 Surface choice is made by `Game.getFootstepSFX()` from the room's real name,
 region, description and features, so footsteps already match the room, and the
@@ -34,6 +39,10 @@ blocked-move sound is separate from the success sound.
 | Chest opening | Treasure chests | Existing pickup/coin recordings are used; no chest creak is invented |
 | Cave ambience | Underground chambers | The wind recording is used only where wind is plausible; the cave has no dedicated ambience |
 | Water / stream / lake | Rivers, lake shore | No water loop exists, so none is played |
+| Shield block / brace / parry | Down-right defensive stance | No block recording exists, so the brace is spoken only; the hit sound is not reused as a fake block |
+| Heavy or quick attack *miss* | A missed heavy/quick swing | The existing `miss.wav` is used; there is no dedicated heavy-whoosh-miss recording |
+| Mastery milestone / level-up sting | Mastery level announcements | The existing `levelup.wav` is not reused for mastery; the line is spoken only |
+| Potion cork / gulp | Drinking a healing potion | `drink.ogg` is used only when the item is a drink; other healing items play `heal.wav` |
 
 To close these gaps, drop verified CC0/CC BY recordings into `assets/audio/sfx/`
 with the same naming pattern, register them in `music.js`, add them to the

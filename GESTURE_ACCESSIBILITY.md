@@ -70,6 +70,77 @@ compass swipes, where one swipe is one compass direction.
 | Two-finger tap | Inventory |
 | Single tap | Repeat last message |
 
+## Combat gestures during a fight (7.59.0)
+
+When a fight starts, the game itself says *"Combat started. One enemy (name) is
+nearby. Up-right attacks, up-left casts, down-right defends or dodges, down-left
+heals."* The four diagonal swipes become combat-only while `inCombat` is true,
+and the automatic combat menu no longer blocks them. Walking swipes are refused
+during combat with a spoken reason, so a fight can never move the hero.
+
+| Gesture (combat only) | Action |
+|---|---|
+| Swipe up-right | The chosen combat ability (Basic Attack by default). Change it from **Combat actions → Combat abilities** |
+| Swipe up-left | The chosen spell (chosen once; the spellbook opens the first time) |
+| Swipe down-right | Defensive stance: brace so the next enemy blow is halved |
+| Swipe down-left | Heal: cheapest known healing spell you can afford, otherwise a healing item, otherwise a spoken explanation and no consumption |
+| Two-finger swipe right / left | Next / previous nearby object (outside combat) |
+| Double tap | Act on the focused object, otherwise open the real interaction choices |
+| Two-finger tap | Inventory |
+| Down-right | Combat actions, including the full ability list, magic, inventory, flee |
+
+Every result is spoken from real state: damage dealt, health before and after,
+mana spent, cooldown remaining. Failures always state their reason (*"not enough
+magic"*, *"not ready"*, *"you have not learned the spell"*, *"no locked door
+here"*). A second identical swipe inside 250 ms is ignored so a bouncing finger
+cannot spend a second turn.
+
+### Abilities
+
+| Ability | Real rule | Cost | Cooldown |
+|---|---|---|---|
+| Basic Attack | Ordinary weapon attack, 8% base miss | none | none |
+| Heavy Attack | Lands 65% (+¼ dexterity, max 85%), 1.7× weapon damage | none | 2 combat actions |
+| Quick Attack | Lands 92% (+¼ dexterity, max 97%), 0.6× weapon damage | none | 1 combat action |
+| Multi-Strike | The Multi Strike spell: three separate strikes | 18 mana (spell system) | 8 s |
+| Magical Attack | Your chosen damaging spell, real cost and fizzle | spell cost | spell rules |
+| Defensive Stance | `defend()`: next enemy blow halved | none | 1 combat action |
+| Special Ability | Your class power (Battle Cry, Ice Storm, Backstab, Holy Light, Hammer Smite, Piercing Volley, Chi Burst, Thorn Storm) | spell cost | spell rules |
+
+Cooldowns advance once per combat action and are saved, so reloading cannot
+reset a heavy swing mid-fight. A cooling ability is refused with the number of
+actions left and spends nothing.
+
+### Spell mastery
+
+`mastery <spell>` (or `mastery` for every spell) reports attempts, successful
+casts, failures, mastery percent, mastery level and MP efficiency. Mastery is
+counted by the outermost cast wrapper, so every casting system in the game is
+included. A cast is a success only when health, enemy health or a real utility
+effect changed; "not enough mana", cooldown refusals and fizzles are failures.
+The voice line for a highly practised spell is:
+
+> *"Your Multi-Strike mastery is 90 percent. You are becoming highly skilled.
+> Continue practising to improve your mastery."* — plus the explicit warning that
+> mastery is practice, not a guarantee: mana, cooldowns, resistance and the
+> spell's own chance still decide each cast.
+
+Mastery is stored in `Game.state.spellMastery` (abilities `attempts`,
+`successes`, `failures`, plus the existing xp/casts/totals) and saved with the
+hero.
+
+### Objects and inventory
+
+Two-finger swipe right walks the list of what is really in the room — people,
+takeable items, the door, stairs — reading *position, name, what it is, whether
+it can be collected, and its purpose*. Double tap collects the item, opens or
+closes the door, talks to the person or uses the object; a pickup that did not
+enter the pack is never reported as a success, and a second double tap on a
+collected object cannot duplicate it. Two-finger tap opens the inventory with
+name, category, quantity and purpose; Use/Equip ask for confirmation before
+anything irreversible, and the game re-checks that the item is still carried
+before acting.
+
 ### Menus
 
 Down = next; up or right = previous; double tap = activate; single tap = repeat

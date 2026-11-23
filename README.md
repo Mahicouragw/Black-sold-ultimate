@@ -68,8 +68,17 @@ starts or stops continuous walking, a long press walks while held, two fingers
 stop instantly and a circle turns you around. Turning never moves you and walking
 never turns you; every step follows the room's real exits. Sensitivity, the turn
 step (90° or 45°) and the older compass swipes are in Narrator settings.
-Contextual combat, magic, inventory, real routes and narrator settings use the
-existing game engine.
+During a fight the four diagonals become combat gestures: up-right performs your
+chosen ability (basic, heavy, quick, Multi-Strike, magical, defensive or your
+class special), up-left casts your chosen spell, down-right braces to defend and
+down-left heals with a real healing spell first and then a real healing item —
+never consuming anything silently. Every ability states its mana cost and its
+cooldown, every failure states its reason, and `mastery <spell>` reports attempts,
+successes, failures, mastery percent and level from genuinely recorded casts.
+Two-finger swipes browse the people, objects and doors that are really in the
+room, and a double tap collects, opens or talks to them once — never twice.
+Contextual magic, inventory, real routes and narrator settings use the existing
+game engine.
 See [gesture mappings, setup, validation and remaining Android release gates](GESTURE_ACCESSIBILITY.md).
 Physical Android audio acceptance and production deployment are not yet verified.
 
