@@ -386,3 +386,14 @@ MIT License
 ## v7.17.3 Android refresh
 
 The Android workflow now validates the PWA and security checks before building, uses the current source version, and publishes a consistently named `BlackSwordUltimate.apk` release asset.
+
+## v7.65.0 Gesture and button repair, plus the spoken guide
+
+A lost pointer can no longer wedge the gesture layer, diagonal walking now works
+from a swipe anywhere on the screen, panels own their own swipes and explain
+themselves instead of going silent, two fingers are the stairs through the same
+handler as the pad, and the combat buttons enable for the right reasons (Items
+always, Multiple Strike for both spellbook names, group fights recognised).
+Say `guide` for the six-chapter spoken guide (directions, inventory, chests and
+doors, board games, combat, menus) and `check controls` for a truthful self check.
+Details: [`reports/gesture-button-repair-v765.md`](reports/gesture-button-repair-v765.md).

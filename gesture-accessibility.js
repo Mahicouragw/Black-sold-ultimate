@@ -87,6 +87,18 @@
         return result;
     };
 
+    /** Any real panel or dialog the player can see right now. */
+    const anyPanelOpen = () => [...document.querySelectorAll('.panel,[role="dialog"]')].some(visible);
+    // A silent refusal reads as a broken gesture. Say it once every few seconds.
+    let panelHintAt = 0;
+    const panelHint = (extra = '') => {
+        const now = Date.now();
+        if (now - panelHintAt < 3000) return false;
+        panelHintAt = now;
+        speak(`A panel is open. Swipe left to close it, then gesture again.${extra ? ' ' + extra : ''}`, false, 'system');
+        return true;
+    };
+
     const UI = {
         menu: null, index: 0, stack: [], walking: false, suppressLocation: false, busy: false,
         active() { return window.InterfaceMode?.current === 'blind'; },
@@ -126,7 +138,7 @@
         walkStep(backward = false) {
             if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return false; }
             if (this.menu || this.busy || G._movementPending) return false;
-            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return false;
+            if (anyPanelOpen()) { panelHint(); return false; }
             if (G.state.player.gesturePosture) { speak('Stand up before walking.'); Gestures.stop(); return false; }
             if (G.state.inCombat || G.state.combatTransition) { speak('You cannot walk during combat.'); Gestures.stop(); return false; }
             const facing = this.facing();
@@ -233,7 +245,7 @@
         canFight() {
             if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return false; }
             if (this.menu || this.busy) return false;
-            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return false;
+            if (anyPanelOpen()) { panelHint(); return false; }
             if (!G.state.inCombat) { speak('That is a combat gesture. There is no fight right now. Swipe up to walk.'); return false; }
             return true;
         },
@@ -508,8 +520,14 @@
                     this.readPanelContent(visiblePanel);
                     return;
                 }
-                // For other tokens in panel context, just return
-                return;
+                // Never swallow a token in silence. A combat swipe is the one
+                // case where the player expects to be fighting right now.
+                if (G.state.inCombat) {
+                    speak(`A panel is open. Swipe left to close it, then swipe ${token} to fight. Up-right attacks, up-left casts, down-right defends, down-left heals.`, true, 'combat');
+                    return;
+                }
+                // For other tokens in panel context, explain instead of silence.
+                return panelHint();
             }
             if (token !== 'tap') this.playSwipeSound();
             if (token === 'cancel') { this.back(); return; }
@@ -562,8 +580,8 @@
         move(direction) {
             if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return; }
             if (this.menu || this.busy || G._movementPending) return;
-            // When a panel is open, don't intercept — let the panel handle its own interactions.
-            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return;
+            // A panel keeps its own focus, but the refusal is spoken, never silent.
+            if (anyPanelOpen()) { panelHint(); return; }
             if (G.state.player.gesturePosture) { speak('Stand up before walking. Open contextual actions.'); Gestures.stop(); return; }
             if (G.state.inCombat || G.state.combatTransition) { speak('You cannot walk during combat. Open down-right for combat actions, including flee.'); Gestures.stop(); return; }
             if (!loc()?.exits?.[direction]) { speak(`Blocked. No path ${direction} from ${loc()?.name}.`); Gestures.stop(); return; }
@@ -572,8 +590,7 @@
         verticalMove(action) {
             if (G.state.screen !== 'game-screen' || !G.state.player) { this.controls(); return; }
             if (this.menu || this.busy || G._movementPending) return;
-            // When a panel is open, don't intercept.
-            if ([...document.querySelectorAll('.panel,[role="dialog"]')].some(visible)) return;
+            if (anyPanelOpen()) { panelHint(); return; }
             if (G.state.inCombat || G.state.combatTransition) { speak('You cannot move during combat.'); Gestures.stop(); return; }
             const dir = action === 'go_up' ? 'up' : 'down';
             if (!loc()?.exits?.[dir]) { speak(`No way to go ${dir} from ${loc()?.name}.`); Gestures.stop(); return; }
@@ -862,7 +879,9 @@
                 if (!String(label).trim()) continue;
                 choices.push(option(String(label).trim(), () => this.activateControl(el)));
             }
+            choices.push(option('Spoken guide', () => this.guide()));
             choices.push(option('Gesture reference', () => this.reference()));
+            choices.push(option('Check my controls', () => this.checkControls()));
             this.open([...(scope?.querySelectorAll('h1,h2,h3') || [])].find(visible)?.textContent || 'Visible game controls', choices);
             if (dialog) this.screenDetails(dialog);
         },
@@ -939,6 +958,7 @@
         },
         reference() {
             this.open('Gesture reference', [
+                option('Full spoken guide', () => this.guide()),
                 option('How do I walk diagonally?', () => speak(DIAGONAL_SPEECH)),
                 option('Corner swipes now', () => speak(settings.corners === 'walk'
                     ? 'Corner swipes walk diagonally: up-right north-east, up-left north-west, down-right south-east, down-left south-west.'
@@ -948,21 +968,90 @@
                 option('Combat gestures', () => speak(`During a fight, up-right uses ${G.combatAbilityInfo?.(settings.attack)?.name || 'Basic Attack'}, up-left casts ${settings.spell || 'your chosen spell'}, down-right braces to defend, down-left heals with a healing spell first and then a healing item. Combat gestures never walk or turn, and walking gestures never fire during a fight.`)),
                 option('Browsing objects and inventory', () => speak('Two finger swipe right moves to the next nearby object and reads its name, what it is and whether it can be collected. Swipe left for the previous one. Double tap collects it, opens or closes the door, talks to the person or uses the object. Two finger tap opens the inventory.')),
                 option('Menus, and the older compass swipes', () => speak('In menus, down is next, up or right is previous, double tap chooses, left goes back. Single tap repeats selection. Two finger swipe always cancels. World remapping never changes these.')),
+                option('Inventory, chests and boarding a game', () => speak('Two finger tap opens the inventory. Two finger left and right change category, up and down change item, double tap inspects, long press opens use, equip or drop. Say open chest in a room with a chest, take the item it names, and open door at a door. At the Game Hall the board owns the gestures: double tap rolls the dice in Snakes and Ladders and in Ludo, and a second double tap confirms a Ludo move. The full spoken guide has a chapter for each of these.')),
+                option('Controls self check', () => this.checkControls()),
                 option('Which world scheme am I using?', () => speak(settings.scheme === 'walk'
                     ? `Walk and turn gestures. You are facing ${UI.facing()}. Swipe up walks forward, down backward, left and right turn ${settings.turnStep} degrees, tap walks continuously, two finger tap stops, a circle turns around.`
                     : `Compass swipes. Up north, down south, left west, right east. You are facing ${UI.facing()}.`))
             ]);
         },
+        /** The spoken guide, chapter by chapter. Every line names a gesture,
+         *  button or command that really exists in this build. */
+        guideChapters() {
+            const facing = () => this.facing();
+            return [
+                {
+                    title: 'Chapter 1. All eight directions',
+                    text: () => `Eight compass directions exist: north, north-east, east, south-east, south, south-west, west and north-west, plus up and down for stairs and ladders. Three ways reach them. First, the compass buttons N, NE, E, SE, S, SW, W, NW and Up and Down. Second, typed or spoken words, for example north east, south west, ne, sw, up or down. Third, gestures. Swipe up to walk the way you are facing, down to step backward, left and right to turn. A single tap walks on by itself; two fingers tap stops. For diagonals by gesture, turn on Corner swipes walk diagonally in narrator settings: then up-right is north-east, up-left is north-west, down-right is south-east and down-left is south-west. With that setting off, the four corners open menus instead: down-right notifications, up-right voice commands, up-left nearby actions, down-left social hub, and the compass buttons still walk diagonally. You are facing ${facing()} right now.`
+                },
+                {
+                    title: 'Chapter 2. Inventory',
+                    text: () => `Say inventory, or two finger tap anywhere, or press the Items button during a fight. Two finger left and right changes category, up and down moves between items, a single tap repeats the item with its quantity and effects, double tap inspects it, and a long press opens the real actions: use, equip, unequip, inspect or drop. Left or two finger tap closes the inventory. Every result is spoken with real numbers, for example the health a potion restored or the defence an armour added.`
+                },
+                {
+                    title: 'Chapter 3. Chests, items and doors',
+                    text: () => `Stand in the room and say open chest. A locked chest names the key it needs; the skeleton key opens the ancient chest in the Eastern Ruins. Loot is real, so say take and the item name, or browse the room with two finger left and right and double tap to act on the thing that is read. Doors: say look around to hear a rune door, cast Alohomora to open it, or break it with Multiple Strike; a house door opens from the nearby actions on up-left. The Christmas toy chest uses christmas open chest. To drink a potion say use healing potion. A refusal always tells you the missing key, item or mana instead of failing silently.`
+                },
+                {
+                    title: 'Chapter 4. Board games: Snakes and Ladders, Ludo, Chess',
+                    text: () => `Go to the Game Hall in any city. The hall lists Ludo, Snakes and Ladders, Chess, Carrom and Blackjack, and each board has its own room with buttons and spoken rules. While a board is on the table the board owns single finger gestures. Snakes and Ladders: double tap rolls the die, left and right read the players, circle or down reads the whole board, and typed or spoken roll dice does the same roll. Ludo: double tap rolls, left and right choose a token, double tap selects the token and a second double tap confirms the move, two finger tap cancels the selection, circle reads the board. Chess: swipes including the four diagonals move around the squares, two finger left and right jump between your pieces, double tap plays the selected square, and two finger tap deselects.`
+                },
+                {
+                    title: 'Chapter 5. Combat',
+                    text: () => `When a fight starts the game announces every enemy and its health and opens the Combat actions menu. Four swipes fight. Up-right attacks with your chosen ability, up-left casts your chosen spell, down-right defends or dodges, down-left heals, using a healing spell first and then a healing item. The same actions are buttons: 1 Attack, 2 Healing Spell, 3 Multiple Strike, 4 Shock, 5 Items, 6 Defend, 7 Flee, 8 Heal Battle Party, 9 Pray. Typed or spoken attack, defend, flee, heal, cast and use work identically. Every action reports real damage, mana and cooldown, and every failure says why. Combat never moves or turns you, and the combat menu never blocks these four swipes.`
+                },
+                {
+                    title: 'Chapter 6. Menus, help and recovery',
+                    text: () => `In menus, up or right is previous, down is next, double tap chooses, left goes back, two finger tap cancels, and a single tap repeats the current choice. If speech stops, single tap repeats the last line, Pause speech and Resume speech on the gesture toolbar control the narrator, and Narrator settings changes speed, volume and mappings. Say guide at any time to hear this guide again, say gesture reference for one-line reminders, and say check controls to test that the gesture surface, the world swipes, the combat buttons and the board game layer are all responding.`
+                }
+            ];
+        },
+        /** Say "check controls": report what is really wired, never a guess. */
+        checkControls() {
+            const notes = [];
+            notes.push($('gesture-pad') ? 'Gesture surface: present.' : 'Gesture surface: MISSING.');
+            notes.push(GlobalSwipes.ready ? 'World swipes: listening.' : 'World swipes: NOT listening.');
+            notes.push(this.active() ? 'Spoken gesture mode: on.' : 'Spoken gesture mode: off. Say gesture controls to turn it on.');
+            const buttons = [...document.querySelectorAll('#combat-actions [data-combat-command]')];
+            const enabled = buttons.filter(button => !button.disabled).length;
+            notes.push(buttons.length ? `Combat buttons: ${buttons.length} present, ${enabled} enabled right now.` : 'Combat buttons: none found.');
+            notes.push(G.state.inCombat ? 'A fight is running, so up-right attacks.' : 'No fight is running, so combat swipes stay quiet.');
+            notes.push(window.GestureBoard?.handle ? 'Board games: ready.' : 'Board games: not loaded.');
+            notes.push(window.GestureModes?.CATEGORIES ? 'Inventory gestures: ready.' : 'Inventory gestures: not loaded.');
+            notes.push('A missing or silent part means reload once; this report never claims success it cannot see.');
+            speak(notes.join(' '), true, 'system');
+            return notes;
+        },
+        guide(page) {
+            const chapters = this.guideChapters();
+            const read = index => {
+                speak(chapters[index].text(), true, 'system');
+                this.open(`Spoken guide, chapter ${index + 1} of ${chapters.length}`, [
+                    option('Repeat this chapter', () => read(index)),
+                    option('Next chapter', () => read((index + 1) % chapters.length)),
+                    option('Back to the chapter list', () => this.guide()),
+                    option('Controls self check', () => this.checkControls())
+                ]);
+            };
+            if (Number.isInteger(page)) return read(Math.max(0, Math.min(chapters.length - 1, page)));
+            this.open('Spoken guide. Choose a chapter', [
+                ...chapters.map((chapter, index) => option(chapter.title, () => read(index))),
+                option('Read every chapter in order', () => chapters.forEach((chapter, index) => speak(chapter.text(), index === 0, 'system'))),
+                option('Controls self check', () => this.checkControls()),
+                option('Close the guide', () => this.close())
+            ]);
+            speak(`Spoken guide. ${chapters.length} chapters: directions, inventory, chests and doors, board games, combat, menus and recovery.`, false, 'system');
+        },
         tutorial(step) {
             const lessons = [
                 'Walking and turning. Swipe up to walk forward where you are facing, swipe down to step backward without turning. Swipe left or right to turn on the spot. A single tap starts continuous walking; tap again or two-finger tap to stop. A long press walks while you hold. Draw a circle to turn around. With Walk and turn gestures switched off, swipes become plain compass directions instead.',
-                'Diagonal movement and menus. By default a diagonal swipe opens a menu: down-right Notifications, up-right Voice Commands, down-left Social Hub, up-left Interact. To walk diagonally instead, use the compass buttons north-east, north-west, south-east and south-west, say or type the direction, or turn on Corner swipes walk diagonally in narrator settings.',
+                'Diagonal movement and menus. By default a diagonal swipe opens a menu: down-right Notifications, up-right Voice Commands, down-left Social Hub, up-left nearby actions. To walk diagonally instead, use the compass buttons north-east, north-west, south-east and south-west, say or type the direction, or turn on Corner swipes walk diagonally in narrator settings. That setting then also works for swipes anywhere on the screen, not only on the gesture pad.',
                 'Continuous walking. Swipe in a cardinal direction and keep the finger down for half a second. Release to stop, including any pending step. Stop walking is always available.',
-                'Menus. Down-right opens location or combat actions. Up-left or double tap opens nearby interaction choices. No object is selected automatically.',
-                'Magic. Up-right opens known spells with requirements. Browse, choose a spell, then confirm Cast or Cancel.',
+                'Menus. Down-left opens the social hub, down-right notifications, up-right voice commands, and up-left the nearby actions of this room. Nobody nearby is selected automatically. During a fight these four corners become attack, cast, defend and heal instead.',
+                'Magic. Up-left in a fight casts your chosen spell; say cast and a spell name, or say magic, to browse every known spell with its mana cost and cooldown and confirm Cast or Cancel.',
                 'Inventory. Two finger tap opens real inventory. Browse items and choose Use, Equip, Inspect or a confirmed Drop where supported. Left returns.',
-                'Navigation. Down-left opens real exits and city routes. Diagonal world travel and stairs are options here, not diagonal swipes.',
-                'Combat. When a fight starts, up-right performs your chosen combat ability, up-left casts your chosen spell, down-right braces to defend and down-left heals. Every ability states its mana cost and cooldown, and every failure explains why it failed.',
+                'Navigation. The compass buttons show the real exits, including north-east, north-west, south-east and south-west. Two finger swipe up or down takes stairs, and the same stairs are listed as Up and Down buttons. Say look around to hear the description, features and people of this room, and map for a spoken map.',
+                'Combat. When a fight starts, up-right performs your chosen combat ability, up-left casts your chosen spell, down-right braces to defend and down-left heals. The same four actions are buttons 1 to 9 and typed commands attack, defend, flee and heal. Every ability states its mana cost and cooldown, and every failure explains why it failed.',
                 'Posture. Stationary one finger hold sits on a real seat. Stationary two finger hold lies on a real bed. Only in safe rooms. Open actions to stand up. No automatic healing.',
                 'Speech. Single tap repeats. The bottom controls open narrator settings, tutorial and reference. You can change speed, volume and world mappings. Two finger swipe cancels menus. TalkBack is not required.'
             ];
@@ -1145,17 +1234,20 @@
             statusText = `Combat begins! You face ${e.name} with ${e.hp} HP. `;
         }
         statusText += `Your HP: ${p?.hp || 0} of ${p?.maxHp || 0}. Mana: ${p?.mp || 0}. `;
-        statusText += `Swipe diagonal up-right or say "combat actions" to see your options. Menu stays open until you close it.`;
+        statusText += `Up-right attacks, up-left casts, down-right defends, down-left heals. Say combat actions for the whole list; every action is also a button.`;
         speak(statusText, true, 'combat');
     } return r; };
     const oldHUD = G.updateHUD;
-    G.updateHUD = function(...args) { const r = oldHUD.apply(this, args), p = this.state.player; const low = p && p.hp > 0 && p.hp <= p.maxHp * .25; if (low && !UI.lowHealth) speak('Your health is low. Open inventory for healing items or up-right for known healing magic.', true); UI.lowHealth = low; return r; };
+    G.updateHUD = function(...args) { const r = oldHUD.apply(this, args), p = this.state.player; const low = p && p.hp > 0 && p.hp <= p.maxHp * .25; if (low && !UI.lowHealth) speak('Your health is low. Swipe down-left to heal, or open inventory for healing items.', true); UI.lowHealth = low; return r; };
     const oldCommand = G.processCommand;
     G.processCommand = function(raw) {
         const c = String(raw || '').trim().toLowerCase();
         if (c.startsWith('unequip ')) return this.unequipItem(c.slice(8));
         if (c === 'gesture controls') return UI.enable();
         if (c === 'gesture reference') return UI.reference();
+        // The spoken in-game guide. Nothing here needs a web page.
+        if (['guide', 'spoken guide', 'gesture guide', 'how to play', 'help guide'].includes(c)) return UI.guide();
+        if (['check controls', 'controls check', 'gesture check'].includes(c)) return UI.checkControls();
         if (c === 'stand' || c === 'wake') return UI.posture('stand');
         if (c === 'sit') return UI.posture('sit'); if (c === 'lie down') return UI.posture('lie');
         return oldCommand.call(this, raw);
@@ -1173,12 +1265,14 @@
         $('gesture-repeat').onclick = () => A.repeatVoice(); $('gesture-prefs').onclick = () => UI.preferences(); $('gesture-help').onclick = () => UI.reference();
         Gestures.bind($('gesture-pad'));
         $('gesture-pad').addEventListener('keydown', e => { const tokens = { ArrowDown: 'down', ArrowUp: 'up', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'double', Escape: 'cancel' }; if (tokens[e.key]) { e.preventDefault(); e.stopPropagation(); UI.handle(tokens[e.key]); } });
-        const fieldset = document.createElement('fieldset'); fieldset.innerHTML = '<legend>Built-in game narration and gestures</legend><label><input id="gesture-narration" type="checkbox"> Narrate game events independently of TalkBack</label><label><input id="gesture-directions" type="checkbox"> Announce possible directions when I return to a place</label><button type="button" id="gesture-settings-open">Narrator settings, tutorial and gesture remapping</button>';
+        const fieldset = document.createElement('fieldset'); fieldset.innerHTML = '<legend>Built-in game narration and gestures</legend><label><input id="gesture-narration" type="checkbox"> Narrate game events independently of TalkBack</label><label><input id="gesture-directions" type="checkbox"> Announce possible directions when I return to a place</label><button type="button" id="gesture-settings-open">Narrator settings, tutorial and gesture remapping</button><button type="button" id="gesture-guide-open">Spoken guide: directions, inventory, chests, board games, combat</button><button type="button" id="gesture-check-open">Check my controls</button>';
         document.querySelector('#settings-panel .settings-card')?.append(fieldset);
         $('gesture-narration').onchange = e => { settings.narration = e.target.checked; persist(); A.setVoiceEnabled(settings.narration); if (settings.narration) speak('Independent game narration enabled.'); };
         const directionsBox = $('gesture-directions');
         if (directionsBox) { directionsBox.checked = settings.directions; directionsBox.onchange = e => { settings.directions = e.target.checked; persist(); speak(settings.directions ? 'Possible directions will be read when you return to a place you know.' : 'Possible directions will not be read on arrival.'); }; }
         $('gesture-settings-open').onclick = () => { if (!UI.active()) InterfaceMode.apply('blind'); UI.preferences(); };
+        $('gesture-guide-open').onclick = () => { if (!UI.active()) InterfaceMode.apply('blind'); UI.guide(); };
+        $('gesture-check-open').onclick = () => UI.checkControls();
         window.addEventListener('black-sword-speech-status', e => { $('gesture-speech-status').textContent = e.detail.text; });
         window.addEventListener('black-sword-interface-change', () => { Gestures.reset(); UI.menu = null; UI.stack = []; UI.sync(); UI.render(); });
         // Modal/panel/screen changes stop any held movement. Observe visibility,
@@ -1197,12 +1291,26 @@
         points: new Map(),
         maxPointers: 0,
         threshold: 50,
+        startedAt: 0,
+        ready: false,
+        watchdog: null,
+        // A phantom finger is dropped after this long, so one lost pointer can
+        // never wedge the whole gesture layer.
+        PHANTOM_MS: 1500,
+        // A finger that never reports an up (app switch, call, finger lifted
+        // outside the window) must never leave a phantom finger behind: every
+        // later swipe was ignored until the page was reloaded.
+        MAX_GESTURE_MS: 12000,
 
         init() {
             document.addEventListener('pointerdown', (e) => this.down(e), { passive: false });
             document.addEventListener('pointermove', (e) => this.move(e), { passive: false });
             document.addEventListener('pointerup', (e) => this.up(e), { passive: false });
             document.addEventListener('pointercancel', () => this.reset(), { passive: false });
+            window.addEventListener('blur', () => this.reset());
+            window.addEventListener('pagehide', () => this.reset());
+            document.addEventListener('visibilitychange', () => { if (document.hidden) this.reset(); });
+            this.ready = true;
         },
 
         direction(dx, dy) {
@@ -1211,13 +1319,27 @@
             return ({ 0: 'right', 1: 'down-right', 2: 'down', 3: 'down-left', 4: 'left', '-4': 'left', '-3': 'up-left', '-2': 'up', '-1': 'up-right' })[angle];
         },
 
+        /** A panel or dialog owns its own swipes; the world must not react. */
+        panelOwns(target) {
+            return Boolean(target?.closest?.('.panel:not(.hidden),[role="dialog"]:not(.hidden)'));
+        },
+
         down(e) {
             // Only track if game is active and we're not already in the gesture pad (let it handle its own)
             if (e.target?.closest?.('#gesture-pad')) return;
             if (e.target?.closest?.('#gesture-interface')) return;
+            if (this.panelOwns(e.target)) return;
             if (e.pointerType === 'mouse' && e.button !== 0) return;
             if (!G.state?.player || G.state.screen !== 'game-screen') return;
-            this.points.set(e.pointerId, { x: e.clientX, y: e.clientY, dx: 0, dy: 0 });
+            if (!this.points.size) this.startedAt = Date.now();
+            clearTimeout(this.watchdog); this.watchdog = null;
+            // Drop fingers that stopped reporting long ago, and never stack a
+            // third: more than two fingers is not a gesture this game defines.
+            const now = Date.now();
+            for (const [id, held] of [...this.points]) if (now - (held.at || 0) > this.PHANTOM_MS) this.points.delete(id);
+            if (this.points.size && this.points.has(e.pointerId)) this.points.delete(e.pointerId);
+            if (this.points.size >= 2) { this.reset(); return; }
+            this.points.set(e.pointerId, { x: e.clientX, y: e.clientY, dx: 0, dy: 0, at: now });
             this.maxPointers = Math.max(this.maxPointers, this.points.size);
         },
 
@@ -1226,6 +1348,7 @@
             if (!p) return;
             p.dx = e.clientX - p.x;
             p.dy = e.clientY - p.y;
+            p.at = Date.now();
         },
 
         up(e) {
@@ -1237,18 +1360,29 @@
             const count = this.maxPointers;
             this.points.delete(e.pointerId);
 
-            if (this.points.size > 0) return; // Wait for all fingers to lift
+            if (Date.now() - this.startedAt > this.MAX_GESTURE_MS) { this.reset(); return; }
+            if (this.points.size > 0) {
+                // Wait for all fingers to lift, but not for a finger that will
+                // never lift: a reappearing gesture must work a moment later.
+                clearTimeout(this.watchdog);
+                this.watchdog = setTimeout(() => this.reset(), this.PHANTOM_MS);
+                return;
+            }
 
             // Only handle diagonal swipes and two-finger vertical swipes
             const isDiagonal = ['down-right', 'up-right', 'down-left', 'up-left'].includes(token);
             const isTwoFingerVertical = count === 2 && (token === 'up' || token === 'down');
 
             if (isTwoFingerVertical) {
-                // Two-finger swipe up = go up, two-finger swipe down = go down
-                if (token === 'up') {
-                    if (G.processCommand) G.processCommand('up');
-                } else if (token === 'down') {
-                    if (G.processCommand) G.processCommand('down');
+                // Two fingers up or down are the stairs, exactly like the pad.
+                // Never during a fight, and never a plain "up" command that would
+                // only answer "there is no path up".
+                if (G.state.inCombat || G.state.combatTransition) {
+                    speak('You cannot change floors during a fight. Up-right attacks, down-right defends, down-left heals.', true, 'combat');
+                } else if (UI.active()) {
+                    UI.handle(token === 'up' ? 'go_up' : 'go_down');
+                } else if (G.processCommand) {
+                    G.processCommand(token === 'up' ? 'up' : 'down');
                 }
                 this.reset();
                 return;
@@ -1260,12 +1394,20 @@
                 return;
             }
             if (isDiagonal && !G.state.inCombat) {
-                // Diagonal swipes open panels
-                if (token === 'down-right' && UI.notifications) UI.notifications();
-                else if (token === 'up-right' && UI.voiceCommands) UI.voiceCommands();
-                else if (token === 'down-left' && UI.hub) UI.hub();
-                // up-left → interact (existing context menu)
-                else if (token === 'up-left' && UI.context) UI.context();
+                // Corner swipes walk diagonally when the player chose that in
+                // narrator settings. Before v7.65 this setting only worked on
+                // the gesture pad, so a world swipe could never reach north-east.
+                // A board game (chess, Snakes and Ladders, Ludo) owns every
+                // single finger gesture while it is on the table.
+                if (UI.active() && !UI.menu && window.GestureBoard?.active?.()) UI.handle(token);
+                else if (settings.corners === 'walk' && UI.active() && !UI.menu) UI.handle(token);
+                // Otherwise the four corners open panels.
+                else if (!UI.menu) {
+                    if (token === 'down-right' && UI.notifications) UI.notifications();
+                    else if (token === 'up-right' && UI.voiceCommands) UI.voiceCommands();
+                    else if (token === 'down-left' && UI.hub) UI.hub();
+                    else if (token === 'up-left' && UI.context) UI.context();
+                }
                 this.reset();
                 return;
             }
@@ -1274,8 +1416,10 @@
         },
 
         reset() {
+            clearTimeout(this.watchdog); this.watchdog = null;
             this.points.clear();
             this.maxPointers = 0;
+            this.startedAt = 0;
         }
     };
 
