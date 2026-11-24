@@ -261,6 +261,11 @@ const OnlineSystem = {
         }
     },
 
+    /** Tells the owner panels (studio, admin tools) that the account changed. */
+    announceIdentity() {
+        try { window.dispatchEvent(new CustomEvent('black-sword-auth-change')); } catch { /* optional */ }
+    },
+
     async refreshIdentityStatus() {
         const identities = this.user?.identities || [];
         const providers = identities.map(identity => String(identity.provider || '').toLowerCase());
@@ -273,6 +278,7 @@ const OnlineSystem = {
             const {data,error}=await this.client.rpc('has_linked_identity');
             if(!error&&typeof data==='boolean')this.linked=data;
         }
+        this.announceIdentity();
     },
 
     async updatePresence() {
@@ -931,6 +937,7 @@ const OnlineSystem = {
         // reload, so Settings can never show the previous player's name.
         window.Game?.leaveAccountSession?.();
         this.clearGoogleFlow();
+        this.announceIdentity();
         try{localStorage.removeItem('black_sword_recovered_by_id');}catch{}
         if(reload)location.reload();
     },
