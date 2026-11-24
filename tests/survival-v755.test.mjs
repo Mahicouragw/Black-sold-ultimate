@@ -285,7 +285,8 @@ test('prayer: the first prayer restores and offers one lasting blessing; praying
     await G.pray('for courage');
     let log = lines(window).join('\n');
     assert.match(log, /You ask for courage to face what frightens you/);
-    assert.match(log, /A blessing of dexterity will stand with you in battle until this time tomorrow/);
+    assert.match(log, /A blessing of dexterity settles on you and will stand beside you in battle/);
+    assert.doesNotMatch(log, /tomorrow|24 hours|only once|resets?/i, 'the blessing never explains a timer');
     assert.match(log, /Because this is your first prayer, you may receive one lasting blessing/);
     assert.equal(p.hp, p.maxHp, 'the daily blessing restores health');
     assert.equal(p.mp, p.maxMp);
@@ -297,8 +298,8 @@ test('prayer: the first prayer restores and offers one lasting blessing; praying
     clearLog(window);
     await G.pray('healing');
     log = lines(window).join('\n');
-    assert.match(log, /Today's blessing of dexterity is already with you, and a new one can be received in about 24 hours/);
-    assert.match(log, /Prayer does not restore health or magic again today/);
+    assert.match(log, /The blessing of dexterity already rests upon you/);
+    assert.doesNotMatch(log, /24 hours|hours remaining|again today|only once|resets?/i, 'no limit or reset is ever explained');
     assert.equal(p.hp, 7, 'no free refill');
     assert.equal(p.mp, 1);
     assert.equal(s.dailyBattleBlessing.type, 'dexterity', 'the blessing of the day does not change');
@@ -327,7 +328,7 @@ test('prayer: the first prayer restores and offers one lasting blessing; praying
     await G.pray('guidance');
     assert.equal(p.hp, p.maxHp);
     assert.equal(s.dailyBattleBlessing.type, 'wisdom');
-    assert.match(lines(window).join('\n'), /A blessing of wisdom will stand with you/);
+    assert.match(lines(window).join('\n'), /A blessing of wisdom settles on you and will stand beside you in battle/);
 });
 
 test('prayer offline keeps the once-a-day rule on the device', async t => {
@@ -341,7 +342,7 @@ test('prayer offline keeps the once-a-day rule on the device', async t => {
     clearLog(window);
     await G.pray('protection');
     assert.equal(p.hp, 6);
-    assert.match(lines(window).join('\n'), /already with you/);
+    assert.match(lines(window).join('\n'), /The blessing of protection already rests upon you/);
 });
 
 /* ───────────────────────── palace quests ───────────────────────── */
@@ -359,8 +360,8 @@ test('palace quests: a named companion joins, progress is counted per battle, an
     clearLog(window);
     await G.palaceQuest();
     let log = lines(window).join('\n');
-    assert.match(log, /The Royal Court gives you the quest Royal Forest Hunt/);
-    assert.match(log, /Ser Aldric, Royal Huntsman, joins you/);
+    assert.match(log, /The Royal Court sets the quest Royal Forest Hunt before you/);
+    assert.match(log, /Ser Aldric, Royal Huntsman, takes up the road at your side/);
     const aldric = G.state.companions.find(c => c.name === 'Ser Aldric');
     assert.ok(aldric, 'the fixed companion is in the group');
     assert.equal(aldric.questCompanion, 'royal_hunt');
@@ -389,20 +390,22 @@ test('palace quests: a named companion joins, progress is counted per battle, an
     G.emitGameEvent = (text, type, options) => { events.push({text, options}); return emit(text, type, options); };
     G.checkQuests('kill', 'root goblin');
     await wait(80);
-    assert.match(lines(window).join('\n'), /Final battle won for Royal Forest Hunt\. Reward not collected yet\. Open Quests/);
+    assert.match(lines(window).join('\n'), /The last foe falls for Royal Forest Hunt\. The court has not yet heard of it\./);
+    assert.doesNotMatch(lines(window).join('\n'), /reward|experience|rupees/i, 'the field report never mentions a reward');
     assert.equal(p.gold, gold, 'nothing is paid in the field');
     G.checkQuests('kill', 'root goblin');               // extra battles do not over-count
     assert.equal(G.state.sacred.palace.active.progress, 5);
 
-    const victories = events.filter(e => e.text.startsWith('Final battle won'));
+    const victories = events.filter(e => e.text.startsWith('The last foe falls for'));
     assert.equal(victories.length, 1);
     assert.deepEqual([...victories[0].options.sfx], ['game-win']);
     G.state.location = 'royal_palace';
     clearLog(window);
     await G.palaceQuest();
     log = lines(window).join('\n');
-    assert.match(log, /Royal Forest Hunt is complete\. You receive 250 experience and 180 rupees\. Ser Aldric bows and returns to the palace/);
-    assert.deepEqual([...events.find(e => e.text.includes('You receive 250 experience')).options.sfx], ['coin']);
+    assert.match(log, /Royal Forest Hunt is complete, and your name is spoken with respect\. Ser Aldric bows and returns to the palace/);
+    assert.doesNotMatch(log, /experience|rupees|reward/i, 'the court never announces an amount');
+    assert.deepEqual([...events.find(e => e.text.includes('Royal Forest Hunt is complete')).options.sfx], ['coin']);
     assert.equal(p.gold, gold + 180);
     assert.ok(p.level > level || p.xp === xp + 250, 'experience is paid through the normal level-up rules');
     assert.equal(G.state.companions.some(c => c.name === 'Ser Aldric'), false, 'the companion leaves when the quest ends');

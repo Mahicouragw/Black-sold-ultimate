@@ -844,7 +844,7 @@
             const city = G.currentCityDefinition?.();
             for (const [key, id] of Object.entries(city?.targets || {})) choices.push(option(`Route to ${WorldData.locations[id]?.name || key}`, () => {
                 const route = G.findPhysicalRoute(G.state.location, id);
-                if (!route) return speak('No open physical route. A door may be closed.');
+                if (!route) return speak('No open route from here. A door may be closed.');
                 this.destination = id;
                 speak(route.length ? `${route.length} steps. ${G.formatPhysicalRoute(route)}. These are route steps, not a straight-line compass bearing.` : 'You are already here.');
                 this.open('Route guidance', [option('Walk next route step', () => this.routeStep()), option('Cancel route', () => { this.destination = null; this.close(); })]);

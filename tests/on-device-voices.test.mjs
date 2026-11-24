@@ -165,14 +165,15 @@ test('voice pack orders are understood by the game, and voice status reports it'
 
     G.processCommand('voice pack');
     await wait(20);
-    assert.match(said[0], /about ninety megabytes/i, 'the player is told the size before it downloads');
+    assert.match(said[0], /A voice is being shaped for this device/i, 'the player is told a voice is being prepared');
+    assert.doesNotMatch(said[0], /megabyte|\bMB\b|download|quota|\bkey\b/i, 'the player is never told about files, sizes or limits');
     assert.equal(w.KokoroVoicePack.state, 'ready');
-    assert.match(said.at(-1), /unlimited voice of their own/i);
+    assert.match(said.at(-1), /a voice of their own/i);
 
     await w.AiNpc.reportStatus(G);
     assert.match(said.at(-1), /on-device voices are ready: unlimited and offline/i);
 
     G.processCommand('voice pack off');
     assert.equal(w.KokoroVoicePack.wanted, false);
-    assert.match(said.at(-1), /On-device voices are off/i);
+    assert.match(said.at(-1), /on-device voices are quiet for now/i);
 });

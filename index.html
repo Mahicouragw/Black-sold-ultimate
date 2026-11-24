@@ -363,7 +363,7 @@
                     <label for="road-target">Story or map destination</label>
                     <select id="road-target"><option value="royal_palace">1. Royal Palace — the dispatch</option><option value="grand_temple">2. Grand Temple — the bells</option><option value="forest">3. Forest — beyond the walls</option></select>
                     <p id="road-note" role="status"></p><button id="road-step" type="button">Walk toward destination</button>
-                    <button type="button" id="road-rediscover">Reset discovery narration for this hero</button>
+                    <button type="button" id="road-rediscover">Hear the road afresh</button>
                 </details>
                 <div class="action-btns">
                     <button class="action-btn" id="btn-look-around" data-cmd="look around">🧭 Look Around</button>
@@ -496,7 +496,7 @@
             <!-- Player feedback: bugs, reports, suggestions, general feedback -->
             <div id="feedback-panel" class="panel hidden" aria-label="Send feedback to the development team">
                 <h3>📣 Send Feedback</h3>
-                <p class="settings-note">Feedback goes securely to the moderator and developer inbox. Do not include passwords, your Player ID or your recovery PIN.</p>
+                <p class="settings-note">Your feedback goes to the game’s moderators, who read every message. Do not include passwords, your Player ID or your recovery PIN.</p>
                 <label for="feedback-category">What is this about?</label>
                 <select id="feedback-category">
                     <option value="bug">Report a bug</option>
@@ -512,10 +512,10 @@
                 <button class="menu-btn close-btn">Close</button>
             </div>
 
-            <!-- Authorized Moderator / Developer Inbox -->
+            <!-- Moderation desk: only keepers of the realm -->
             <div id="moderator-inbox-panel" class="panel hidden wide-panel" aria-label="Moderator inbox">
                 <h3>Moderator Inbox</h3>
-                <p class="settings-note">Available only to accounts assigned an active moderator or developer role by the database administrator.</p>
+                <p class="settings-note">Only accounts that the keepers of the realm have made moderators can open this.</p>
                 <div id="moderator-inbox-list" role="list"></div>
                 <button class="menu-btn close-btn">Close</button>
             </div>
@@ -659,7 +659,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.66.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.67.0</span></div>
                     <button type="button" id="check-online-service" class="menu-btn">Check online connection</button>
                     <p id="service-check-result" role="status"></p>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
@@ -769,7 +769,7 @@
                     <fieldset class="gameplay-settings" aria-describedby="encounter-frequency-help">
                         <legend>Gameplay</legend>
                         <label class="setting-toggle" for="setting-frequent-encounters"><input type="checkbox" id="setting-frequent-encounters"> More frequent monster encounters</label>
-                        <p id="encounter-frequency-help" class="settings-note">Random wilderness battles are unlimited. This setting changes how often they happen and how large groups can be. A cooldown always prevents combat spam. It persists across restarts.</p>
+                        <p id="encounter-frequency-help" class="settings-note">Wilderness battles never run out. This setting changes how often they find you and how many creatures come at once. The road always gives you a moment to breathe between fights.</p>
                     </fieldset>
                     <label for="settings-chat-voice">Default spoken-chat voice</label>
                     <select id="settings-chat-voice" aria-label="Default spoken chat voice"></select>

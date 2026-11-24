@@ -253,7 +253,7 @@
         const cont = document.getElementById('btn-continue');
         if (cont) cont.disabled = true;
         window.OnlineSystem?.signOut?.({ flush: false });
-        say('Your local account data and heroes have been deleted. You are signed out.', 'system');
+        say('Every hero on this device has been erased, and you are signed out.', 'system');
         game.showScreen?.('title-screen');
     }
 

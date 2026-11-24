@@ -51,7 +51,7 @@ test('cooking result identifies the dish and counts remaining ingredients across
     assert.deepEqual(lines,['Used 1 Carp. Added 1 cooked Carp to your bag. Heals 25 HP. Carp remaining: 1.']);
     window.Math.random=()=>.99;
     G.processCommand('cook Carp');
-    assert.equal(lines.at(-1),'Burned 1 Carp. No cooked Carp was added. Carp remaining: 0.');
+    assert.equal(lines.at(-1),'Burned 1 Carp. Nothing edible came of it. Carp remaining: 0.');
     assert.equal(G.state.inventory.length,1); assert.equal(G.state.inventory[0].quantity,1);
     assert.equal(G.state.skills.cooking.xp,18);
 });

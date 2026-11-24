@@ -39,13 +39,13 @@
         /** Download the unlimited on-device voices, once. */
         async downloadVoicePack(game = window.Game) {
             const pack = window.KokoroVoicePack;
-            if (!pack) return AiNpc.say(game, 'On-device voices are not available in this build.');
+            if (!pack) return AiNpc.say(game, 'This device cannot carry an on-device voice yet.');
             if (pack.ready) return AiNpc.say(game, pack.statusLine());
             if (pack.state === 'loading') return AiNpc.say(game, pack.statusLine());
-            AiNpc.say(game, 'Downloading the on-device voice model now: about ninety megabytes, one time. After this, every character speaks for free, offline, with no key and no daily limit. Keep this tab open.');
+            AiNpc.say(game, 'A voice is being shaped for this device. Keep the page open while it takes form; after this, every character can speak in it without a connection.');
             const ok = await pack.load();
             return AiNpc.say(game, ok
-                ? 'On-device voices are ready. Every character now has an unlimited voice of their own; say "voice test" to hear one.'
+                ? 'The voice is ready. Every character now speaks with a voice of their own; say "voice test" to hear one.'
                 : pack.statusLine());
         },
 
@@ -77,11 +77,11 @@
             const voices = window.CharacterVoices;
             const pack = window.KokoroVoicePack;
             const voiceLine = voices?.lastEngine === 'kokoro' || pack?.state === 'ready'
-                ? ' Characters are speaking with their own on-device voices: unlimited, offline, no key and no quota.'
+                ? ' Characters speak with voices of their own, shaped here on this device.'
                 : voices?.lastEngine === 'neural'
-                ? ' Characters are speaking with their own synthetic voices.'
+                ? ' Characters are speaking with a borrowed voice that suits them.'
                 : voices?.lastError
-                    ? ` The synthetic voice service said ${voices.lastError}, so the device voice is reading.`
+                    ? ' The finer voice could not be reached, so the device voice is reading for now.'
                     : ' The device voice is reading until the synthetic voice service answers.';
             return (ai
                 ? `The AI service answered at ${when} through ${provider}, in ${Math.round(ms / 100) / 10} seconds.`
@@ -250,7 +250,7 @@
                 .replace(/\s{2,}/g, ' ')
                 .trim();
             if (/i am (an? )?(ai )?(language|large language) model|language model developed by|i (was |am )?(developed|created|trained) by (nvidia|openai|google|anthropic)/i.test(text)) {
-                return 'I am the Black Soul Ultimate AI, the AI assistant and NPC intelligence system built for this game.';
+                return 'I am only a traveller with a story to tell, and I can answer only as myself.';
             }
             if (/thinking process|chain[- ]of[- ]thought|reasoning|step[- ]by[- ]step|let me think|stay in character|never discuss|never repeat|system prompt|analy[sz]e user input/i.test(text)) {
                 // Try to salvage a real answer after a common marker.
@@ -462,12 +462,12 @@
                 return;
             }
             if (/^(?:voice|tts) pack (?:status|progress)$/.test(lower)) {
-                AiNpc.say(game, window.KokoroVoicePack?.statusLine() || 'On-device voices are not available in this build.');
+                AiNpc.say(game, window.KokoroVoicePack?.statusLine() || 'This device cannot carry an on-device voice yet.');
                 return;
             }
             if (/^(?:voice|tts) pack (?:off|stop|disable)$/.test(lower)) {
                 window.KokoroVoicePack?.disable();
-                AiNpc.say(game, 'On-device voices are off. The cloud voice and the device voice are still here. The downloaded files stay cached, so you can say "voice pack" again any time.');
+                AiNpc.say(game, 'The on-device voices are quiet for now. The other voices are still here, and "voice pack" calls them back whenever you wish.');
                 return;
             }
             if (/^(?:voice|tts) test$/.test(lower)) {

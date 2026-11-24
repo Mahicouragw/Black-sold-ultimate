@@ -85,9 +85,9 @@ window.RoadWalking = (() => {
         }
         target.addEventListener('change',describe);describe();
         document.getElementById('road-rediscover').addEventListener('click', () => {
-            if (!game.state.player || !window.confirm('Hear places as new again for this hero? Quests, possessions and other heroes are not changed.')) return;
+            if (!game.state.player || !window.confirm('Hear every place as new again? Quests, possessions and other heroes are not touched.')) return;
             stop(); game.state.player.roadDiscoveries = [];
-            note.textContent = game.save() ? 'Discovery narration reset for this hero.' : 'Discovery narration reset in this session. Device save not confirmed.';
+            note.textContent = game.save() ? 'The road is new again for this hero.' : 'The road is new for now, though the device has not yet kept it.';
         });
     }
     return {bind};

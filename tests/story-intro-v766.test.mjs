@@ -126,7 +126,10 @@ test('(05/10) the palace announces each quest with its companion, from the real 
     assert.deepEqual(Object.keys(story.QUESTS), ['royal_hunt', 'palace_healers_road', 'palace_border_watch', 'palace_scholars_errand', 'palace_kings_champion']);
     const all = Object.values(story.QUESTS).map(entry => entry.text).join(' ');
     for (const name of ['Ser Aldric', 'Sister Meera', 'Captain Rudra', 'Scholar Ilavati', 'Veer']) assert.match(all, new RegExp(name), `${name} is introduced`);
-    for (const count of ['five', 'eight', 'twelve', 'fifteen', 'twenty']) assert.match(all, new RegExp(count), `${count} battles match the quest target`);
+    // 7.67.0: each announcement is a scene, not a quota. No battle counts and no
+    // reward arithmetic are ever spoken, and the targets stay in the quest data.
+    assert.doesNotMatch(all, /\b(five|eight|twelve|fifteen|twenty|\d+)\b/i, 'no numbers are spoken');
+    assert.doesNotMatch(all, /reward|gold|rupees?|experience|\bxp\b/i, 'no reward is promised');
     await story.playQuest('palace_healers_road');
     assert.ok(story.state.played.some(entry => entry.cue === 'palace-healers-road') || true);
 });

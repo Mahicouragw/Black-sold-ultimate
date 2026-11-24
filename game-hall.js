@@ -13,7 +13,7 @@ const DEFAULT_COLORS=['Red','Orange','Yellow','Green','White'];
 const esc=s=>Game.escapeHTML(String(s));
 
 const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,subscription:null,
- initWorld(){for(const city of CityDirectory.cities){const lobby=`${city.key}_game_hall`,park=city.targets.park;WorldData.locations[lobby]={name:`${city.label} — Accessible Game Hall`,region:city.label,description:'A physical indoor game hall with five screen-reader-friendly rooms, rule desks, dice tables, card tables and quiet strategy boards.',exits:{down:park,north:`${lobby}_ludo`,east:`${lobby}_snakes`,south:`${lobby}_chess`,west:`${lobby}_carrom`,up:`${lobby}_blackjack`},features:['accessible game hall','rule desk','board game rooms'],items:[],enemies:[],safe:true,music:'game-hall'};WorldData.locations[park].exits.up=lobby;city.targets.game_hall=lobby;for(const [dir,type] of [['north','ludo'],['east','snakes'],['south','chess'],['west','carrom'],['up','blackjack']])WorldData.locations[`${lobby}_${type}`]={name:`${city.label} Game Hall — ${type[0].toUpperCase()+type.slice(1)} Room`,region:`${city.label} Game Hall`,description:`An accessible ${type} room with spoken rules, large controls, clear turn feedback and realistic board sounds.`,exits:{down:lobby},features:['game hall room',type],items:[],enemies:[],safe:true,music:'game-hall'};}
+ initWorld(){for(const city of CityDirectory.cities){const lobby=`${city.key}_game_hall`,park=city.targets.park;WorldData.locations[lobby]={name:`${city.label} — Accessible Game Hall`,region:city.label,description:'An indoor game hall of five rooms: rule desks, dice tables, card tables and quiet strategy boards, with every passage described aloud.',exits:{down:park,north:`${lobby}_ludo`,east:`${lobby}_snakes`,south:`${lobby}_chess`,west:`${lobby}_carrom`,up:`${lobby}_blackjack`},features:['accessible game hall','rule desk','board game rooms'],items:[],enemies:[],safe:true,music:'game-hall'};WorldData.locations[park].exits.up=lobby;city.targets.game_hall=lobby;for(const [dir,type] of [['north','ludo'],['east','snakes'],['south','chess'],['west','carrom'],['up','blackjack']])WorldData.locations[`${lobby}_${type}`]={name:`${city.label} Game Hall — ${type[0].toUpperCase()+type.slice(1)} Room`,region:`${city.label} Game Hall`,description:`An accessible ${type} room with spoken rules, large controls, clear turn feedback and realistic board sounds.`,exits:{down:lobby},features:['game hall room',type],items:[],enemies:[],safe:true,music:'game-hall'};}
  },
  inject(){
   const panel=document.createElement('div');
@@ -26,7 +26,7 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
    <div id="hall-board" class="hall-board" aria-live="off"></div>
    <div id="hall-setup">
      <label>Players <select id="hall-player-count"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option></select></label>
-     <label>Mode <select id="hall-player-mode"><option value="ai">You with AI opponents</option><option value="local">Local pass-and-play</option></select></label>
+     <label>Mode <select id="hall-player-mode"><option value="ai">You with rival players</option><option value="local">Local pass-and-play</option></select></label>
      <div id="hall-color-selectors" style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px;"></div>
    </div>
    <div id="hall-controls" class="hall-controls"></div>
@@ -53,7 +53,7 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   const count=this.selectedCount(), mode=this.selectedMode();
   let html='';
   for(let i=0;i<count;i++){
-    const name=(mode==='ai'&&(i>0))?`AI ${i}`:(i===0?'You':`Player ${i+1}`);
+    const name=(mode==='ai'&&(i>0))?`Rival ${i}`:(i===0?'You':`Player ${i+1}`);
     const defColor=DEFAULT_COLORS[i]||COLORS[0];
     const opts=COLORS.map(c=>`<option value="${c}" ${c===defColor?'selected':''}>${c}</option>`).join('');
     html+=`<label style="font-size:12px;display:flex;align-items:center;gap:4px;">${esc(name)} Color: <select class="hall-player-color-sel" data-index="${i}">${opts}</select></label>`;
@@ -91,7 +91,7 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
  pause(ms){return new Promise(resolve=>setTimeout(resolve,ms));},
  selectedCount(){return Math.max(1,Math.min(5,Number(document.getElementById('hall-player-count')?.value||2)));},
  selectedMode(){return document.getElementById('hall-player-mode')?.value||'ai';},
- playerName(index){if(this.state?.mode==='ai'){if(index===0)return 'You';return `AI ${index}`;}return this.state?.players?.[index]||`Player ${index+1}`;},
+ playerName(index){if(this.state?.mode==='ai'){if(index===0)return 'You';return `Rival ${index}`;}return this.state?.players?.[index]||`Player ${index+1}`;},
  isAI(index){return this.state?.mode==='ai'&&index>0;},
  async pieceSteps(count,who='You'){await this.pause(80);},
  announceTurn(){
@@ -140,11 +140,11 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   document.getElementById('hall-status').innerHTML='';
   const requested=this.selectedCount(),count=['ludo','snakes'].includes(this.type)?requested:2,mode=this.selectedMode();
   const colors=this.getSelectedColors();
-  const players=Array.from({length:count},(_,i)=>mode==='ai'&&i>0?`AI ${i}`:`Player ${i+1}`);
+  const players=Array.from({length:count},(_,i)=>mode==='ai'&&i>0?`Rival ${i}`:`Player ${i+1}`);
   if(this.type==='ludo')this.state={tokens:Array.from({length:count},()=>[-1,-1,-1,-1]),players,colors,mode,turn:0,roll:null,winner:null};
   if(this.type==='snakes')this.state={positions:Array(count).fill(0),players,colors,mode,turn:0,winner:null};
-  if(this.type==='chess'){this.chess=new Chess();this.state={fen:this.chess.fen(),players:['Player 1','AI 1'],colors,mode:'ai',turn:0,winner:null};}
-  if(this.type==='carrom')this.state={scores:[0,0],queen:false,players:['Player 1','AI 1'],colors,mode:'ai',turn:0,winner:null};
+  if(this.type==='chess'){this.chess=new Chess();this.state={fen:this.chess.fen(),players:['Player 1','Rival 1'],colors,mode:'ai',turn:0,winner:null};}
+  if(this.type==='carrom')this.state={scores:[0,0],queen:false,players:['Player 1','Rival 1'],colors,mode:'ai',turn:0,winner:null};
   this.enterGameplayMode();
   this.announce(`Starting ${this.type==='snakes'?'Snakes & Ladders':this.type} with ${count} player${count===1?'':'s'} (${colors.slice(0,count).join(', ')}).`);
   if(this.type==='blackjack'){
@@ -276,8 +276,8 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
  handValue(hand){let value=0,aces=0;for(const c of hand){const r=c.slice(0,-1);if(r==='A'){aces++;value+=11}else value+=['K','Q','J'].includes(r)?10:Number(r);}while(value>21&&aces){value-=10;aces--;}return value;},
  async hit(){if(this.type!=='blackjack'||this.state.done)return;this.announce('You draw a card.');await MusicSystem.playSFXAndWait('card-draw',700);const card=this.state.deck.pop();this.state.player.push(card);this.announce(`You draw ${card}. Hand value ${this.handValue(this.state.player)}.`);if(this.handValue(this.state.player)>21)this.finish('You bust. Dealer wins.');else this.render();},
  async stand(){this.announce('You stand. Dealer reveals the hand.');while(this.handValue(this.state.dealer)<17){await MusicSystem.playSFXAndWait('card-draw',700);const card=this.state.deck.pop();this.state.dealer.push(card);this.announce(`Dealer draws ${card}. Dealer value ${this.handValue(this.state.dealer)}.`);}const p=this.handValue(this.state.player),d=this.handValue(this.state.dealer);this.finish(d>21||p>d?'You win Blackjack.':p===d?'Blackjack push.':'Dealer wins Blackjack.');},
- async chessMove(){const input=document.getElementById('chess-move'),v=input.value.trim().toLowerCase();try{const move=this.chess.move({from:v.slice(0,2),to:v.slice(2,4),promotion:v[4]||'q'});if(!move)throw Error();this.announce(`You move ${move.san}.`);await MusicSystem.playSFXAndWait('board-piece',700);if(this.chess.isGameOver()){this.finish(this.chess.isCheckmate()?`Checkmate. ${this.chess.turn()==='w'?'Black':'White'} wins.`:'Chess game drawn.');return;}this.announce('AI is choosing a chess move.');await this.pause(450);const moves=this.chess.moves({verbose:true}),choice=moves[Math.floor(Math.random()*moves.length)],ai=this.chess.move(choice);await MusicSystem.playSFXAndWait('board-piece',700);this.announce(`AI moves ${ai.san}.`);this.state.fen=this.chess.fen();this.render();}catch{this.announce('Illegal move. Use coordinates such as e2e4.');await MusicSystem.playSFXAndWait('board-error',700);}},
- async carromStrike(){const angle=Number(document.getElementById('carrom-angle').value),power=Number(document.getElementById('carrom-power').value),chance=Math.max(.1,Math.min(.85,.25+power*.055-Math.abs((angle%45)-22)/100));this.announce(`You strike at angle ${angle} with power ${power}.`);await MusicSystem.playSFXAndWait('board-piece',900);if(Math.random()<chance){this.state.scores[0]++;this.announce('Your striker pockets one coin.');}else this.announce('Your striker misses or rebounds.');if(!this.state.queen&&Math.random()<.08){this.state.queen=true;this.announce('You pocket the queen.');}if(this.state.scores[0]>=9&&this.state.queen){this.finish('You win Carrom.');return;}this.announce('AI is striking.');await this.pause(450);await MusicSystem.playSFXAndWait('board-piece',900);if(Math.random()<.45){this.state.scores[1]++;this.announce('AI pockets one coin.');}else this.announce('AI misses its Carrom strike.');this.render();},
+ async chessMove(){const input=document.getElementById('chess-move'),v=input.value.trim().toLowerCase();try{const move=this.chess.move({from:v.slice(0,2),to:v.slice(2,4),promotion:v[4]||'q'});if(!move)throw Error();this.announce(`You move ${move.san}.`);await MusicSystem.playSFXAndWait('board-piece',700);if(this.chess.isGameOver()){this.finish(this.chess.isCheckmate()?`Checkmate. ${this.chess.turn()==='w'?'Black':'White'} wins.`:'Chess game drawn.');return;}this.announce('Your rival is choosing a chess move.');await this.pause(450);const moves=this.chess.moves({verbose:true}),choice=moves[Math.floor(Math.random()*moves.length)],ai=this.chess.move(choice);await MusicSystem.playSFXAndWait('board-piece',700);this.announce(`Your rival moves ${ai.san}.`);this.state.fen=this.chess.fen();this.render();}catch{this.announce('Illegal move. Use coordinates such as e2e4.');await MusicSystem.playSFXAndWait('board-error',700);}},
+ async carromStrike(){const angle=Number(document.getElementById('carrom-angle').value),power=Number(document.getElementById('carrom-power').value),chance=Math.max(.1,Math.min(.85,.25+power*.055-Math.abs((angle%45)-22)/100));this.announce(`You strike at angle ${angle} with power ${power}.`);await MusicSystem.playSFXAndWait('board-piece',900);if(Math.random()<chance){this.state.scores[0]++;this.announce('Your striker pockets one coin.');}else this.announce('Your striker misses or rebounds.');if(!this.state.queen&&Math.random()<.08){this.state.queen=true;this.announce('You pocket the queen.');}if(this.state.scores[0]>=9&&this.state.queen){this.finish('You win Carrom.');return;}this.announce('Your rival strikes.');await this.pause(450);await MusicSystem.playSFXAndWait('board-piece',900);if(Math.random()<.45){this.state.scores[1]++;this.announce('Your rival pockets one coin.');}else this.announce('The opponent misses the strike.');this.render();},
  finish(message){this.state.winner=message;document.getElementById('hall-status').textContent=message;this.announce(message);MusicSystem.playSFX('victory');this.render(false);this.syncOnline('finished');},
  render(sync=true){
   const b=document.getElementById('hall-board'),c=document.getElementById('hall-controls');if(!this.state)return;
@@ -314,7 +314,7 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
    this.enterGameplayMode();
    this.announce(`⚔️ Connected! The match has already started. Both players can play.`);
   }else{
-   this.announce(`⚔️ Joined ${data.name}. Click Start Challenge when both players are ready!`);
+   this.announce(`⚔️ Joined ${data.name}. Say start challenge when both players are ready!`);
   }
   this.render(false);Game.addNarrative(`Joined ${data.name}.`,'treasure');
  },
@@ -326,7 +326,7 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
   if(error){Game.addNarrative(error.message,'system');return;}
   this.onlineSession=data;this.version=0;
   document.getElementById('hall-start-online')?.classList.remove('hidden');
-  this.subscribeOnline();Game.addNarrative(`Online ${this.type} match created. Invite a friend and click Start Challenge!`,'treasure');
+  this.subscribeOnline();Game.addNarrative(`Online ${this.type} match created. Invite a friend, then say start challenge.`,'treasure');
  },
  async startOnlineChallenge(){
   if(!this.onlineSession||!this.state) return;

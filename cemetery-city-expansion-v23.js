@@ -30,13 +30,13 @@
   if (!WorldData.locations) WorldData.locations = {};
   WorldData.locations['city_cemetery'] = {
     name: 'City Cemetery - Haunted Grounds',
-    description: 'Physical haunted cemetery inside city walls. Fog, ghost music CC0, dangerous ghosts/goblins. Walkable from Quiet Graveyard Road.',
+    description: 'A haunted cemetery behind the city walls, where the fog never quite lifts. Ghosts drift between the stones and goblins have taken the older graves. The Quiet Graveyard Road leads in.',
     region: 'City',
     // v7.17.2 FIX: exits now point to real locations (quiet_graveyard_8 exists
     // via housing-world-v5; black_cemetery_1 via cemetery-spellfield-v11; the
     // east/west arms stay inside the cemetery cluster).
     exits: {north: 'quiet_graveyard_8', south: 'black_cemetery_1', east: 'city_cemetery_1', west: 'city_cemetery_20'},
-    features: ['cemetery','haunted graves','ghost music CC0','fog','tombstones','physical walkable'],
+    features: ['cemetery','haunted graves','fog','tombstones','walkable'],
     items: ['ancient bone','ghostly candle'],
     enemies: ['Ghostly Cemetery Guardian','Haunted Tomb Warden'],
     music: 'cemeteryHorror',
@@ -64,10 +64,10 @@
     const id=`city_cemetery_${i+1}`;
     WorldData.locations[id]={
       name:cemName,
-      description:`${cemName} is physical haunted cemetery inside city. Verified OpenGameArt music and sound effects with licences recorded in AUDIO_CREDITS.md, dangerous monsters ghosts/goblins.`,
+      description:`${cemName} is a walled cemetery inside the city, where the graves are older than the streets around them. Fog gathers between the stones, and travellers say the dead are not always resting. Ghosts and goblins have been seen here.`,
       region:'City Cemetery',
       exits:{north:i===0?'city_cemetery':`city_cemetery_${i}`, south:i===cemeteryCityNames.length-1?'city_cemetery':`city_cemetery_${i+2}`},
-      features:['cemetery city','physical','haunted','verified licensed ghost audio','walkable','ghosts','goblins'],
+      features:['cemetery city','haunted','old graves','walkable','ghosts','goblins'],
       items:['ghostly Essence'],
       enemies:['Cemetery Goblin '+i,'Haunted Skeleton '+i],
       music:i%2===0?'cemeteryHorror':'ghostChoir',

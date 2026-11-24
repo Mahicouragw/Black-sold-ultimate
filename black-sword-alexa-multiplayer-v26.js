@@ -550,7 +550,7 @@
     window.Game.enterLocation = function(locationId) {
       oldEnterLoc(locationId);
       if (locationId === 'palace' || locationId === 'royal_palace' || locationId === 'valoria_citadel') {
-        this.addNarrative('👑 You visit the Royal Palace! The Royal Companion & Guild Master is here. Type or click "Talk to Companion" to receive a Palace Quest or recruit a companion, and "Revive Companions" to restore fallen allies!', 'treasure');
+        this.addNarrative('👑 The Royal Palace opens before you, and the Royal Companion and Guild Master receives you in the great hall. Speak of the companion you would recruit or the palace errand you would take up, and the fallen may be called back to the road.', 'treasure');
       }
     };
   }

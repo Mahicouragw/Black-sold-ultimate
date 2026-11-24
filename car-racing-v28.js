@@ -2097,7 +2097,7 @@
       persist();
 
       const placeWord = place === 1 ? 'first' : place === 2 ? 'second' : place === 3 ? 'third' : place + 'th';
-      say(`Race finished. You placed ${placeWord}. You earned ${reward} gold and ${won ? 30 : 10} racing XP.${leveled ? ' Racing level ' + newLevel + ' reached!' : ''}`, { critical: true });
+      say(`The flag falls. You placed ${placeWord}.${won ? ' The crowd is still shouting your name.' : ' The pit crew is already looking at the next race.'}${leveled ? ' The racing circuit knows you better now.' : ''}`, { critical: true });
     }
   };
 
