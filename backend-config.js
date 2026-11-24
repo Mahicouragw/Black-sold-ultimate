@@ -27,6 +27,9 @@ window.BLACK_SWORD_BACKEND_CONFIG = Object.freeze({
     // No separate game server: hunger, blessings, quests and board games against
     // the computer are decided on the device.
     gameServerUrl: '',
+    // The owner's sound studio gateway (Supabase Edge Function "bsu-audio").
+    // Only the owner may publish; every player reads the published list.
+    audioUrl: 'https://tmkpdvljhnlnvbckbnsc.supabase.co/functions/v1/bsu-audio',
     authMode: 'popup',
     googleClientId: ''
 });

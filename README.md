@@ -134,6 +134,16 @@ sound-effect files, 0 missing recordings and 0 synthesised tones. Spoken
 narration still uses the device voice engine for dynamic text.
 Details: [`reports/online-only-and-audio-audit-v763.md`](reports/online-only-and-audio-audit-v763.md).
 
+## 🎚️ Owner Sound Studio, distinct places, Google vs guest (7.64.0)
+
+The owner can publish their own recorded sound effects and music from
+Settings → Sound Studio: only the owner account can publish, every player hears
+the result at their next start-up. A Google sign-in plays that account's own
+heroes; a guest plays device-only heroes, and the two never mix. All 525
+locations that shared a description now describe themselves, so the world has
+1164 places and 1164 different descriptions.
+Details: [`reports/sound-studio-and-places-v764.md`](reports/sound-studio-and-places-v764.md).
+
 ## 🔎 Public Feature Audit
 
 See [`FEATURE_AUDIT.md`](FEATURE_AUDIT.md) and [`PUBLIC_GAMEPLAY_VIDEO_AUDIT.md`](PUBLIC_GAMEPLAY_VIDEO_AUDIT.md) for evidence-based comparisons and lawful source links. No copyrighted gameplay recording is redistributed.

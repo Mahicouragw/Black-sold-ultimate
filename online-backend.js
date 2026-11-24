@@ -307,7 +307,13 @@
             displayName: name, is_anonymous: Boolean(user.isAnonymous),
             identities: providers.map(provider => ({ provider })),
             app_metadata: { provider: user.isAnonymous ? 'anonymous' : providers[0] || 'unknown' },
-            user_metadata: { display_name: name }
+            user_metadata: { display_name: name },
+            // Used by the owner's Sound Studio to prove this Google sign-in to
+            // the studio gateway. Guests get their device key, which the studio
+            // refuses.
+            getToken: async (force = false) => {
+                try { return await user.getIdToken(Boolean(force)); } catch { return user.guestKey || null; }
+            }
         };
     }
     const session = user => (user ? { user: wrapUser(user) } : null);
