@@ -149,19 +149,27 @@
         // controls are revealed inline; no separate battle screen or modal is
         // ever opened. Buttons, keyboard, typed commands, TalkBack and voice all
         // route through the single command engine (Game.processCommand).
-        Game.runCombatCommand=function(command){const text=String(command||'').trim();if(!text)return;const input=document.getElementById('cmd-input');if(input)input.value='';this.processCommand(text);};
+        Game.runCombatCommand=function(command){const text=String(command||'').trim();if(!text)return;const input=document.getElementById('cmd-input');if(input)input.value='';this.processCommand(text);setTimeout(()=>this.updateCombatActionAvailability?.(),0);};
         Game.bindCombatActionButtons=function(){
             const box=document.getElementById('combat-actions');if(!box||box.dataset.combatBound)return;box.dataset.combatBound='true';
             box.addEventListener('click',eventObject=>{const button=eventObject.target.closest('[data-combat-command]');if(!button||button.disabled)return;this.runCombatCommand(button.dataset.combatCommand);});
         };
         Game.updateCombatActionAvailability=function(){
-            const p=this.state.player,inCombat=Boolean(this.state.inCombat&&this.state.enemy);
+            const p=this.state.player;
+            // A group encounter keeps fighting after the first monster falls,
+            // so living targets decide whether combat is still on — not the
+            // single state.enemy pointer.
+            const living=(this.aliveEncounterTargets?.()||[]).length;
+            const inCombat=Boolean(this.state.inCombat&&(this.state.enemy||living));
+            const knows=name=>Boolean(p?.spells?.some(spell=>String(spell).toLowerCase()===name));
             document.querySelectorAll('#combat-actions [data-combat-command]').forEach(button=>{
                 const command=button.dataset.combatCommand;
                 let usable=inCombat;
-                if(command==='healing spell'||command==='heal party')usable=Boolean(p?.spells?.some(spell=>HEALING_NAMES.includes(spell.toLowerCase())||/heal|mend/i.test(spell)));
-                if(command==='multiple strike')usable=inCombat&&Boolean(p?.spells?.some(spell=>spell.toLowerCase()==='multi strike'));
-                if(command==='shock')usable=inCombat&&Boolean(p?.spells?.some(spell=>spell.toLowerCase()==='shock'));
+                if(command==='healing spell'||command==='heal party')usable=Boolean(p?.spells?.some(spell=>HEALING_NAMES.includes(String(spell).toLowerCase())||/heal|mend/i.test(String(spell))));
+                // The spellbook names it "multi strike" in one place and
+                // "multiple strike" in another; both must enable the button.
+                if(command==='multiple strike')usable=inCombat&&(knows('multi strike')||knows('multiple strike')||knows('multiple strike spell'));
+                if(command==='shock')usable=inCombat&&knows('shock');
                 button.disabled=!usable;button.setAttribute('aria-disabled',String(!usable));
             });
         };
