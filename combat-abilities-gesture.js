@@ -16,12 +16,12 @@
     if (!Game) return;
 
     const ABILITIES = Object.freeze([
-        { id: 'basic', name: 'Basic Attack', desc: 'A normal weapon strike. No mana, no cooldown, 8 percent base miss chance from the ordinary attack rules.', cost: 0, cooldown: 0 },
-        { id: 'heavy', name: 'Heavy Attack', desc: 'A slower, heavier swing. Lands 65 percent of the time plus a quarter of your dexterity, for 1.7 times weapon damage. Cooldown 2 combat actions.', cost: 0, cooldown: 2 },
-        { id: 'quick', name: 'Quick Attack', desc: 'A fast jab. Lands 92 percent of the time plus a quarter of your dexterity, for 0.6 times weapon damage. Cooldown 1 combat action.', cost: 0, cooldown: 1 },
+        { id: 'basic', name: 'Basic Attack', desc: 'A plain weapon strike. No mana, no recovery, and only the ordinary chance to miss.', cost: 0, cooldown: 0 },
+        { id: 'heavy', name: 'Heavy Attack', desc: 'A slow, heavy swing with real weight behind it. It lands often enough to be worth the risk, but it leaves you open for the next two exchanges.', cost: 0, cooldown: 2 },
+        { id: 'quick', name: 'Quick Attack', desc: 'A quick jab, hard to avoid and easy to recover from: one exchange and your guard is back.', cost: 0, cooldown: 1 },
         { id: 'multi', name: 'Multi-Strike', desc: 'The Multi Strike spell: three separate strikes in one action, 24 mana. Requires the spell, and it can still fizzle.', cost: 24, cooldown: 0, spell: 'Multi Strike' },
         { id: 'magic', name: 'Magical Attack', desc: 'Cast your chosen damaging spell at its real mana cost.', cost: null, cooldown: 0 },
-        { id: 'defensive', name: 'Defensive Stance', desc: 'Brace so the next enemy blow is halved. Cooldown 1 combat action.', cost: 0, cooldown: 1 },
+        { id: 'defensive', name: 'Defensive Stance', desc: 'Brace yourself so the next enemy blow lands with half its force. Your guard returns after one exchange.', cost: 0, cooldown: 1 },
         { id: 'special', name: 'Special Ability', desc: 'Your class power, cast at its real mana cost.', cost: null, cooldown: 0 }
     ]);
 

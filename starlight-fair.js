@@ -99,7 +99,7 @@
         if(!c.startsWith('christmas answer ')){say('Say Christmas quiz for the question.');return true;}
         if(c.slice(17).trim()!==answer){say(`Not quite. ${question}`);return true;}
         p.starlightQuiz=progress; progress.step++;
-        if(progress.step===quiz.length){p.gold+=75;g.updateHUD();say('Aldric rings the bell and hangs your star. You earned 75 gold!');}
+        if(progress.step===quiz.length){p.gold+=75;g.updateHUD();say('Aldric rings the bell and hangs your star above the stall. The whole fair can see it.');}
         else say(`Correct! ${quiz[progress.step][0]}`);
         g.save();return true;
     }

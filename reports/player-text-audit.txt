@@ -1,0 +1,3 @@
+Player text audit: 97 modules, 10268 player-facing strings.
+Leaks: 0. Reward announcements: 0.
+By rule: {}

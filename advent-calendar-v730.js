@@ -385,7 +385,7 @@
             if (game.state.skills?.cooking) game.state.skills.cooking.xp = (game.state.skills.cooking.xp || 0) + 25;
             game.save?.();
             w.MusicSystem?.playSFX('pickup');
-            say(game, `The scroll teaches you the keeper’s recipe: ${gained.map(id => KITCHEN[id].name).join(' and ')}. Cooking experience plus twenty-five. Say recipes to cook.`, 'treasure');
+            say(game, `The scroll teaches you the keeper’s recipe: ${gained.map(id => KITCHEN[id].name).join(' and ')}. Say recipes to cook.`, 'treasure');
             return true;
         }
         if (verb === 'christmas pull lever') {
@@ -447,7 +447,7 @@
             game.state.player.diamonds = (game.state.player.diamonds || 0) + 3;
             game.updateHUD?.(); game.save?.();
             w.MusicSystem?.playSFX('coin');
-            say(game, `${day.keeper}: the secret word is right, and the door remembers. Three diamonds for listening well. Your present will be finer because of it.`, 'treasure');
+            say(game, `${day.keeper}: the secret word is right, and the door remembers. Your present will be finer because of it.`, 'treasure');
             return true;
         }
         if (verb === 'christmas open') {
@@ -542,7 +542,7 @@
         if (doors < 25) {
             const missing = DAYS.filter(d => !j.done[d.n]).map(d => d.n);
             w.MusicSystem?.playSFX('board-error');
-            say(game, `Santa checks his list twice. ${doors} of 25 doors are finished, so the great present stays in the sack. Still open: ${missing.join(', ')}. He gives nothing daily, and nothing for part of the road.`);
+            say(game, `Santa checks his list twice. ${doors} of 25 doors stand open, but the sack stays tied until the last one does. Still waiting: ${missing.join(', ')}. The great present is for the whole road, not part of it.`);
             return { given: false, reason: 'unfinished', doors };
         }
         j.santaGift = Date.now();

@@ -2,7 +2,7 @@
 (() => {
     const add=(id,data)=>WorldData.locations[id]=data;
     const gates=[['north','North Gate'],['east','East Gate'],['south','South Gate'],['west','West Gate']];
-    gates.forEach(([dir,label])=>add(`great_forest_${dir}_gate`,{name:`Great Forest — ${label}`,region:'Great Forest',description:`The ${label.toLowerCase()} controls a physical entrance into the Great Forest. Rangers inspect tracks and warn travelers about scalable monster groups.`,exits:{},features:['forest gate','ranger watch','trail sign'],items:[],enemies:[],safe:true,music:'forest'}));
+    gates.forEach(([dir,label])=>add(`great_forest_${dir}_gate`,{name:`Great Forest — ${label}`,region:'Great Forest',description:`The ${label.toLowerCase()} is one of the four ways into the Great Forest. Rangers read the tracks in the mud and warn travellers about the packs that have been growing bolder.`,exits:{},features:['forest gate','ranger watch','trail sign'],items:[],enemies:[],safe:true,music:'forest'}));
     WorldData.locations.forest.exits.north='great_forest_north_gate';WorldData.locations.great_forest_north_gate.exits={south:'forest',north:'great_forest_path_1'};WorldData.locations.great_forest_path_1.exits.south='great_forest_north_gate';
     WorldData.locations.forest.exits.east='great_forest_east_gate';WorldData.locations.great_forest_east_gate.exits={west:'forest',east:'kaliwasch'};WorldData.locations.kaliwasch.exits.west='great_forest_east_gate';
     WorldData.locations.forest.exits.south='great_forest_south_gate';WorldData.locations.great_forest_south_gate.exits={north:'forest',south:WorldData.locations.sun_plain_1?'sun_plain_1':'great_forest_path_12'};if(WorldData.locations.sun_plain_1)WorldData.locations.sun_plain_1.exits.north='great_forest_south_gate';
@@ -14,7 +14,7 @@
     Object.entries(WorldData.locations).forEach(([id,loc])=>{if(/forest/i.test(`${id} ${loc.region||''}`)&&!loc.safe)loc.enemies=pool.slice((id.length%8),Math.min(pool.length,(id.length%8)+10));});
 
     const branchNames=['Ranger Checkpoint','Fallen Log Crossing','Whispering Brook','Fern Hollow','Hunter Clearing','Old Rope Bridge','Waterfall Shelf','Ruined Watchtower','Wolf Den Approach','Boar Hollow','Druid Sanctuary','Western Forest Crown'];
-    branchNames.forEach((name,i)=>add(`deep_forest_branch_${i+1}`,{name:`Deep Forest — ${name}`,region:'Deep Forest',description:`Physical forest branch ${i+1} of 12: ${name}. The route has its own terrain, tracks, searchable details, and level-scaled creatures.`,exits:{east:i===0?'great_forest_west_gate':`deep_forest_branch_${i}`,west:i===11?'great_forest_west_gate':`deep_forest_branch_${i+2}`},features:[name.toLowerCase(),'deep forest trail'],items:[],enemies:pool.slice(i,i+8),safe:/Checkpoint|Sanctuary/.test(name),music:i>=10?'epic-exploration':'forest'}));
+    branchNames.forEach((name,i)=>add(`deep_forest_branch_${i+1}`,{name:`Deep Forest — ${name}`,region:'Deep Forest',description:`${name}, one of the twelve deep-forest trails. The ground underfoot is its own, with tracks to read, small things to find, and creatures that grow bolder the deeper you go.`,exits:{east:i===0?'great_forest_west_gate':`deep_forest_branch_${i}`,west:i===11?'great_forest_west_gate':`deep_forest_branch_${i+2}`},features:[name.toLowerCase(),'deep forest trail'],items:[],enemies:pool.slice(i,i+8),safe:/Checkpoint|Sanctuary/.test(name),music:i>=10?'epic-exploration':'forest'}));
 
     const items={
       'ranger longsword':{name:'Ranger Longsword',type:'weapon',weaponType:'sharp',damage:120,str:110,dex:160,int:50,wis:70,hp:90,mp:60,value:320,desc:'A long, narrow forest blade balanced for moving battles.',ability:'Improves sharp attacks and ranger precision.'},
@@ -36,7 +36,7 @@
       'mist crystal':{name:'Mist Crystal',type:'material',value:180,desc:'A cool crystal formed behind the waterfall.',ability:'Used for concealment enchantments.'},
       'wolf token':{name:'Wolf Token',type:'accessory',str:80,dex:130,int:50,wis:80,hp:100,mp:50,value:260,desc:'A ranger-carved token honoring the forest pack.',ability:'Improves companion and group coordination.'},
       'grove pendant':{name:'Grove Pendant',type:'accessory',str:50,dex:80,int:130,wis:170,hp:120,mp:160,value:330,desc:'A green pendant blessed at the Druid Sanctuary.',ability:'Strengthens healing and nature magic.'},
-      'gate map':{name:'Four Gates Forest Map',type:'document',value:25,desc:'A durable map marking all four physical forest gates and major paths.',ability:'Provides route knowledge when examined.'}
+      'gate map':{name:'Four Gates Forest Map',type:'document',value:25,desc:'A durable map marking all four forest gates and the major paths between them.',ability:'Provides route knowledge when examined.'}
     };Object.assign(WorldData.items,items);
     const place=[['great_forest_north_gate','gate map'],['deep_forest_branch_1','forest ration'],['deep_forest_branch_3','moon berry'],['deep_forest_branch_4','ranger coat'],['deep_forest_branch_5','ranger tonic'],['deep_forest_branch_6','moon silk'],['deep_forest_branch_7','mist crystal'],['deep_forest_branch_8','ranger longsword'],['deep_forest_branch_9','wolf token'],['deep_forest_branch_10','boar stew'],['deep_forest_branch_11','grove pendant'],['deep_forest_branch_12','druid sickle']];place.forEach(([loc,id])=>WorldData.locations[loc].items.push(id));
 

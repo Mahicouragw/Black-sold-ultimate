@@ -538,7 +538,7 @@ const Game = {
         this.showHeroRoster();
         const saved=await cloudTask;
         if(saved===false){
-            this.addNarrative('Hero deleted on this device, but the cloud delete could not be confirmed. Keep the game online; progress saves itself to the account as you play.','system');
+            this.addNarrative('The hero is gone from this device, but the realm has not yet answered. Stay connected for a moment and the chronicle will be settled.','system');
         }
         return true;
     },
@@ -696,7 +696,7 @@ const Game = {
             const cooldownDays = 7;
             if (lastRename > 0 && daysSinceRename < cooldownDays) {
                 const remaining = Math.ceil(cooldownDays - daysSinceRename);
-                this.addNarrative(`Hero name can only be changed once every ${cooldownDays} days. You can rename again in ${remaining} day${remaining === 1 ? '' : 's'}.`, 'system');
+                this.addNarrative('The name-scribes have already written once for this hero. They will take up the pen again in time; until then, the name on the road stands.', 'system');
                 return;
             }
             const newName = window.prompt(`Rename your hero (current: ${p.name}):\n\nNote: You can only rename once every ${cooldownDays} days.`, p.name);
@@ -2558,7 +2558,7 @@ const Game = {
                 if (p.xp >= p.xpToNext) this.levelUp(true);
                 await this._pro.experience(e.xp, p.level, oldLevel);
             } else {
-                this.addNarrative(`🎉 ${e.name} defeated! +${e.xp} XP, +${e.gold} gold${bonusLoot}`, 'treasure');
+                this.addNarrative(`${e.name} falls before you.${bonusLoot}`, 'combat');
                 MusicSystem.playSFX('victory');
                 if (p.xp >= p.xpToNext) this.levelUp();
             }
@@ -2715,7 +2715,10 @@ const Game = {
     },
 
     completeQuest(quest) {
-        this.addNarrative(`📜 Quest Complete: ${quest.name}!`, 'treasure');
+        // The reward is granted below, in silence. The player only ever hears
+        // what happened in the world, never what the numbers were.
+        const closing = quest.epilogue || `${quest.name} is finished, and the people it sheltered will remember who stood for them.`;
+        this.addNarrative(`📜 ${closing}`, 'treasure');
 
         if (quest.reward.xp) this.state.player.xp += quest.reward.xp;
         if (quest.reward.gold) this.state.player.gold += quest.reward.gold;
@@ -2724,7 +2727,7 @@ const Game = {
             const itemData = WorldData.items[quest.reward.item.toLowerCase().replace(/ /g, '_')];
             if (itemData) {
                 this.addItemToInventory(quest.reward.item.toLowerCase().replace(/ /g, '_'), itemData);
-                this.addNarrative(`Received: ${itemData.name}!`, 'item');
+                this.addNarrative(`You take up ${itemData.name}.`, 'item');
             }
         }
 
@@ -3283,12 +3286,12 @@ const Game = {
             'mass heal': { cost: 38, desc: 'Heal all companions too' },
             'holy light': { cost: 25, desc: 'Paladin heal ~35+ HP' },
             'alohomora': { cost: 20, desc: 'Unlock magical doors' },
-            'open door': { cost: 10, desc: 'Open physical doors' },
+            'open door': { cost: 10, desc: 'Open a door before you' },
             'close door': { cost: 5, desc: 'Close doors behind you' },
             'blessing': { cost: 15, desc: 'Buff yourself or companions' }
         };
         const inCombat = {
-            'power strike': { cost: 15, desc: 'Physical power attack' },
+            'power strike': { cost: 15, desc: 'A heavy weapon strike' },
             'multi strike': { cost: 24, desc: 'Multi-hit attack' },
             'fireball': { cost: 25, desc: 'Fire damage' },
             'ice storm': { cost: 30, desc: 'Ice damage' },
@@ -3332,10 +3335,16 @@ const Game = {
             name: quest.name,
             description: quest.description,
             steps: quest.objectives.map(obj => {
+                // The journal reads as a road, not as a checklist: how far the
+                // hero has come, and what is still waiting ahead.
                 const target = obj.type === 'visit' ? WorldData.locations[obj.target]?.name || obj.target : obj.target;
-                const action = obj.type === 'kill' ? `Defeat ${obj.islandOnly ? 'an island or storm creature on Stormcrown Island' : target === 'any' ? 'any enemy' : target}`
-                    : `${({ visit: 'Visit', collect: 'Collect' })[obj.type] || obj.type} ${target}`;
-                return `${action}: ${obj.current || 0} of ${obj.count}.`;
+                const done = obj.current || 0;
+                if (obj.type === 'kill') {
+                    const whom = obj.islandOnly ? 'the island’s storm creatures' : target === 'any' ? 'the creatures on this road' : target;
+                    return `${done >= obj.count ? 'Faced' : 'Still waiting'}: ${whom} — ${done} of ${obj.count}.`;
+                }
+                if (obj.type === 'collect') return `Still to find: ${target} — ${done} of ${obj.count}.`;
+                return `${done >= obj.count ? 'Reached' : 'Still to reach'}: ${target}.`;
             })
         }));
     },
@@ -3373,8 +3382,8 @@ const Game = {
         this.addNarrative("use/eat [food or potion] - Restore HP or MP", 'system');
         this.addNarrative("equip [weapon/armor] - Equip swords, blunt weapons, armor or accessories", 'system');
         this.addNarrative("cast [spell] - Cast magic; Mass Heal restores the full battle group", 'system');
-        this.addNarrative("attack [name] - Hunt a monster still needed for this area’s finite quest pack", 'system');
-        this.addNarrative("foes - List finite quest-pack progress; random wilderness encounters can continue afterward", 'system');
+        this.addNarrative("attack [name] - Strike a creature you have chosen", 'system');
+        this.addNarrative("foes - Hear which creatures still trouble this land", 'system');
         this.addNarrative("inventory/i - View inventory", 'system');
         this.addNarrative("stats - View character stats", 'system');
         this.addNarrative("map/m - View world map", 'system');
@@ -3389,12 +3398,12 @@ const Game = {
         this.addNarrative("guild/group - Open guild and joint combat group", 'system');
         this.addNarrative("shop - Browse the current location's shop", 'system');
         this.addNarrative("travel [location] - Dimensional travel for 10 rupees", 'system');
-        this.addNarrative("world - Print expanded-world totals", 'system');
-        this.addNarrative("settings/account - Copy Player ID, link Google, cloud save, or set recovery PIN", 'system');
+        this.addNarrative("world - Hear how far the realm reaches", 'system');
+        this.addNarrative("settings/account - Copy your Player ID, link Google, or set a recovery PIN", 'system');
         this.addNarrative("temple / pray [attribute] / pray revive - Blessings and divine death recovery", 'system');
         this.addNarrative("palace / palace ceremony - Required advancement after leveling", 'system');
         this.addNarrative("palace quest / train companion [name] / increase [attribute]", 'system');
-        this.addNarrative("guild spells - After the Card Test: two class helpers. Palace hunt and Island hunt grant the last two plus Shark Tide", 'system');
+        this.addNarrative("guild spells - The Guild teaches those who pass the Card Test", 'system');
         this.addNarrative("encounters on/off - Full or reduced forest encounters", 'system');
         this.addNarrative("storage / throw [item] / take loot [item] - Manual item management", 'system');
         this.addNarrative("enchantment shop / enchant [item] [attribute] - Permanent equipment runes", 'system');
@@ -3412,18 +3421,18 @@ const Game = {
         this.addNarrative("Voice button - Speak one command in the selected language", 'system');
         this.addNarrative("fish / fishing status - Use rod and bait at marked water locations", 'system');
         this.addNarrative("examine [monster] - Hear monster attributes and spell list", 'system');
-        this.addNarrative("spell field / practice [spell] - Spend 3 MP to improve mastery", 'system');
+        this.addNarrative("spell field / practice [spell] - Practise a spell at the field for 3 MP", 'system');
         this.addNarrative("cast shock - Strong single-target blue-flash damage and possible stun", 'system');
         this.addNarrative("cast light orbs - 3 MP per living monster; multi-target light damage", 'system');
-        this.addNarrative("heal / multiple strike / opening doors - Validated named spells with mana and cooldowns", 'system');
-        this.addNarrative("attack / attack [monster] / defend / flee - Command-only battle actions; attack outside battle is rejected", 'system');
+        this.addNarrative("heal / multiple strike / opening doors - The named spells, each with a price in magic", 'system');
+        this.addNarrative("attack / attack [monster] / defend / flee - Battle actions; outside battle the sword has nothing to strike", 'system');
         this.addNarrative("wayfinder / distance - Miles, steps and route to city, forest and cave entrances", 'system');
         this.addNarrative("exit forest / next exit step - Walk one calculated step toward the city", 'system');
         this.addNarrative("game hall / board games - Route to accessible Ludo, Snakes, Chess, Carrom and Blackjack", 'system');
-        this.addNarrative("pray (in battle) - Once per battle, restores a fifth of your health and magic and uses your turn", 'system');
-        this.addNarrative("pray / emergency prayer (health at 15 percent or lower) - Four angels restore you fully and fight beside you for five turns", 'system');
+        this.addNarrative("pray (in battle) - Call on the gods: some health and magic return, and your turn passes", 'system');
+        this.addNarrative("pray / emergency prayer when death is near - Angels may answer, restoring you and fighting beside you for a time", 'system');
         this.addNarrative("take everything - Pick up all loot", 'system');
-        this.addNarrative("search location - Discover hidden physical rewards without revealing them early", 'system');
+        this.addNarrative("search location - Search the ground for what has been hidden", 'system');
         this.addNarrative("examine spell [name] / spellbook - MP, healing, power and efficiency", 'system');
         this.addNarrative("examine black sword locations - Show discovered lore only; secrets stay hidden", 'system');
         this.addNarrative("city directory / city map - Routes to every city landmark", 'system');

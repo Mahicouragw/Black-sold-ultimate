@@ -20,7 +20,7 @@ test('quest journal explains objectives and palace turn-in without changing prog
         assert.match(list.querySelector('section').textContent, /Return to the Royal Palace/i);
         assert.equal(list.querySelectorAll('h4')[1].textContent, '<b>Hunt</b>');
         assert.equal(list.querySelector('b'), null);
-        assert.match(list.textContent, /Defeat any enemy: 1 of 3/);
+        assert.match(list.textContent, /Still waiting: the creatures on this road — 1 of 3/);
         assert.equal(JSON.stringify([Game.state.quests, Game.state.sacred]), before);
     } finally { dom.window.close(); }
 });

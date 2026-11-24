@@ -154,7 +154,7 @@
             this.addItemToInventory('healing potion', WorldData.items['healing potion']);
             this.addNarrative('The chest also holds a healing potion.', 'item');
         }
-        this.addNarrative(`Daily streak: ${eco.dailyStreak} day${eco.dailyStreak === 1 ? '' : 's'}. Come back tomorrow for a bigger chest.`, 'system');
+        this.addNarrative(`The chest is opened and set aside. Your streak of victories stands at ${eco.dailyStreak} ${eco.dailyStreak === 1 ? 'day' : 'days'}.`, 'system');
     };
 
     /* ════════════════ 4. COMPANION REVIVAL ════════════════ */
@@ -249,14 +249,14 @@
         if (this.state.arena?.active) { this.addNarrative(`Already in the Arena — wave ${this.state.arena.wave} ongoing. Say "next", "arena status" or "leave arena".`, 'system'); return; }
         this.state.arena = { active: true, wave: 0, wins: 0, canRest: false, rested: false };
         window.MusicSystem?.playSFX?.('door');
-        this.addNarrative('🏟️ You step into the Arena of Echoes! Each wave is scaled fairly to your level — victory pays coins, rubies, gold rubies and even diamonds. Say "next" to summon wave 1. You may "leave arena" anytime and keep every reward. A fallen hero is rescued by healers — never left behind. ⚖️', 'combat');
+        this.addNarrative('🏟️ You step into the Arena of Echoes! Each wave comes at you in proportion to what you have survived so far. Say "next" to summon wave 1. You may "leave arena" at any time and keep what the sand has given you. A fallen hero is rescued by healers — never left behind. ⚖️', 'combat');
         this.save();
     };
 
     G().arenaStatus = function () {
         const a = this.state.arena;
         if (!a?.active) { this.addNarrative('You are not in the Arena. Say "arena" to enter.', 'system'); return; }
-        this.addNarrative(`Arena: wave ${a.wave} summoned, ${a.wins} victories so far. ${a.canRest && !a.rested ? 'You can rest once (say "arena rest", 50 gold).' : ''} Say "next" for the next wave or "leave arena" to retire.`, 'system');
+        this.addNarrative(`Arena: wave ${a.wave} summoned, ${a.wins} victories so far. ${a.canRest && !a.rested ? 'The healers will tend you for 50 gold — say "arena rest".' : ''} Say "next" for the next wave or "leave arena" to retire.`, 'system');
     };
 
     function arenaTier(wave) {
@@ -307,7 +307,7 @@
         const a = this.state.arena;
         if (!a?.active) { this.addNarrative('Rest is an arena privilege — say "arena" first.', 'system'); return; }
         if (this.state.inCombat) { this.addNarrative('No resting mid-battle!', 'system'); return; }
-        if (!a.canRest || a.rested) { this.addNarrative('You can rest once between waves — right after a victory.', 'system'); return; }
+        if (!a.canRest || a.rested) { this.addNarrative('The healers rest only after a victory. Win a wave first.', 'system'); return; }
         if (p.gold < 50) { this.addNarrative('Rest costs 50 gold coins.', 'system'); return; }
         p.gold -= 50;
         const healed = Math.floor(p.maxHp * 0.4);
@@ -315,7 +315,7 @@
         p.mp = Math.min(p.maxMp, p.mp + Math.floor(p.maxMp * 0.25));
         a.rested = true;
         window.MusicSystem?.playSFX?.('heal');
-        this.addNarrative(`🛋️ Arena healers tend your wounds: +${healed} HP (${p.hp}/${p.maxHp}). Refreshed for the next wave — say "next".`, 'green-light');
+        this.addNarrative(`🛋️ Arena healers tend your wounds: +${healed} HP (${p.hp}/${p.maxHp}). Say "next" when you are ready for the next wave.`, 'green-light');
         this.updateHUD();
         this.save();
     };

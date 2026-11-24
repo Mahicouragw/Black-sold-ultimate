@@ -32,23 +32,23 @@
     const QUESTS = {
         royal_hunt: {
             cue: 'palace-royal-hunt',
-            text: 'The Royal Court gives you the Royal Forest Hunt. Defeat five monsters for the Crown. Ser Aldric, the Royal Huntsman, joins you.'
+            text: 'The Royal Court sets the Royal Forest Hunt before you. Something has stirred in the royal forest, and the woodcutters no longer dare pass the first ridge. Ser Aldric, the Royal Huntsman, rides at your side.'
         },
         palace_healers_road: {
             cue: 'palace-healers-road',
-            text: 'The Healer\'s Road. Escort the palace healer and defeat eight monsters threatening the pilgrim road. Sister Meera joins you.'
+            text: 'The Healer\'s Road. The pilgrim road has grown dangerous, yet the palace healer must still walk it. Sister Meera will not go alone.'
         },
         palace_border_watch: {
             cue: 'palace-border-watch',
-            text: 'Border Watch. Clear twelve monsters from the kingdom\'s borders with Captain Rudra, Captain of the Border Watch.'
+            text: 'Border Watch. Fires have been seen along the northern border, and the villages there no longer sleep easy. Captain Rudra marches out at dawn.'
         },
         palace_scholars_errand: {
             cue: 'palace-scholars-errand',
-            text: 'The Scholar\'s Errand. Protect the court scholar through fifteen battles while she studies the creatures of the wild. Scholar Ilavati joins you.'
+            text: 'The Scholar\'s Errand. Scholar Ilavati wants to study the wild creatures where they live, and the court will not send her unguarded.'
         },
         palace_kings_champion: {
             cue: 'palace-kings-champion',
-            text: 'The King\'s Champion. Win twenty battles beside Veer, champion of the King.'
+            text: 'The King\'s Champion. A rival champion rides the border road, boasting that no sword in the kingdom can match his. Veer, the King\'s champion, means to answer him.'
         }
     };
 

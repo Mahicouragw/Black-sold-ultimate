@@ -193,7 +193,7 @@
                     this.addNarrative(`👨‍🍳 Cooking level up! You are now level ${skill.level}!`, 'system');
                 }
             } else {
-                this.addNarrative(`Burned 1 ${item.name}. No ${cookedName} was added. ${balance}`, 'system');
+                this.addNarrative(`Burned 1 ${item.name}. Nothing edible came of it. ${balance}`, 'system');
                 skill.xp += 3;
             }
             
@@ -272,10 +272,10 @@
             G.state.contracts = [];
             // Generate initial contracts
             const contractTypes = [
-                { type: 'kill', target: 'goblin', count: 3, reward: 150, desc: 'Eliminate 3 goblins' },
-                { type: 'kill', target: 'wolf', count: 5, reward: 200, desc: 'Hunt 5 wolves' },
+                { type: 'kill', target: 'goblin', count: 3, reward: 150, desc: 'Goblins have been raiding the trade road' },
+                { type: 'kill', target: 'wolf', count: 5, reward: 200, desc: 'Wolves have grown bold near the north gate' },
                 { type: 'explore', target: 'forest_path_25', count: 1, reward: 300, desc: 'Reach the Forest Heart' },
-                { type: 'fish', target: 'any', count: 5, reward: 100, desc: 'Catch 5 fish' }
+                { type: 'fish', target: 'any', count: 5, reward: 100, desc: 'The market has asked for fish from the river' }
             ];
             G.state.contracts = contractTypes.slice(0, 3).map((c, i) => ({ ...c, id: i, completed: false }));
         }
@@ -284,9 +284,9 @@
             this.addNarrative('=== BOUNTY BOARD ===', 'system');
             this.state.contracts.forEach(c => {
                 const status = c.completed ? '✓' : '○';
-                this.addNarrative(`${status} ${c.desc} — Reward: ${c.reward} gold`, 'system');
+                this.addNarrative(`${status} ${c.desc}.`, 'system');
             });
-            this.addNarrative('Contracts auto-complete when you fulfill them.', 'system');
+            this.addNarrative('The board pays when the work is done.', 'system');
         };
 
         // Check contract completion

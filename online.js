@@ -1177,7 +1177,7 @@ const OnlineSystem = {
         const allowed=['gameplay','bug','accessibility','moderation','suggestion','praise'],kind=allowed.includes(category)?category:'gameplay';
         const {data,error}=await this.client.rpc('submit_game_feedback',{feedback_category:kind,feedback_message:clean});
         if(error){window.Game.addNarrative(`Feedback could not be stored: ${error.message}`,'system');return false;}
-        window.Game.addNarrative(`Thank you. Feedback ${data} was securely routed to the moderator/developer inbox.`,'treasure');return true;
+        window.Game.addNarrative('Thank you. Your words have been carried to the keepers of the realm, who will read them.' ,'treasure');return true;
     },
 
     async showModeratorInbox() {

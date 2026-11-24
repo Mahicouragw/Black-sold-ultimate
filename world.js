@@ -277,7 +277,8 @@ const WorldData = {
         {
             id: "tutorial",
             name: "Welcome to Kaliwasch",
-            description: "Explore the city of Kaliwasch and speak to the locals.",
+            description: "The gate of Kaliwasch opens onto a market square that smells of bread and smoke. Nobody here knows your name yet, and every road in the realm begins at this one.",
+            epilogue: "The market square settles around you. A fishwife nods as you pass, and you are no longer a stranger in Kaliwasch.",
             objectives: [
                 { type: "visit", target: "kaliwasch", count: 1 }
             ],
@@ -286,7 +287,8 @@ const WorldData = {
         {
             id: "first_blood",
             name: "First Blood",
-            description: "Defeat your first enemy in the wilderness.",
+            description: "Beyond the walls the forest closes over the path. Something has been following your steps since the last turning, and it is no longer hiding.",
+            epilogue: "The forest goes quiet. The thing that followed you lies still on the leaves, and your hands have stopped shaking.",
             objectives: [
                 { type: "kill", target: "any", count: 1 }
             ],
@@ -295,7 +297,8 @@ const WorldData = {
         {
             id: "goblin_problem",
             name: "The Goblin Problem",
-            description: "The goblins in the Southern Swamp are causing trouble. Defeat their chief.",
+            description: "The Southern Swamp has swallowed two traders and a ferryman this season. The swamp folk whisper of a goblin chief who wears a crown of reeds and does not bargain.",
+            epilogue: "The reed crown sinks into the mud. By morning the swamp folk have taken their boats out again, and the water carries no more shouting.",
             objectives: [
                 { type: "kill", target: "goblin chief", count: 1 }
             ],
@@ -304,7 +307,8 @@ const WorldData = {
         {
             id: "eagle_king",
             name: "King of the Skies",
-            description: "The Mega Eagle terrorizes the mountain passes. Defeat it.",
+            description: "Shepherds have stopped driving their flocks into the high passes. The Mega Eagle owns the sky above the mountains now, and it has learned that men are easy prey.",
+            epilogue: "The great shape falls from the sky and the mountain wind carries the shepherds' bells again. The high passes are open.",
             objectives: [
                 { type: "kill", target: "mega eagle", count: 1 }
             ],
@@ -313,7 +317,8 @@ const WorldData = {
         {
             id: "ancient_knowledge",
             name: "Ancient Knowledge",
-            description: "Find the ancient scrolls in the Eastern Ruins.",
+            description: "The Eastern Ruins keep their secrets under fallen stone and dust. Somewhere in the dark there are scrolls written before Kaliwasch had walls, and something has been guarding them.",
+            epilogue: "The scrolls crumble a little at your touch, but the words survive. Whatever happens next, the old knowledge is out of the dark.",
             objectives: [
                 { type: "collect", target: "ancient scroll", count: 1 }
             ],
@@ -322,7 +327,8 @@ const WorldData = {
         {
             id: "black_sword",
             name: "The Black Sword",
-            description: "Find and claim the legendary Black Sword from the Shadow Chamber.",
+            description: "The Shadow Chamber has no door until someone dares to look for it. The Black Sword waits there, and every story about it ends the same way: the blade chooses the hand that carries it.",
+            epilogue: "The sword is cold, and then it is warm. The shadows in the chamber bend away from you, and the legends finally have a new hand to speak of.",
             objectives: [
                 { type: "collect", target: "THE BLACK SWORD", count: 1 }
             ],
@@ -331,7 +337,8 @@ const WorldData = {
         {
             id: "shadow_lord",
             name: "Defeat the Shadow Lord",
-            description: "The ultimate challenge. Defeat the Shadow Lord and save the realm!",
+            description: "The Shadow Lord was a rumour when you first arrived in Kaliwasch. Now the sky over the realm is the colour of old iron, and the rumour has raised an army.",
+            epilogue: "The Shadow Lord is undone, and the light comes back by degrees, like someone opening shutters in an empty house. The realm is yours to walk again.",
             objectives: [
                 { type: "kill", target: "shadow lord", count: 1 }
             ],

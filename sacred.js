@@ -15,7 +15,7 @@
     WorldData.locations.grand_temple = {
         name: 'Grand Temple of Auralis', safe: true, music: 'temple', enemies: [], items: [],
         exits: { west: 'kaliwasch_district_9' }, features: ['altar of five flames','prayer circle','blessing font'],
-        description: `Five colored flames illuminate the Grand Temple. ${GOD} listens to sincere prayers and rewards faithful heroes with divine attributes.`
+        description: `Five coloured flames burn above the altar of the Grand Temple, never blown out by any wind. ${GOD} listens to the prayers spoken here and answers them in the strength of the heroes who kneel.`
     };
     WorldData.locations.royal_palace = {
         name: 'Royal Palace of Kandor', safe: true, music: 'palace', enemies: [], items: [],
@@ -166,7 +166,7 @@
     Game.walkToLandmark=function(target,entry,label,route){
         if(this.state.location===target){this.showSacredActions();return;}
         if(this.state.location===entry){this.move('up');return;}
-        this.addNarrative(`${label} is a physical location. From Kaliwasch: ${route}, then Up through its door. No dashboard shortcut is available.`,'location');
+        this.addNarrative(`${label} is a place you walk to. From Kaliwasch: ${route}, then Up through its door. There is no shortcut across the world.`,'location');
     };
     Game.goTemple = function(){ this.walkToLandmark('grand_temple','kaliwasch_district_9','Grand Temple of Auralis','Down, East three times, South'); };
     Game.goPalace = function(){ this.walkToLandmark('royal_palace','kaliwasch_district_11','Royal Palace','Down, South twice'); };
@@ -213,20 +213,19 @@
         if (this.state.location!=='grand_temple') { this.addNarrative('Travel to the Grand Temple first. Type "temple".', 'system'); return; }
         if(this.state.player?.pendingTempleRevival){this.divineRevive();return;}
         const s=ensure(this), now=Date.now();
-        if (now-s.lastPrayer >= 60*60*1000) { s.favor++; s.lastPrayer=now; this.addNarrative(`${GOD} receives your prayer. Divine favor is now ${s.favor}.`, 'green-light'); }
-        else this.addNarrative(`${GOD} hears you, but favor can increase only once per hour.`, 'magic');
+        if (now-s.lastPrayer >= 60*60*1000) { s.favor++; s.lastPrayer=now; this.addNarrative(`${GOD} receives your prayer. A warmth settles over you, and the temple feels a little less empty.`, 'green-light'); }
+        else this.addNarrative(`${GOD} hears you. The flames lean towards your voice, and the quiet that follows is an answer of its own.`, 'magic');
         const dailyReady=now-s.createdAt>=24*60*60*1000 && now-s.lastDailyBlessing>=24*60*60*1000;
         if (!dailyReady) {
-            const remaining=Math.ceil(Math.max(0,24*60*60*1000-(now-s.createdAt))/(60*60*1000));
-            this.addNarrative(`The first Five-Flame blessing becomes available after one day${remaining ? ` (about ${remaining} hours remaining)` : ''}.`, 'system'); this.save(); return;
+            this.addNarrative('The five flames burn low and steady. Their blessing rests for now; it will rise again with the light.', 'system'); this.save(); return;
         }
         const key=choice.toLowerCase();
         const aliases={strength:'str',dexterity:'dex',intelligence:'int',wisdom:'wis',health:'health',magic:'magic','magic points':'magic',mp:'magic'};
-        if (!aliases[key]) { this.addNarrative('Auralis offers one daily attribute: strength, dexterity, intelligence, wisdom, health, or magic points. Type "pray [attribute]".', 'green-light'); return; }
+        if (!aliases[key]) { this.addNarrative('Auralis asks what you would carry into the world: strength, dexterity, intelligence, wisdom, health, or magic. Speak it: "pray strength".', 'green-light'); return; }
         if (aliases[key]==='health') { this.state.player.maxHp+=5; this.state.player.hp+=5; }
         else if (aliases[key]==='magic') { this.state.player.maxMp+=5; this.state.player.mp+=5; }
         else this.state.player[aliases[key]]+=1;
-        s.lastDailyBlessing=now; const text=`${GOD} grants your daily ${key} blessing!`;if(this.emitGameEvent)this.emitGameEvent(text,'green-light',{sfx:['blessing']});else{this.addNarrative(text,'green-light');MusicSystem.playSFX('blessing');} this.updateHUD(); this.save();
+        s.lastDailyBlessing=now; const gift={strength:'A gentle light descends. Your arms feel certain, as if the road ahead has already been walked.',dexterity:'A gentle light descends. Your step grows light, and the world seems to move a little slower around you.',intelligence:'A gentle light descends. Thoughts come clear and orderly, like candles lit one by one.',wisdom:'A gentle light descends. You understand, without being told, what matters and what does not.',health:'A gentle light descends. Breath fills your chest, and the ache of old wounds fades.',magic:'A gentle light descends. The air hums around your hands, and old words feel close to the surface.'}[key]||'A gentle light descends upon you.'; const text=gift;if(this.emitGameEvent)this.emitGameEvent(text,'green-light',{sfx:['blessing']});else{this.addNarrative(text,'green-light');MusicSystem.playSFX('blessing');} this.updateHUD(); this.save();
     };
     Game.palaceCeremony = function() {
         if (this.state.location!=='royal_palace') { this.addNarrative('Advancement ceremonies take place only at the Royal Palace. Type "palace".', 'system'); return; }
@@ -234,15 +233,15 @@
         if(s.pendingPalaceAdvancements<1){this.addNarrative('No advancement ceremony is pending. Earn another hero level first.','system');return;}
         s.pendingPalaceAdvancements--;s.unspentAttributePoints++;s.companionTrainingPoints++;
         p.hp=p.maxHp;p.mp=p.maxMp;this.state.companions.forEach(c=>{c.hp=c.maxHp;});
-        const text=`The Royal Court recognizes ${p.name} at level ${p.level}. Hero and companions are restored; one Palace attribute choice and one companion training point are unlocked.`;
+        const text=`The court names ${p.name} aloud, and the hall answers. Wounds close, your companions straighten their shoulders, and the court offers you a choice to make and a day of training for one companion.`;
         if(this.emitGameEvent)this.emitGameEvent(text,'treasure',{sfx:['levelup']});else{this.addNarrative(text,'treasure');MusicSystem.playSFX('levelup');}this.updateHUD();this.save();
     };
     Game.palaceQuest = function() {
         if (this.state.location!=='royal_palace') { this.addNarrative('Go to the Royal Palace first. Type "palace".', 'system'); return; }
         if (!this.state.quests.some(q=>q.id==='royal_hunt') && !this.state.completedQuests.includes('royal_hunt')) {
-            this.state.quests.push({id:'royal_hunt',name:'Royal Forest Hunt',description:'Defeat five forest monsters for the Crown.',objectives:[{type:'kill',target:'any',count:5,current:0}],reward:{xp:250,gold:180}});
-            this.addNarrative('The Palace grants the Royal Forest Hunt quest.', 'treasure'); this.save();
-        } else this.addNarrative('You already received the current Palace quest.', 'system');
+            this.state.quests.push({id:'royal_hunt',name:'Royal Forest Hunt',description:'Something has stirred in the royal forest, and the woodcutters no longer dare pass the first ridge. The Crown needs a hunter it can trust.',objectives:[{type:'kill',target:'any',count:5,current:0}],reward:{xp:250,gold:180}});
+            this.addNarrative('The Royal Court sets the Royal Forest Hunt before you. Ser Aldric, the Royal Huntsman, takes up the road at your side.', 'treasure'); this.save();
+        } else this.addNarrative('The court has already given you its current charge.', 'system');
     };
     Game.trainCompanionAtPalace = function(name) {
         if (this.state.location!=='royal_palace') { this.addNarrative('Companion training is available only in the Palace.', 'system'); return; }
@@ -343,7 +342,7 @@
     Game.enemyDefeated=function(){
         const defeated=this.state.enemy?.name||'monster', s=ensure(this);
         if(Math.random()<0.65){const pool=['bread','cheese wheel','healing potion','oak club','iron mace','black stick'];const id=pool[Math.floor(Math.random()*pool.length)];s.groundLoot.push({...WorldData.items[id],id,quantity:1});this.addNarrative(`${defeated} dropped ${WorldData.items[id].name}. Loot is waiting on the ground. Type "loot" to inspect it or "take loot ${id}".`,'item');}
-        else this.addNarrative(`${defeated} dropped no item loot. Gold and XP were still awarded.`, 'system');
+        else this.addNarrative(`${defeated} falls and leaves nothing behind but the memory of the fight.`, 'combat');
         const queue=[...(s.enemyQueue||[])];s.enemyQueue=[];oldDefeated();
         if(queue.length && !this.state.inCombat){const next=queue.shift();s.enemyQueue=queue;setTimeout(()=>this.startCombat(next,true),500);}
     };
@@ -380,7 +379,7 @@
     Game.showStorage=function(){
         const s=ensure(this),content=document.getElementById('storage-content');
         const row=(item,action,label)=>`<div class="storage-row"><span>${this.escapeHTML(item.name)} x${item.quantity}</span><button onclick="Game.${action}('${this.escapeHTML(this.escapeJS(item.id))}')">${label}</button></div>`;
-        content.innerHTML=`<h4>Inventory</h4>${this.state.inventory.length?this.state.inventory.map(i=>row(i,'storeItem','Store')).join(''):'<p>Empty</p>'}<h4>Stored Items</h4>${s.storage.length?s.storage.map(i=>row(i,'retrieveItem','Take')).join(''):'<p>Empty</p>'}<h4>Ground Loot</h4>${s.groundLoot.length?s.groundLoot.map(i=>row(i,'takeLoot','Take')).join('')+'<button class="menu-btn" onclick="Game.takeAllLoot()">Take All Ground Loot</button>':'<p>Nothing on the ground</p>'}<p>No item is collected automatically. Gold and XP are battle rewards, not item loot.</p>`;
+        content.innerHTML=`<h4>Inventory</h4>${this.state.inventory.length?this.state.inventory.map(i=>row(i,'storeItem','Store')).join(''):'<p>Empty</p>'}<h4>Stored Items</h4>${s.storage.length?s.storage.map(i=>row(i,'retrieveItem','Take')).join(''):'<p>Empty</p>'}<h4>Ground Loot</h4>${s.groundLoot.length?s.groundLoot.map(i=>row(i,'takeLoot','Take')).join('')+'<button class="menu-btn" onclick="Game.takeAllLoot()">Take All Ground Loot</button>':'<p>Nothing on the ground</p>'}<p>What lies on the ground is yours only when you choose to take it.</p>`;
         document.getElementById('storage-panel').classList.remove('hidden');
     };
     const moveOne=(from,to,id)=>{const item=from.find(i=>i.id===id);if(!item)return false;const dest=to.find(i=>i.id===id);if(dest)dest.quantity++;else to.push({...item,quantity:1});item.quantity--;if(item.quantity<=0)from.splice(from.indexOf(item),1);return true;};

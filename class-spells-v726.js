@@ -76,7 +76,8 @@
         game.state.quests.push({
             id,
             name: 'Stormcrown Island Hunt',
-            description: 'Defeat three island or storm creatures on Stormcrown Island to earn a new spell.',
+            description: 'Stormcrown Island keeps its own storms. The storm priest says the island teaches a spell to anyone who endures its creatures — three of them, and the words come.',
+            epilogue: 'The storm breaks over the island, and the words of Shark Tide are suddenly easy to say.',
             objectives: [{ type: 'kill', target: 'any', count: 3, current: 0, islandOnly: true }],
             reward: { xp: 220, gold: 160 }
         });

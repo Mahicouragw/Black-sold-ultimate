@@ -360,7 +360,7 @@
       }
       this.guild = name.trim();
       this.guildTreasury = 500;
-      window.Game?.addNarrative(`🛡️ You have founded the multiplayer guild "${this.guild}" with an initial treasury of 500 Gold!`, 'treasure');
+      window.Game?.addNarrative(`🛡️ You have founded the multiplayer guild "${this.guild}" The banner is raised and the treasury chest stands open.`, 'treasure');
     },
 
     async startGuildRaid() {

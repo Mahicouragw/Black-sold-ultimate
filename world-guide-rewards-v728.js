@@ -154,7 +154,7 @@
             const here = this.state.location;
             const route = this.findPhysicalRoute(here, target);
             if (route === null) {
-                this.addNarrative('No current physical route was found. A closed house door may block the way.', 'system');
+                this.addNarrative('No open route was found from here. A closed house door may block the way.', 'system');
                 return;
             }
             if (!route.length) {
