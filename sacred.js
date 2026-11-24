@@ -293,7 +293,7 @@
             if(door.open){this.addNarrative('The magical door is already open.','system');return;}
             if(p.mp<8){this.addNarrative('Alohomora requires 8 MP.','system');return;}
             p.mp-=8;door.open=true;MusicSystem.playSFX('magic');MusicSystem.playSFX('door');
-            this.addNarrative('The magical door opens with a recorded click. The way is open.','green-light');
+            this.addNarrative('The magical door opens with a heavy click. The way is open.','green-light');
             this.updateDirectionButtons?.(loc.exits);this.updateHUD();this.save();return;
         }
         const special=Object.values(CLASS_GUILD_SPELLS).flat().map(s=>s.toLowerCase()).concat(['emerald lifestrike','spirit wolf','soul mend']);
