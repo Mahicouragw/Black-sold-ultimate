@@ -156,3 +156,25 @@ Palace Courier and Merchant Aldric use the two auditioned synthetic character vo
 Christmas City uses only real recorded, licensed instrumental music from `assets/audio/music/`: `Fantasy-Choir-1.mp3` (A Winter Tale), `Fantasy-Choir-3.mp3` (Beyond the Frozen Veil), `Fantasy-Choir-2.mp3` (A New Town), `inn.mp3` (The Old Tower Inn) and `town.mp3` (Night Town). No generated music is shipped. The sounds used by the event are the recorded effects in `assets/audio/sfx/`.
 
 The twenty-five Advent door stories in `assets/advent/` are recorded narration made for this game. Each door uses its own clip; if a clip is absent the same words are spoken by the device voice so a story is never missing.
+
+## Story narration — AI-generated voice (owner-approved)
+
+The opening story and the Royal Court quest announcements are the **only**
+generated speech in this game. On 2026-11-20 the owner explicitly approved an
+AI-generated narrator for these clips, replacing the earlier recorded-only rule
+for this one feature.
+
+- Voice: a synthetic narration voice chosen by the owner in the build session.
+- Files: `assets/story/intro-01.mp3` … `assets/story/intro-06.mp3`,
+  `assets/story/palace-royal-hunt.mp3`, `assets/story/palace-healers-road.mp3`,
+  `assets/story/palace-border-watch.mp3`, `assets/story/palace-scholars-errand.mp3`
+  and `assets/story/palace-kings-champion.mp3` — eleven lines, one file each.
+- Licence: generated for this game; no third-party recording is used and no
+  external speech API is called while the game plays. The files ship with the
+  game, so no network speech service is required.
+- Everything else stays recorded: all music and sound effects are the licensed
+  recordings listed above, and every NPC, crier and advent line remains a real
+  recording. No other generated audio is bundled.
+- The owner can replace any story line with their own recording from
+  Settings → Owner tools → Story clips; a published cue wins over the bundled
+  file for every player.

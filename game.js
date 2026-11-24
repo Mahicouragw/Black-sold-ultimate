@@ -160,6 +160,39 @@ const Game = {
         }
     },
 
+    /**
+     * Called on sign-out, after the account key is forgotten: the previous
+     * account's hero must not stay loaded on screen. The device returns to the
+     * title screen, and the guest saves decide what happens next — a guest hero
+     * if one exists here, otherwise a brand-new hero.
+     */
+    leaveAccountSession() {
+        try {
+            this.state.player = null;
+            this.state.activeHeroId = null;
+            this.state.pendingHeroId = null;
+            this.state.creatingHero = false;
+            this.state.inCombat = false;
+            this.state.enemy = null;
+            this.state.encounterTargets = [];
+            this.state.combatTransition = false;
+            this.state.pendingCombat = null;
+            this.state.battleSummary = null;
+            this.state.tradeDraft = null;
+            this.state.location = 'kaliwasch';
+            this.state.visited = ['kaliwasch'];
+            this.state.sacred = { ...(this.state.sacred || {}), enemyQueue: [] };
+            this.closePanels?.();
+            this.showScreen?.('title-screen');
+            this.updateUI?.();
+            window.OnlineSystem?.updateIndicators?.();
+            return true;
+        } catch (error) {
+            console.warn('Sign-out session cleanup warning:', error?.message || error);
+            return false;
+        }
+    },
+
     /** Called on sign-out: the device goes back to the guest saves. */
     forgetAccount() {
         try { localStorage.removeItem(this.ACCOUNT_MARK_KEY); } catch { /* private mode */ }
@@ -505,7 +538,7 @@ const Game = {
         this.showHeroRoster();
         const saved=await cloudTask;
         if(saved===false){
-            this.addNarrative('Hero deleted on this device, but the cloud delete could not be confirmed. Keep the game online and use Save to Cloud before signing in elsewhere.','system');
+            this.addNarrative('Hero deleted on this device, but the cloud delete could not be confirmed. Keep the game online; progress saves itself to the account as you play.','system');
         }
         return true;
     },
@@ -642,7 +675,9 @@ const Game = {
         document.getElementById('chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));
         document.getElementById('settings-chat-voice').addEventListener('change', e => OnlineSystem.setVoiceProfile(e.target.value));
         document.getElementById('chat-auto-speak').addEventListener('change', e => localStorage.setItem('black_sword_auto_speak', e.target.checked ? 'true' : 'false'));
-        document.getElementById('btn-cloud-save').addEventListener('click', () => this.requestCloudBackup());
+        // No manual cloud save: every save writes to the online database through
+        // OnlineSystem.saveGame from save(), and Sign Out is only shown when a
+        // Google account is actually linked.
         document.getElementById('btn-account-signout').addEventListener('click', () => OnlineSystem.signOut());
         document.getElementById('btn-settings-create-hero')?.addEventListener('click', () => {
             document.getElementById('settings-panel')?.classList.add('hidden');
@@ -3502,40 +3537,13 @@ const Game = {
         return roster;
     },
 
-    async requestCloudBackup() {
-        const button = document.getElementById('btn-cloud-save');
-        const result = document.getElementById('cloud-save-result');
-        if (button.getAttribute('aria-disabled') === 'true') return;
-        button.setAttribute('aria-disabled', 'true');
-        const online = window.OnlineSystem, pick = online.pick.bind(online);
-        let stored;
-        try {
-            stored = this.state.player ? this.persistLocalRoster() : this.getRoster();
-            if (!stored || !Object.keys(stored.heroes).length) {
-                result.textContent = pick('No hero roster to back up.', 'బ్యాకప్ చేయడానికి హీరోలు లేరు.', 'बैकअप के लिए कोई नायक नहीं है।');
-                return;
-            }
-            const id = this.state.activeHeroId, account = online.user?.id, revision = online.authRevision;
-            result.textContent = pick('Saved on this device. Waiting for cloud confirmation…', 'ఈ పరికరంలో సేవ్ అయింది. క్లౌడ్ నిర్ధారణ కోసం వేచి ఉంది…', 'इस डिवाइस पर सेव हुआ। क्लाउड की पुष्टि की प्रतीक्षा है…');
-            let saved;
-            try { saved = await online.saveGame(stored); } catch { saved = false; }
-            if (id !== this.state.activeHeroId || account !== online.user?.id || revision !== online.authRevision) {
-                result.textContent = ''; return;
-            }
-            result.textContent = saved === true
-                ? pick('The server confirmed this roster backup.', 'ఈ హీరోల బ్యాకప్‌ను సర్వర్ నిర్ధారించింది.', 'सर्वर ने इस नायक सूची के बैकअप की पुष्टि की।')
-                : pick('Saved on this device. Cloud backup not confirmed.', 'ఈ పరికరంలో సేవ్ అయింది. క్లౌడ్ బ్యాకప్ నిర్ధారించబడలేదు.', 'इस डिवाइस पर सेव हुआ। क्लाउड बैकअप की पुष्टि नहीं हुई।');
-        } catch {
-            result.textContent = stored
-                ? pick('Cloud backup not confirmed. Your device copy remains.', 'క్లౌడ్ బ్యాకప్ నిర్ధారించబడలేదు. పరికరంలోని కాపీ అలాగే ఉంది.', 'क्लाउड बैकअप की पुष्टि नहीं हुई। डिवाइस की प्रति सुरक्षित है।')
-                : pick('Device save failed. No backup requested.', 'పరికరంలో సేవ్ కాలేదు. బ్యాకప్ కోరలేదు.', 'डिवाइस पर सेव नहीं हुआ। बैकअप का अनुरोध नहीं भेजा गया।');
-        } finally { button.removeAttribute('aria-disabled'); }
-    },
-
     save() {
         const stored = this.persistLocalRoster();
         if (!stored) return false;
-        window.OnlineSystem?.saveGame?.(stored);
+        // The device copy is already safe. A cloud write that fails must not
+        // surface as an unhandled rejection that could stop later saves, so the
+        // promise is always handled; OnlineSystem also reports its own status.
+        try { window.OnlineSystem?.saveGame?.(stored)?.catch?.(() => false); } catch { /* never block the local save */ }
         return true;
     },
 

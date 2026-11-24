@@ -348,6 +348,28 @@ class AudioManagerController {
         console.log('AudioManager initialized: bounded players, smart playlists, Web Audio SFX and device TTS.');
     }
 
+    /**
+     * One bounded element for a spoken story line. Story narration uses the
+     * same audio engine as the rest of the game — no second Audio object is
+     * created per line and no two lines can overlap.
+     */
+    storyClip(src) {
+        let clip = this.storyClipAudio;
+        if (!clip) {
+            clip = this.storyClipAudio = new Audio();
+            clip.preload = 'auto';
+        }
+        try { clip.pause(); } catch { /* not playing */ }
+        clip.src = src;
+        return clip;
+    }
+
+    stopStoryClip() {
+        const clip = this.storyClipAudio;
+        if (!clip) return;
+        try { clip.pause(); } catch { /* already stopped */ }
+    }
+
     stopCharacterVoice() {
         const clip = this.characterClip;
         if (!clip) return;
@@ -370,6 +392,7 @@ class AudioManagerController {
 
     pausePageAudio() {
         this.stopCharacterVoice();
+        this.stopStoryClip();
         if(this.pageSuspended)return;
         this.visibilityResume={world:Boolean(this.worldAudio&&!this.worldAudio.paused),overlay:Boolean(this.overlayAudio&&!this.overlayAudio.paused)};
         this.pageSuspended=true;++this.playbackSession;this.pendingPlayback=null;

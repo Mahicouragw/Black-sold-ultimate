@@ -29,6 +29,8 @@
         const applied = [];
         for (const row of cues) {
             if (!row || !row.cue || !row.url) continue;
+            // Story narration is played by StoryIntro, never as a sound effect.
+            if (row.kind === 'story') { applied.push(row.cue); continue; }
             if (row.kind === 'music') {
                 const track = system.music?.[row.cue];
                 if (track) { track.src = row.url; applied.push(row.cue); }

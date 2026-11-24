@@ -21,6 +21,10 @@ async function ready(t) {
     w.document.querySelector('[data-race="human"]').classList.add('selected');
     w.document.querySelector('[data-class="warrior"]').classList.add('selected');
     G.createCharacter(false);
+    // The opening story (7.66.0) has its own suite. It is silenced here so an
+    // exact list of spell effects stays about the spell that was just cast.
+    G.state.storyIntroSeen = true;
+    w.StoryIntro?.stop?.();
     const played = [];
     const original = w.MusicSystem.playSFX.bind(w.MusicSystem);
     w.MusicSystem.playSFX = (name, ...rest) => { played.push(String(name)); return original(name, ...rest); };
