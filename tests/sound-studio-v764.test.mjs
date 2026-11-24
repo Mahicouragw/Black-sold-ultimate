@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as wait } from 'node:timers/promises';
 import { createRuntime } from '../scripts/load-world.mjs';
+import { readFile } from 'node:fs/promises';
 
 /* 7.64.0 — the owner's studio in the game. The owner sees it after Google
  * sign-in, can publish a recording, and every player receives it. Anyone else
@@ -258,4 +259,51 @@ test('the owner gets a one-press shortcut at the top of Settings, and nobody els
     const guest = await ready(t, { owner: false });
     await guest.w.SoundStudio.checkOwner();
     assert.equal(guest.w.document.getElementById('btn-open-sound-studio').hidden, true, 'a non-owner never sees it');
+});
+
+/* 7.69.0 — the studio must never hide itself from its owner because a local
+ * flag had not settled yet. The server's answer is the only answer. */
+
+test('a stale linked flag cannot hide the studio from its signed-in owner', async t => {
+    const { w } = await ready(t);
+    w.OnlineSystem.linked = false;                 // identity has not settled yet
+    w.OnlineSystem.user = { id: 'owner-uid', getToken: async () => 'id-token' };
+    assert.equal(await w.SoundStudio.checkOwner(), true, 'the server decides, not the flag');
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, false);
+});
+
+test('the studio opens itself when the sign-in lands after Settings was opened', async t => {
+    const { w } = await ready(t);
+    w.OnlineSystem.user = null;
+    await w.SoundStudio.checkOwner();
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, true);
+    assert.match(w.document.getElementById('sound-studio-status').textContent, /[Ss]ign in with Google/);
+
+    // The account arrives; the game announces it, and the studio asks again.
+    w.OnlineSystem.user = { id: 'owner-uid', getToken: async () => 'id-token' };
+    w.dispatchEvent(new w.CustomEvent('black-sword-auth-change'));
+    await wait(200);
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, false, 'no reload needed');
+    assert.equal(w.SoundStudio.isOwner, true);
+});
+
+test('a lost connection is retried once before the studio gives up', async () => {
+    const source = await readFile(new URL('../sound-studio-v764.js', import.meta.url), 'utf8');
+    assert.match(source, /answer\?\.error\?\.code === 'offline'/, 'an offline answer is recognised');
+    assert.match(source, /setTimeout\(resolve, 1200\)/, 'and asked again a moment later');
+    assert.match(source, /if \(!answer\?\.error\)|if \(answer\?\.error\)/, 'the second answer is used');
+});
+
+test('the studio adopts the owner panel’s confirmation instead of waiting again', async t => {
+    const { w } = await ready(t);
+    w.OnlineSystem.user = null;
+    await w.SoundStudio.checkOwner();
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, true, 'nothing confirmed yet');
+
+    // The panel beside it asked the same server the same question and was answered.
+    w.AdminTools.state.admin = true;
+    w.document.getElementById('settings-panel').classList.remove('hidden');
+    await wait(80);
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, false, 'the studio is the owner’s too');
+    assert.match(w.document.getElementById('sound-studio-status').textContent, /Owner access confirmed/i);
 });

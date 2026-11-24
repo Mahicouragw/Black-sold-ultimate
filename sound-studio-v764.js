@@ -162,22 +162,31 @@
 
     /* ───────────────────────────── owner access ───────────────────────────── */
 
+    const SIGN_IN_FIRST = 'The studio opens for the owner’s own Google account. Sign in with Google above and it appears here.';
+
     async function checkOwner({ announce = false } = {}) {
         const section = el('sound-studio-section');
         if (!section) return false;
         state.checked = true;
         state.lastCheck = Date.now();
         state.lastUid = currentUid();
-        if (!window.OnlineSystem?.linked) {
+        // The owner is decided by the server from the signed-in token — never by
+        // a local flag. `OnlineSystem.linked` is still false for a moment after
+        // start-up, and keying the studio on it hid the panel from its own owner.
+        if (!(await token())) {
             state.admin = false;
             show(false);
-            const message = 'The studio opens for the owner’s own Google account. Sign in with Google above and it appears here.';
-            status(message);
-            if (announce) speak(message, true);
+            status(SIGN_IN_FIRST);
+            if (announce) speak(SIGN_IN_FIRST, true);
             return false;
         }
         status('Checking owner access…');
-        const answer = await call({ action: 'who' });
+        let answer = await call({ action: 'who' });
+        if (answer?.error?.code === 'offline') {
+            // One quiet retry: a phone that has just woken up often fails once.
+            await new Promise(resolve => setTimeout(resolve, 1200));
+            answer = await call({ action: 'who' });
+        }
         if (answer?.error) {
             state.admin = false;
             show(false);
@@ -366,20 +375,52 @@
             const hint = el('sound-studio-cue');
             if (hint && kind === 'music' && !hint.value.trim()) hint.placeholder = 'battle-theme';
         });
-        // The settings panel can be opened before sign-in finishes, so access is
-        // settled again whenever the panel is opened by a different account.
-        const settle = () => {
+        // Settings can be opened before the sign-in has finished, and the signed
+        // account can change while the panel stands there. Access is therefore
+        // settled again on every opening, on every touch of Settings, on a
+        // sign-in change, and twice more while the account is not yet the owner.
+        let settling = false;
+        const settle = (force = false) => {
+            // The owner panel beside the studio asks the same server the same
+            // question. If it has already confirmed the owner, the studio is his
+            // too — no second wait, and no chance of the two disagreeing.
+            if (!state.admin && window.AdminTools?.state?.admin === true) {
+                state.admin = true;
+                show(true);
+                renderTargets();
+                renderList();
+                status('Owner access confirmed. Choose the sound you want to change.');
+            }
+            if (settling) return;
             const uid = currentUid();
-            const stale = Date.now() - state.lastCheck > 15000;
-            if (!state.checked || uid !== state.lastUid || stale) checkOwner();
+            const quiet = !force && Date.now() - state.lastCheck < 2500;
+            const unchanged = !force && state.admin && uid === state.lastUid;
+            if (quiet || unchanged) return;
+            settling = true;
+            Promise.resolve()
+                .then(() => checkOwner())
+                .catch(() => {})
+                .finally(() => { settling = false; });
         };
-        document.getElementById('settings-panel')?.addEventListener('transitionend', settle);
+        document.getElementById('settings-panel')?.addEventListener('transitionend', () => settle());
         const observer = new MutationObserver(() => {
             const panel = el('settings-panel');
             if (panel && !panel.classList.contains('hidden')) settle();
         });
         const panel = el('settings-panel');
         if (panel) observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+
+        // A touch anywhere in Settings keeps the answer honest, exactly as the
+        // owner panel beside it does — but never mid-way through a publish.
+        document.addEventListener('click', event => {
+            const panelNow = el('settings-panel');
+            if (!panelNow || panelNow.classList.contains('hidden')) return;
+            if (event.target?.closest?.('#sound-studio-section')) return;
+            settle();
+        });
+        window.addEventListener('black-sword-auth-change', () => settle(true));
+        setTimeout(() => { if (!state.admin) settle(true); }, 2500);
+        setTimeout(() => { if (!state.admin) settle(true); }, 9000);
         renderTargets();
         renderList();
     }
@@ -396,7 +437,11 @@
         get isOwner() { return state.admin; }
     };
 
-    const start = () => { wire(); checkOwner(); };
+    const start = () => {
+        // One broken listener must never take the whole studio down with it.
+        try { wire(); } catch { /* the panel still opens below */ }
+        Promise.resolve().then(() => checkOwner()).catch(() => {});
+    };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
     else start();
     window.addEventListener('online', () => { if (!state.checked) checkOwner(); });
