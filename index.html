@@ -659,7 +659,10 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.67.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.68.0</span></div>
+                    <!-- Shown only to the studio owner, so the studio is one press away
+                         from the top of Settings instead of a long scroll. -->
+                    <button type="button" id="btn-open-sound-studio" class="menu-btn" hidden>🎚️ Open the Sound Studio</button>
                     <button type="button" id="check-online-service" class="menu-btn">Check online connection</button>
                     <p id="service-check-result" role="status"></p>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
@@ -702,10 +705,17 @@
                         <div id="admin-players-list">Reading the player list…</div>
                         <button id="admin-story-refresh" class="menu-btn" type="button">Refresh owner panel</button>
                     </fieldset>
-                    <fieldset id="sound-studio-section" class="sound-studio hidden" hidden aria-describedby="sound-studio-help">
-                        <legend>🎚️ Sound Studio — owner only</legend>
-                        <p id="sound-studio-help" class="settings-note">Upload your own recorded sound effect or music track. A published sound is heard by every player. Recorded files only: wav, mp3, ogg, m4a, aac or flac, up to 3 MB.</p>
+                    <fieldset id="sound-studio-section" class="sound-studio hidden" hidden tabindex="-1" aria-describedby="sound-studio-help">
+                        <legend>🎚️ Sound Studio — the owner's own recordings</legend>
+                        <p id="sound-studio-help" class="settings-note">Replace any sound of the game with your own recording. Choose the sound you mean, add the file, listen back, then publish: every player hears it from their next start-up. Recorded files only — wav, mp3, ogg, m4a, aac or flac, up to 3 MB. Say <strong>studio</strong> at any time to come straight here.</p>
                         <p id="sound-studio-status" role="status" aria-live="polite">Checking owner access…</p>
+                        <label for="sound-studio-target">Which sound do you want to change?</label>
+                        <select id="sound-studio-target">
+                            <option value="">Every sound of the game…</option>
+                            <option value="__new">A new sound of my own</option>
+                        </select>
+                        <button id="sound-studio-audition" class="menu-btn" type="button">Hear this sound as it is now</button>
+                        <p id="sound-studio-target-note" class="settings-note">Choose a sound above and its name fills itself in below.</p>
                         <label for="sound-studio-cue">Sound name — for example door, coin or battle-theme</label>
                         <input id="sound-studio-cue" autocomplete="off" placeholder="door">
                         <label for="sound-studio-kind">What is this recording?</label>
