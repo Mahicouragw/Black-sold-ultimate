@@ -1,15 +1,18 @@
 /**
- * 7.64.0 — the owner's Sound Studio.
+ * 7.68.0 — the owner's Sound Studio.
  *
  * The owner signs in with the same Google account used to play. The studio asks
  * the server whether this player is the owner; only then does the section
- * appear. The owner can choose a recorded file, hear it back, name the cue and
- * publish it. Publishing stores the recording and every player receives it on
- * the next start-up through `CustomAudio`.
+ * appear. The owner picks one of the game's own sounds (or names a new one),
+ * hears how it sounds now, chooses a recorded file, hears it back and publishes
+ * it. Publishing stores the recording and every player receives it on the next
+ * start-up through `CustomAudio`.
  *
  * Nothing is generated here. The server refuses anything that is not a real
  * wav, mp3, ogg, m4a, aac or flac recording, and refuses every player who is
  * not on the owner list.
+ *
+ * `studio` anywhere in the game opens this panel directly (`SoundStudio.open`).
  */
 (() => {
     'use strict';
@@ -17,7 +20,7 @@
     const MAX_BYTES = 3 * 1024 * 1024;
     const TYPES = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/mp4', 'audio/aac', 'audio/flac'];
 
-    const state = { checked: false, admin: false, busy: false, file: null };
+    const state = { checked: false, admin: false, busy: false, file: null, lastCheck: 0, lastUid: '' };
 
     const el = id => document.getElementById(id);
     const status = text => {
@@ -32,10 +35,18 @@
             if (window.GestureAccessibility?.speak) window.GestureAccessibility.speak(text, focus, 'system');
         } catch { /* narration is optional */ }
     };
+    const note = text => {
+        const node = el('sound-studio-target-note');
+        if (node) node.textContent = text;
+    };
 
     const api = () => window.BLACK_SWORD_BACKEND_CONFIG?.audioUrl || window.CustomAudio?.api?.() || '';
     const token = async () => {
         try { return await window.OnlineSystem?.user?.getToken?.(true) || null; } catch { return null; }
+    };
+    const currentUid = () => {
+        const user = window.OnlineSystem?.user;
+        return String(user?.uid || user?.id || user?.email || '');
     };
 
     async function call(body) {
@@ -55,35 +66,170 @@
 
     function show(visible) {
         const section = el('sound-studio-section');
+        const shortcut = el('btn-open-sound-studio');
+        if (shortcut) shortcut.hidden = !visible;
         if (!section) return;
         section.hidden = !visible;
         section.classList.toggle('hidden', !visible);
     }
 
+    /* ─────────────── which sound of the game is being changed ─────────────── */
+
+    const system = () => window.MusicSystem || {};
+
+    function human(cue) {
+        const words = String(cue || '').replace(/[-_]+/g, ' ').trim();
+        return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
+    }
+
+    function kindOf(cue) {
+        if (system().music?.[cue]) return 'music';
+        if (/^story[-:]/.test(String(cue))) return 'story';
+        return 'sfx';
+    }
+
+    function publishedCues() {
+        try { return new Map((window.CustomAudio?.status?.().cues || []).map(row => [row.cue, row])); }
+        catch { return new Map(); }
+    }
+
+    function renderTargets() {
+        const select = el('sound-studio-target');
+        if (!select) return;
+        const chosen = select.value;
+        const published = publishedCues();
+        const label = (cue, extra = '') => {
+            const own = published.has(cue) ? ' — your recording' : '';
+            return `${human(cue)}${extra ? ' — ' + extra : ''} (${cue})${own}`;
+        };
+        const group = (title, rows) => {
+            if (!rows.length) return;
+            const box = document.createElement('optgroup');
+            box.label = title;
+            for (const row of rows) {
+                const option = document.createElement('option');
+                option.value = row.cue;
+                option.textContent = label(row.cue, row.extra);
+                box.appendChild(option);
+            }
+            select.appendChild(box);
+        };
+
+        select.replaceChildren();
+        const head = document.createElement('option');
+        head.value = '';
+        head.textContent = 'Every sound of the game…';
+        select.appendChild(head);
+
+        const sfx = Object.keys(system().sfx || {}).sort();
+        const music = Object.keys(system().music || {}).sort();
+        group('Sound effects', sfx.map(cue => ({ cue })));
+        group('Music tracks', music.map(cue => ({ cue, extra: system().music[cue]?.title || '' })));
+
+        const own = document.createElement('option');
+        own.value = '__new';
+        own.textContent = 'A new sound of my own';
+        select.appendChild(own);
+
+        if (chosen && [...select.options].some(option => option.value === chosen)) select.value = chosen;
+    }
+
+    function describeTarget() {
+        const target = String(el('sound-studio-target')?.value || '');
+        if (!target) { note('Choose a sound above and its name fills itself in below.'); return ''; }
+        if (target === '__new') {
+            note('Type a name of your own below — a new sound is added to the game.');
+            return '';
+        }
+        const own = publishedCues().has(target);
+        note(own
+            ? `The game is already playing your recording of ${target}. Publish again to replace it.`
+            : `The built-in ${target} is playing now. Your recording replaces it for every player.`);
+        return target;
+    }
+
+    function audition() {
+        const target = describeTarget() || String(el('sound-studio-cue')?.value || '').trim().toLowerCase();
+        if (!target) { speak('Choose a sound first, then you can hear it.', true); el('sound-studio-target')?.focus(); return; }
+        const track = system().music?.[target];
+        let played = false;
+        try {
+            played = track ? Boolean(window.MusicSystem?.playTrack?.(target)) : Boolean(window.MusicSystem?.playSFX?.(target));
+        } catch { played = false; }
+        if (played) speak(`Playing ${target} as the game has it now.`, true);
+        else speak(`${target} could not be played here. It is still the sound you would replace.`, true);
+    }
+
+    /* ───────────────────────────── owner access ───────────────────────────── */
+
     async function checkOwner({ announce = false } = {}) {
         const section = el('sound-studio-section');
         if (!section) return false;
+        state.checked = true;
+        state.lastCheck = Date.now();
+        state.lastUid = currentUid();
         if (!window.OnlineSystem?.linked) {
-            show(false);
-            state.checked = true;
             state.admin = false;
+            show(false);
+            const message = 'The studio opens for the owner’s own Google account. Sign in with Google above and it appears here.';
+            status(message);
+            if (announce) speak(message, true);
             return false;
         }
         status('Checking owner access…');
         const answer = await call({ action: 'who' });
-        state.checked = true;
+        if (answer?.error) {
+            state.admin = false;
+            show(false);
+            const message = answer.error.code === 'unauthenticated'
+                ? 'The studio could not confirm this account. Sign in with Google again and it will open.'
+                : answer.error.message || 'The studio could not be reached just now.';
+            status(message);
+            if (announce) speak(message, true);
+            return false;
+        }
         state.admin = Boolean(answer?.data?.admin);
         show(state.admin);
         if (state.admin) {
-            status('Owner studio ready. Choose a recording to publish.');
+            renderTargets();
             renderList();
+            const who = String(answer?.data?.name || '').trim();
+            status(`Owner access confirmed${who ? ` for ${who}` : ''}. Choose the sound you want to change.`);
             if (announce) speak('Sound Studio ready. Owner access confirmed.', true);
         } else {
-            status('This account is not the owner, so publishing is closed.');
+            status('This Google account plays the game, but it is not the owner of the studio, so publishing stays closed.');
             if (announce) speak('This account can play but cannot publish sounds.', true);
         }
         return state.admin;
     }
+
+    /** The `studio` command: open Settings, settle access, land on the studio. */
+    async function open() {
+        try {
+            if (window.OnlineSystem?.showSettings) window.OnlineSystem.showSettings();
+            else el('settings-panel')?.classList.remove('hidden');
+        } catch { el('settings-panel')?.classList.remove('hidden'); }
+        const allowed = state.admin || await checkOwner({ announce: false });
+        if (!allowed) {
+            const signIn = el('btn-settings-google-signin');
+            if (signIn && !signIn.hidden) {
+                speak(window.OnlineSystem?.linked
+                    ? 'This account is not the studio owner, so publishing stays closed.'
+                    : 'Sign in with Google to open the Sound Studio. The button is focused now.', true);
+                try { signIn.focus(); } catch { /* focus is a courtesy */ }
+            }
+            return false;
+        }
+        const section = el('sound-studio-section');
+        if (section) {
+            try { section.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch { /* older browsers */ }
+            try { section.focus?.(); } catch { /* not focusable everywhere */ }
+        }
+        speak('Sound Studio. Choose the sound you want to change, add your recording, then publish. Every player hears it from their next start-up.', true);
+        return true;
+    }
+
+    /* ─────────────────────────────── publishing ─────────────────────────────── */
 
     function chosenFile() {
         const input = el('sound-studio-file');
@@ -134,13 +280,21 @@
             const data = await readBase64(file);
             const answer = await call({ action: 'publish', cue, kind, mime: file.type, filename: file.name, data });
             if (answer?.error) {
-                status(answer.error.message || 'Publishing failed.');
-                speak(answer.error.message || 'Publishing failed.', true);
+                const message = answer.error.message || 'Publishing failed.';
+                if (answer.error.code === 'unauthenticated') {
+                    state.admin = false;
+                    show(false);
+                    speak('The studio lost track of your account. Sign in with Google again, then publish.', true);
+                    return;
+                }
+                status(message);
+                speak(message, true);
                 return;
             }
-            status(`Published ${cue}. Every player hears it from now on.`);
-            speak(`Published ${cue}. Every player hears it from now on.`, true);
-            await window.CustomAudio?.load?.({ announce: true });
+            status(`Published ${cue}. Every player hears it from their next start-up.`);
+            speak(`Published ${cue}. Every player hears it from their next start-up.`, true);
+            await window.CustomAudio?.load?.({ announce: false });
+            renderTargets();
             renderList();
         } finally {
             state.busy = false;
@@ -155,6 +309,7 @@
         status(`Removed ${cue}. The built-in recording is used again.`);
         speak(`Removed ${cue}. The built-in recording is used again.`, true);
         await window.CustomAudio?.load?.();
+        renderTargets();
         renderList();
     }
 
@@ -166,8 +321,8 @@
         const heading = document.createElement('p');
         heading.className = 'settings-note';
         heading.textContent = cues.length
-            ? `Published sounds (${cues.length}). Each one replaces the built-in sound with your recording.`
-            : 'No sounds published yet. The built-in recordings are playing.';
+            ? `Your published sounds (${cues.length}). Each one replaces the built-in sound with your recording for every player.`
+            : 'No sounds published yet. The built-in recordings are playing everywhere.';
         box.appendChild(heading);
         for (const row of cues) {
             const line = document.createElement('div');
@@ -185,31 +340,59 @@
         }
     }
 
+    /* ───────────────────────────────── wiring ───────────────────────────────── */
+
     function wire() {
         el('sound-studio-file')?.addEventListener('change', () => preview(chosenFile()));
         el('sound-studio-publish')?.addEventListener('click', publish);
+        el('sound-studio-audition')?.addEventListener('click', audition);
+        el('btn-open-sound-studio')?.addEventListener('click', () => open());
+        el('sound-studio-target')?.addEventListener('change', () => {
+            const target = describeTarget();
+            if (!target) {
+                const cueField = el('sound-studio-cue');
+                if (cueField && el('sound-studio-target')?.value === '__new') { cueField.value = ''; cueField.focus(); }
+                return;
+            }
+            const cueField = el('sound-studio-cue');
+            if (cueField) cueField.value = target;
+            const kindField = el('sound-studio-kind');
+            if (kindField) kindField.value = kindOf(target);
+            const fileField = el('sound-studio-file');
+            try { fileField?.focus(); } catch { /* focus is a courtesy */ }
+        });
         el('sound-studio-kind')?.addEventListener('change', () => {
             const kind = el('sound-studio-kind')?.value;
             const hint = el('sound-studio-cue');
             if (hint && kind === 'music' && !hint.value.trim()) hint.placeholder = 'battle-theme';
         });
-        // The settings panel can be opened before sign-in finishes.
-        document.getElementById('settings-panel')?.addEventListener('transitionend', () => { if (!state.checked) checkOwner(); });
+        // The settings panel can be opened before sign-in finishes, so access is
+        // settled again whenever the panel is opened by a different account.
+        const settle = () => {
+            const uid = currentUid();
+            const stale = Date.now() - state.lastCheck > 15000;
+            if (!state.checked || uid !== state.lastUid || stale) checkOwner();
+        };
+        document.getElementById('settings-panel')?.addEventListener('transitionend', settle);
         const observer = new MutationObserver(() => {
             const panel = el('settings-panel');
-            if (panel && !panel.classList.contains('hidden') && !state.checked) checkOwner();
+            if (panel && !panel.classList.contains('hidden')) settle();
         });
         const panel = el('settings-panel');
         if (panel) observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+        renderTargets();
         renderList();
     }
 
     window.SoundStudio = {
         checkOwner,
+        open,
         publish,
         remove,
         renderList,
+        renderTargets,
         preview,
+        audition,
         get isOwner() { return state.admin; }
     };
 

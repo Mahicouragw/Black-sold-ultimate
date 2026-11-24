@@ -1387,6 +1387,12 @@ const Game = {
         if (c.startsWith('sell ')) { this.sellItem(c.slice(5)); return; }
         if (c === 'premium shop' || c === 'premium' || c === 'diamond shop') { this.showPremiumShop(); return; }
         if (c === 'settings' || c === 'account' || c === 'player id') { OnlineSystem.showSettings(); return; }
+        // The owner's Sound Studio: one word to reach it from anywhere.
+        if (c === 'studio' || c === 'sound studio' || c === 'sound studio help' || c.startsWith('studio ')) {
+            if (window.SoundStudio?.open) window.SoundStudio.open();
+            else this.addNarrative('The Sound Studio is not open on this page.', 'system');
+            return;
+        }
         if (c.startsWith('request ')) { this.sendFriendRequest(c.slice(8)); return; }
         if (c.startsWith('accept ')) { this.acceptFriendRequest(c.slice(7)); return; }
         if (c.startsWith('reject ')) { this.rejectFriendRequest(c.slice(7)); return; }
@@ -3438,6 +3444,7 @@ const Game = {
         this.addNarrative("city directory / city map - Routes to every city landmark", 'system');
         this.addNarrative("where is/go to palace, temple, guild, tavern, park, marketplace, shop, houses, streets or gates", 'system');
         this.addNarrative("open/close door; rest in tavern; examine combat", 'system');
+        this.addNarrative("studio - The owner's Sound Studio: replace any sound with your own recording, heard by every player", 'system');
     },
 
     /**

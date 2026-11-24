@@ -157,3 +157,105 @@ test('the cue name is filled from the recording file name', async t => {
     chooseFile(w, 'Bell At Dusk.wav', 'audio/wav');
     assert.equal(w.document.getElementById('sound-studio-cue').value, 'bell-at-dusk');
 });
+
+/* 7.68.0 — the studio is reachable with one word, and it asks for a specific
+ * sound of the game rather than a name typed from memory. */
+
+test('the studio lists every sound of the game and fills the name in', async t => {
+    const { w } = await ready(t);
+    await w.SoundStudio.checkOwner();
+    const target = w.document.getElementById('sound-studio-target');
+    const cues = [...target.options].map(option => option.value);
+    assert.ok(cues.includes('door'), 'a sound effect is offered');
+    assert.ok(cues.includes('coin'), 'another sound effect is offered');
+    assert.ok(cues.includes('battle'), 'a music track is offered');
+    assert.equal(cues.includes('__new'), true, 'a new sound of the owner’s own can still be named');
+    assert.ok(target.querySelectorAll('optgroup').length >= 2, 'sounds and music are grouped apart');
+
+    // Choosing "door" fills the name and the kind in.
+    target.value = 'door';
+    target.dispatchEvent(new w.Event('change'));
+    assert.equal(w.document.getElementById('sound-studio-cue').value, 'door');
+    assert.equal(w.document.getElementById('sound-studio-kind').value, 'sfx');
+    assert.match(w.document.getElementById('sound-studio-target-note').textContent, /built-in door/i);
+
+    // Choosing a music track switches the kind too.
+    target.value = 'battle';
+    target.dispatchEvent(new w.Event('change'));
+    assert.equal(w.document.getElementById('sound-studio-cue').value, 'battle');
+    assert.equal(w.document.getElementById('sound-studio-kind').value, 'music');
+
+    // "A new sound of my own" clears the name so the owner types their own.
+    w.document.getElementById('sound-studio-cue').value = 'battle';
+    target.value = '__new';
+    target.dispatchEvent(new w.Event('change'));
+    assert.equal(w.document.getElementById('sound-studio-cue').value, '');
+    assert.match(w.document.getElementById('sound-studio-target-note').textContent, /new sound/i);
+});
+
+test('the studio command opens Settings and lands on the Sound Studio', async t => {
+    const { w } = await ready(t);
+    w.document.getElementById('settings-panel').classList.add('hidden');
+    w.Game.processCommand('studio');
+    await wait(60);
+    const panel = w.document.getElementById('settings-panel');
+    const section = w.document.getElementById('sound-studio-section');
+    assert.equal(panel.classList.contains('hidden'), false, 'Settings opened');
+    assert.equal(section.hidden, false, 'the studio is visible to the owner');
+    assert.equal(w.SoundStudio.isOwner, true, 'the owner check passed');
+    assert.match(w.document.getElementById('sound-studio-status').textContent, /Sound Studio\. Choose the sound/i);
+});
+
+test('signing in after opening Settings brings the studio out without a reload', async t => {
+    const { w } = await ready(t);
+    // A guest has no studio yet.
+    w.OnlineSystem.linked = false;
+    w.OnlineSystem.user = null;
+    await w.SoundStudio.checkOwner();
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, true);
+    assert.match(w.document.getElementById('sound-studio-status').textContent, /[Ss]ign in with Google/);
+
+    // The same page, now signed in with the owner account, asks again.
+    w.OnlineSystem.linked = true;
+    w.OnlineSystem.user = { id: 'owner-uid', getToken: async () => 'id-token' };
+    const opened = await w.SoundStudio.open();
+    assert.equal(opened, true);
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, false);
+});
+
+test('hearing the chosen sound speaks about that sound', async t => {
+    const { w } = await ready(t);
+    await w.SoundStudio.checkOwner();
+    const target = w.document.getElementById('sound-studio-target');
+    target.value = 'door';
+    target.dispatchEvent(new w.Event('change'));
+    w.document.getElementById('sound-studio-audition').click();
+    await wait(30);
+    assert.match(w.document.getElementById('sound-studio-status').textContent, /door/i);
+});
+
+test('a declined publish keeps the studio open and says what to fix', async t => {
+    const { w } = await ready(t);
+    await w.SoundStudio.checkOwner();
+    w.document.getElementById('sound-studio-publish').click();
+    await wait(30);
+    assert.match(w.document.getElementById('sound-studio-status').textContent, /Choose a recorded file/i);
+    assert.equal(w.document.getElementById('sound-studio-section').hidden, false);
+    assert.equal(w.SoundStudio.isOwner, true);
+});
+
+test('the owner gets a one-press shortcut at the top of Settings, and nobody else does', async t => {
+    const owner = await ready(t);
+    await owner.w.SoundStudio.checkOwner();
+    const shortcut = owner.w.document.getElementById('btn-open-sound-studio');
+    assert.equal(shortcut.hidden, false, 'the owner sees the shortcut');
+    assert.match(shortcut.textContent, /Sound Studio/);
+    owner.w.document.getElementById('settings-panel').classList.add('hidden');
+    shortcut.click();
+    await wait(40);
+    assert.equal(owner.w.document.getElementById('settings-panel').classList.contains('hidden'), false, 'the shortcut opens Settings');
+
+    const guest = await ready(t, { owner: false });
+    await guest.w.SoundStudio.checkOwner();
+    assert.equal(guest.w.document.getElementById('btn-open-sound-studio').hidden, true, 'a non-owner never sees it');
+});
