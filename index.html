@@ -659,10 +659,14 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.65.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.66.0</span></div>
                     <button type="button" id="check-online-service" class="menu-btn">Check online connection</button>
                     <p id="service-check-result" role="status"></p>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
+                    <!-- Signing in again is offered right here in Settings, not only on
+                         the title screen, so a player who signed out can come back
+                         without hunting for the title menu. -->
+                    <button id="btn-settings-google-signin" class="menu-btn google-btn" type="button" hidden><span class="google-mark" aria-hidden="true">G</span> Sign in with Google</button>
                     <button id="btn-copy-player-id" class="menu-btn">Copy Player ID</button>
                     <hr class="settings-divider" aria-hidden="true">
                     <h4>Heroes</h4>
@@ -678,6 +682,26 @@
                     <p class="settings-note">Google is connected. Use Sign out or Delete account below.</p>
                     <button id="btn-delete-account" class="menu-btn danger-btn" type="button">Delete Google-linked account on this device</button>
                     </div>
+                    <fieldset id="admin-section" class="sound-studio admin-tools hidden" hidden aria-describedby="admin-tools-help">
+                        <legend>🛠️ Owner tools</legend>
+                        <p id="admin-tools-help" class="settings-note">Only the owner account sees this panel. Players are shown by hero name; no email or account identifier is ever displayed.</p>
+                        <p id="admin-status" role="status" aria-live="polite">Checking owner access…</p>
+                        <h4>Story clips</h4>
+                        <div id="admin-story-list"></div>
+                        <p class="settings-note">A published story cue replaces the bundled recording for that line, for every player.</p>
+                        <label for="admin-story-cue">Story line to replace</label>
+                        <select id="admin-story-cue"></select>
+                        <label for="admin-story-file">Recording file</label>
+                        <input id="admin-story-file" type="file" accept="audio/wav,audio/mpeg,audio/ogg,audio/mp4,audio/aac,audio/flac,audio/*">
+                        <button id="admin-story-publish" class="menu-btn" type="button">Publish this story recording</button>
+                        <p id="admin-story-status" role="status" aria-live="polite"></p>
+                        <h4>Christmas event</h4>
+                        <p id="admin-christmas-status">Reading the Christmas state…</p>
+                        <button id="admin-christmas-read" class="menu-btn" type="button">Read the Christmas status aloud</button>
+                        <h4>Players</h4>
+                        <div id="admin-players-list">Reading the player list…</div>
+                        <button id="admin-story-refresh" class="menu-btn" type="button">Refresh owner panel</button>
+                    </fieldset>
                     <fieldset id="sound-studio-section" class="sound-studio hidden" hidden aria-describedby="sound-studio-help">
                         <legend>🎚️ Sound Studio — owner only</legend>
                         <p id="sound-studio-help" class="settings-note">Upload your own recorded sound effect or music track. A published sound is heard by every player. Recorded files only: wav, mp3, ogg, m4a, aac or flac, up to 3 MB.</p>
@@ -688,6 +712,7 @@
                         <select id="sound-studio-kind">
                             <option value="sfx">Sound effect</option>
                             <option value="music">Music track</option>
+                            <option value="story">Story narration</option>
                         </select>
                         <label for="sound-studio-file">Recording file</label>
                         <input id="sound-studio-file" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/mp4,audio/aac,audio/flac,audio/*">
@@ -696,6 +721,10 @@
                         <div id="sound-studio-list" aria-label="Published sounds"></div>
                     </fieldset>
                     <hr class="settings-divider" aria-hidden="true">
+                    <!-- Guest-only recovery PIN. A Google account needs no PIN, so this
+                         whole box is hidden while Google is connected. It is its own
+                         element so hiding it never hides the account card itself. -->
+                    <div id="settings-pin-box">
                     <label for="settings-pin-input">Recovery PIN — exactly 6 digits, never share it</label>
                     <input id="settings-pin-input" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="e.g. 493815" aria-label="Six digit recovery PIN">
                     <button id="btn-set-pin" class="menu-btn">Create or update recovery PIN</button>
@@ -706,6 +735,7 @@
                     <button id="btn-login-pin" class="menu-btn">Sign in with Player ID and PIN</button>
                     </div>
                     <p id="settings-pin-status" class="settings-note" aria-live="polite"></p>
+                    </div>
                     <fieldset class="interface-settings" aria-describedby="interface-mode-help">
                         <legend>Game interface</legend>
                         <label for="setting-interface-mode">Interface mode</label>
@@ -730,6 +760,7 @@
                         <label for="setting-sfx-volume">Sound effects volume <output id="setting-sfx-volume-value" for="setting-sfx-volume">55%</output></label>
                         <input type="range" id="setting-sfx-volume" min="0" max="100" step="1" value="55" aria-label="Sound effects volume, 0 to 100 percent">
                         <label class="setting-toggle" for="setting-npc-voices"><input type="checkbox" id="setting-npc-voices" checked> NPC voices read every reply aloud</label>
+                        <button type="button" class="menu-btn" id="btn-play-story">▶︎ Play the opening story</button>
                         <label class="setting-toggle" for="setting-voice-enabled"><input type="checkbox" id="setting-voice-enabled"> Device voice and TTS on for narration</label>
                         <label for="setting-voice-volume">Device voice volume <output id="setting-voice-volume-value" for="setting-voice-volume">90%</output></label>
                         <input type="range" id="setting-voice-volume" min="0" max="100" step="1" value="90" aria-label="Device voice volume, 0 to 100 percent">
@@ -765,8 +796,9 @@
                         <a class="menu-btn" href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a>
                         <p class="settings-note">Use Send Feedback in Chat Rooms to contact the development team.</p>
                     </div>
-                    <button id="btn-cloud-save" class="menu-btn">☁️ Save to Cloud</button>
-                    <p id="cloud-save-result" role="status"></p>
+                    <!-- Progress is saved online automatically on every change; there is
+                         no manual cloud-save button any more. -->
+                    <p id="settings-autosave-note" class="settings-note">Progress, heroes and account details are saved online automatically while you play.</p>
                     <button id="btn-account-signout" class="menu-btn">Sign Out</button>
                 </div>
                 <button class="menu-btn close-btn">Close</button>
@@ -927,5 +959,7 @@
 <script defer src="distinct-places-v764.js"></script>
 <script defer src="custom-audio-v764.js"></script>
 <script defer src="sound-studio-v764.js"></script>
+<script defer src="story-intro-v766.js"></script>
+<script defer src="admin-tools-v766.js"></script>
 </body>
 </html>

@@ -20,7 +20,7 @@ const DEFAULT_PROJECT = 'black-sword-ultimate-43c4d';
 const BUCKET = 'game-audio';
 const MAX_AUDIO_BYTES = 3 * 1024 * 1024;
 const CUE_PATTERN = /^[a-z0-9][a-z0-9-]{1,40}$/;
-const KINDS = new Set(['sfx', 'music']);
+const KINDS = new Set(['sfx', 'music', 'story']);
 const MIME_EXT = {
   'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav',
   'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/ogg': 'ogg',
@@ -222,7 +222,7 @@ export async function handleRequest(request, env = {}) {
     const kind = String(body.kind || 'sfx').trim().toLowerCase();
     const mime = String(body.mime || '').toLowerCase();
     if (!CUE_PATTERN.test(cue)) return refuse('cue', 'Use 2–41 lowercase letters, numbers or dashes for the sound name.');
-    if (!KINDS.has(kind)) return refuse('kind', 'Choose sfx or music.');
+    if (!KINDS.has(kind)) return refuse('kind', 'Choose sfx, music or story.');
     if (!MIME_EXT[mime]) return refuse('mime', 'Recorded wav, mp3, ogg, m4a, aac or flac files only.');
     let bytes;
     try { bytes = toBase64Bytes(body.data); } catch { return refuse('data', 'The recording could not be read.'); }

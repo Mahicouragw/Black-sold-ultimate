@@ -445,7 +445,18 @@
             P._companionSeen = true;
             addCompanion(P.active);
             const c = P.active.companion || {};
-            say(G, N.t('quest.accepted', { name: questName(entry.quest_id), desc: questDesc(entry.quest_id), companion: c.name || '', title: c.title || '', xp: entry.reward_xp, gold: entry.reward_gold }), 'treasure', { sfx: ['pickup'] });
+            const accepted = N.t('quest.accepted', { name: questName(entry.quest_id), desc: questDesc(entry.quest_id), companion: c.name || '', title: c.title || '', xp: entry.reward_xp, gold: entry.reward_gold });
+            // When the court has a recorded story clip for this quest, the clip is
+            // the voice. The same words still go into the story log, silently, so
+            // the player never hears two voices at once.
+            if (window.StoryIntro?.QUESTS?.[entry.quest_id]) {
+                G._audioNarrationHandled = true;
+                try { G.addNarrative(accepted, 'treasure'); } finally { G._audioNarrationHandled = false; }
+                window.MusicSystem?.playSFX?.('pickup');
+                window.StoryIntro.playQuest(entry.quest_id);
+            } else {
+                say(G, accepted, 'treasure', { sfx: ['pickup'] });
+            }
             G.save?.();
         }
 

@@ -146,19 +146,26 @@ test('Settings rechecks the same player once without switching screens or accept
     assert.equal(btn.hasAttribute('aria-disabled'),false);
 });
 
-test('manual backup distinguishes device persistence from an acknowledged write', async t => {
+test('every normal save keeps the device copy and asks the account for a write', async t => {
+    // 7.66.0 removed the manual "Save to Cloud" button: saving is automatic, so
+    // this test follows the save that actually happens while playing.
     const {window,O}=await start(t,{user:googleUser('backup-check','Asha')});
     await O.init(); const G=window.Game, d=window.document;
+    assert.equal(d.getElementById('btn-cloud-save'),null,'no manual save button exists');
+    assert.equal(d.getElementById('cloud-save-result'),null,'and no manual status line');
     G.state.activeHeroId='hero-check'; G.state.player={name:'Asha'};
     G.getSaveData=()=>({player:{name:'Asha'},location:'forest'});
-    let uploads=0,finish;
-    O.saveGame=()=>{uploads++;return new Promise(resolve=>{finish=resolve;});};
-    const status=d.querySelector('#cloud-save-result');
-    const first=G.requestCloudBackup();await G.requestCloudBackup();
-    assert.equal(uploads,1);assert.match(status.textContent,/Waiting for cloud confirmation/);
-    assert.equal(G.getRoster().heroes['hero-check'].location,'forest');
-    finish(false);await first;assert.match(status.textContent,/Saved on this device\. Cloud backup not confirmed/);
-    const second=G.requestCloudBackup();finish(true);await second;assert.match(status.textContent,/server confirmed/);
-    G.persistLocalRoster=()=>{throw Error('quota');};await G.requestCloudBackup();
-    assert.match(status.textContent,/Device save failed/);assert.equal(uploads,2);
+    const uploads=[];
+    O.saveGame=async data=>{uploads.push(data);return true;};
+    assert.equal(G.save(),true,'the save succeeded');
+    const device=JSON.parse(window.localStorage.getItem(G.state.rosterKey));
+    assert.equal(device.heroes['hero-check'].location,'forest','the device copy is written first');
+    assert.equal(uploads.length,1,'the same save also goes to the account');
+    assert.equal(uploads[0].heroes['hero-check'].location,'forest','the cloud write carries the roster');
+    // A failed or slow cloud write must never cost the player the device copy.
+    O.saveGame=async()=>false;
+    G.state.location='temple';
+    G.getSaveData=()=>({player:{name:'Asha'},location:'temple'});
+    assert.equal(G.save(),true,'the device still saves');
+    assert.equal(JSON.parse(window.localStorage.getItem(G.state.rosterKey)).heroes['hero-check'].location,'temple','the newest device copy wins locally');
 });

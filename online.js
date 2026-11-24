@@ -681,7 +681,7 @@ const OnlineSystem = {
             this.status=`Online — Google linked; welcome back, ${heroName}`;
             this.announceToPlayer(wasMerging
                 ?(rosterInfo.mergeSynced===false
-                    ?`Your guest heroes are merged on this device, but cloud confirmation failed. Keep the game online and use Save to Cloud. Welcome back, ${heroName}.`
+                    ?`Your guest heroes are merged on this device, but cloud confirmation failed. Keep the game online; progress saves itself. Welcome back, ${heroName}.`
                     :`Your guest heroes were merged into your Google account. Welcome back, ${heroName}. Taking you into the adventure…`)
                 :`You signed in again. Thank you! Welcome back, ${heroName}. Taking you into the adventure…`);
             const heroId=rosterInfo.activeHeroId&&rosterInfo.heroes[rosterInfo.activeHeroId]?rosterInfo.activeHeroId:Object.keys(rosterInfo.heroes)[0];
@@ -927,6 +927,9 @@ const OnlineSystem = {
         this.ready=false;this.user=null;this.profile=null;this.linked=false;
         // The signed-out device goes back to the guest saves; this account's heroes stay under its own key.
         window.Game?.forgetAccount?.();
+        // Clear the signed-out account's hero from the running page before any
+        // reload, so Settings can never show the previous player's name.
+        window.Game?.leaveAccountSession?.();
         this.clearGoogleFlow();
         try{localStorage.removeItem('black_sword_recovered_by_id');}catch{}
         if(reload)location.reload();
@@ -1342,7 +1345,10 @@ const OnlineSystem = {
     },
 
     updateIndicators() {
-        const activeName = window.Game?.state?.player?.name || this.profile?.display_name || 'No hero selected';
+        // The hero row names the hero that is loaded in the game right now. It
+        // never borrows the Google account's display name: after signing out the
+        // previous account's name must disappear, not linger on screen.
+        const activeName = window.Game?.state?.player?.name || 'No hero selected';
         const line = `${activeName} • ${this.status}`;
         // Static status area only. Writing identical text would re-fire the live
         // region and interrupt TalkBack on every render, so it is skipped.
@@ -1360,6 +1366,15 @@ const OnlineSystem = {
                 signIn.innerHTML = '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
             }
         }
+        // The same Google sign-in is offered inside Settings. A player who signed
+        // out must not have to leave Settings to sign back in, and a signed-in
+        // player must never see a second sign-in button.
+        const settingsSignIn = document.getElementById('btn-settings-google-signin');
+        if (settingsSignIn) {
+            const show = !this.linked && !this.connecting;
+            settingsSignIn.hidden = !show;
+            settingsSignIn.disabled = !show;
+        }
         const code = document.getElementById('settings-player-code');
         if (code) code.textContent = this.getPlayerCode();
         const heroName = document.getElementById('settings-hero-name');
@@ -1372,11 +1387,10 @@ const OnlineSystem = {
             // The player's own name, not an email or an account link: this line
             // answers "which hero am I playing?" — the Google account follows it.
             const hero = window.Game?.state?.player?.name || '';
-            const player = this.user?.displayName || '';
             account.textContent = this.linked
-                ? `Signed in with Google${hero ? ' — hero ' + hero : player ? ' — ' + player : ''}`
+                ? `Signed in with Google${hero ? ' — hero ' + hero : ''}`
                 : this.connecting ? 'Checking sign-in…'
-                : this.ready ? 'Guest account — heroes stay on this device'
+                : this.ready ? 'Guest account — no Google sign-in. Progress is saved online to this device’s guest account.'
                 : 'Local guest — not signed in';
             account.parentElement.hidden = false;
         }
@@ -1406,15 +1420,26 @@ const OnlineSystem = {
         // Copy Player ID button — hide after login
         const copyIdBtn = document.getElementById('btn-copy-player-id');
         if (copyIdBtn) copyIdBtn.hidden = Boolean(this.linked);
-        // PIN setup section — hide after login
-        const pinSetup = document.getElementById('btn-set-pin')?.parentElement;
-        if (pinSetup) pinSetup.hidden = Boolean(this.linked);
-        const pinLabel = document.querySelector('label[for="settings-pin-input"]');
-        if (pinLabel) pinLabel.hidden = Boolean(this.linked);
-        const pinInput = document.getElementById('settings-pin-input');
-        if (pinInput) pinInput.hidden = Boolean(this.linked);
+        // The PIN belongs to guests only. Hide the dedicated PIN box, never its
+        // parent card: hiding the card used to hide the whole settings page.
+        const pinBoxAfter = document.getElementById('settings-pin-box');
+        if (pinBoxAfter) { pinBoxAfter.hidden = Boolean(this.linked); pinBoxAfter.classList.toggle('hidden', Boolean(this.linked)); }
+        // A guest has nothing to sign out of, so the button only exists while a
+        // Google account is really linked.
         const signOut = document.getElementById('btn-account-signout');
-        if (signOut) signOut.hidden = false;
+        if (signOut) {
+            signOut.hidden = !this.linked;
+            signOut.disabled = !this.linked;
+        }
+        const pinBox = document.getElementById('settings-pin-box');
+        if (pinBox) {
+            pinBox.hidden = Boolean(this.linked);
+            pinBox.classList.toggle('hidden', Boolean(this.linked));
+        }
+        const autosave = document.getElementById('settings-autosave-note');
+        if (autosave) autosave.textContent = this.linked
+            ? 'Progress, heroes and account details are saved to your Google account automatically while you play.'
+            : 'Progress and heroes are saved automatically while you play.';
         this.populateVoiceSelectors();
         this.updateHeroEntryPoints();
     },
@@ -1425,6 +1450,8 @@ const OnlineSystem = {
     }
 };
 window.OnlineSystem = OnlineSystem;
+const settingsGoogleButton = document.getElementById('btn-settings-google-signin');
+settingsGoogleButton?.addEventListener('click', () => OnlineSystem.signInGoogle());
 const serviceCheckButton = document.getElementById('check-online-service');
 serviceCheckButton?.addEventListener('click', () => OnlineSystem.checkOnlineService());
 const labelServiceCheck = () => {
