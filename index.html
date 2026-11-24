@@ -659,7 +659,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.63.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.64.0</span></div>
                     <button type="button" id="check-online-service" class="menu-btn">Check online connection</button>
                     <p id="service-check-result" role="status"></p>
                     <p id="settings-account-note" class="settings-note">Player ID is private. Others see your hero name.</p>
@@ -678,6 +678,23 @@
                     <p class="settings-note">Google is connected. Use Sign out or Delete account below.</p>
                     <button id="btn-delete-account" class="menu-btn danger-btn" type="button">Delete Google-linked account on this device</button>
                     </div>
+                    <fieldset id="sound-studio-section" class="sound-studio hidden" hidden aria-describedby="sound-studio-help">
+                        <legend>🎚️ Sound Studio — owner only</legend>
+                        <p id="sound-studio-help" class="settings-note">Upload your own recorded sound effect or music track. A published sound is heard by every player. Recorded files only: wav, mp3, ogg, m4a, aac or flac, up to 3 MB.</p>
+                        <p id="sound-studio-status" role="status" aria-live="polite">Checking owner access…</p>
+                        <label for="sound-studio-cue">Sound name — for example door, coin or battle-theme</label>
+                        <input id="sound-studio-cue" autocomplete="off" placeholder="door">
+                        <label for="sound-studio-kind">What is this recording?</label>
+                        <select id="sound-studio-kind">
+                            <option value="sfx">Sound effect</option>
+                            <option value="music">Music track</option>
+                        </select>
+                        <label for="sound-studio-file">Recording file</label>
+                        <input id="sound-studio-file" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/ogg,audio/mp4,audio/aac,audio/flac,audio/*">
+                        <audio id="sound-studio-preview" controls hidden aria-label="Preview of the recording you chose"></audio>
+                        <button id="sound-studio-publish" class="menu-btn primary" type="button">Publish this recording</button>
+                        <div id="sound-studio-list" aria-label="Published sounds"></div>
+                    </fieldset>
                     <hr class="settings-divider" aria-hidden="true">
                     <label for="settings-pin-input">Recovery PIN — exactly 6 digits, never share it</label>
                     <input id="settings-pin-input" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="e.g. 493815" aria-label="Six digit recovery PIN">
@@ -907,5 +924,8 @@
 <script defer src="progress-guards-v762.js"></script>
 <script defer src="online-required-v763.js"></script>
 <script defer src="audio-audit-v763.js"></script>
+<script defer src="distinct-places-v764.js"></script>
+<script defer src="custom-audio-v764.js"></script>
+<script defer src="sound-studio-v764.js"></script>
 </body>
 </html>

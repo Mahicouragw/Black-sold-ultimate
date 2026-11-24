@@ -1369,12 +1369,15 @@ const OnlineSystem = {
         // reload, and a guest knows the heroes are stored on this device only.
         const account = document.getElementById('settings-account-status');
         if (account) {
-            const email = this.user?.email || this.profile?.email || '';
+            // The player's own name, not an email or an account link: this line
+            // answers "which hero am I playing?" — the Google account follows it.
+            const hero = window.Game?.state?.player?.name || '';
+            const player = this.user?.displayName || '';
             account.textContent = this.linked
-                ? `Google account${email ? ' — ' + email : ' — connected'}`
+                ? `Signed in with Google${hero ? ' — hero ' + hero : player ? ' — ' + player : ''}`
                 : this.connecting ? 'Checking sign-in…'
-                : this.ready ? 'Guest account — not linked to Google (heroes stay on this device)'
-                : 'Local/offline guest — not linked to Google';
+                : this.ready ? 'Guest account — heroes stay on this device'
+                : 'Local guest — not signed in';
             account.parentElement.hidden = false;
         }
         // Player ID row — hide after login
@@ -1394,8 +1397,8 @@ const OnlineSystem = {
             linkedBox.classList.toggle('hidden', !this.linked);
             const note = linkedBox.querySelector('.settings-note');
             if (note && this.linked) {
-                const email = this.user?.email || this.profile?.email || '';
-                note.textContent = `Google is connected${email ? ' as ' + email : ''}. Cloud saves, quests, blessings and heroes belong to this account. Use Sign out or Delete account below.`;
+                const hero = window.Game?.state?.player?.name || '';
+                note.textContent = `Google is connected${hero ? ' to ' + hero : ''}. Cloud saves, quests, blessings and heroes belong to this account. Use Sign out or Delete account below.`;
             }
         }
         const pinLogin = document.getElementById('settings-pin-login');

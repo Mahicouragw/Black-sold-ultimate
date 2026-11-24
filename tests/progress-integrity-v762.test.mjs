@@ -172,11 +172,14 @@ test('settings show the real Google account instead of hiding it', async t => {
     const { w } = await ready(t);
     const online = w.OnlineSystem;
     online.connecting = false;
-    online.linked = true; online.ready = true; online.user = { id: 'u1', email: 'player@example.com' };
+    w.Game.state.player = { name: 'Mahi Couragw', hp: 10, maxHp: 10 };
+    online.linked = true; online.ready = true; online.user = { id: 'u1', email: 'player@example.com', displayName: 'Mahi' };
     online.updateIndicators();
     const account = w.document.getElementById('settings-account-status');
     assert.equal(account.parentElement.hidden, false);
-    assert.match(account.textContent, /player@example\.com/);
+    assert.match(account.textContent, /Signed in with Google/);
+    assert.match(account.textContent, /Mahi Couragw/, 'the hero name is shown, not the email');
+    assert.doesNotMatch(account.textContent, /player@example\.com/, 'the email is not published on screen');
     assert.equal(w.document.getElementById('btn-google-signin').hidden, true);
     online.linked = false; online.user = { id: 'u2', identities: [] };
     online.updateIndicators();
