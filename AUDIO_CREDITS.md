@@ -168,7 +168,7 @@ for this one feature.
 - Files: `assets/story/intro-01.mp3` … `assets/story/intro-06.mp3`,
   `assets/story/palace-royal-hunt.mp3`, `assets/story/palace-healers-road.mp3`,
   `assets/story/palace-border-watch.mp3`, `assets/story/palace-scholars-errand.mp3`
-  (and `assets/story/palace-kings-champion.mp3` once recorded).
+  and `assets/story/palace-kings-champion.mp3` — eleven lines, one file each.
 - Licence: generated for this game; no third-party recording is used and no
   external speech API is called while the game plays. The files ship with the
   game, so no network speech service is required.

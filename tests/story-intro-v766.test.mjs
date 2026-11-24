@@ -61,7 +61,15 @@ test('(01/10) the opening story has six spoken lines and every line has a file',
 });
 
 test('(01b/11) every shipped story line is a real mp3 file on disk', async () => {
-    const cues = ['intro-01','intro-02','intro-03','intro-04','intro-05','intro-06','palace-royal-hunt','palace-healers-road','palace-border-watch','palace-scholars-errand'];
+    const cues = ['intro-01','intro-02','intro-03','intro-04','intro-05','intro-06','palace-royal-hunt','palace-healers-road','palace-border-watch','palace-scholars-errand','palace-kings-champion'];
+    // The list above must match the module exactly: a new spoken line cannot be
+    // added without its recording, and a recording cannot be orphaned.
+    const { createRuntime: rt } = await import('../scripts/load-world.mjs');
+    const world = await rt();
+    try {
+        const shipped = [...world.window.StoryIntro.INTRO.map(line => line.cue), ...Object.values(world.window.StoryIntro.QUESTS).map(entry => entry.cue)].sort();
+        assert.deepEqual(Array.from(cues).sort(), shipped, 'every spoken cue is listed here');
+    } finally { world.dom.window.close(); }
     for (const cue of cues) {
         const path = `assets/story/${cue}.mp3`;
         const info = await stat(path);
