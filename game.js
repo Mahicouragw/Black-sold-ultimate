@@ -3423,6 +3423,10 @@ const Game = {
         this.addNarrative("encounters on/off - Full or reduced forest encounters", 'system');
         this.addNarrative("storage / throw [item] / take loot [item] - Manual item management", 'system');
         this.addNarrative("enchantment shop / enchant [item] [attribute] - Permanent equipment runes", 'system');
+        this.addNarrative("signs / rune shop - Sixteen signs for diamonds, sold beside the Christmas decorations", 'system');
+        this.addNarrative("enchant [item] - Bind three signs into a weapon, armour piece or piece of jewellery; the trio names it", 'system');
+        this.addNarrative("incense - Light a twist of it and let the smoke do what it does", 'system');
+        this.addNarrative("christmas tree / use christmas tree - Tonight's dressing on the Christmas map", 'system');
         this.addNarrative("watch/view/examine [target] - Inspect monsters, companions, and items", 'system');
         this.addNarrative("give/take items to/from companions; sell [item]; revive hero", 'system');
         this.addNarrative("inventory weapon/armor/potion/item/gold; buy/sell [quantity] [item]", 'system');

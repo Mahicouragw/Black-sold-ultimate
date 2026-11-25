@@ -24,7 +24,7 @@
         const place=id(r,c), exits={};
         if(r<4)exits.north=id(r+1,c);if(r>0)exits.south=id(r-1,c);if(c<4)exits.east=id(r,c+1);if(c>0)exits.west=id(r,c-1);
         if(place===id(0,2))exits.south=square;
-        const detail=place===lobby?'A tiny bell is hidden behind the clock. Say Christmas ring bell.':place===tree?'Its empty branches await glass balls, ribbon and a star. Say Christmas decorate.':wild.has(place)?'Glass-frost prowlers stalk the little lantern fawns. Say Christmas protect to stand guard.':'Follow the brass stars set into the snowy pavement.';
+        const detail=place===lobby?'A tiny bell is hidden behind the clock. Say Christmas ring bell.':place===tree?'Its branches wait for glass balls, ribbon and a star. Say Christmas decorate, and say christmas tree for tonight’s dressing.':wild.has(place)?'Glass-frost prowlers stalk the little lantern fawns. Say Christmas protect to stand guard.':'Follow the brass stars set into the snowy pavement.';
         rooms.push([place,blocks[r][c],detail,exits]);
     }
     rooms.push([workshop,'Hidden Elf Workshop','An elf packs healing lights. Say Christmas recruit to ask for battle help.',{up:lobby}]);

@@ -2,6 +2,39 @@
 
 An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Features real royalty-free ambient music, enhanced combat, guilds, quests, and more!
 
+## The sixteen signs, and the tree on the Christmas map
+
+Sixteen runes exist and no more: Strength, Dexterity, Heaven, Earth, Fire,
+Water, 4, Infinite, War, Magic, Hope, Death, Grace, Health, Air and Dignity.
+Three of them are bound into one weapon, one piece of armour or one piece of
+jewellery, and the item takes its name from the trio — Fire, Magic and Hope
+make a *Hearthfire of Hope*, and binding the same three again raises it to
+Exalted and then Ascended, with the last rank the item's evolution.
+
+A blade bound with **Sign of Death** drinks life from what it strikes and
+returns part of it as the hero's own HP; add Water or Infinite and some of it
+comes back as MP as well. Death, Magic and Infinite together wake a goblin
+inside the metal, which climbs out in the first round of a fight and bites
+three times before folding back in.
+
+Signs are bought with diamonds, and they stand on **one counter** with the
+Christmas decorations — there are no shelves or stages to work through. The
+counter is at the Five-Runes Enchantery in Kaliwasch and on Starlight Bell
+Court while the fair is open: `rune shop`, `signs`, `enchant <item>`.
+Battle drops are rare — an ordinary monster practically never carries a sign —
+and every diamond and every sign found is announced in the feed.
+
+Battles rarely leave diamonds or signs behind; the **incense** sold beside them
+is a mystery on purpose: light it (`incense`) and the room is a little kinder
+to you for a while, and its description says nothing more than that.
+
+On the Christmas map the Grand Christmas Tree asks for a particular dressing
+each night: thirty tree balls, a run of ten, twenty or fifty lights, garland
+and bells. Arrive at the tree and a **Use Christmas Tree** action appears, with
+one action per decoration you carry. Every piece hung rings a recorded bell,
+and the finished tree answers with a recorded fanfare and leaves a present
+among the branches. `christmas tree` says what tonight wants.
+
 ## Christmas City and Advent Row
 
 `ADVENT_ROW.md` documents the December 1–25 city, the twenty-five date-locked
