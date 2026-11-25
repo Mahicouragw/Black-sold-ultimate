@@ -120,10 +120,12 @@
         sfx('game-win');
         if (p) {
             p.diamonds = (p.diamonds || 0) + 2;
-            const present = w.WorldData.items.wrapped_parcel;
-            if (present) game.addItemToInventory('wrapped_parcel', { ...present });
+            for (const id of ['gingerbread', 'spiced_cider']) {
+                const treat = w.WorldData.items?.[id];
+                if (treat) game.addItemToInventory(id, { ...treat });
+            }
         }
-        game.addNarrative(`The last piece goes up and the whole tree answers at once: every bulb wakes, the bells find one note between them, and the square is suddenly much brighter than it was. A wrapped present and two diamonds are tucked among the branches. The tree is finished for tonight.`, 'treasure');
+        game.addNarrative(`The last piece goes up and the whole tree answers at once: every bulb wakes, the bells find one note between them, and the square is suddenly much brighter than it was. A gingerbread man and a cup of hot cider are tucked among the branches, still warm, and two diamonds with them. The tree is finished for tonight.`, 'treasure');
         game.updateHUD?.();
         game.save?.();
     }

@@ -117,7 +117,7 @@ test('a purse that is too light is told exactly how much is missing', async t =>
     const text = w.document.getElementById('narrative').textContent;
     assert.match(text, /costs 100 diamonds/i);
     assert.match(text, /80 diamonds are still missing/i);
-    assert.match(text, /gift shop/i, 'a way forward is offered');
+    assert.match(text, /Wrapped Parcel|rune shop|bounty board/i, 'a way forward is offered');
     assert.match(text, /diamonds/i);
 });
 

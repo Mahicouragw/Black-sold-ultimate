@@ -14,27 +14,35 @@ connection returns the stored Google session signs itself back in — on the
 seconds. "Continue with Google" appears in exactly one case: the saved sign-in
 has genuinely expired, and the line then says so.
 
-## A fair gift shop: printed contents, and diamonds that are only spent
+## Presents paid for in diamonds, and paper that keeps its secrets
 
-The Wrapped Parcel is no longer a lucky dip. Every present is a printed card, and
-the paper holds exactly what the card says — the same goods for every hero, every
-time, so nobody can farm the rarest currency by buying wrapping paper:
+The Wrapped Parcel sells three presents, and every one of them is paid for in
+diamonds: **10**, **25** and **50**. A present is worth exactly what it cost, so
+a ten-diamond parcel is a ten-diamond parcel in paper, a twenty-five holds
+twenty-five, and a fifty holds fifty. Nothing can be farmed by buying wrapping
+paper: buy one and open it and you are exactly where you started, minus the
+wrapping.
 
-| Present | Price | Holds |
-| --- | --- | --- |
-| Wrapped Parcel | 25 rupees | 1 candy cane, 1 tree ball |
-| Ribboned Gift | 60 rupees | gingerbread man, spiced cider, 3 tree balls |
-| Grand Present | 130 rupees | winter scarf, candy cane, lights, garland |
-| Emberglass Present | 4 diamonds | 2 runs of lights, and the **Emberglass Locket** (+10 max HP) |
-| Frostbell Present | 6 diamonds | a Christmas bell, and the **Frostbell Charm** (+2 defence) |
-| Silver Star Present | 9 diamonds | garland, a bell, and the **Silver Star Pendant** (+10 max MP) |
+What a present takes into that paper can be carried to somebody else. Buy one,
+walk across the world, and say **"gift Raven"** (or "gift parcel to Raven"): it is
+wrapped a second time in plainer paper and sent along the world's road, and the
+hero who takes it up keeps everything inside. Presents are ordinary items, so
+they travel through the same server-verified trade road as anything else, and
+nothing is ever duplicated by a double click.
 
-The three keepsakes are **sold once to each hero**: the blessing is written onto
-the hero for good, the card then reads *Already yours*, and the counter takes no
-diamonds for a second one. No present contains a diamond at all — the shop takes
-diamonds, it never mints them. Diamonds are earned in the hands of fallen
-monsters and bosses, in the arena, behind the Christmas doors and at the tree,
-and on the twelfth-night bounty board.
+**Nothing on the counter says what is in the paper.** No card prints its
+contents, no message names an amount, the item itself carries no list, and the
+diamond report and the purse never mention the shop's paper at all. A player
+finds out by unwrapping one, or by being handed one. That is the point: a shop
+that explains its surprises has none left.
+
+There is no dice in the gift shop. A present is never a lottery, and the first
+time a hero unwraps each of the three kinds, the paper leaves something behind
+that no card ever promised — once in a life, never twice.
+
+Crier Bell wraps his own parcels (his `Crier’s Parcel` and `Crier’s Hamper`) for
+the twelfth-night gift exchange: Christmas things, worth less than the gift he
+takes, and never a diamond. A gift that paid would turn his exchange into a mine.
 
 ## The purse, and diamonds everywhere rare money belongs
 
@@ -290,7 +298,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.jso
 - 🏙 A visible City Directory with shortest physical routes to four gates, four streets, houses, Temple, Palace, Guild, Tavern, Park, Marketplace, Shop and Enchantery
 - 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no teleport shortcuts
 - 🏠 Purchasable private eight-room houses, bought and kept with diamonds, a monthly estate due with auto-pay, an agent's ledger, owner-only storage, and public outdoor drops
-- 🎁 The Wrapped Parcel gift shop: presents bought with rupees, each card printed with its exact contents, plus three keepsake presents paid for in diamonds — one per hero, never a lucky dip
+- 🎁 The Wrapped Parcel: presents at 10, 25 and 50 diamonds, each worth exactly its price and giveable to another hero with "gift <hero>", with nothing on a card ever saying what the paper keeps
 - 🕯️ Twelfth Night (26–31 December): the candle row, carols with Crier Bell, a gift exchange graded by generosity, an identical frost-prowler bounty board, and a tree of lights that gives nothing back
 - 🌾 Distinct plains, rivers, farms, graveyards, mountain roads and hostile tundra routes
 - 🛒 Quantity-based shop lists with item counts and Buy, Examine, and Compare actions

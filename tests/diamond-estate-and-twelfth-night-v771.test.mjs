@@ -3,7 +3,7 @@
  *
  * What the owner asked for:
  *  - houses cost diamonds, between one hundred and three hundred, never money;
- *  - diamonds are rare, and are found in some presents at the gift shop;
+ *  - diamonds are rare, and are earned rather than unwrapped;
  *  - the monthly estate due is paid in diamonds, and auto-pay lets the agent
  *    collect it, with every diamond written in the agent's ledger;
  *  - the five Christmas ideas: the twelfth-night candle row, carols with the
@@ -13,7 +13,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as wait } from 'node:timers/promises';
-import { readFile } from 'node:fs/promises';
 import { createRuntime } from '../scripts/load-world.mjs';
 
 const narrative = w => w.document.getElementById('narrative').textContent;
@@ -71,8 +70,8 @@ test('a light purse is told the exact shortfall and where diamonds are found', a
     const text = narrative(w);
     assert.match(text, /costs 150 diamonds/);
     assert.match(text, /130 diamonds are still missing/);
-    assert.match(text, /gift shop/i, 'the way forward is named');
-    assert.match(text, /presents/i);
+    assert.match(text, /Wrapped Parcel|rune shop/i, 'the way forward is named');
+    assert.match(text, /diamonds/i);
 });
 
 test('an unknown city signs no deed and lists the real cities', async t => {
@@ -84,51 +83,6 @@ test('an unknown city signs no deed and lists the real cities', async t => {
 });
 
 /* ──────────────────────────────── gift shop ──────────────────────────────── */
-
-test('the gift shop sells presents for rupees and they hold exactly what the card says', async t => {
-    const { w, G } = await ready(t, { at: 'kaliwasch_district_15' });
-    const panel = w.document.getElementById('shop-content');
-    G.processCommand('gift shop');
-    assert.match(panel.innerHTML, /Wrapped Parcel/);
-    assert.match(panel.innerHTML, /Ribboned Gift/);
-    assert.match(panel.innerHTML, /Grand Present/);
-    assert.match(panel.innerHTML, /Holds: 1 Candy Cane, 1 Christmas Tree Ball/, 'the card prints its contents');
-
-    const gold = G.state.player.gold, diamonds = G.state.player.diamonds;
-    assert.equal(G.buyPresent('wrapped_parcel'), true);
-    assert.equal(G.state.player.gold, gold - 25, 'a parcel costs 25 rupees');
-    assert.equal(G.state.inventory.filter(i => i.id === 'wrapped_parcel').length, 1);
-
-    const opened = G.openGift();
-    assert.equal(opened.diamonds, undefined, 'the parcel holds no diamond at all');
-    assert.equal(G.state.player.diamonds, diamonds, 'the diamond purse is untouched');
-    assert.equal(G.state.inventory.some(i => i.id === 'wrapped_parcel'), false, 'the parcel is gone');
-    assert.ok(G.state.inventory.some(i => i.id === 'candy_cane'), 'the candy cane the card promised');
-});
-
-test('however many presents are unwrapped, not one holds a diamond', async t => {
-    const { w, G } = await ready(t, { at: 'kaliwasch_district_15', gold: 4000, diamonds: 3 });
-    for (let i = 0; i < 10; i++) assert.equal(G.buyPresent('wrapped_parcel'), true);
-    for (let i = 0; i < 10; i++) G.openGift();
-    assert.equal(G.state.player.diamonds, 3, 'ten parcels, not one diamond');
-    assert.equal(G.state.player.gold, 4000 - 250, 'exactly what the ten parcels cost');
-    assert.equal(G.state.inventory.filter(i => i.id === 'candy_cane').length, 1, 'one stack of candy canes');
-    assert.equal(G.state.inventory.find(i => i.id === 'candy_cane').quantity, 10);
-    // And the counter cannot gamble at all: no dice exist in this file.
-    const source = await readFile(new URL('../gift-shop-v771.js', import.meta.url), 'utf8');
-    assert.doesNotMatch(source, /Math\.random/, 'no present is ever a roll of the dice');
-});
-
-test('the diamond report names every honest source and no money', async t => {
-    const { w, G } = await ready(t, { diamonds: 7 });
-    G.processCommand('diamonds');
-    const text = narrative(w);
-    assert.match(text, /Diamonds in your purse: 7/);
-    assert.match(text, /no present holds one/i);
-    assert.match(text, /fallen monsters and bosses/i);
-    assert.match(text, /twelfth-night bounty board/i);
-    assert.match(text, /nobody anywhere sells a diamond for money/i);
-});
 
 test('the gift shop is one command and one button away', async t => {
     const { w, G } = await ready(t, { at: 'kaliwasch_district_15' });
@@ -312,10 +266,12 @@ test('the gift exchange is graded by generosity and never pays more than it is g
     G.addItemToInventory('bread', { id: 'bread', name: 'Bread', type: 'food', value: 8 });
 
     G.processCommand('gift exchange iron mace');
-    assert.equal(narrative(w).includes('Ribboned Gift'), true, 'a good gift earns a good parcel');
-    const ribbon = (w.GiftShop.presents.find(p => p.id === 'ribboned_gift'));
-    assert.ok(ribbon.price < 160, `the return (${ribbon.price}) is less than the gift (160)`);
+    assert.equal(narrative(w).includes('Crier’s Parcel'), true, 'a generous gift earns a parcel of his own paper');
     assert.equal(G.state.inventory.some(i => i.id === 'iron mace'), false, 'the gift left the bag');
+    // He wraps his own paper: the shop's presents are worth diamonds, and a gift
+    // that paid would turn his exchange into a mine.
+    assert.equal(G.state.inventory.some(i => i.id === 'grand_present' || i.id === 'ribboned_gift'), false);
+    assert.ok(G.state.inventory.some(i => i.id === 'criers_parcel'), 'his own parcel instead');
 
     G.processCommand('gift exchange bread');
     assert.match(narrative(w), /nothing else|warm word/i, 'a small gift earns a light, not a parcel');

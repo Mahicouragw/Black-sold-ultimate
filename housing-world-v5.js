@@ -242,7 +242,7 @@
         const price = city.diamonds, held = p.diamonds || 0;
         if (held < price) {
             const short = price - held;
-            this.addNarrative(`The ${city.label} deed costs ${price} diamonds; you carry ${held}, so ${short} diamonds are still missing. Diamonds are rare and always earned: in the hands of fallen monsters and bosses, in the arena, behind the Christmas doors and at the tree, and on the twelfth-night bounty board. The gift shop takes diamonds for its keepsake presents and pays none out. Say "diamonds" to hear every way to earn one.`, 'system');
+            this.addNarrative(`The ${city.label} deed costs ${price} diamonds; you carry ${held}, so ${short} diamonds are still missing. Diamonds are rare and always earned: in the hands of fallen monsters and bosses, in the arena, behind the Christmas doors and at the tree, and on the twelfth-night bounty board. The estate agent and the rune shop take them too, and so does the Wrapped Parcel. Say "diamonds" to hear every way to earn one.`, 'system');
             return false;
         }
         p.diamonds -= price;

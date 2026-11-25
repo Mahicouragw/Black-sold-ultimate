@@ -24,8 +24,8 @@
         },
         {
             key: 'gold', icon: '🪙', label: 'Rupees',
-            line: 'Everyday money: market stalls, decorations, presents, ferries.',
-            buys: 'Goods, presents, decorations, travel'
+            line: 'Everyday money: market stalls, decorations, ferries.',
+            buys: 'Goods, decorations, travel'
         },
         {
             key: 'rubies', icon: '🔴', label: 'Rubies',
@@ -48,7 +48,7 @@
             'The Arena counts them out at every twenty-fifth wave.',
             'Behind the Christmas doors, in Santa’s sack, and at the foot of the Grand Christmas Tree when it is finished for the night.',
             'The twelfth-night bounty board pays in them for the frost-prowlers.',
-            'Nothing else mints one: no present holds a diamond, and nobody sells one for rupees. The gift shop takes diamonds, for its three keepsake presents.'
+            'Nobody sells a diamond for rupees. The estate agent takes them for a deed, the rune shop for its signs, and the Wrapped Parcel asks for them across its counter.'
         ];
         const due = typeof game.houseDueNow === 'function' ? game.houseDueNow() : 0;
         if (due) rows.push(`The estate agent is owed ${num(due)} diamond${due === 1 ? '' : 's'} this month.`);

@@ -187,10 +187,12 @@
         const item = bag.find(i => String(i.name || '').toLowerCase().includes(q) || String(i.id || '').toLowerCase().includes(q));
         if (!item) { say(this, `You carry no ${q}. Say "gift exchange" to see what you have that is worth giving.`, 'system'); return false; }
         const value = worth(item);
+        // The crier wraps his own parcels: Christmas things, never the shop's
+        // paper. A present from the counter is worth diamonds, and a gift that
+        // pays would make his exchange a mine.
         const parcels = w.GiftShop?.presents || [];
-        const tier = value >= 200 ? parcels.find(p => p.id === 'grand_present')
-            : value >= 90 ? parcels.find(p => p.id === 'ribboned_gift')
-                : value >= 45 ? parcels.find(p => p.id === 'wrapped_parcel') : null;
+        const tier = value >= 200 ? parcels.find(p => p.id === 'criers_hamper')
+            : value >= 45 ? parcels.find(p => p.id === 'criers_parcel') : null;
         item.quantity -= 1;
         if (item.quantity <= 0) (this.state.inventory || []).splice(this.state.inventory.indexOf(item), 1);
         if (!tier) {
