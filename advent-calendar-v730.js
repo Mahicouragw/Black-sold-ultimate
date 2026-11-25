@@ -135,7 +135,10 @@
     const festivalOpen = date => w.SeasonalEvents.activeEvents(date).some(e => e.id === 'christmas');
     const today = date => w.SeasonalEvents.parts(date || new Date());
     /** The only rule that opens a numbered door: the real India-time date. */
-    const doorOpen = (n, date) => { const t = today(date); return festivalOpen(date) && t.d === n; };
+    // A door opens on its own night and stays open for the rest of the festival:
+    // a hero who arrives late can still walk every door, and Santa's present is
+    // never out of reach because of a missed evening. Future doors stay sealed.
+    const doorOpen = (n, date) => { const t = today(date); return festivalOpen(date) && t.d >= n; };
     const doorState = n => {
         const t = today();
         if (!festivalOpen()) return 'closed';

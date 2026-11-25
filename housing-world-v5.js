@@ -78,7 +78,45 @@
     const oldContinue=Game.continueGame.bind(Game);Game.continueGame=function(){let data;try{const r=this.getRoster();data=r.heroes[r.activeHeroId]||JSON.parse(localStorage.getItem(this.state.saveKey));}catch{}oldContinue();this.state.housing=Object.assign(housingDefaults(),data?.housing||{});};
     Game.currentHouseCity=function(){return WorldData.locations[this.state.location]?.privateHouse||null;};
     Game.houseStatus=function(cityKey=this.currentHouseCity()||cities.find(c=>this.state.location.startsWith(c.prefix))?.key){const h=ensureHousing().houses[cityKey],city=cities.find(c=>c.key===cityKey);if(!city){this.addNarrative('No local estate office found.','system');return;}if(!h){this.addNarrative(`You do not own a house in ${city.label}. Purchase price: ${city.cost} rupees.`,'system');return;}const days=Math.max(0,Math.ceil((h.taxPaidUntil-Date.now())/86400000));this.addNarrative(`${city.label} house owned. Tax ${days?`paid for about ${days} more day(s)`: 'is overdue'}. Stored item types: ${h.storage.length}.`,'location');};
-    Game.buyHouse=function(){const city=cities.find(c=>this.state.location===`${c.prefix}2`);if(!city){this.addNarrative('Buy houses only from an estate agent on House Lane.','system');return;}const hs=ensureHousing();if(hs.houses[city.key]){this.addNarrative(`You already own the ${city.label} house.`,'system');return;}if(this.state.player.gold<city.cost){this.addNarrative(`The house costs ${city.cost} rupees.`,'system');return;}this.state.player.gold-=city.cost;hs.houses[city.key]={ownedAt:Date.now(),taxPaidUntil:Date.now()+7*86400000,storage:[]};this.addNarrative(`You purchase the ${city.label} private house. Seven days of property tax are included.`,'treasure');this.updateHUD();this.save();};
+    const agentCity=()=>cities.find(c=>Game.state.location===`${c.prefix}2`)||null;
+    const cityByName=query=>{const q=String(query||'').trim().toLowerCase();if(!q)return null;return cities.find(c=>c.key===q||c.label.toLowerCase()===q||c.label.toLowerCase().startsWith(q)||c.key.startsWith(q))||null;};
+    /** Where the estate agents are, and how to reach the nearest one from here. */
+    Game.estateAgentDirections=function(){
+        const loc=WorldData.locations[this.state.location];
+        const here=agentCity();
+        if(here){this.addNarrative(`You are standing at the ${here.label} estate agent on House Lane. Say "houses for sale" for the price list, or "buy house" to sign the deed.`,'location');return;}
+        const city=cities.find(c=>String(this.state.location).startsWith(c.prefix));
+        const where=cities.map(c=>`${c.label}: ${WorldData.locations[`${c.prefix}2`]?.name||`${c.prefix}2`}`).join('; ');
+        this.addNarrative(`The estate agents keep the second street of every city grid — ${where}. ${city?`You are in ${city.label} now: from the city hub walk the grid to ${city.label} House Lane (district street 2).`:'Travel to a city hub first, then walk the grid to its district street 2.'} You may also buy at a distance by naming the city, for example "buy house kaliwasch".`,'location');
+    };
+    Game.housesForSale=function(){
+        const hs=ensureHousing(),here=agentCity();
+        const rows=cities.map(c=>`${c.label}: ${c.cost} rupees${hs.houses[c.key]?' — already yours':''}${here?.key===c.key?' — the agent is beside you':''}`);
+        const gold=this.state.player?.gold||0;
+        this.addNarrative(`Houses for sale. ${rows.join('. ')}. Each deed includes seven days of property tax. You carry ${gold} rupees. ${here?`Say "buy house" to sign the ${here.label} deed here.`:'Say "buy house <city>" to sign a deed from a distance, or "estate agent" to be shown the way to one.'}`,'location');
+    };
+    Game.buyHouse=function(requested){
+        const hs=ensureHousing(),p=this.state.player;
+        const here=agentCity();
+        const city=here||cityByName(requested);
+        if(!city){
+            const names=cities.map(c=>`${c.label} (${c.cost} rupees)`).join(', ');
+            this.addNarrative(`No deed was signed. Name the city you mean: ${names}. Say "buy house kaliwasch", or stand at an estate agent on House Lane and say "buy house".`,'system');
+            return false;
+        }
+        if(hs.houses[city.key]){this.addNarrative(`You already own the ${city.label} house. Say "house status" to hear its tax and storage.`,'system');return false;}
+        if((p.gold||0)<city.cost){
+            const short=city.cost-(p.gold||0);
+            this.addNarrative(`The ${city.label} deed costs ${city.cost} rupees; you carry ${p.gold||0}, so ${short} rupees are still missing. Battles, quests and the arena fill a purse quickly; say "houses for sale" for every city's price.`,'system');
+            return false;
+        }
+        p.gold-=city.cost;
+        hs.houses[city.key]={ownedAt:Date.now(),taxPaidUntil:Date.now()+7*86400000,storage:[]};
+        const door=WorldData.locations[`private_house_${city.key}_door`];
+        this.addNarrative(`You purchase the ${city.label} private house. Seven days of property tax are included, and the deed names you as its only owner. Enter it from ${city.label} House Lane: the private door stands at the top of the second street, and your key opens it. The house has ${Object.values(WorldData.locations).filter(l=>l.privateHouse===city.key&&l.houseRoom).length} rooms and a locked Storage Room.`,'treasure');
+        this.updateHUD();this.save();this.updateContextActions?.();
+        return true;
+    };
     Game.payHouseTax=function(){const cityKey=this.currentHouseCity()||cities.find(c=>this.state.location.startsWith(c.prefix))?.key,h=ensureHousing().houses[cityKey],city=cities.find(c=>c.key===cityKey);if(!h||!city){this.addNarrative('You do not own this house.','system');return;}const tax=Math.ceil(city.cost*.1);if(this.state.player.gold<tax){this.addNarrative(`Seven-day property tax costs ${tax} rupees.`,'system');return;}this.state.player.gold-=tax;h.taxPaidUntil=Math.max(Date.now(),h.taxPaidUntil)+7*86400000;this.addNarrative(`Property tax paid: ${tax} rupees. Storage access extended seven days.`,'treasure');this.updateHUD();this.save();};
     const oldMove=Game.move.bind(Game);Game.move=function(direction){const dest=WorldData.locations[this.state.location]?.exits?.[direction],target=WorldData.locations[dest];if(target?.privateHouse&&!(this.state.inCombat&&this.state.enemy)){const h=ensureHousing().houses[target.privateHouse];if(!h){const text=window.Narration?window.Narration.t('move.houseLocked'):'You did not move. The door of this private house is locked. Buy the house from the estate agent first.';this._lastMoveResult={moved:false,direction,reason:'move.houseLocked'};if(this.emitGameEvent)this.emitGameEvent(text,'system',{sfx:['board-error']});else this.addNarrative(text,'system');return false;}}return oldMove(direction);};
     const oldStorage=Game.showStorage.bind(Game);Game.showStorage=function(){const city=this.currentHouseCity(),loc=WorldData.locations[this.state.location],h=ensureHousing().houses[city];if(!city||loc?.houseRoom!=='storage'||!h){this.addNarrative('Private storage is available only inside the Storage Room of a house you own.','system');return;}if(h.taxPaidUntil<Date.now()){this.addNarrative('Property tax is overdue. Stored items remain safe, but storage access is disabled until tax is paid.','system');return;}this.state.sacred.storage=h.storage;oldStorage();};
@@ -91,7 +129,7 @@
     Game.takeLocalGroundLoot=function(id){const list=this.state.sacred?.groundLoot||[],item=list.find(i=>i.id===id);if(!item)return;this.addItemToInventory(item.id,item);item.quantity--;if(item.quantity<=0)list.splice(list.indexOf(item),1);this.addNarrative(`You take ${item.name} from fallback ground loot.`,'item');this.save();this.showPublicLoot();};
     Game.takePublicLootByName=async function(query){const drops=await OnlineSystem.listWorldDrops(this.state.location),drop=drops.find(d=>(d.item_snapshot?.name||d.item_id).toLowerCase().includes(query.toLowerCase()));if(drop)this.takePublicLoot(drop.id);else{const local=this.state.sacred?.groundLoot?.find(i=>i.name.toLowerCase().includes(query.toLowerCase()));if(local)this.takeLocalGroundLoot(local.id);else this.addNarrative('No matching public item is on the ground.','system');}};
     const oldDefeated=Game.enemyDefeated.bind(Game);Game.enemyDefeated=function(){const before=this.state.sacred?.groundLoot?.length||0,location=this.state.location;const r=Promise.resolve(oldDefeated());r.finally(()=>{const generated=(this.state.sacred?.groundLoot||[]).splice(before);generated.forEach(item=>OnlineSystem.dropWorldItem(location,item).then(ok=>{if(!ok)this.state.sacred.groundLoot.push(item);}));});return r;};
-    const oldCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='buy house'||c==='purchase house'){this.buyHouse();return;}if(c==='pay house tax'||c==='pay property tax'){this.payHouseTax();return;}if(c==='house status'||c==='property status'){this.houseStatus();return;}if(c==='loot'||c==='check loot'){this.showPublicLoot();return;}if(c.startsWith('take loot ')){this.takePublicLootByName(c.slice(10));return;}if(c.startsWith('drop ')||c.startsWith('throw ')){this.dropPublicItem(c.replace(/^(drop|throw) /,''));return;}oldCommand(cmd);};
+    const oldCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='buy house'||c==='purchase house'){this.buyHouse();return;}if(c.startsWith('buy house ')||c.startsWith('purchase house ')){this.buyHouse(c.replace(/^(buy|purchase) house /,''));return;}if(c==='houses for sale'||c==='houses'||c==='house list'||c==='houses list'||c==='private houses'||c==='buy a house'){this.housesForSale();return;}if(c==='estate agent'||c==='where is the estate agent'||c==='house agent'||c==='where can i buy a house'||c==='how to buy a house'){this.estateAgentDirections();return;}if(c==='pay house tax'||c==='pay property tax'){this.payHouseTax();return;}if(c==='house status'||c==='property status'){this.houseStatus();return;}if(c==='loot'||c==='check loot'){this.showPublicLoot();return;}if(c.startsWith('take loot ')){this.takePublicLootByName(c.slice(10));return;}if(c.startsWith('drop ')||c.startsWith('throw ')){this.dropPublicItem(c.replace(/^(drop|throw) /,''));return;}oldCommand(cmd);};
     if(window.ExpansionData){ExpansionData.counts.locations=Object.keys(WorldData.locations).length;ExpansionData.counts.shops=Object.values(WorldData.locations).filter(l=>l.shop).length;}
     window.HousingWorld={cities,roomDefs};
 })();
