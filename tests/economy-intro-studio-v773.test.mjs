@@ -62,7 +62,8 @@ test('the purse shows every coin with what it buys, and where diamonds come from
     assert.match(text, /120/);
     assert.match(text, /Deeds 100–300 · signs 6–22 · incense 3/);
     assert.match(text, /Where diamonds come from/);
-    assert.match(text, /gift shop/i, 'the presents are named as a source');
+    assert.match(text, /Wrapped Parcel/i, 'the counter is named among the places diamonds go');
+    assert.doesNotMatch(text, /present holds/i, 'nothing tells a hero what paper keeps');
     const cards = w.document.getElementById('shop-content').querySelectorAll('.purse-card');
     assert.equal(cards.length, 4, 'one card per coin');
     G.processCommand('purse');

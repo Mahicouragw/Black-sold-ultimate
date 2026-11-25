@@ -344,7 +344,9 @@ test('the tree hangs what you carry, rings a bell each time, and answers with a 
     assert.equal(played.filter(name => name === 'ladder-up').length, 4, 'a recorded bell for every kind hung');
     assert.equal(played.at(-1), 'game-win', 'the finished tree is a victory, with its own recording');
     assert.equal(G.state.player.diamonds, diamonds + 2, 'the tree leaves two diamonds among the branches');
-    assert.ok(G.state.inventory.some(item => item.id === 'wrapped_parcel'), 'and a present');
+    assert.ok(G.state.inventory.some(item => item.id === 'gingerbread'), 'and a warm gingerbread man');
+    assert.ok(G.state.inventory.some(item => item.id === 'spiced_cider'), 'with a cup of cider');
+    assert.equal(G.state.inventory.some(item => item.id === 'wrapped_parcel'), false, 'the tree wraps no shop paper');
     assert.equal(G.state.christmasTree.nights, 1);
     // The whole stock was used: nothing is left in the bag.
     for (const item of w.ChristmasTree.decor) {

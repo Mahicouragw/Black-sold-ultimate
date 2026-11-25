@@ -404,7 +404,7 @@
         if (!item) { say(this, 'That shelf is empty.', 'system'); return false; }
         const purse = entry.currency === 'diamonds' ? (p.diamonds || 0) : (p.gold || 0);
         if (purse < entry.price) {
-            say(this, `${item.name} costs ${entry.price} ${entry.currency === 'diamonds' ? 'diamonds' : 'rupees'} and you carry ${purse}. ${entry.currency === 'diamonds' ? 'Diamonds are found in presents, in battle and on the bounty board; say "diamonds" to hear where.' : ''}`, 'system');
+            say(this, `${item.name} costs ${entry.price} ${entry.currency === 'diamonds' ? 'diamonds' : 'rupees'} and you carry ${purse}. ${entry.currency === 'diamonds' ? 'Diamonds come out of battle, the arena, the Christmas tree and the bounty board; say "diamonds" to hear where.' : ''}`, 'system');
             sfx('board-error');
             return false;
         }
