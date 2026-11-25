@@ -64,6 +64,19 @@
                 hint: 'December 1–25: walk northeast from Kaliwasch Market Square to Starlight Fair. Say Christmas for activities.'
             });
         }
+        // The six nights after Christmas: the candle row, the carols with the
+        // crier, the gift exchange and the frost-prowler board. Christmas City
+        // itself has closed by then, so this is a small festival on the square.
+        const twelfthStart = { y: p.y, m: 12, d: 26 };
+        const twelfthEnd = { y: p.y, m: 12, d: 31 };
+        if (inRange(p, twelfthStart, twelfthEnd)) {
+            out.push({
+                id: 'twelfthnight',
+                title: 'The Six Nights',
+                climax: p.m === 12 && p.d === 31,
+                hint: 'December 26–31: the candle row, the carols and the frost-prowler board stand on Kaliwasch Market Square.'
+            });
+        }
         const nyA = p.m === 12 && p.d === 31;
         const nyB = p.m === 1 && p.d <= 26;
         if (nyA || nyB) {

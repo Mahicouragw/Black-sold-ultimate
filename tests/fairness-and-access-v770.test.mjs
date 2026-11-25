@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { setTimeout as wait } from 'node:timers/promises';
 import { createRuntime } from '../scripts/load-world.mjs';
 
-async function ready(t, { iso = '2026-12-07T10:00:00Z', gold = 5000 } = {}) {
+async function ready(t, { iso = '2026-12-07T10:00:00Z', gold = 5000, diamonds = 400 } = {}) {
     const runtime = await createRuntime();
     const w = runtime.window;
     t.after(() => runtime.dom.window.close());
@@ -21,7 +21,7 @@ async function ready(t, { iso = '2026-12-07T10:00:00Z', gold = 5000 } = {}) {
     w.Date = class extends w.Date { constructor(...args) { super(...(args.length ? args : [iso])); } };
     const G = w.Game;
     G.state.player = {
-        name: 'Fair Tester', hp: 100, maxHp: 100, mp: 40, maxMp: 40, gold, diamonds: 0,
+        name: 'Fair Tester', hp: 100, maxHp: 100, mp: 40, maxMp: 40, gold, diamonds,
         level: 1, xp: 0, str: 10, dex: 10, int: 10, wis: 10, defense: 2,
         inventory: [], spells: [], weapon: 'rusty sword', weaponDamage: 8
     };
@@ -65,8 +65,8 @@ test('houses for sale names every city, its price and where the agent stands', a
     G.processCommand('houses for sale');
     const text = w.document.getElementById('narrative').textContent;
     for (const city of ['Kaliwasch', 'Aurora City', 'Ironspire City', 'Seabreeze City']) assert.match(text, new RegExp(city));
-    assert.match(text, /1200 rupees/);
-    assert.match(text, /You carry 5000 rupees/);
+    assert.match(text, /Kaliwasch: 100 diamonds/);
+    assert.match(text, /You carry 400 diamonds/, 'a deed is paid in diamonds, never money');
     assert.match(text, /buy house/i, 'the command to use is named');
 });
 
@@ -86,7 +86,7 @@ test('the estate agent street offers the purchase as a button', async t => {
     G.enterLocation('kaliwasch_district_2');
     const box = w.document.getElementById('context-actions');
     assert.match(box.innerHTML, /Houses for Sale/);
-    assert.match(box.innerHTML, /Buy This House — 1200 Rupees/);
+    assert.match(box.innerHTML, /Buy This House — 100 Diamonds/);
 });
 
 test('a house can be bought at the agent, or from a distance by naming the city', async t => {
@@ -95,9 +95,10 @@ test('a house can be bought at the agent, or from a distance by naming the city'
 
     // At the agent, no city named.
     G.enterLocation('kaliwasch_district_2');
-    const gold = G.state.player.gold;
+    const gold = G.state.player.gold, diamonds = G.state.player.diamonds;
     assert.equal(G.buyHouse(), true);
-    assert.equal(G.state.player.gold, gold - 1200);
+    assert.equal(G.state.player.diamonds, diamonds - 100, 'the deed cost diamonds');
+    assert.equal(G.state.player.gold, gold, 'and no rupees at all');
     assert.ok(G.state.housing.houses.kaliwasch, 'the deed is recorded');
     assert.match(w.document.getElementById('narrative').textContent, /purchase the Kaliwasch private house/i);
 
@@ -110,13 +111,14 @@ test('a house can be bought at the agent, or from a distance by naming the city'
 });
 
 test('a purse that is too light is told exactly how much is missing', async t => {
-    const { w, G } = await ready(t, { gold: 100 });
+    const { w, G } = await ready(t, { diamonds: 20 });
     G.state.housing = { houses: {} };
     assert.equal(G.buyHouse('kaliwasch'), false);
     const text = w.document.getElementById('narrative').textContent;
-    assert.match(text, /costs 1200 rupees/i);
-    assert.match(text, /1100 rupees are still missing/i);
-    assert.match(text, /houses for sale/i, 'a way forward is offered');
+    assert.match(text, /costs 100 diamonds/i);
+    assert.match(text, /80 diamonds are still missing/i);
+    assert.match(text, /gift shop/i, 'a way forward is offered');
+    assert.match(text, /diamonds/i);
 });
 
 test('an unknown city signs no deed and lists the real cities', async t => {
@@ -125,7 +127,7 @@ test('an unknown city signs no deed and lists the real cities', async t => {
     assert.equal(G.buyHouse('atlantis'), false);
     const text = w.document.getElementById('narrative').textContent;
     assert.match(text, /No deed was signed/i);
-    assert.match(text, /Kaliwasch \(1200 rupees\)/);
+    assert.match(text, /Kaliwasch \(100 diamonds\)/);
     assert.match(text, /buy house kaliwasch/i);
 });
 
