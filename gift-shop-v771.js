@@ -158,7 +158,9 @@
         const trinket = trinketList[Math.floor(Math.random() * trinketList.length)];
         this.addItemToInventory(trinket.id, { ...trinket });
         let diamonds = 0;
-        if (Math.random() < present.chance) diamonds = present.least + Math.floor(Math.random() * (present.most - present.least + 1));
+        // Incense smoke sweetens the odds, if any is burning.
+        const luck = typeof window.Signs?.luck === 'function' ? window.Signs.luck(this) : 0;
+        if (Math.random() < present.chance * (1 + luck)) diamonds = present.least + Math.floor(Math.random() * (present.most - present.least + 1));
         if (!diamonds && shop.opened % 10 === 0) diamonds = 1;
         if (diamonds) {
             p.diamonds = (p.diamonds || 0) + diamonds;
