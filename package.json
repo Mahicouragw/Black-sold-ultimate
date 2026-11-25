@@ -1,6 +1,6 @@
 {
   "name": "black-sword-ultimate",
-  "version": "7.69.0",
+  "version": "7.70.0",
   "private": true,
   "description": "Accessible open-world multiplayer fantasy RPG",
   "scripts": {
@@ -16,7 +16,7 @@
     "test": "node --test tests/*.test.mjs",
     "audio:validate": "node scripts/validate-audio.mjs",
     "world:validate": "node scripts/validate-world.mjs",
-    "validate": "npm run text:audit && npm run audio:validate && npm run world:validate",
+    "validate": "npm run text:audit && npm run ui:audit && npm run audio:validate && npm run world:validate",
     "deploy": "node scripts/deploy.mjs",
     "deploy:dry": "node scripts/deploy.mjs --dry-run",
     "deploy:verify": "node scripts/deploy.mjs --verify-only",
@@ -35,7 +35,8 @@
     "neon:apply-config": "node scripts/neon-apply-config.mjs --write",
     "neon:migrate": "node scripts/neon-migrate.mjs",
     "neon:refresh": "node scripts/neon-refresh-schema.mjs",
-    "text:audit": "node scripts/audit-player-text.mjs --strict"
+    "text:audit": "node scripts/audit-player-text.mjs --strict",
+    "ui:audit": "node scripts/audit-ui-bindings.mjs"
   },
   "dependencies": {
     "@capacitor/android": "7.6.9",

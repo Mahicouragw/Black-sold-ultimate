@@ -358,4 +358,5 @@ const GameHall={type:null,state:null,chess:null,onlineSession:null,version:0,sub
  }
 };
 GameHall.initWorld();GameHall.inject();window.GameHall=GameHall;
-const oldHallCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='game hall'||c==='board games'){GameHall.enterOrOpen();return;}oldHallCommand(cmd);};
+const oldHallCommand=Game.processCommand.bind(Game);Game.processCommand=function(cmd){const c=cmd.toLowerCase().trim();if(c==='game hall'||c==='board games'){GameHall.enterOrOpen();return;}// The hall's own quick-play buttons say "play chess" and so on.
+const quick=/^play (ludo|snakes|chess|carrom|blackjack)$/.exec(c);if(quick){GameHall.open();GameHall.select(quick[1]);return;}oldHallCommand(cmd);};

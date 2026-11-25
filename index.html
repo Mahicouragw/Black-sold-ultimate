@@ -163,34 +163,11 @@
             <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
         </div>
 
-        <!-- Multiplayer Setup -->
-        <div id="multi-screen" class="screen">
-            <h2>👥 Multiplayer Setup</h2>
-
-            <div class="mp-info">
-                <p>Play with friends! Take turns exploring the world together. Each player controls their own hero.</p>
-            </div>
-
-            <div class="form-group">
-                <label for="mp-count">Number of Players:</label>
-                <select id="mp-count">
-                    <option value="2">2 Players</option>
-                    <option value="3">3 Players</option>
-                    <option value="4">4 Players</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="mp-mode">Game Mode:</label>
-                <select id="mp-mode">
-                    <option value="coop">Cooperative - Work together!</option>
-                    <option value="pvp">PvP - Battle each other!</option>
-                </select>
-            </div>
-
-            <button id="btn-start-mp" class="menu-btn big-btn">👥 Start Multiplayer</button>
-            <button class="menu-btn back-btn" data-screen="title-screen">← Back</button>
-        </div>
+        <!-- Multiplayer lives where it really is: the Online Game Hall (board
+             games with friends) and a brotherhood/combat group in the guild.
+             The old dead "Multiplayer Setup" screen was removed in 7.70.0: it
+             promised turn-by-turn co-op, contained a Game Mode select that no
+             script read, and could not be opened from anywhere. -->
 
         <!-- Full game tutorial (before play) -->
         <div id="tutorial-screen" class="screen" aria-labelledby="tutorial-title">
@@ -659,7 +636,7 @@
                     <div class="stat-row"><span>Player ID</span><strong id="settings-player-code">Generating…</strong></div>
                     <div class="stat-row"><span>Active Hero</span><strong id="settings-hero-name">No hero selected</strong></div>
                     <div class="stat-row"><span>Account</span><span id="settings-account-status">Connecting…</span></div>
-                    <div class="stat-row"><span>Version</span><span id="settings-version">7.69.0</span></div>
+                    <div class="stat-row"><span>Version</span><span id="settings-version">7.70.0</span></div>
                     <!-- Shown only to the studio owner, so the studio is one press away
                          from the top of Settings instead of a long scroll. -->
                     <button type="button" id="btn-open-sound-studio" class="menu-btn" hidden>🎚️ Open the Sound Studio</button>
@@ -921,6 +898,8 @@
     <script defer src="battle-summary-cleantext-v12.js"></script>
     <script defer src="expansive-forest-multitarget-v13.js"></script>
     <script defer src="fair-group-combat-v14.js"></script>
+    <!-- Fairness is installed after every combat layer, so no layer can bypass it. -->
+    <script defer src="fairness-v770.js"></script>
     <script defer src="wayfinder-battle-actions-v15.js"></script>
     <script defer src="security-privacy-v16.js"></script>
     <script defer src="resource-recovery-forest-exit-v17.js"></script>

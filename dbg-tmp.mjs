@@ -1,0 +1,12 @@
+import { createRuntime } from './scripts/load-world.mjs';
+const r = await createRuntime(); const w = r.window;
+await new Promise(res=>setTimeout(res,50));
+const G = w.Game;
+const ids = Object.keys(w.WorldData.locations).filter(id=>/kaliwasch.*2$/.test(id)).slice(0,10);
+console.log('ids', ids);
+for (const id of ['kaliwasch_district_2','kaliwasch_district_12']) console.log(id, w.WorldData.locations[id]?.name, w.WorldData.locations[id]?.features);
+console.log('HousingWorld', !!w.HousingWorld, w.HousingWorld?.cities?.map(c=>c.prefix+'2'));
+console.log('agentCity fn', typeof G.buyHouse, typeof G.housesForSale);
+G.state.player = { name:'T', hp:10, maxHp:10, gold:5000, inventory:[], level:1 };
+G.enterLocation('kaliwasch_district_2');
+console.log('ctx', w.document.getElementById('context-actions')?.innerHTML.slice(0,200));

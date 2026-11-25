@@ -619,7 +619,7 @@ const Game = {
         document.getElementById('btn-begin').addEventListener('click', () => this.beginCharacterCreation(false));
 
         // Multiplayer
-        document.getElementById('btn-start-mp').addEventListener('click', () => this.beginCharacterCreation(true));
+        // The old Multiplayer Setup screen is gone; its button no longer exists.
 
         // Command input
         document.getElementById('cmd-input').addEventListener('keypress', (e) => {
@@ -2253,12 +2253,16 @@ const Game = {
         this.state.defending = false;
 
         const levelBonus = 1 + (this.state.player.level - 1) * 0.15;
+        // Fairness: a monster's endurance may grow with the hero's level, but its
+        // swing grows far more slowly. Otherwise a level-20 road holds creatures
+        // that delete a full-health hero in one blow, and no tactic matters.
+        const attackBonus = Math.min(levelBonus, 2.2);
 
         this.state.enemy = {
             name: enemyName,
             hp: Math.floor(enemyData.hp * levelBonus),
             maxHp: Math.floor(enemyData.hp * levelBonus),
-            attack: Math.floor(enemyData.attack * levelBonus),
+            attack: Math.floor(enemyData.attack * attackBonus),
             xp: Math.floor(enemyData.xp * levelBonus),
             gold: Math.floor(enemyData.gold * levelBonus),
             boss: enemyData.boss || false,
@@ -2491,6 +2495,12 @@ const Game = {
                 damage = Math.max(1, Math.floor(damage * 0.5));
                 this.state.defending = false;
             }
+            // Mercy: a single blow never takes more than two fifths of the hero's
+            // health (half from a boss). A bad round costs dearly; it never ends
+            // the story before the player has a turn to answer it.
+            const mercyLimit = Math.max(1, Math.floor((p.maxHp || 1) * (e.boss ? 0.5 : 0.4)));
+            const glancing = damage > mercyLimit;
+            if (glancing) damage = mercyLimit;
 
             if (this._pro) {
                 await this._pro.monsterAttack(attacker, damage, isMiss, Math.max(0, p.hp - damage));
@@ -2504,14 +2514,14 @@ const Game = {
                 this.addNarrative(`${attacker} attacks but you dodge the blow!`, 'combat');
             } else {
                 p.hp = Math.max(0, p.hp - damage);
-                this.addNarrative(`${attacker} hits you for ${damage} damage!`, 'combat');
+                this.addNarrative(`${attacker} hits you for ${damage} damage!${glancing ? ' The blow glances off; you keep your feet.' : ''}`, 'combat');
             }
 
             // Enemy also strikes a companion (if any alive) with reduced damage
             const aliveCompanions = this.state.companions.filter(c => c.hp > 0);
-            if (aliveCompanions.length > 0 && !isMiss && Math.random() < 0.4) {
+            if (aliveCompanions.length > 0 && !isMiss && Math.random() < 0.25) {
                 const target = aliveCompanions[Math.floor(Math.random() * aliveCompanions.length)];
-                const compDamage = Math.max(1, Math.floor(e.attack * 0.6) + Math.floor(Math.random() * 3));
+                const compDamage = Math.max(1, Math.floor(e.attack * 0.5) + Math.floor(Math.random() * 3));
                 target.hp = Math.max(0, target.hp - compDamage);
                 this.addNarrative(`${attacker} also hits ${target.name} for ${compDamage} damage! (${target.name} HP: ${target.hp}/${target.maxHp})`, 'combat');
                 if (target.hp <= 0) {
