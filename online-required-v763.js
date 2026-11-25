@@ -28,10 +28,12 @@
         return lang === 'te' ? telugu : lang === 'hi' ? hindi : english;
     };
 
+    /* The owner asked for one plain sentence and nothing else: no account list,
+       no link offer, no explanation. "You lost internet. Please try again." */
     const line = () => en(
-        'The Black Sword needs an internet connection. Connect to Wi-Fi or mobile data and choose Retry.',
-        'బ్లాక్ స్వోర్డ్ ఆటకు ఇంటర్నెట్ కనెక్షన్ కావాలి. వై-ఫై లేదా మొబైల్ డేటాకు కనెక్ట్ అయి, మళ్లీ ప్రయత్నించండి అనే బటన్ నొక్కండి.',
-        'ब्लैक स्वॉर्ड के लिए इंटरनेट कनेक्शन आवश्यक है। वाई-फ़ाई या मोबाइल डेटा से जुड़ें और फिर से प्रयास करें दबाएँ।'
+        'You lost internet. Please try again.',
+        'మీ ఇంటర్నెట్ పోయింది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+        'आपका इंटरनेट चला गया। कृपया फिर से प्रयास करें।'
     );
     const backLine = () => en(
         'Internet is back. You can play again.',
@@ -79,13 +81,12 @@
         ].join(';');
         box.innerHTML = `
             <div style="max-width:34rem">
-                <h2 id="online-required-title" style="margin:0 0 12px;font-size:1.4rem">🌐 Internet required</h2>
+                <h2 id="online-required-title" style="margin:0 0 12px;font-size:1.4rem">🌐 No internet</h2>
                 <p id="online-required-text" style="margin:0 0 20px"></p>
                 <button id="online-required-retry" type="button"
                     style="font:inherit;padding:14px 22px;border-radius:12px;border:0;background:#e9d8a6;color:#241b0b;font-weight:700">
-                    Retry
+                    Try again
                 </button>
-                <p style="margin:16px 0 0;opacity:.75;font-size:.9rem">Your hero and progress are safe and stay exactly as they were.</p>
             </div>`;
         document.body.appendChild(box);
         box.querySelector('#online-required-retry').addEventListener('click', retryNow);
@@ -111,9 +112,9 @@
         const text = box.querySelector('#online-required-text');
         if (text) text.textContent = line();
         const title = box.querySelector('#online-required-title');
-        if (title) title.textContent = en('Internet required', 'ఇంటర్నెట్ అవసరం', 'इंटरनेट आवश्यक है');
+        if (title) title.textContent = en('No internet', 'ఇంటర్నెట్ లేదు', 'इंटरनेट नहीं है');
         const retry = box.querySelector('#online-required-retry');
-        if (retry) retry.textContent = en('Retry', 'మళ్లీ ప్రయత్నించండి', 'फिर से प्रयास करें');
+        if (retry) retry.textContent = en('Try again', 'మళ్లీ ప్రయత్నించండి', 'फिर से प्रयास करें');
     }
 
     /* A first-run interface chooser can be open when the connection drops. It
@@ -193,11 +194,7 @@
             hide(true);
             return;
         }
-        announce(en(
-            'Still offline. Check Wi-Fi or mobile data, then choose Retry again.',
-            'ఇంకా ఆఫ్‌లైన్‌లో ఉంది. వై-ఫై లేదా మొబైల్ డేటా చూసి, మళ్లీ ప్రయత్నించండి నొక్కండి.',
-            'अभी भी ऑफ़लाइन है। वाई-फ़ाई या मोबाइल डेटा जाँचें, फिर प्रयास करें दबाएँ।'
-        ), true);
+        announce(line(), true);
         if (panel) {
             const retry = panel.querySelector('#online-required-retry');
             try { retry?.focus({ preventScroll: true }); } catch { /* ignore */ }
@@ -258,7 +255,9 @@
         check: () => check(),
         retry: retryNow,
         line,
-        install
+        install,
+        /** Shown by the sign-in code when a request proves there is no route. */
+        reportOffline: () => show(true)
     };
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });

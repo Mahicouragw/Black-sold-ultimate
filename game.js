@@ -3413,6 +3413,7 @@ const Game = {
         this.addNarrative("heal [friend/companion] - Heal an ally for 15 MP", 'system');
         this.addNarrative("guild/group - Open guild and joint combat group", 'system');
         this.addNarrative("shop - Browse the current location's shop", 'system');
+        this.addNarrative("purse / wallet - Every coin in one place, and where diamonds come from", 'system');
         this.addNarrative("travel [location] - Dimensional travel for 10 rupees", 'system');
         this.addNarrative("world - Hear how far the realm reaches", 'system');
         this.addNarrative("settings/account - Copy your Player ID, link Google, or set a recovery PIN", 'system');

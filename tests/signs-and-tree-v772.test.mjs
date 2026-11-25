@@ -80,7 +80,9 @@ test('signs are priced in diamonds in one shop, beside the Christmas decorations
     const sections = new Set(w.SignShop.stock.map(entry => entry.section));
     assert.ok(sections.has('Signs'), 'signs are sold');
     assert.ok(sections.has('Christmas decorations'), 'decorations share the same counter');
-    assert.equal(w.SignShop.stock.filter(entry => entry.currency === 'diamonds').length, 16, 'exactly the sixteen signs ask for diamonds');
+    const diamondShelf = w.SignShop.stock.filter(entry => entry.currency === 'diamonds').map(entry => entry.id);
+    assert.equal(diamondShelf.length, 17, 'the sixteen signs and the incense ask for diamonds');
+    assert.ok(diamondShelf.includes('incense'), 'the incense is diamond money too');
     for (const entry of w.SignShop.stock) {
         assert.equal(entry.stage, undefined, 'there are no shop stages');
         assert.equal(entry.tier, undefined, 'there are no tiers');

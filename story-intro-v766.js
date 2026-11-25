@@ -23,9 +23,9 @@
         { cue: 'intro-01', text: 'Welcome to Black Sword.', sfx: 'magic' },
         { cue: 'intro-02', text: 'This world is in danger, and it needs you. That is why you were born again.', sfx: 'blessing' },
         { cue: 'intro-03', text: 'You were born in Market Square, and your journey begins here.', sfx: 'explore' },
-        { cue: 'intro-04', text: 'First, guidance. Say palace, and the court will give you a quest.', sfx: 'door' },
-        { cue: 'intro-05', text: 'Ser Aldric, the Royal Huntsman, rides with you until that quest is done.', sfx: 'check' },
-        { cue: 'intro-06', text: 'Take your first step. Your story begins now.', sfx: 'levelup' }
+        { cue: 'intro-04', text: 'First, guidance. Say palace, and the court will give you a quest.', sfx: 'check' },
+        { cue: 'intro-05', text: 'Ser Aldric, the Royal Huntsman, rides with you until that quest is done.', sfx: 'levelup' },
+        { cue: 'intro-06', text: 'Take your first step. Your story begins now.', sfx: 'step-leaves' }
     ];
 
     /** One announcement per palace quest, named with the real quest and companion. */
@@ -148,6 +148,19 @@
         try { window.MusicSystem?.playSFX?.(name); } catch { /* sound effects are optional */ }
     }
 
+    /**
+     * The effect for one line. A recording published in the studio under the
+     * line's own name — `intro-02-sfx`, say — is used first, so the owner can
+     * give a single line its own sound without touching the rest of the game.
+     */
+    function sfxFor(line) {
+        const own = `${line.cue}-sfx`;
+        try {
+            if (window.MusicSystem?.resolveSFX?.(own)) return own;
+        } catch { /* fall through to the built-in */ }
+        return line.sfx;
+    }
+
     function markSeen() {
         const game = window.Game;
         if (!game?.state) return;
@@ -168,7 +181,7 @@
             for (const line of INTRO) {
                 if (state.cancelled) break;
                 showLine(line.text);
-                beep(line.sfx);
+                beep(sfxFor(line));
                 await playLine(line);
             }
             if (!state.cancelled) markSeen();
@@ -206,7 +219,7 @@
     /** What exists right now, so the owner sees the truth in Settings. */
     function status() {
         const cues = [];
-        for (const line of INTRO) cues.push({ cue: line.cue, text: line.text, kind: 'intro', src: sourceFor(line.cue), published: Boolean(published(line.cue)) });
+        for (const line of INTRO) cues.push({ cue: line.cue, text: line.text, kind: 'intro', src: sourceFor(line.cue), sfx: sfxFor(line), published: Boolean(published(line.cue)) });
         for (const [questId, entry] of Object.entries(QUESTS)) cues.push({ cue: entry.cue, text: entry.text, kind: 'quest', questId, src: sourceFor(entry.cue), published: Boolean(published(entry.cue)) });
         return {
             intro: cues.filter(cue => cue.kind === 'intro'),
@@ -226,7 +239,7 @@
         return lines;
     }
 
-    const api = { INTRO, QUESTS, file, sourceFor, play, playQuest, stop, status, script, markSeen, state };
+    const api = { INTRO, QUESTS, file, sourceFor, play, playQuest, stop, status, script, markSeen, state, sfxFor };
     window.StoryIntro = api;
 
     /* ── wiring ─────────────────────────────────────────────────────────── */

@@ -2,6 +2,36 @@
 
 An open-world multiplayer RPG inspired by "The Black Sword" on Amazon Alexa. Features real royalty-free ambient music, enhanced combat, guilds, quests, and more!
 
+## A lost connection is not a lost account
+
+If the internet drops, the game says one sentence — **"You lost internet. Please
+try again."** — and nothing else: no account list, no link offer, no second
+screen. A device that was signed in with Google keeps that memory
+(`black_sword_google_linked`), so while the connection is down the game does not
+ask who you are and does not create a guest over your account. When the
+connection returns the stored Google session signs itself back in — on the
+`online` event, on a return to the tab, or on a quiet retry every fifteen
+seconds. "Continue with Google" appears in exactly one case: the saved sign-in
+has genuinely expired, and the line then says so.
+
+## The purse, and diamonds everywhere rare money belongs
+
+`purse` (or `wallet`) draws one panel with every coin in the game — diamonds,
+rupees, rubies, gold rubies — what each one buys, and the honest sources of
+diamonds. **Incense is paid for in diamonds** (3), like the signs beside it in
+the one rune shop.
+
+## The opening story, with its own recorded sounds
+
+The six lines of the opening play over the *Adventure Intro* recording with a
+distinct recorded effect on each line, and any of them can be replaced by the
+owner's own file: publish the cue `blessing`, or just `intro-02-sfx` for that one
+line. [`SOUND_EFFECTS.md`](SOUND_EFFECTS.md) lists the cue names, what each
+should sound like, the search terms for free CC0 libraries, and how to publish
+them — including **Check publishing** in the studio, which says in plain words
+whether the gateway is deployed, and, if the account is not on the owner list,
+prints the exact id to add.
+
 ## The sixteen signs, and the tree on the Christmas map
 
 Sixteen runes exist and no more: Strength, Dexterity, Heaven, Earth, Fire,

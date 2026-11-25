@@ -837,6 +837,18 @@ kbd {
 .shop-item-card small,.shop-item-card p { color:var(--text-dim); font-size:.82rem; }
 .shop-item-card select { padding:6px; color:var(--text); background:var(--bg-medium); border:1px solid var(--secondary); border-radius:5px; }
 .shop-actions { display:flex; flex-wrap:wrap; gap:7px; }
+/* The purse: every coin in one place, each with what it buys. */
+.purse-grid { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); margin:12px 0; }
+.purse-card { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:12px; background:linear-gradient(160deg,var(--bg-dark),var(--bg-medium)); border:1px solid var(--secondary); border-left:4px solid var(--primary); border-radius:9px; }
+.purse-amount { display:grid; justify-items:center; align-content:start; gap:2px; min-width:4.2rem; }
+.purse-amount strong { font-size:1.15rem; color:var(--primary); }
+.purse-icon { font-size:1.35rem; line-height:1; }
+.purse-text strong { display:block; margin-bottom:2px; }
+.purse-text p { margin:0 0 4px; color:var(--text-dim); font-size:.84rem; }
+.purse-text small { color:var(--secondary); font-size:.78rem; }
+.purse-note { padding:10px 12px; margin:10px 0; background:rgba(233,216,166,.10); border-left:3px solid var(--primary); border-radius:7px; }
+.purse-sources { margin:6px 0 12px 1.1rem; padding:0; color:var(--text-dim); font-size:.86rem; }
+.purse-sources li { margin:4px 0; }
 .directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}.directory-grid button{padding:11px;color:var(--text);background:var(--bg-dark);border:1px solid var(--primary);border-radius:6px;cursor:pointer;text-align:left}.directory-grid button:hover,.directory-grid button:focus{background:var(--bg-light);border-color:var(--accent)}
 .context-actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:8px 0}.context-actions:empty{display:none}.context-actions strong{color:var(--primary);width:100%}.context-actions button{padding:9px 12px;color:var(--text);background:var(--bg-dark);border:1px solid var(--success);border-radius:6px;cursor:pointer;text-transform:capitalize}.context-actions button:hover,.context-actions button:focus{background:var(--bg-light);border-color:var(--accent)}
 .settings-card { display: flex; flex-direction: column; gap: 10px; }
