@@ -204,7 +204,9 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.jso
 - 🧙 Six-slot Hero Management with create, switch, confirmed deletion, Standard, Hardcore, and Archo permanent-hero modes
 - 🏙 A visible City Directory with shortest physical routes to four gates, four streets, houses, Temple, Palace, Guild, Tavern, Park, Marketplace, Shop and Enchantery
 - 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no teleport shortcuts
-- 🏠 Purchasable private eight-room houses, seven-day property tax, owner-only storage, and public outdoor drops
+- 🏠 Purchasable private eight-room houses, bought and kept with diamonds, a monthly estate due with auto-pay, an agent's ledger, owner-only storage, and public outdoor drops
+- 🎁 The Wrapped Parcel gift shop: presents bought with rupees, some holding the diamonds a deed needs
+- 🕯️ Twelfth Night (26–31 December): the candle row, carols with Crier Bell, a gift exchange graded by generosity, an identical frost-prowler bounty board, and a tree of lights that gives nothing back
 - 🌾 Distinct plains, rivers, farms, graveyards, mountain roads and hostile tundra routes
 - 🛒 Quantity-based shop lists with item counts and Buy, Examine, and Compare actions
 - 🧰 Six equipment slots and four original armor/weapon sets with 2/4/6-piece bonuses

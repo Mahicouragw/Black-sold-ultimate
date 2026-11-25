@@ -30,7 +30,9 @@
         { id: 3, file: 'line-03', test: /\b(action|actions|command|commands|say|how do i|what can i do|cook|fish|secret|story)\b/i }
     ];
 
-    const festivalOpen = (date = new Date()) => w.SeasonalEvents.activeEvents(date).some(e => e.id === 'christmas');
+    // Crier Bell keeps the square through the six nights after Christmas too,
+    // because the candle row, the carols and the frost-prowler board are his.
+    const festivalOpen = (date = new Date()) => w.SeasonalEvents.activeEvents(date).some(e => e.id === 'christmas' || e.id === 'twelfthnight');
     const say = (game, text, type) => game.addNarrative(text, type);
     const narrate = (game, text, type = 'system') => game.addNarrative(text, type);
 

@@ -156,24 +156,16 @@
             ["Welcome to Starling.", "2"]
         ])]],
         ["Kaliwasch Estate Agent", ["kaliwasch-estate-agent", new Map([
-            ["A private house costs 1200 rupees.", "0"],
-            ["Only the owner can enter and use house storage.", "1"],
-            ["Property tax is due every seven days.", "2"]
+            ["Only the owner can enter and use house storage.", "1"]
         ])]],
         ["Aurora City Estate Agent", ["aurora-city-estate-agent", new Map([
-            ["A private house costs 1500 rupees.", "0"],
-            ["Only the owner can enter and use house storage.", "1"],
-            ["Property tax is due every seven days.", "2"]
+            ["Only the owner can enter and use house storage.", "1"]
         ])]],
         ["Ironspire City Estate Agent", ["ironspire-city-estate-agent", new Map([
-            ["A private house costs 1800 rupees.", "0"],
-            ["Only the owner can enter and use house storage.", "1"],
-            ["Property tax is due every seven days.", "2"]
+            ["Only the owner can enter and use house storage.", "1"]
         ])]],
         ["Seabreeze City Estate Agent", ["seabreeze-city-estate-agent", new Map([
-            ["A private house costs 1600 rupees.", "0"],
-            ["Only the owner can enter and use house storage.", "1"],
-            ["Property tax is due every seven days.", "2"]
+            ["Only the owner can enter and use house storage.", "1"]
         ])]],
         ["Kaliwasch Guild Registrar", ["kaliwasch-guild-registrar", new Map([
             ["Guild management is available to linked heroes.", "0"],
