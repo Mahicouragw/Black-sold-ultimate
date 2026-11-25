@@ -49,19 +49,37 @@
         return String(user?.uid || user?.id || user?.email || '');
     };
 
+    /** Plain words for a status code the studio itself answered with. */
+    function httpReason(status) {
+        if (status === 404) return 'the studio gateway is not answering at this address, so it has not been deployed on the server yet';
+        if (status === 401 || status === 403) return 'the studio refused this account';
+        if (status === 413) return 'the recording is too large for the server to accept; try a shorter clip';
+        if (status === 429) return 'too many attempts just now; wait a minute and try again';
+        if (status >= 500) return 'the studio is running, but its storage or database did not answer';
+        return status ? `the studio answered with code ${status}` : 'the studio did not answer';
+    }
+
     async function call(body) {
         const bearer = await token();
         if (!bearer) return { error: { code: 'unauthenticated', message: 'Sign in with Google first.' } };
+        let response;
         try {
-            const response = await fetch(api(), {
+            response = await fetch(api(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bearer },
                 body: JSON.stringify(body)
             });
-            return await response.json();
         } catch {
-            return { error: { code: 'offline', message: 'The studio could not be reached. Check the connection.' } };
+            return { error: { code: 'offline', message: 'You lost internet. Please try again.' } };
         }
+        // A gateway that fails in front of the function answers with a page, not
+        // JSON. That must be reported as a reason, never as a silent failure.
+        let payload = null;
+        try { payload = await response.json(); } catch { payload = null; }
+        if (payload && (payload.error || payload.data)) return payload;
+        if (payload && typeof payload === 'object') return { data: payload };
+        const status = Number(response?.status) || 0;
+        return { error: { code: 'http-' + status, status, message: `Publishing is closed because ${httpReason(status)}.` } };
     }
 
     function show(visible) {
@@ -289,7 +307,7 @@
             const data = await readBase64(file);
             const answer = await call({ action: 'publish', cue, kind, mime: file.type, filename: file.name, data });
             if (answer?.error) {
-                const message = answer.error.message || 'Publishing failed.';
+                const message = answer.error.message || `Publishing failed: ${httpReason(answer.error.status)}.`;
                 if (answer.error.code === 'unauthenticated') {
                     state.admin = false;
                     show(false);
@@ -320,6 +338,59 @@
         await window.CustomAudio?.load?.();
         renderTargets();
         renderList();
+    }
+
+    /**
+     * "Check publishing" — the one button that answers the owner's question
+     * without a console. It says whether the gateway answers at all, which
+     * account this device is signed in as, and whether that account is on the
+     * owner list yet. Three failures look identical from the outside; this
+     * separates them and names the fix for each.
+     */
+    async function checkPublishing() {
+        if (state.busy) return;
+        state.busy = true;
+        const button = el('sound-studio-check');
+        if (button) button.disabled = true;
+        speak('Checking the studio…');
+        try {
+            let reachable = false, published = 0;
+            try {
+                const response = await fetch(`${api()}?list=1`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+                if (response.ok) {
+                    reachable = true;
+                    const body = await response.json().catch(() => null);
+                    published = Array.isArray(body?.data?.cues) ? body.data.cues.length : 0;
+                }
+            } catch { reachable = false; }
+            if (!reachable) {
+                speak('The studio gateway does not answer. It has to be deployed on the server once; until then nothing can be published. Every player keeps hearing the built-in recordings.', true);
+                return false;
+            }
+            const answer = await call({ action: 'who' });
+            if (answer?.error) {
+                if (answer.error.code === 'unauthenticated') {
+                    speak('The studio is reachable, but this device is not signed in with Google. Sign in above, then check again.', true);
+                    return false;
+                }
+                speak(`The studio is reachable, but the owner check failed: ${answer.error.message}`, true);
+                return false;
+            }
+            const uid = String(answer?.data?.uid || currentUid() || 'unknown');
+            const admin = Boolean(answer?.data?.admin);
+            state.admin = admin;
+            show(admin);
+            if (admin) {
+                renderTargets(); renderList();
+                speak(`The studio is reachable and publishing is open. ${published} sound${published === 1 ? '' : 's'} published so far. This account is ${uid}.`, true);
+            } else {
+                speak(`The studio is reachable, but this account is not on the owner list yet, so publishing stays closed. This account is ${uid}. Add that id to the studio owner list in the server database, then check again.`, true);
+            }
+            return admin;
+        } finally {
+            state.busy = false;
+            if (button) button.disabled = false;
+        }
     }
 
     function renderList() {
@@ -354,6 +425,7 @@
     function wire() {
         el('sound-studio-file')?.addEventListener('change', () => preview(chosenFile()));
         el('sound-studio-publish')?.addEventListener('click', publish);
+        el('sound-studio-check')?.addEventListener('click', checkPublishing);
         el('sound-studio-audition')?.addEventListener('click', audition);
         el('btn-open-sound-studio')?.addEventListener('click', () => open());
         el('sound-studio-target')?.addEventListener('change', () => {
@@ -428,7 +500,7 @@
     window.SoundStudio = {
         checkOwner,
         open,
-        publish,
+        publish, checkPublishing,
         remove,
         renderList,
         renderTargets,

@@ -37,8 +37,62 @@ const OnlineSystem = {
     })),
     selectedVoice: (() => { try { return localStorage.getItem('black_sword_chat_voice') || 'system:default'; } catch (error) { return 'system:default'; } })(),
 
+    /* ─────────── the device remembers its Google account ───────────
+     * A player who has signed in with Google must never be shown
+     * "Continue with Google" again merely because the connection dropped. The
+     * sign-in itself is remembered on the device, and the session is restored
+     * from it by itself when the internet comes back. */
+    rememberLink(linked) {
+        try {
+            if (linked) localStorage.setItem('black_sword_google_linked', 'true');
+            else localStorage.removeItem('black_sword_google_linked');
+        } catch { /* private mode keeps it only for this page */ }
+    },
+
+    rememberedLink() {
+        try { return localStorage.getItem('black_sword_google_linked') === 'true'; } catch { return false; }
+    },
+
+    isOffline() {
+        try { return typeof navigator !== 'undefined' && navigator.onLine === false; } catch { return false; }
+    },
+
+    offlineLine() {
+        return this.pick(
+            'You lost internet. Please try again.',
+            'మీ ఇంటర్నెట్ పోయింది. దయచేసి మళ్లీ ప్రయత్నించండి.',
+            'आपका इंटरनेट चला गया। कृपया फिर से प्रयास करें।'
+        );
+    },
+
+    /** Retry the start-up by itself when the connection returns. */
+    watchForRestore() {
+        if (this._restoreWatched) return;
+        this._restoreWatched = true;
+        const attempt = () => {
+            if (this.ready || this.connecting || this.isOffline()) return;
+            this.init().catch(() => { /* the next attempt reports */ });
+        };
+        window.addEventListener('online', () => setTimeout(attempt, 400));
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) attempt(); });
+        // A phone that sits on a silent network still recovers without a reload.
+        try { this._restoreTimer = setInterval(attempt, 15000); } catch { /* timers blocked */ }
+    },
+
     async init() {
         if (this.ready) return;
+        // No connection at all: never open a sign-in list over the game. The
+        // hero stays on this device and the start-up runs again by itself.
+        if (this.isOffline()) {
+            this.connecting = false;
+            this.linked = this.rememberedLink() || this.linked;
+            this.sessionWaiting = true;
+            this.status = this.offlineLine();
+            this.ensureLocalCode();
+            this.updateIndicators();
+            this.watchForRestore();
+            return;
+        }
         this.connecting = true;
         this.updateServiceIndicator();
         this.populateVoiceSelectors();
@@ -65,6 +119,26 @@ const OnlineSystem = {
             console.log('Auth: client created, attempting session...');
             const { data: { session } } = await this.client.auth.getSession();
             let activeSession = session;
+            if (!activeSession && this.rememberedLink()) {
+                // This device signed in with Google before. Creating a guest
+                // here would look like the account vanished, so the Google
+                // button is offered instead — the only case where it belongs.
+                this.connecting = false;
+                this.linked = false;
+                // Nothing is waiting for a connection here: the saved sign-in is
+                // genuinely gone, so the Google button is the honest answer.
+                this.sessionWaiting = false;
+                this.status = this.pick(
+                    'This device was signed in with Google. Choose Continue with Google to bring your heroes back.',
+                    'ఈ పరికరం Google తో సైన్ ఇన్ అయింది. మీ హీరోలను తిరిగి పొందడానికి Continue with Google నొక్కండి.',
+                    'यह डिवाइस Google से साइन इन था। अपने हीरो वापस पाने के लिए Continue with Google दबाएँ।'
+                );
+                this.ensureLocalCode();
+                this.updateIndicators();
+                this.registerAuthListener();
+                this.watchForRestore();
+                return;
+            }
             if (!activeSession) {
                 const result = await this.client.auth.signInAnonymously({
                     options: { data: { display_name: this.defaultDisplayName() } }
@@ -77,6 +151,8 @@ const OnlineSystem = {
             // database: a Google player must not be shown as a guest because a
             // database request failed.
             await this.refreshIdentityStatus();
+            this.rememberLink(this.linked);
+            this.sessionWaiting = false;
             let slowTimer;
             try {
                 // Never wait forever on "Connecting…": after 15 seconds play from the device.
@@ -118,9 +194,16 @@ const OnlineSystem = {
         } catch (error) {
             // All technical details go to console only — never to the game UI.
             console.error('Online initialization failed:', error);
-            this.status = 'Guest mode';
+            if (this.linked || this.rememberedLink()) {
+                this.linked = true;
+                this.sessionWaiting = true;
+                this.status = this.offlineLine();
+            } else {
+                this.status = 'Guest mode';
+            }
             this.ensureLocalCode();
             this.updateIndicators();
+            this.watchForRestore();
         } finally {
             this.connecting = false;
             // The sign-in button is hidden while the session is still being
@@ -451,6 +534,14 @@ const OnlineSystem = {
     },
 
     openGoogleDialog(merge=false,retry=0) {
+        // Offline, there is nothing to choose between: say the one sentence and
+        // leave the account list closed.
+        if (this.isOffline()) {
+            this.status = this.offlineLine();
+            this.updateIndicators();
+            try { window.GestureAccessibility?.speak?.(this.offlineLine(), true, 'system'); } catch { /* optional */ }
+            return;
+        }
         this.googleMergeRequested=merge;const panel=document.getElementById('google-login-panel'),status=document.getElementById('google-login-status'),config=window.BLACK_SWORD_BACKEND_CONFIG;panel?.classList.remove('hidden');
         const isFirebase = String(config?.provider || '') === 'firebase';
         // Google refuses OAuth inside in-app WebViews (our APK): guide the player
@@ -930,7 +1021,7 @@ const OnlineSystem = {
         try{await this.client?.auth?.signOut?.({scope:'local'});}
         catch(error){console.warn('Sign-out cleanup warning:',error?.message||error);}
         this.authRevision++;
-        this.ready=false;this.user=null;this.profile=null;this.linked=false;
+        this.ready=false;this.user=null;this.profile=null;this.linked=false;this.sessionWaiting=false;this.rememberLink(false);
         // The signed-out device goes back to the guest saves; this account's heroes stay under its own key.
         window.Game?.forgetAccount?.();
         // Clear the signed-out account's hero from the running page before any
@@ -1367,8 +1458,11 @@ const OnlineSystem = {
             // While sign-in is still being restored the button is not shown, so a
             // player who is already signed in never sees "Continue with Google"
             // flash on a reload or a version update.
-            signIn.hidden = Boolean(this.linked) || Boolean(this.connecting);
-            signIn.disabled = Boolean(this.linked) || Boolean(this.connecting);
+            // A Google device that is only waiting for its connection never
+            // sees the button again; nor does anyone while the device is offline.
+            const waitForNet = Boolean(this.sessionWaiting) || this.isOffline();
+            signIn.hidden = Boolean(this.linked) || Boolean(this.connecting) || waitForNet;
+            signIn.disabled = signIn.hidden;
             if (!this.linked) {
                 signIn.innerHTML = '<span class="google-mark" aria-hidden="true">G</span> Continue with Google';
             }
@@ -1378,7 +1472,7 @@ const OnlineSystem = {
         // player must never see a second sign-in button.
         const settingsSignIn = document.getElementById('btn-settings-google-signin');
         if (settingsSignIn) {
-            const show = !this.linked && !this.connecting;
+            const show = !this.linked && !this.connecting && !this.sessionWaiting && !this.isOffline();
             settingsSignIn.hidden = !show;
             settingsSignIn.disabled = !show;
         }

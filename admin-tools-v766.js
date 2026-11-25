@@ -27,14 +27,24 @@
     async function call(body) {
         const bearer = await token();
         if (!bearer) return { error: { code: 'unauthenticated' } };
+        let response;
         try {
-            const response = await fetch(api(), {
+            response = await fetch(api(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + bearer },
                 body: JSON.stringify(body)
             });
-            return await response.json();
-        } catch { return { error: { code: 'offline' } }; }
+        } catch { return { error: { code: 'offline', message: 'You lost internet. Please try again.' } }; }
+        let payload = null;
+        try { payload = await response.json(); } catch { payload = null; }
+        if (payload && (payload.error || payload.data)) return payload;
+        if (payload && typeof payload === 'object') return { data: payload };
+        const status = Number(response?.status) || 0;
+        const reason = status === 404 ? 'the owner gateway is not deployed on the server'
+            : status === 401 || status === 403 ? 'this account is not the owner'
+            : status >= 500 ? 'the server storage or database did not answer'
+            : `the server answered with code ${status || 'none'}`;
+        return { error: { code: 'http-' + status, status, message: `Owner tools are closed because ${reason}.` } };
     }
 
     function show(visible) {

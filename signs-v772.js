@@ -362,11 +362,13 @@
         registerStock([{ id: `sign_${sign.key}`, price: sign.price, currency: 'diamonds', section: 'Signs' }]);
     }
     // A consumable the shop keeps beside the runes: the incense.
+    // The incense is a diamond curiosity, like the signs beside it: rare money
+    // buys rare smoke.
     w.WorldData.items.incense = {
-        id: 'incense', name: 'Incense', type: 'consumable', value: 45, effect: 'incense',
+        id: 'incense', name: 'Incense', type: 'consumable', value: 12, effect: 'incense',
         desc: 'A twist of resin and dried herbs wrapped in brown paper, the kind temple keepers burn when they want an answer. The smoke is sweet, the room seems a little kinder, and the paper is warm before it is ever lit.'
     };
-    registerStock([{ id: 'incense', price: 40, currency: 'rupees', section: 'Curiosities' }]);
+    registerStock([{ id: 'incense', price: 3, currency: 'diamonds', section: 'Curiosities' }]);
 
     const SHOP_LOCATIONS = new Set(['arcane_enchantery', 'starlight_square']);
     const atShop = game => SHOP_LOCATIONS.has(game.state.location);
@@ -407,8 +409,9 @@
             return false;
         }
         if (entry.currency === 'diamonds') p.diamonds -= entry.price; else p.gold -= entry.price;
+        const paidWith = entry.currency === 'diamonds' ? 'diamonds' : 'rupees';
         this.addItemToInventory(entry.id, { ...item });
-        say(this, `You buy ${item.name} for ${entry.price} ${entry.currency === 'diamonds' ? 'diamonds' : 'rupees'}.`, 'item');
+        say(this, `You buy ${item.name} for ${entry.price} ${paidWith}.`, 'item');
         sfx('coin-collision');
         this.updateHUD?.(); this.save?.();
         if (document.getElementById('shop-panel') && !document.getElementById('shop-panel').classList.contains('hidden')) this.showRuneShop();
@@ -425,7 +428,7 @@
 
     Game.burnIncense = function () {
         const item = (this.state.inventory || []).find(i => i.id === 'incense' && (i.quantity || 0) > 0);
-        if (!item) { say(this, 'You carry no incense. The rune shop keeps a twist of it for forty rupees.', 'system'); return false; }
+        if (!item) { say(this, 'You carry no incense. The rune shop keeps a twist of it for three diamonds.', 'system'); return false; }
         item.quantity -= 1;
         if (item.quantity <= 0) this.state.inventory = this.state.inventory.filter(i => i !== item);
         this.state.buffs = Object.assign({}, this.state.buffs || {}, { incenseUntil: Date.now() + BUFF });
@@ -439,7 +442,7 @@
         const left = buffUntil(this) - Date.now();
         say(this, left > 0
             ? `The incense is still burning. The smoke has about ${Math.ceil(left / 60000)} minute(s) left before it thins and the room goes back to being an ordinary room.`
-            : 'No incense is burning. The rune shop sells a twist of it for forty rupees.', 'location');
+            : 'No incense is burning. The rune shop sells a twist of it for three diamonds.', 'location');
     };
 
     // Incense is used like any consumable, but its effect is its own.

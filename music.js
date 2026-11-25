@@ -172,7 +172,7 @@ class AudioManagerController {
             victory: ['assets/audio/music/victory.mp3'], door: ['assets/audio/sfx/door.wav'],
             pickup: ['assets/audio/sfx/pickup.wav'], heal: ['assets/audio/sfx/heal.wav'],
             eat: ['assets/audio/sfx/eat.ogg'], drink: ['assets/audio/sfx/drink.ogg'],
-            blessing: ['assets/audio/sfx/magic.wav'], chip: ['assets/audio/sfx/ui-click.wav'],
+            blessing: ['assets/audio/sfx/heal-chain.wav'], chip: ['assets/audio/sfx/ui-click.wav'],
             click: ['assets/audio/sfx/ui-click.wav'], button: ['assets/audio/sfx/ui-click.wav'],
             swipe: ['assets/audio/sfx/music-transition.wav'], 'goblin-reaction': ['assets/audio/sfx/goblin-reaction.ogg'],
             'weapon-hit': ['assets/audio/sfx/hit.wav'], 'music-transition': ['assets/audio/sfx/music-transition.wav'],
