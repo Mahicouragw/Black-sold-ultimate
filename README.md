@@ -14,6 +14,28 @@ connection returns the stored Google session signs itself back in — on the
 seconds. "Continue with Google" appears in exactly one case: the saved sign-in
 has genuinely expired, and the line then says so.
 
+## A fair gift shop: printed contents, and diamonds that are only spent
+
+The Wrapped Parcel is no longer a lucky dip. Every present is a printed card, and
+the paper holds exactly what the card says — the same goods for every hero, every
+time, so nobody can farm the rarest currency by buying wrapping paper:
+
+| Present | Price | Holds |
+| --- | --- | --- |
+| Wrapped Parcel | 25 rupees | 1 candy cane, 1 tree ball |
+| Ribboned Gift | 60 rupees | gingerbread man, spiced cider, 3 tree balls |
+| Grand Present | 130 rupees | winter scarf, candy cane, lights, garland |
+| Emberglass Present | 4 diamonds | 2 runs of lights, and the **Emberglass Locket** (+10 max HP) |
+| Frostbell Present | 6 diamonds | a Christmas bell, and the **Frostbell Charm** (+2 defence) |
+| Silver Star Present | 9 diamonds | garland, a bell, and the **Silver Star Pendant** (+10 max MP) |
+
+The three keepsakes are **sold once to each hero**: the blessing is written onto
+the hero for good, the card then reads *Already yours*, and the counter takes no
+diamonds for a second one. No present contains a diamond at all — the shop takes
+diamonds, it never mints them. Diamonds are earned in the hands of fallen
+monsters and bosses, in the arena, behind the Christmas doors and at the tree,
+and on the twelfth-night bounty board.
+
 ## The purse, and diamonds everywhere rare money belongs
 
 `purse` (or `wallet`) draws one panel with every coin in the game — diamonds,
@@ -268,7 +290,7 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.jso
 - 🏙 A visible City Directory with shortest physical routes to four gates, four streets, houses, Temple, Palace, Guild, Tavern, Park, Marketplace, Shop and Enchantery
 - 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no teleport shortcuts
 - 🏠 Purchasable private eight-room houses, bought and kept with diamonds, a monthly estate due with auto-pay, an agent's ledger, owner-only storage, and public outdoor drops
-- 🎁 The Wrapped Parcel gift shop: presents bought with rupees, some holding the diamonds a deed needs
+- 🎁 The Wrapped Parcel gift shop: presents bought with rupees, each card printed with its exact contents, plus three keepsake presents paid for in diamonds — one per hero, never a lucky dip
 - 🕯️ Twelfth Night (26–31 December): the candle row, carols with Crier Bell, a gift exchange graded by generosity, an identical frost-prowler bounty board, and a tree of lights that gives nothing back
 - 🌾 Distinct plains, rivers, farms, graveyards, mountain roads and hostile tundra routes
 - 🛒 Quantity-based shop lists with item counts and Buy, Examine, and Compare actions
