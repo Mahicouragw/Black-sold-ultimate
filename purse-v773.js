@@ -45,9 +45,10 @@
     function diamondSources(game) {
         const rows = [
             'A great beast, or the beast at the end of the row, sometimes leaves one in the spoils.',
-            'Some presents from the gift shop hold one, wrapped in paper and ribbon.',
-            'The Twelfth Night bounty board pays in them, and the Grand Christmas Tree leaves two among the branches.',
-            'The Arena counts them out at every twenty-fifth wave.'
+            'The Arena counts them out at every twenty-fifth wave.',
+            'Behind the Christmas doors, in Santa’s sack, and at the foot of the Grand Christmas Tree when it is finished for the night.',
+            'The twelfth-night bounty board pays in them for the frost-prowlers.',
+            'Nothing else mints one: no present holds a diamond, and nobody sells one for rupees. The gift shop takes diamonds, for its three keepsake presents.'
         ];
         const due = typeof game.houseDueNow === 'function' ? game.houseDueNow() : 0;
         if (due) rows.push(`The estate agent is owed ${num(due)} diamond${due === 1 ? '' : 's'} this month.`);
