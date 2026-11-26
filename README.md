@@ -14,14 +14,48 @@ connection returns the stored Google session signs itself back in — on the
 seconds. "Continue with Google" appears in exactly one case: the saved sign-in
 has genuinely expired, and the line then says so.
 
+## Christmas City, inhabited (7.76.0)
+
+The fair used to be rooms with nobody in them. It now has a cast of ten, each in
+their own place with their own voice, their own trade and something true to say:
+Ilse Marrow at the Carolers' Arch, Tamsin Vey in the Parcel Office, Old Wick in
+Toymaker Lane, Bram Kettle on the Cocoa Terrace, Sister Aline in the Candle
+Chapel, Maestro Quill at the theatre, Doran Axle in the Sleighwright Yard,
+Captain Hesper Rell on North Watch, Pell at the Grand Christmas Tree and Greta
+Holt in the kitchen.
+
+- **The Starlight Herald.** One bulletin a day, drawn from the date, identical
+  for every hero — the weather, the market, the tree, the board, the doors and
+  the carols. `news` reads it; the first person you speak to on a given day adds
+  a line of it in passing.
+- **Food.** Each of the ten keeps something warm for a hero, once a day, in their
+  own way: cocoa from Bram, a sugar plum from Ilse between verses, chestnuts from
+  Old Wick, half a roll from Doran.
+- **Carols.** Four carols (`carols`, `sing`, `sing silent night`) sung verse by
+  verse with the arch; the last verse of a whole carol earns a brass bell.
+- **Posters.** Printed sheets pasted to eleven real walls — the market square and
+  ten places in Christmas City — each its own text, each readable in full with
+  `read poster`, listed with `posters`.
+- **A wish** said at the trunk of the Grand Christmas Tree, kept, and given back
+  the next time you ask.
+- **Cocoa** sold at the terrace for six rupees — food and medicine both.
+- **The chapel bells**, rung once a night, answered by the whole square.
+
+Outside December the city is empty, the posters come down and the cast is not
+there to be found.
+
 ## Presents paid for in diamonds, and paper that keeps its secrets
 
-The Wrapped Parcel sells three presents, and every one of them is paid for in
-diamonds: **10**, **25** and **50**. A present is worth exactly what it cost, so
-a ten-diamond parcel is a ten-diamond parcel in paper, a twenty-five holds
-twenty-five, and a fifty holds fifty. Nothing can be farmed by buying wrapping
-paper: buy one and open it and you are exactly where you started, minus the
-wrapping.
+The Wrapped Parcel keeps two counters. Its **diamond presents** cost 10, 25 and
+50 diamonds and are worth exactly what they cost, so a ten-diamond parcel is a
+ten-diamond parcel in paper and buying one to open it puts you back exactly where
+you started. Its **rupee parcels** — a Paper Cone (25), a Basket Parcel (60) and
+a Sleigh Hamper (130) — are packed fresh the morning they are opened: real
+things out of the world, never the same twice, announced plainly ("Inside is a
+Chocolate. It goes into your bag."). What they hold is always worth less than the
+rupees paid, never a diamond, and a folded paper turns up instead of a sweet now
+and then. Neither counter can be farmed: one gives back exactly its price, the
+other never gives back more than its price.
 
 What a present takes into that paper can be carried to somebody else. Buy one,
 walk across the world, and say **"gift Raven"** (or "gift parcel to Raven"): it is
@@ -299,6 +333,8 @@ See [`AUDIO_CREDITS.md`](AUDIO_CREDITS.md) and [`assets/audio/audio-manifest.jso
 - 🙏 Temple, Palace, Guild, markets, gates, streets, shops and houses are physical grid locations with no teleport shortcuts
 - 🏠 Purchasable private eight-room houses, bought and kept with diamonds, a monthly estate due with auto-pay, an agent's ledger, owner-only storage, and public outdoor drops
 - 🎁 The Wrapped Parcel: presents at 10, 25 and 50 diamonds, each worth exactly its price and giveable to another hero with "gift <hero>", with nothing on a card ever saying what the paper keeps
+- 🎄 Christmas City with a cast of ten: their own voices, the daily Starlight Herald, food handed out once a day, four carols at the arch, eleven printed posters, wishes at the tree, cocoa and the chapel bells
+- 🥨 The rupee counter at the Wrapped Parcel: a paper cone, a basket and a hamper packed fresh from real world items, never the same twice, never worth more than the rupees paid and never a diamond
 - 🕯️ Twelfth Night (26–31 December): the candle row, carols with Crier Bell, a gift exchange graded by generosity, an identical frost-prowler bounty board, and a tree of lights that gives nothing back
 - 🌾 Distinct plains, rivers, farms, graveyards, mountain roads and hostile tundra routes
 - 🛒 Quantity-based shop lists with item counts and Buy, Examine, and Compare actions
