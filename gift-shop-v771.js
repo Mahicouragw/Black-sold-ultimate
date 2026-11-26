@@ -14,9 +14,14 @@
  * being given one. That is deliberate: a shop that explains its surprises has no
  * surprises left.
  *
- * There is no dice in this file. A present is never a lottery, so no hero can
- * farm the rarest currency by buying paper and tearing it open: buy one and open
- * it and you have exactly what you started with, minus the wrapping.
+ * The rupee presents are the other half of the counter: a paper cone, a basket
+ * and a sleigh hamper, packed from whatever the shop has in that morning. Those
+ * are a genuine surprise — the contents are drawn when the paper is opened, not
+ * when it is bought — but they never hold a diamond and never hold goods worth
+ * more than the rupees paid, so no hero can farm anything by buying paper.
+ *
+ * A diamond present is never a lottery: buy one and open it and you have exactly
+ * what you started with, minus the wrapping.
  *
  * The three pieces of jewellery the paper sometimes keeps are not advertised
  * either. They are simply there the first time a hero unwraps each kind of
@@ -53,6 +58,34 @@
         }
     };
 
+    /** Christmas sweets and small papers the counter keeps in its tins. */
+    const TREATS = {
+        chocolate: { id: 'chocolate', name: 'Chocolate', type: 'food', effect: 'heal', power: 12, value: 5, desc: 'A square of dark chocolate wrapped in waxed paper, still cold from the pantry.' },
+        peppermint_humbug: { id: 'peppermint_humbug', name: 'Peppermint Humbug', type: 'food', effect: 'heal', power: 6, value: 3, desc: 'A striped boiled sweet that makes the whole mouth cold and then warm again.' },
+        roasted_chestnut: { id: 'roasted_chestnut', name: 'Roasted Chestnut', type: 'food', effect: 'heal', power: 8, value: 4, desc: 'A chestnut split down the back and roasted on a brazier, wrapped in half a newspaper.' },
+        sugarplum: { id: 'sugarplum', name: 'Sugar Plum', type: 'food', effect: 'both', power: 5, value: 7, desc: 'A plum boiled in sugar until it is mostly sugar. The children of the market swear by them.' },
+        cocoa_cup: { id: 'cocoa_cup', name: 'Cocoa Cup', type: 'food', effect: 'both', power: 20, value: 12, desc: 'A clay cup of thick hot cocoa with a spoon standing in it. Drink it slowly, it says.' },
+        pressed_note: { id: 'pressed_note', name: 'Pressed Note', type: 'document', value: 1, desc: 'A folded square of paper, pressed flat under something heavy for a long time.' }
+    };
+
+    /** What a paper cone, a basket and a ham per may hold between them. */
+    const PACKING = {
+        paper_cone: ['bread', 'honey_cake', 'chocolate', 'peppermint_humbug', 'roasted_chestnut', 'sugarplum', 'acorn', 'torch', 'rope', 'fishing_bait', 'leather_belt'],
+        basket_parcel: ['swamp_herb', 'mountain_flower', 'cheese_wheel', 'forest_ration', 'silver_trout', 'mana_potion', 'moon_berry', 'gold_hoop_earrings', 'iron_knuckle_ring', 'christmas_tree_ball', 'christmas_lights', 'chocolate', 'cocoa_cup', 'honey_cake'],
+        sleigh_hamper: ['roast_boar', 'cave_eel', 'healing_potion', 'ranger_tonic', 'mystic_stew', 'amber_pendant', 'round_shield', 'wolf_cape', 'storm_tuna', 'heater_shield', 'signet_ring', 'boar_stew', 'cocoa_cup']
+    };
+    // The keys in PACKING are the world's own item keys, which use spaces.
+    const ITEM_KEY = id => id.replace(/_/g, ' ');
+
+    /** The small papers that turn up in place of a sweet now and then. */
+    const NOTES = [
+        'Someone has written, in a careful hand: “You were kinder than you needed to be. It was noticed.”',
+        'A line, underlined twice: “The tree keeps asking for something you already carry.”',
+        'Half a recipe for gingerbread, and under it, smaller: “the ninth door is the good one.”',
+        'A child’s drawing of a sleigh, with an arrow and the words “HE COMES FROM THE NORTH”.',
+        'Written on the back of a market list: “Whoever finds this, eat something warm today.”'
+    ];
+
     const DECORATION_NAMES = {
         christmas_tree_ball: 'Christmas Tree Ball', christmas_lights: 'Christmas Lights',
         christmas_garland: 'Christmas Garland', christmas_bell: 'Christmas Bell'
@@ -77,6 +110,22 @@
             id: 'grand_present', name: 'Grand Present', currency: 'diamonds', price: 50, diamonds: 50,
             keepsake: 'silver_star_pendant', sold: true, value: 50,
             desc: 'A deep hamper with a bow wider than the lid, brought up from under the counter with both hands.'
+        },
+        /* The rupee counter: packed that morning, different every time. */
+        {
+            id: 'paper_cone', name: 'Paper Cone', currency: 'rupees', price: 25, diamonds: 0,
+            sold: true, value: 20, random: PACKING.paper_cone, pieces: 2, notes: true,
+            desc: 'A cone of brown paper twisted shut at the top, and something inside it shifts when you tilt it.'
+        },
+        {
+            id: 'basket_parcel', name: 'Basket Parcel', currency: 'rupees', price: 60, diamonds: 0,
+            sold: true, value: 48, random: PACKING.basket_parcel, pieces: 2, notes: true,
+            desc: 'A shallow wicker basket tied shut with string, with a folded cloth over whatever is under the lid.'
+        },
+        {
+            id: 'sleigh_hamper', name: 'Sleigh Hamper', currency: 'rupees', price: 130, diamonds: 0,
+            sold: true, value: 105, random: PACKING.sleigh_hamper, pieces: 3,
+            desc: 'A wide hamper roped like a piece of luggage, the sort that rides behind a sleigh and is unpacked in a warm room.'
         },
         /* Crier Bell’s own paper: Christmas things, and nothing that spends. */
         {
@@ -107,7 +156,7 @@
             value: present.value, desc: present.desc
         };
     }
-    for (const trinket of [...Object.values(TRINKETS), ...Object.values(KEEPSAKES)]) {
+    for (const trinket of [...Object.values(TRINKETS), ...Object.values(KEEPSAKES), ...Object.values(TREATS)]) {
         if (!w.WorldData.items[trinket.id]) w.WorldData.items[trinket.id] = { ...trinket };
     }
 
@@ -143,7 +192,7 @@
     Game.giftShopDirections = function () {
         const here = atCounter(this);
         say(this, here
-            ? 'The Wrapped Parcel is open beside you: paper, ribbon, and three presents on the counter at ten, twenty-five and fifty diamonds. Say "buy parcel", "buy gift" or "buy grand present", then "open gift" to unwrap — or carry one to another hero and give it away with "gift, then their name".'
+            ? 'The Wrapped Parcel is open beside you: paper, ribbon, and six parcels on the counter — a paper cone, a basket and a hamper for rupees, and three diamond presents at ten, twenty-five and fifty. Say "buy cone", "buy basket", "buy hamper", "buy gift" or "buy grand present", then "open gift" to unwrap — or carry one to another hero and give it away with "gift, then their name".'
             : 'The Wrapped Parcel keeps a counter on Kaliwasch Market Square and on Shop Row in each city. Its presents are paid for in diamonds. Say "diamonds" to hear where diamonds are found.', 'location');
     };
 
@@ -168,7 +217,7 @@
                     + `<button onclick="Game.openGift('${present.id}')">Unwrap</button>`
                     + `<button onclick="Game.giveGift()">Give</button></div></article>`;
             }).join('')
-            + '<p>Paper, string and a bow. What is under the paper is the shop’s business until it is yours.</p>'
+            + `<p>Paper, string and a bow. What is under the paper is the shop’s business until it is yours — the cone, the basket and the hamper are packed fresh that morning and never the same twice.</p>`
             + '<p><button onclick="Game.giveGift()">Give a present to another hero</button></p>';
         panel.classList.remove('hidden');
     };
@@ -185,15 +234,16 @@
         if (!atCounter(this)) { this.giftShopDirections(); return false; }
         const count = Math.max(1, Math.min(10, Number(quantity) || 1));
         const cost = priceOf(present) * count;
-        const purse = p.diamonds || 0;
+        const paid = present.currency === 'diamonds' ? 'diamonds' : 'rupees';
+        const purse = (present.currency === 'diamonds' ? p.diamonds : p.gold) || 0;
         if (purse < cost) {
-            say(this, `${count > 1 ? `${count} ${present.name}s` : `a ${present.name}`} cost${count > 1 ? '' : 's'} ${cost} diamonds and you carry ${purse}. Diamonds are earned in battle, in the arena, at the Christmas tree and on the bounty board; say "diamonds" to hear every way.`, 'system');
+            say(this, `${count > 1 ? `${count} ${present.name}s` : `a ${present.name}`} cost${count > 1 ? '' : 's'} ${cost} ${paid} and you carry ${purse}. ${paid === 'diamonds' ? 'Diamonds are earned in battle, in the arena, at the Christmas tree and on the bounty board; say "diamonds" to hear every way.' : 'Monsters, quests and the arena fill a purse quickly.'}`, 'system');
             sfx('board-error');
             return false;
         }
-        p.diamonds -= cost;
+        if (present.currency === 'diamonds') p.diamonds -= cost; else p.gold -= cost;
         for (let i = 0; i < count; i++) this.addItemToInventory(present.id, { ...w.WorldData.items[present.id] });
-        say(this, `You buy ${count > 1 ? `${count} ${present.name}s` : `a ${present.name}`} for ${cost} diamonds. The shopkeeper ties it, seals it and slides it across the counter without a word about what is inside.`, 'item');
+        say(this, `You buy ${count > 1 ? `${count} ${present.name}s` : `a ${present.name}`} for ${cost} ${paid}. The shopkeeper ties it, seals it and slides it across the counter without a word about what is inside.`, 'item');
         sfx('coin-collision');
         this.updateHUD?.(); this.save?.();
         if (document.getElementById('shop-panel') && !document.getElementById('shop-panel').classList.contains('hidden')) this.showGiftShop();
@@ -242,7 +292,7 @@
         const bag = this.state.inventory || [];
         const found = presentInBag(this, query);
         if (!found) {
-            say(this, `You carry no present to unwrap. The Wrapped Parcel sells them for ${SOLD.map(priceOf).join(', ')} diamonds.`, 'system');
+            say(this, `You carry no present to unwrap. The Wrapped Parcel sells a paper cone for ${priceOf(byId('paper_cone'))} rupees, a basket parcel for ${priceOf(byId('basket_parcel'))}, a sleigh hamper for ${priceOf(byId('sleigh_hamper'))}, and its three diamond presents at ${SOLD.filter(p => p.currency === 'diamonds').map(priceOf).join(', ')}.`, 'system');
             return false;
         }
         if (found.missing) { say(this, `You carry no ${found.missing.name}. The gift shop sells one.`, 'system'); return false; }
@@ -256,19 +306,83 @@
 
         const worth = holdsOf(present);
         if (worth) p.diamonds = (p.diamonds || 0) + worth;
-        grant(this, present);
+
+        // The rupee counter is packed fresh each time the paper is opened —
+        // never on a schedule, never on a count of previous parcels.
+        const rolled = present.random ? packParcel(this, present) : null;
+        if (!rolled) grant(this, present);
 
         const keepsake = keepsakeOf(present);
         let blessed = null;
         if (keepsake && !ownedKeepsakes(this).includes(keepsake.id)) blessed = bless(this, keepsake);
 
-        const broke = present.paper || 'The string gives way and the paper comes off in one long curl. Everything inside is in both your hands at once, and then it is yours.';
-        say(this, `${broke}${blessed ? ` ${blessed}` : ''}`, keepsake ? 'treasure' : 'item');
-        sfx(keepsake ? 'spell-arcane' : 'pickup');
+        const broke = present.paper || 'The string gives way and the paper comes off in one long curl.';
+        const reveal = rolled
+            ? ` ${rolled.sentence}`
+            : ' Everything inside is in both your hands at once, and then it is yours.';
+        say(this, `${broke}${reveal}${blessed ? ` ${blessed}` : ''}`, keepsake ? 'treasure' : 'item');
+        sfx(keepsake ? 'spell-arcane' : rolled ? 'coin-collision' : 'pickup');
         this.updateHUD?.(); this.save?.();
         if (document.getElementById('shop-panel') && !document.getElementById('shop-panel').classList.contains('hidden')) this.showGiftShop();
-        return { present: present.id, diamonds: worth, items: (present.contents || []).map(row => row.id), keepsake: keepsake?.id || null, blessed: Boolean(blessed) };
+        return {
+            present: present.id, diamonds: worth,
+            items: rolled ? rolled.ids : (present.contents || []).map(row => row.id),
+            keepsake: keepsake?.id || null, blessed: Boolean(blessed)
+        };
     };
+
+    /**
+     * Pack a rupee parcel from what the shop has in, right now. The goods are
+     * always worth less than the rupees paid, and a diamond is never among them.
+     */
+    function packParcel(game, present) {
+        const price = priceOf(present);
+        const pool = (present.random || []).filter(id => w.WorldData.items[ITEM_KEY(id)] || w.WorldData.items[id]);
+        if (!pool.length) return null;
+        const valueOf = id => Number(w.WorldData.items[ITEM_KEY(id)]?.value ?? w.WorldData.items[id]?.value) || 0;
+
+        // A folded paper instead of goods, now and then, on the cheap parcels.
+        if (present.notes && Math.random() < 0.14) {
+            const note = NOTES[Math.floor(Math.random() * NOTES.length)];
+            const data = { ...w.WorldData.items.pressed_note, desc: note };
+            game.addItemToInventory('pressed_note', data);
+            return { ids: ['pressed_note'], sentence: 'There is no sweet in it at all: a folded paper, a stranger’s hand, and a few lines that were never meant for you. You keep it.' };
+        }
+
+        const chosen = [];
+        let total = 0;
+        const wants = Math.max(1, Math.min(1 + Math.floor(Math.random() * (present.pieces || 1)), 3));
+        for (let tries = 0; tries < 12 && chosen.length < wants; tries += 1) {
+            const id = pool[Math.floor(Math.random() * pool.length)];
+            const cost = valueOf(id);
+            if (!cost || total + cost > price) continue;
+            chosen.push(id);
+            total += cost;
+        }
+        if (!chosen.length) {
+            const cheapest = pool.slice().sort((a, b) => valueOf(a) - valueOf(b))[0];
+            chosen.push(cheapest);
+        }
+        const ids = [];
+        for (const id of chosen) {
+            const key = w.WorldData.items[ITEM_KEY(id)] ? ITEM_KEY(id) : id;
+            game.addItemToInventory(key, { ...w.WorldData.items[key] });
+            ids.push(key);
+        }
+        return { ids, sentence: foundSentence(ids) };
+    }
+
+    /** “Inside is a Honey Cake. It goes into your bag.” — said plainly, second person. */
+    function foundSentence(ids) {
+        const names = ids.map(id => {
+            const name = labelOf(id);
+            return /^[aeiou]/i.test(name) ? `an ${name}` : `a ${name}`;
+        });
+        const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+        return names.length === 1
+            ? `Inside is ${list}. It goes into your bag.`
+            : `Inside are ${list}. They go into your bag.`;
+    }
 
     /* ──────────────────────── giving a present away ──────────────────────── */
 
@@ -288,7 +402,7 @@
     Game.giftDirections = function () {
         const bag = (this.state.inventory || []).filter(i => PRESENTS.some(p => p.id === i.id) && (i.quantity || 0) > 0);
         if (!bag.length) {
-            say(this, 'You carry no present to give. The Wrapped Parcel sells them for ' + SOLD.map(priceOf).join(', ') + ' diamonds, and a present is a fine thing to carry across the world for somebody else.', 'system');
+            say(this, 'You carry no present to give. The Wrapped Parcel sells them from ten diamonds and from twenty-five rupees, and a present is a fine thing to carry across the world for somebody else.', 'system');
             return false;
         }
         const names = bag.map(i => `${w.WorldData.items[i.id]?.name || i.id} (${i.quantity})`).join(', ');
@@ -395,14 +509,17 @@
         }
         if (m) { this.giveGift(m[1], ''); return; }
 
-        m = /^buy (\d+ )?(parcel|parcels|wrapped parcel|gift|gifts|present|presents|ribboned gift|grand present|grand gift)$/.exec(text);
+        m = /^buy (\d+ )?(parcel|parcels|wrapped parcel|gift|gifts|present|presents|ribboned gift|grand present|grand gift|cone|paper cone|basket|basket parcel|hamper|sleigh hamper)$/.exec(text);
         if (m) {
             const count = m[1] ? Number(m[1].trim()) : 1;
             const word = m[2];
-            const id = /parcel/.test(word) ? 'wrapped_parcel'
+            const id = /sleigh|hamper/.test(word) ? 'sleigh_hamper'
+                : /basket/.test(word) ? 'basket_parcel'
+                : /cone/.test(word) ? 'paper_cone'
                 : /ribboned/.test(word) ? 'ribboned_gift'
                 : /grand/.test(word) ? 'grand_present'
-                : (this.state.player?.diamonds || 0) >= 25 ? 'ribboned_gift' : 'wrapped_parcel';
+                : /parcel/.test(word) ? 'wrapped_parcel'
+                : (this.state.player?.gold || 0) >= priceOf(byId('basket_parcel')) ? 'basket_parcel' : 'paper_cone';
             this.buyPresent(id, count);
             return;
         }

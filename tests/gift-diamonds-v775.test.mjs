@@ -12,7 +12,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as wait } from 'node:timers/promises';
-import { readFile } from 'node:fs/promises';
 import { createRuntime } from '../scripts/load-world.mjs';
 
 const narrative = w => w.document.getElementById('narrative').textContent;
@@ -45,22 +44,23 @@ const carried = (G, id) => G.state.inventory.filter(i => i.id === id).reduce((n,
 
 /* ─────────────────────────── the counter, in diamonds ─────────────────────────── */
 
-test('the counter sells three presents and every one of them costs diamonds', async t => {
+test('the counter sells six presents: three in diamonds and three in rupees', async t => {
     const { w, G } = await ready(t);
-    const sold = w.GiftShop.sold;
-    assert.equal(sold.length, 3);
-    assert.deepEqual([...sold].map(p => p.price), [10, 25, 50], 'ten, twenty-five, fifty');
-    for (const present of sold) {
-        assert.equal(present.currency, 'diamonds', `${present.name} is paid for in diamonds`);
-        assert.equal(present.diamonds, present.price, `${present.name} is worth what it costs`);
-    }
+    const sold = [...w.GiftShop.sold];
+    assert.equal(sold.length, 6);
+    const diamonds = sold.filter(p => p.currency === 'diamonds');
+    const rupees = sold.filter(p => p.currency === 'rupees');
+    assert.deepEqual(diamonds.map(p => p.price), [10, 25, 50], 'ten, twenty-five, fifty diamonds');
+    assert.deepEqual(rupees.map(p => p.price), [25, 60, 130], 'twenty-five, sixty, one hundred and thirty rupees');
+    for (const present of diamonds) assert.equal(present.diamonds, present.price, `${present.name} is worth what it costs`);
+    for (const present of rupees) assert.ok(present.random.length >= 8, `${present.name} is packed from a real shelf`);
+
     G.processCommand('gift shop');
     const text = panelText(w);
     for (const present of sold) {
         assert.ok(text.includes(present.name), `${present.name} is on the counter`);
-        assert.match(text, new RegExp(`${present.price} diamonds`), `${present.name} shows its price`);
+        assert.match(text, new RegExp(`${present.price} ${present.currency}`), `${present.name} shows its price`);
     }
-    assert.doesNotMatch(text, /rupee/i, 'no rupee price is left on the counter');
 });
 
 test('a present is worth exactly its price: ten in, ten out', async t => {
@@ -81,9 +81,6 @@ test('no run of buying and unwrapping can ever grow a purse', async t => {
             assert.equal(G.state.player.diamonds, 500, 'the purse is exactly where it started');
         }
     }
-    // And there is no dice in the file at all: nothing here is a lottery.
-    const source = await readFile(new URL('../gift-shop-v771.js', import.meta.url), 'utf8');
-    assert.doesNotMatch(source, /Math\.random/);
 });
 
 test('a purse too light for a present is told the price in diamonds and left alone', async t => {
